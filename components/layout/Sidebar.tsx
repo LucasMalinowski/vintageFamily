@@ -2,18 +2,18 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Receipt, DollarSign, Lightbulb, PiggyBank, TrendingUp, LogOut, Menu, X } from 'lucide-react'
+import { Home, BanknoteArrowUp, BanknoteArrowDown, Receipt, PiggyBank, ChartColumnBig, LogOut, Menu, X } from 'lucide-react'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { useEffect, useState } from 'react'
 
 const menuItems = [
   { icon: Home, label: 'Dashboard', href: '/' },
-  { icon: Receipt, label: 'Contas a Pagar', href: '/payables' },
-  { icon: DollarSign, label: 'Contas a Receber', href: '/receivables' },
-  { icon: Lightbulb, label: 'Poupança / Sonhos', href: '/dreams' },
-  { icon: PiggyBank, label: 'Saldo', href: '/balance' },
-  { icon: TrendingUp, label: 'Comparativos', href: '/comparatives' },
+  { icon: BanknoteArrowUp, label: 'Contas a Pagar', href: '/payables' },
+  { icon: BanknoteArrowDown, label: 'Contas a Receber', href: '/receivables' },
+  { icon: PiggyBank, label: 'Poupança / Sonhos', href: '/dreams' },
+  { icon: Receipt, label: 'Saldo', href: '/balance' },
+  { icon: ChartColumnBig, label: 'Comparativos', href: '/comparatives' },
 ]
 
 export default function Sidebar() {
