@@ -93,6 +93,49 @@ h1, h2, h3, h4, h5, h6 {
 -------------------------------------------------------- */
 
 @layer components {
+  .grain {
+    min-height: 100vh;
+    position: relative;
+    background-color: var(--paper);
+  }
+  .grain:after {
+    animation: grain 8s steps(10) infinite;
+    background-image: url('https://grainy-gradients.vercel.app/noise.svg');
+    content: "";
+    height: 300%;
+    width: 300%;
+    left: -100%;
+    top: -110%;
+    opacity: 0.45;
+    position: fixed;
+    pointer-events: none;
+    z-index: 50;
+  }
+
+  .grain2 {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    pointer-event: none;
+    z-index: 300;
+    transform: translateZ(0);
+
+    &:before {
+      content: "";
+      top: -10rem;
+      left: -10rem;
+      width: calc(100% + 20rem);
+      height: calc(100% + 20rem);
+      z-index: 9999;
+      position: fixed;
+      background-image: url(https://upload.wikimedia.org/wikipedia/commons/5/5c/Image_gaussian_noise_example.png);
+      opacity: 0.25;
+      pointer-events: none;
+    }
+  }
+
   /* Base paper texture */
   .paper-tex {
     position: relative;

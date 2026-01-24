@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, Search, User } from 'lucide-react'
+import { Bell, Search, Settings, User } from 'lucide-react'
 import { getCurrentMonth, getCurrentYear, MONTHS } from '@/lib/dates'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
@@ -78,20 +78,23 @@ export default function Topbar({ title, subtitle, actions }: TopbarProps) {
             <span className="text-ink/70">
               Bem-vindo{userName ? `, ${userName}` : ''}
             </span>
-            <button
-              onClick={() => router.push('/settings/profile')}
-              className="w-8 h-8 rounded-full bg-coffee/20 flex items-center justify-center"
-              aria-label="Abrir configurações"
-            >
+            <div className="w-8 h-8 rounded-full bg-coffee/20 flex items-center justify-center overflow-hidden">
               {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Avatar"
-                  className="w-full h-full rounded-full object-cover"
-                />
+                  <img
+                      src={avatarUrl}
+                      alt="Avatar"
+                      className="w-full h-full rounded-full object-cover"
+                  />
               ) : (
-                <User className="w-4 h-4 text-coffee" />
+                  <User className="w-4 h-4 text-coffee" />
               )}
+            </div>
+            <button
+                onClick={() => router.push('/settings')}
+                className="text-ink/70 hover:text-ink transition-vintage"
+                aria-label="Abrir configurações"
+            >
+              <Settings className="w-5 h-5" />
             </button>
           </div>
         </div>
