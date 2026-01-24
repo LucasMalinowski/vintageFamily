@@ -1,0 +1,181 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Lora:wght@400;500;600&family=Source+Serif+4:wght@500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper: #F4EFE6;
+  --ink: #2E2A24;
+  --coffee: #5A4633;
+  --petrol: #3A5A6A;
+  --olive: #7A8F6B;
+  --terracotta: #B5654D;
+  --border: #D9CFBF;
+  --paper-2: #EFE7DA;
+  --shadow: 0 10px 30px rgba(46,42,36,.12);
+  --shadow-soft: 0 8px 18px rgba(46,42,36,.10);
+  --radius: 18px;
+}
+
+body {
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: 'Lora', serif;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='3' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E"),
+    radial-gradient(circle at 50% 50%, rgba(122,143,107,0.03) 0%, transparent 50%);
+  opacity: 0.08;
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: multiply;
+}
+
+* {
+  position: relative;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Playfair Display', serif;
+  font-weight: 600;
+}
+
+.font-numbers {
+  font-family: 'Source Serif 4', serif;
+}
+
+/* Scrollbar vintage */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--paper-2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--coffee);
+}
+
+/* Seleção de texto */
+::selection {
+  background-color: rgba(58, 90, 106, 0.2);
+  color: var(--ink);
+}
+
+/* Animações suaves */
+@layer utilities {
+  .transition-vintage {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* -------------------------------------------------------
+   Paper / Grain (asset-based) — uses:
+   /public/textures/paper.jpg
+   /public/textures/grain.jpg
+-------------------------------------------------------- */
+
+@layer components {
+  /* Base paper texture */
+  .paper-tex {
+    position: relative;
+    overflow: hidden;
+
+    background-color: var(--paper-2);
+    background-image:
+            url("/textures/paper.jpg"),
+            radial-gradient(circle at 30% 20%, rgba(122,143,107,0.06), transparent 55%),
+            radial-gradient(circle at 80% 10%, rgba(181,101,77,0.05), transparent 50%),
+            linear-gradient(180deg, rgba(46,42,36,0.04), transparent 35%);
+    background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+    background-size: 900px 900px, cover, cover, cover;
+    background-blend-mode: multiply, normal, normal, normal;
+  }
+
+  /* Grain overlay image (on top of paper) */
+  .paper-grain-img::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+
+    background-image: url("/textures/grain.jpg");
+    background-repeat: repeat;
+    background-size: 320px 320px;
+
+    opacity: 0.22;            /* make it visible */
+    mix-blend-mode: multiply; /* try also: soft-light */
+  }
+
+  /* Vignette (aged edges) */
+  .paper-vignette::after {
+    content: "";
+    position: absolute;
+    inset: -25%;
+    pointer-events: none;
+
+    background: radial-gradient(
+            ellipse at center,
+            rgba(0,0,0,0) 45%,
+            rgba(0,0,0,0.22) 100%
+    );
+
+    opacity: 0.40;
+    mix-blend-mode: multiply;
+  }
+
+  /* Frame should NOT share pseudos with grain/vignette on the same element.
+     So apply frame to a parent wrapper (see demo below). */
+  .paper-frame {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .paper-frame::before {
+    content: "";
+    position: absolute;
+    inset: 16px;
+    pointer-events: none;
+    border: 1px solid rgba(90,70,51,0.22);
+    border-radius: 18px;
+  }
+
+  .paper-frame::after {
+    content: "";
+    position: absolute;
+    inset: 9px;
+    pointer-events: none;
+    border: 1px solid rgba(90,70,51,0.12);
+    border-radius: 22px;
+  }
+
+  /* Optional: “print wash” (subtle top shading) */
+  .paper-wash {
+    background-image:
+            linear-gradient(180deg, rgba(60,40,20,0.08), transparent 45%),
+            url("/textures/paper.jpg"),
+            radial-gradient(circle at 30% 20%, rgba(122,143,107,0.06), transparent 55%),
+            radial-gradient(circle at 80% 10%, rgba(181,101,77,0.05), transparent 50%);
+    background-repeat: no-repeat, repeat, no-repeat, no-repeat;
+    background-size: cover, 900px 900px, cover, cover;
+    background-color: var(--paper-2);
+    background-blend-mode: multiply, multiply, normal, normal;
+  }
+}
