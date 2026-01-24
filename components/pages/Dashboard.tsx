@@ -122,69 +122,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-        {/* Paper / Grain Style Gallery (asset-based) */}
-        <div className="max-w-7xl mx-auto px-6 py-12">
-          <h2 className="text-2xl md:text-3xl font-serif text-coffee mb-2">
-            Paper / Grain Styles (Demo)
-          </h2>
-          <p className="text-ink/60 italic mb-8">
-            Agora usando <code className="font-mono text-xs">/public/textures/paper.webp</code> e{" "}
-            <code className="font-mono text-xs">/public/textures/grain.png</code>.
-          </p>
-
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {/* 1) Paper texture base */}
-            <div className="paper-tex rounded-vintage p-6 shadow-soft">
-              <h3 className="text-xl font-serif text-coffee mb-2">1) Paper Texture</h3>
-              <p className="text-sm text-ink/70">
-                Apenas o papel (paper.webp) com leve iluminação.
-              </p>
-            </div>
-
-            {/* 2) Paper + Grain */}
-            <div className="paper-tex paper-grain-img rounded-vintage p-6 shadow-soft">
-              <h3 className="text-xl font-serif text-coffee mb-2">2) Paper + Grain</h3>
-              <p className="text-sm text-ink/70">
-                Papel + grain.png por overlay (bem visível).
-              </p>
-            </div>
-
-            {/* 3) Paper + Vignette */}
-            <div className="paper-tex paper-vignette rounded-vintage p-6 shadow-soft">
-              <h3 className="text-xl font-serif text-coffee mb-2">3) Paper + Vignette</h3>
-              <p className="text-sm text-ink/70">
-                Envelhecimento nas bordas (radial vignette).
-              </p>
-            </div>
-
-            {/* 4) Frame ONLY (frame wants a wrapper) */}
-            <div className="paper-tex paper-frame rounded-vintage p-6 shadow-soft">
-              <h3 className="text-xl font-serif text-coffee mb-2">4) Paper + Frame</h3>
-              <p className="text-sm text-ink/70">
-                Moldura interna (linhas delicadas).
-              </p>
-            </div>
-
-            {/* 5) Paper + Grain + Vignette (same element, safe: uses before+after) */}
-            <div className="paper-tex paper-grain-img paper-vignette rounded-vintage p-6 shadow-soft">
-              <h3 className="text-xl font-serif text-coffee mb-2">5) Paper + Grain + Vignette</h3>
-              <p className="text-sm text-ink/70">
-                Combinação mais “vintage” sem frame.
-              </p>
-            </div>
-
-            {/* 6) FULL COMBO (frame wrapper + inner grain/vignette) */}
-            <div className="paper-frame paper-tex rounded-vintage p-2 shadow-soft">
-              <div className="paper-wash paper-grain-img paper-vignette rounded-vintage p-6">
-                <h3 className="text-xl font-serif text-coffee mb-2">6) Full Combo</h3>
-                <p className="text-sm text-ink/70">
-                  Frame (wrapper) + paper.webp + grain.png + vignette + print wash.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Reminders Section */}
       {/*<div className="max-w-7xl mx-auto px-6 py-12">*/}
       {/*  <div className="flex justify-end">*/}
