@@ -99,9 +99,15 @@ export default function Payables() {
     const { data } = await query
 
     if (data) {
-      const normalized = data.map((row) => ({
-        ...row,
+      const normalized: Expense[] = data.map((row) => ({
+        id: row.id,
+        description: row.description,
+        category_name: row.category_name,
+        amount_cents: row.amount_cents,
+        date: row.date,
         status: row.status === 'paid' ? 'paid' : 'open',
+        paid_at: row.paid_at,
+        notes: row.notes,
       }))
       setExpenses(normalized)
     }
