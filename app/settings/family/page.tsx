@@ -101,13 +101,15 @@ export default function FamilySettingsPage() {
     setInviteEmail('')
     setInviteStatus('Convite enviado com sucesso.')
 
-    const { data: inviteRows } = await supabase
-      .from('invites')
-      .select('id,email,created_at,expires_at,accepted')
-      .eq('family_id', familyId)
-      .order('created_at', { ascending: false })
+    if (familyId) {
+      const { data: inviteRows } = await supabase
+        .from('invites')
+        .select('id,email,created_at,expires_at,accepted')
+        .eq('family_id', familyId)
+        .order('created_at', { ascending: false })
 
-    setInvites(inviteRows ?? [])
+      setInvites(inviteRows ?? [])
+    }
   }
 
   return (
