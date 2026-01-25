@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 
@@ -9,7 +9,7 @@ type InviteInfo = {
   familyName: string
 }
 
-export default function InvitePage() {
+function InvitePageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user, acceptInvite } = useAuth()
@@ -166,5 +166,13 @@ export default function InvitePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function InvitePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center p-4">Carregando...</div>}>
+      <InvitePageContent />
+    </Suspense>
   )
 }
