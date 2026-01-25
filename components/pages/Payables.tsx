@@ -99,7 +99,11 @@ export default function Payables() {
     const { data } = await query
 
     if (data) {
-      setExpenses(data)
+      const normalized = data.map((row) => ({
+        ...row,
+        status: row.status === 'paid' ? 'paid' : 'open',
+      }))
+      setExpenses(normalized)
     }
     setLoading(false)
   }
