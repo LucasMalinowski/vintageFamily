@@ -60,12 +60,12 @@ export function getCurrentMonth(): number {
   return new Date().getMonth() + 1
 }
 
-export function getYearOptions(startYear: number = 2020): { value: number; label: string }[] {
+export function getYearOptions(startYear: number = 2020): { value: string; label: string }[] {
   const currentYear = getCurrentYear()
-  const years: { value: number; label: string }[] = []
+  const years: { value: string; label: string }[] = []
   
   for (let year = currentYear; year >= startYear; year--) {
-    years.push({ value: year, label: year.toString() })
+    years.push({ value: year.toString(), label: year.toString() })
   }
   
   return years
