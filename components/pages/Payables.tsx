@@ -6,13 +6,12 @@ import { useAuth } from '@/components/AuthProvider'
 import Topbar from '@/components/layout/Topbar'
 import VintageCard from '@/components/ui/VintageCard'
 import StatCard from '@/components/ui/StatCard'
-import FabButton from '@/components/ui/FabButton'
 import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
 import { formatBRL } from '@/lib/money'
 import { formatDate, getCurrentMonth, getCurrentYear, MONTHS, getYearOptions, getMonthRange } from '@/lib/dates'
-import { MoreVertical, Receipt } from 'lucide-react'
+import { Pencil, Receipt, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface Expense {
@@ -35,7 +34,7 @@ export default function Payables() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [updatingIds, setUpdatingIds] = useState<string[]>([])
   
   // Filtros
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
@@ -63,18 +62,6 @@ export default function Payables() {
       loadExpenses()
     }
   }, [familyId, selectedMonth, selectedYear, selectedCategory, selectedStatus])
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null
-      if (!target?.closest('[data-menu-root="payables-menu"]')) {
-        setOpenMenuId(null)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   const loadCategories = async () => {
     const { data } = await supabase
@@ -157,10 +144,29 @@ export default function Payables() {
   }
 
   const handleDelete = async (id: string) => {
+    if (updatingIds.includes(id)) return
     if (confirm('Remover este registro?')) {
+      setUpdatingIds((prev) => [...prev, id])
       await supabase.from('expenses').delete().eq('id', id)
+      setUpdatingIds((prev) => prev.filter((item) => item !== id))
       loadExpenses()
     }
+  }
+
+  const handleTogglePaid = async (expense: Expense) => {
+    if (updatingIds.includes(expense.id)) return
+    const nextStatus = expense.status === 'paid' ? 'open' : 'paid'
+    const now = new Date().toISOString()
+    const nextPaidAt = nextStatus === 'paid' ? now : null
+
+    setUpdatingIds((prev) => [...prev, expense.id])
+    await supabase
+      .from('expenses')
+      .update({ status: nextStatus, paid_at: nextPaidAt, updated_at: now })
+      .eq('id', expense.id)
+    setUpdatingIds((prev) => prev.filter((item) => item !== expense.id))
+
+    loadExpenses()
   }
 
   const openModal = (expense?: Expense) => {
@@ -203,6 +209,14 @@ export default function Payables() {
       <Topbar 
         title="Contas a Pagar" 
         subtitle="Compromissos honrados constroem segurança."
+        actions={
+          <button
+            onClick={() => openModal()}
+            className="px-4 py-2 bg-fab-green text-white rounded-lg hover:bg-fab-green/90 transition-vintage text-sm"
+          >
+            + Nova despesa
+          </button>
+        }
       />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
@@ -280,11 +294,15 @@ export default function Payables() {
             />
           ) : (
             <div className="space-y-3">
-              {expenses.map((expense) => (
-                <div
-                  key={expense.id}
-                  className="flex items-center justify-between p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage"
-                >
+              {expenses.map((expense) => {
+                const isUpdating = updatingIds.includes(expense.id)
+                return (
+                  <div
+                    key={expense.id}
+                    className={`flex items-center justify-between p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage ${
+                      isUpdating ? 'opacity-60' : ''
+                    }`}
+                  >
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <span className={`w-2 h-2 rounded-full ${
@@ -304,48 +322,54 @@ export default function Payables() {
                   </div>
 
                   <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 text-sm text-ink/70 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={expense.status === 'paid'}
+                        disabled={isUpdating}
+                        onChange={() => handleTogglePaid(expense)}
+                        className="w-5 h-5 rounded border-border disabled:opacity-60"
+                        aria-label={`Marcar ${expense.description} como ${expense.status === 'paid' ? 'em aberto' : 'pago'}`}
+                      />
+                      <span className="hidden sm:inline">Pago</span>
+                    </label>
                     <span className="font-numbers text-lg font-semibold">
                       {formatBRL(expense.amount_cents)}
                     </span>
-                    <div className="relative" data-menu-root="payables-menu">
+                    <div className="flex items-center gap-2">
                       <button
-                        className="text-ink/40 hover:text-ink transition-vintage"
-                        onClick={() => setOpenMenuId(openMenuId === expense.id ? null : expense.id)}
-                        aria-label="Abrir menu da despesa"
+                        type="button"
+                        onClick={() => openModal(expense)}
+                        disabled={isUpdating}
+                        className="relative group text-ink/50 hover:text-ink transition-vintage disabled:opacity-50"
+                        aria-label={`Editar ${expense.description}`}
                       >
-                        <MoreVertical className="w-5 h-5 cursor-pointer" />
+                        <Pencil className="w-5 h-5" />
+                        <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-coffee text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
+                          Editar {expense.description}
+                        </span>
                       </button>
-                      {openMenuId === expense.id && (
-                        <div className="absolute right-0 top-8 w-36 bg-paper border border-border rounded-lg shadow-soft z-10">
-                          <button
-                            onClick={() => {
-                              openModal(expense)
-                              setOpenMenuId(null)
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm hover:bg-paper-2 transition-vintage"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => {
-                              handleDelete(expense.id)
-                              setOpenMenuId(null)
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-terracotta hover:bg-paper-2 transition-vintage"
-                          >
-                            Remover
-                          </button>
-                        </div>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(expense.id)}
+                        disabled={isUpdating}
+                        className="relative group text-terracotta/70 hover:text-terracotta transition-vintage disabled:opacity-50"
+                        aria-label={`Deletar ${expense.description}`}
+                      >
+                        <Trash2 className="w-5 h-5" />
+                        <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-terracotta text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
+                          Deletar {expense.description}
+                        </span>
+                      </button>
                     </div>
                   </div>
-                </div>
-              ))}
+                  </div>
+                )
+              })}
             </div>
           )}
         </VintageCard>
 
-        <FabButton onClick={() => openModal()} label="Nova despesa" />
       </div>
 
       {/* Modal */}
