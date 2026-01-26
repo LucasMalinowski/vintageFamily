@@ -160,7 +160,7 @@ export default function ReceivablesPage() {
   return (
     <AppLayout>
       <Topbar 
-        title="Contas a Receber" 
+        title="Valores a Receber"
         subtitle="O fruto do trabalho honesto."
         actions={
           <button

@@ -203,6 +203,12 @@ export default function Payables() {
   const total = expenses.reduce((sum, exp) => sum + exp.amount_cents, 0)
   const paid = expenses.filter(e => e.status === 'paid').reduce((sum, e) => sum + e.amount_cents, 0)
   const open = total - paid
+  const openExpenses = expenses
+    .filter((expense) => expense.status !== 'paid')
+    .sort((a, b) => b.date.localeCompare(a.date))
+  const paidExpenses = expenses
+    .filter((expense) => expense.status === 'paid')
+    .sort((a, b) => b.date.localeCompare(a.date))
 
   return (
     <>
@@ -294,7 +300,7 @@ export default function Payables() {
             />
           ) : (
             <div className="space-y-3">
-              {expenses.map((expense) => {
+              {openExpenses.map((expense) => {
                 const isUpdating = updatingIds.includes(expense.id)
                 return (
                   <div
@@ -303,12 +309,18 @@ export default function Payables() {
                       isUpdating ? 'opacity-60' : ''
                     }`}
                   >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className={`w-2 h-2 rounded-full ${
-                        expense.status === 'paid' ? 'bg-olive' : 'bg-terracotta'
-                      }`} />
-                      <h4 className="font-body font-medium">{expense.description}</h4>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className={`w-2 h-2 rounded-full ${
+                          expense.status === 'paid' ? 'bg-olive' : 'bg-terracotta'
+                        }`} />
+                        <h4
+                          className={`font-body font-medium ${
+                            expense.status === 'paid' ? 'line-through italic text-ink/60' : ''
+                          }`}
+                        >
+                          {expense.description}
+                        </h4>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-ink/60">
                       <span>{expense.category_name}</span>
@@ -363,6 +375,83 @@ export default function Payables() {
                       </button>
                     </div>
                   </div>
+                  </div>
+                )
+              })}
+              {paidExpenses.length > 0 && (
+                <div className="flex items-center gap-3 pt-2 text-ink/50 italic text-sm">
+                  <div className="flex-1 h-px bg-border" />
+                  <span>Pagos</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+              )}
+              {paidExpenses.map((expense) => {
+                const isUpdating = updatingIds.includes(expense.id)
+                return (
+                  <div
+                    key={expense.id}
+                    className={`flex items-center justify-between p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage ${
+                      isUpdating ? 'opacity-60' : ''
+                    }`}
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="w-2 h-2 rounded-full bg-olive" />
+                        <h4 className="font-body font-medium line-through italic text-ink/60">
+                          {expense.description}
+                        </h4>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-ink/60">
+                        <span>{expense.category_name}</span>
+                        <span>•</span>
+                        <span>{formatDate(expense.date)}</span>
+                        <span>•</span>
+                        <span className="text-olive">Pago</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-2 text-sm text-ink/70 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked
+                          disabled={isUpdating}
+                          onChange={() => handleTogglePaid(expense)}
+                          className="w-5 h-5 rounded border-border disabled:opacity-60"
+                          aria-label={`Marcar ${expense.description} como em aberto`}
+                        />
+                        <span className="hidden sm:inline">Pago</span>
+                      </label>
+                      <span className="font-numbers text-lg font-semibold">
+                        {formatBRL(expense.amount_cents)}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openModal(expense)}
+                          disabled={isUpdating}
+                          className="relative group text-ink/50 hover:text-ink transition-vintage disabled:opacity-50"
+                          aria-label={`Editar ${expense.description}`}
+                        >
+                          <Pencil className="w-5 h-5" />
+                          <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-coffee text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
+                            Editar {expense.description}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(expense.id)}
+                          disabled={isUpdating}
+                          className="relative group text-terracotta/70 hover:text-terracotta transition-vintage disabled:opacity-50"
+                          aria-label={`Deletar ${expense.description}`}
+                        >
+                          <Trash2 className="w-5 h-5" />
+                          <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-terracotta text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
+                            Deletar {expense.description}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )
               })}

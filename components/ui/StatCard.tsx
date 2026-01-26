@@ -7,9 +7,10 @@ interface StatCardProps {
   value: number // em centavos
   color?: 'olive' | 'terracotta' | 'petrol' | 'coffee' | 'default'
   size?: 'sm' | 'md' | 'lg'
+  detail?: React.ReactNode
 }
 
-export default function StatCard({ label, value, color = 'default', size = 'md' }: StatCardProps) {
+export default function StatCard({ label, value, color = 'default', size = 'md', detail }: StatCardProps) {
   const colorClasses = {
     olive: 'bg-olive text-white',
     terracotta: 'bg-terracotta text-white',
@@ -38,6 +39,7 @@ export default function StatCard({ label, value, color = 'default', size = 'md' 
       <div className={`font-numbers font-semibold ${textSizeClasses[size]}`}>
         {formatBRL(value)}
       </div>
+      {detail && <div>{detail}</div>}
     </div>
   )
 }

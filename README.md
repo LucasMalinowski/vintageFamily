@@ -101,7 +101,7 @@ fintech-vintage/
 │   ├── login/             # Página de login
 │   ├── signup/            # Página de cadastro
 │   ├── payables/          # Contas a pagar
-│   ├── receivables/       # Contas a receber
+│   ├── receivables/       # Valores a receber
 │   ├── dreams/            # Poupança/Sonhos
 │   ├── balance/           # Saldo
 │   └── comparatives/      # Comparativos
@@ -152,7 +152,7 @@ fintech-vintage/
 - [x] Dashboard com capa poética
 - [x] Sistema de lembretes
 - [x] Contas a Pagar
-- [x] Contas a Receber
+- [x] Valores a Receber
 - [x] Poupança/Sonhos
 - [x] Saldo
 - [x] Comparativos

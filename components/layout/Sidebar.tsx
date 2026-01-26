@@ -11,7 +11,7 @@ const menuItems = [
   { icon: Home, label: 'Dashboard', href: '/' },
   { icon: BanknoteArrowUp, label: 'Contas a Pagar', href: '/payables' },
   { icon: List, label: 'Todas as Despesas', href: '/expenses' },
-  { icon: BanknoteArrowDown, label: 'Contas a Receber', href: '/receivables' },
+  { icon: BanknoteArrowDown, label: 'Valores a Receber', href: '/receivables' },
   { icon: PiggyBank, label: 'Poupança / Sonhos', href: '/dreams' },
   { icon: Receipt, label: 'Saldo', href: '/balance' },
   { icon: ChartColumnBig, label: 'Comparativos', href: '/comparatives' },

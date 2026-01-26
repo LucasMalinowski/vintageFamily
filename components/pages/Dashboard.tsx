@@ -79,28 +79,15 @@ export default function Dashboard() {
       <div className="min-h-screen">
       {/* Hero Section */}
       <div className="relative bg-paper-2 border-b border-border px-6 py-16 md:py-24">
-        {/* Ornament Top */}
-        <div className="absolute top-0 left-0 right-0 h-32 opacity-20">
-          <svg className="absolute top-4 left-4 w-32 h-32" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="40" fill="none" stroke="#7A8F6B" strokeWidth="0.5" />
-            <path d="M 30 50 Q 50 30, 70 50 T 110 50" fill="none" stroke="#7A8F6B" strokeWidth="0.5" />
-          </svg>
-          <svg className="absolute top-4 right-4 w-32 h-32" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="40" fill="none" stroke="#7A8F6B" strokeWidth="0.5" />
-            <path d="M 30 50 Q 50 30, 70 50 T 110 50" fill="none" stroke="#7A8F6B" strokeWidth="0.5" />
-          </svg>
-        </div>
-
         <div className="max-w-4xl mx-auto text-center relative">
           {/* Ornament */}
           <svg width="100" height="50" viewBox="0 0 100 50" fill="none" className="mx-auto mb-6">
             <path d="M0 25 Q 25 15, 50 25 T 100 25" stroke="#5A4633" strokeWidth="1" fill="none" />
             <circle cx="50" cy="25" r="4" fill="#5A4633" />
-            <path d="M 45 25 L 40 20 M 55 25 L 60 20" stroke="#5A4633" strokeWidth="0.5" />
           </svg>
 
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif text-coffee mb-6">
-            Livro de Finanças da Família – 2026
+            Livro de Finanças da Família
           </h1>
 
           <p className="text-lg md:text-xl text-ink/70 italic font-body mb-8 max-w-2xl mx-auto">
