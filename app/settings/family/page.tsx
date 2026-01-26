@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
+import { formatDate } from '@/lib/dates'
+import { CalendarCog, CalendarOff, X } from 'lucide-react'
 
 type InviteRow = {
   id: string
@@ -12,13 +14,27 @@ type InviteRow = {
   accepted: boolean
 }
 
+type MemberRow = {
+  id: string
+  name: string
+  email: string
+  avatar_url: string | null
+  role: string
+}
+
+const NEVER_EXPIRES_DATE = '2099-12-31'
+
 export default function FamilySettingsPage() {
-  const { familyId } = useAuth()
+  const { familyId, user } = useAuth()
   const [familyName, setFamilyName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [invites, setInvites] = useState<InviteRow[]>([])
+  const [members, setMembers] = useState<MemberRow[]>([])
+  const [inviteEdits, setInviteEdits] = useState<Record<string, { date: string; never: boolean }>>({})
   const [loading, setLoading] = useState(true)
   const [savingFamily, setSavingFamily] = useState(false)
+  const [savingMemberId, setSavingMemberId] = useState<string | null>(null)
+  const [savingInviteId, setSavingInviteId] = useState<string | null>(null)
   const [inviteStatus, setInviteStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -28,17 +44,25 @@ export default function FamilySettingsPage() {
       setLoading(true)
       setError(null)
 
-      const [{ data: familyRow, error: familyError }, { data: inviteRows, error: inviteError }] =
-        await Promise.all([
-          supabase.from('families').select('name').eq('id', familyId).maybeSingle(),
-          supabase
-            .from('invites')
-            .select('id,email,created_at,expires_at,accepted')
-            .eq('family_id', familyId)
-            .order('created_at', { ascending: false }),
-        ])
+      const [
+        { data: familyRow, error: familyError },
+        { data: inviteRows, error: inviteError },
+        { data: memberRows, error: memberError },
+      ] = await Promise.all([
+        supabase.from('families').select('name').eq('id', familyId).maybeSingle(),
+        supabase
+          .from('invites')
+          .select('id,email,created_at,expires_at,accepted')
+          .eq('family_id', familyId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('users')
+          .select('id,name,email,avatar_url,role')
+          .eq('family_id', familyId)
+          .order('name'),
+      ])
 
-      if (familyError || inviteError) {
+      if (familyError || inviteError || memberError) {
         setError('Erro ao carregar dados da família.')
       }
 
@@ -47,6 +71,23 @@ export default function FamilySettingsPage() {
       }
 
       setInvites(inviteRows ?? [])
+      setMembers(memberRows ?? [])
+      if (inviteRows) {
+        const nextInviteEdits = inviteRows.reduce(
+          (acc, invite) => {
+            const dateValue = formatDate(invite.expires_at, 'yyyy-MM-dd')
+            acc[invite.id] = {
+              date: dateValue,
+              never: dateValue === NEVER_EXPIRES_DATE,
+            }
+            return acc
+          },
+          {} as Record<string, { date: string; never: boolean }>
+        )
+        setInviteEdits(nextInviteEdits)
+      } else {
+        setInviteEdits({})
+      }
       setLoading(false)
     }
 
@@ -109,7 +150,131 @@ export default function FamilySettingsPage() {
         .order('created_at', { ascending: false })
 
       setInvites(inviteRows ?? [])
+      if (inviteRows) {
+        const nextInviteEdits = inviteRows.reduce(
+          (acc, invite) => {
+            const dateValue = formatDate(invite.expires_at, 'yyyy-MM-dd')
+            acc[invite.id] = {
+              date: dateValue,
+              never: dateValue === NEVER_EXPIRES_DATE,
+            }
+            return acc
+          },
+          {} as Record<string, { date: string; never: boolean }>
+        )
+        setInviteEdits(nextInviteEdits)
+      }
     }
+  }
+
+  const handleUpdateMemberRole = async (memberId: string, role: string) => {
+    setSavingMemberId(memberId)
+    setError(null)
+
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ role })
+      .eq('id', memberId)
+
+    if (updateError) {
+      setError('Erro ao atualizar o papel do membro.')
+    } else {
+      setMembers((prev) => prev.map((member) => (member.id === memberId ? { ...member, role } : member)))
+    }
+
+    setSavingMemberId(null)
+  }
+
+  const handleDeleteMember = async (memberId: string) => {
+    if (!confirm('Remover este membro da família?')) return
+    setSavingMemberId(memberId)
+    setError(null)
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError || !sessionData.session) {
+      setError('Você precisa estar logado para remover.')
+      setSavingMemberId(null)
+      return
+    }
+
+    const response = await fetch('/api/members/delete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionData.session.access_token}`,
+      },
+      body: JSON.stringify({ memberId }),
+    })
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}))
+      setError(payload?.error || 'Erro ao remover o membro.')
+    } else {
+      setMembers((prev) => prev.filter((member) => member.id !== memberId))
+    }
+
+    setSavingMemberId(null)
+  }
+
+  const handleCancelInvite = async (inviteId: string) => {
+    setSavingInviteId(inviteId)
+    setError(null)
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError || !sessionData.session) {
+      setError('Você precisa estar logado para cancelar.')
+      setSavingInviteId(null)
+      return
+    }
+
+    const response = await fetch('/api/invites/cancel', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionData.session.access_token}`,
+      },
+      body: JSON.stringify({ inviteId }),
+    })
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}))
+      setError(payload?.error || 'Erro ao cancelar convite.')
+    } else {
+      setInvites((prev) => prev.filter((invite) => invite.id !== inviteId))
+      setInviteEdits((prev) => {
+        const next = { ...prev }
+        delete next[inviteId]
+        return next
+      })
+    }
+
+    setSavingInviteId(null)
+  }
+
+  const updateInviteExpiry = async (inviteId: string, nextDate: string, neverExpires: boolean) => {
+    setSavingInviteId(inviteId)
+    setError(null)
+
+    const expiresAt = neverExpires ? NEVER_EXPIRES_DATE : nextDate
+    if (!expiresAt) {
+      setSavingInviteId(null)
+      return
+    }
+
+    const { error: updateError } = await supabase
+      .from('invites')
+      .update({ expires_at: expiresAt })
+      .eq('id', inviteId)
+
+    if (updateError) {
+      setError('Erro ao atualizar expiração do convite.')
+    } else {
+      setInvites((prev) =>
+        prev.map((invite) => (invite.id === inviteId ? { ...invite, expires_at: expiresAt } : invite))
+      )
+    }
+
+    setSavingInviteId(null)
   }
 
   return (
@@ -157,6 +322,74 @@ export default function FamilySettingsPage() {
 
           <div className="bg-paper-2 border border-border rounded-vintage shadow-vintage p-6 space-y-4">
             <div>
+              <h2 className="text-lg font-serif text-coffee">Membros</h2>
+              <p className="text-sm text-ink/60 font-body">
+                Veja quem faz parte da família e ajuste permissões.
+              </p>
+            </div>
+            {members.length === 0 ? (
+              <p className="text-sm text-ink/60 font-body">Nenhum membro encontrado.</p>
+            ) : (
+              <div className="space-y-3">
+                {members.map((member) => {
+                  const isCurrentUser = user?.id === member.id
+                  return (
+                    <div
+                      key={member.id}
+                      className="flex flex-col md:flex-row md:items-center gap-4 border border-border rounded-lg bg-paper px-4 py-3"
+                    >
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="w-12 h-12 rounded-full bg-coffee/20 flex items-center justify-center overflow-hidden">
+                          {member.avatar_url ? (
+                            <img src={member.avatar_url} alt={member.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-coffee text-lg font-serif">
+                              {member.name ? member.name.slice(0, 1).toUpperCase() : 'M'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-body text-ink">{member.name}</p>
+                            {isCurrentUser && (
+                              <span className="text-[11px] uppercase tracking-wide text-ink/50 border border-border px-2 py-0.5 rounded-full">
+                                Você
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-ink/60">{member.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <select
+                          value={member.role}
+                          onChange={(event) => handleUpdateMemberRole(member.id, event.target.value)}
+                          disabled={savingMemberId === member.id}
+                          className="px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-petrol/50 disabled:opacity-60"
+                        >
+                          <option value="admin">Admin</option>
+                          <option value="member">Membro</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMember(member.id)}
+                          disabled={savingMemberId === member.id || isCurrentUser}
+                          className="text-terracotta/70 hover:text-terracotta transition-vintage disabled:opacity-40 disabled:cursor-not-allowed"
+                          aria-label={`Remover ${member.name}`}
+                          title={`Remover ${member.name}`}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-paper-2 border border-border rounded-vintage shadow-vintage p-6 space-y-4">
+            <div>
               <h2 className="text-lg font-serif text-coffee">Convites</h2>
               <p className="text-sm text-ink/60 font-body">
                 Envie um convite por email para trazer novos membros.
@@ -185,23 +418,78 @@ export default function FamilySettingsPage() {
             )}
             {invites.length > 0 && (
               <div className="border border-border rounded-lg overflow-hidden">
-                <div className="grid grid-cols-3 gap-4 bg-paper px-4 py-2 text-xs uppercase tracking-wide text-ink/60 font-body">
+                <div className="grid grid-cols-4 gap-4 bg-paper px-4 py-2 text-xs uppercase tracking-wide text-ink/60 font-body">
                   <span>Email</span>
                   <span>Status</span>
-                  <span>Expira</span>
+                  <span>Expiração</span>
+                  <span>Ações</span>
                 </div>
                 {invites.map((invite) => (
                   <div
                     key={invite.id}
-                    className="grid grid-cols-3 gap-4 px-4 py-2 text-sm font-body border-t border-border"
+                    className="grid grid-cols-4 gap-4 px-4 py-3 text-sm font-body border-t border-border items-center"
                   >
                     <span className="text-ink">{invite.email}</span>
                     <span className="text-ink/70">
                       {invite.accepted ? 'Aceito' : 'Pendente'}
                     </span>
-                    <span className="text-ink/70">
-                      {new Date(invite.expires_at).toLocaleDateString('pt-BR')}
-                    </span>
+                    <div className="text-ink/70">
+                      {inviteEdits[invite.id]?.never ? (
+                        <span>Sem expiração</span>
+                      ) : (
+                        <input
+                          type="date"
+                          value={inviteEdits[invite.id]?.date ?? formatDate(invite.expires_at, 'yyyy-MM-dd')}
+                          onChange={(event) => {
+                            const nextDate = event.target.value
+                            setInviteEdits((prev) => ({
+                              ...prev,
+                              [invite.id]: { date: nextDate, never: false },
+                            }))
+                            updateInviteExpiry(invite.id, nextDate, false)
+                          }}
+                          disabled={savingInviteId === invite.id}
+                          className="px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-petrol/50 disabled:opacity-60"
+                        />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = inviteEdits[invite.id] ?? {
+                            date: formatDate(invite.expires_at, 'yyyy-MM-dd'),
+                            never: false,
+                          }
+                          const nextNever = !current.never
+                          setInviteEdits((prev) => ({
+                            ...prev,
+                            [invite.id]: { ...current, never: nextNever },
+                          }))
+                          updateInviteExpiry(invite.id, current.date, nextNever)
+                        }}
+                        disabled={savingInviteId === invite.id}
+                        className="text-petrol hover:text-petrol/80 disabled:opacity-50"
+                        aria-label={inviteEdits[invite.id]?.never ? 'Definir expiração' : 'Remover expiração'}
+                        title={inviteEdits[invite.id]?.never ? 'Definir expiração' : 'Remover expiração'}
+                      >
+                        {inviteEdits[invite.id]?.never ? (
+                          <CalendarCog className="w-4 h-4" />
+                        ) : (
+                          <CalendarOff className="w-4 h-4" />
+                        )}
+                      </button>
+                      {!invite.accepted && (
+                        <button
+                          type="button"
+                          onClick={() => handleCancelInvite(invite.id)}
+                          disabled={savingInviteId === invite.id}
+                          className="text-sm text-terracotta hover:text-terracotta/80 disabled:opacity-50"
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
