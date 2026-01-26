@@ -6,7 +6,6 @@ import AppLayout from '@/components/layout/AppLayout'
 import Topbar from '@/components/layout/Topbar'
 import VintageCard from '@/components/ui/VintageCard'
 import StatCard from '@/components/ui/StatCard'
-import FabButton from '@/components/ui/FabButton'
 import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
@@ -151,6 +150,14 @@ export default function DreamsPage() {
       <Topbar
         title="Poupança / Sonhos"
         subtitle="Todo grande sonho começa com pequenos passos."
+        actions={
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="px-4 py-2 bg-fab-green text-white rounded-lg hover:bg-fab-green/90 transition-vintage text-sm"
+          >
+            + Nova poupança
+          </button>
+        }
       />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
@@ -228,7 +235,6 @@ export default function DreamsPage() {
           )}
         </VintageCard>
 
-        <FabButton onClick={() => setIsModalOpen(true)} label="Nova poupança" />
       </div>
 
       <Modal
