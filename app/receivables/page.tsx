@@ -34,6 +34,7 @@ export default function ReceivablesPage() {
   const [incomes, setIncomes] = useState<Income[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
   const [selectedYear, setSelectedYear] = useState(getCurrentYear())
@@ -56,6 +57,18 @@ export default function ReceivablesPage() {
       loadIncomes()
     }
   }, [familyId, selectedMonth, selectedYear, selectedCategory])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null
+      if (!target?.closest('[data-menu-root="receivables-menu"]')) {
+        setOpenMenuId(null)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const loadCategories = async () => {
     const { data } = await supabase
@@ -208,6 +221,9 @@ export default function ReceivablesPage() {
           <h3 className="text-lg font-serif text-coffee mb-4">
             Total recebido | {MONTHS[selectedMonth - 1]?.label} - {selectedYear}
           </h3>
+          <p className="text-sm text-ink/60 italic mb-6">
+            O trabalho em família floresce quando cada receita encontra seu lugar.
+          </p>
 
           {loading ? (
             <div className="text-center py-12 text-ink/60">Carregando...</div>
@@ -240,19 +256,37 @@ export default function ReceivablesPage() {
                     <span className="font-numbers text-lg font-semibold text-olive">
                       {formatBRL(income.amount_cents)}
                     </span>
-                    <button className="text-ink/40 hover:text-ink transition-vintage">
-                      <MoreVertical 
-                        className="w-5 h-5 cursor-pointer"
-                        onClick={() => {
-                          const action = confirm('Editar ou Remover?\n\nOK = Editar\nCancelar = Remover')
-                          if (action) {
-                            openModal(income)
-                          } else {
-                            handleDelete(income.id)
-                          }
-                        }}
-                      />
-                    </button>
+                    <div className="relative" data-menu-root="receivables-menu">
+                      <button
+                        className="text-ink/40 hover:text-ink transition-vintage"
+                        onClick={() => setOpenMenuId(openMenuId === income.id ? null : income.id)}
+                        aria-label="Abrir menu da receita"
+                      >
+                        <MoreVertical className="w-5 h-5 cursor-pointer" />
+                      </button>
+                      {openMenuId === income.id && (
+                        <div className="absolute right-0 top-8 w-36 bg-paper border border-border rounded-lg shadow-soft z-10">
+                          <button
+                            onClick={() => {
+                              openModal(income)
+                              setOpenMenuId(null)
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm hover:bg-paper-2 transition-vintage"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleDelete(income.id)
+                              setOpenMenuId(null)
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-terracotta hover:bg-paper-2 transition-vintage"
+                          >
+                            Remover
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
