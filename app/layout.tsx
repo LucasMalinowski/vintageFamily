@@ -1,7 +1,23 @@
-'use client'
-
 import './globals.css'
-import { AuthProvider } from '@/components/AuthProvider'
+import type { Metadata } from 'next'
+import Script from 'next/script'
+import Providers from '@/components/Providers'
+
+export const metadata: Metadata = {
+  title: 'Livro de Finanças da Família',
+  description: 'Gestão financeira familiar com alma vintage',
+  manifest: '/manifest.json',
+  themeColor: '#3E5F4B',
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Finanças',
+  },
+  icons: {
+    icon: '/favicon.ico',
+  },
+}
 
 export default function RootLayout({
   children,
@@ -10,33 +26,20 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <head>
-        <title>Livro de Finanças da Família</title>
-        <meta name="description" content="Gestão financeira familiar com alma vintage" />
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#3E5F4B" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Finanças" />
-        <link rel="icon" href="/favicon.ico" />
-      </head>
       <body className="grain">
-        <AuthProvider>
+        <Providers>
           {children}
-        </AuthProvider>
+        </Providers>
         {process.env.NODE_ENV === 'production' && (
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `
-                if ('serviceWorker' in navigator) {
-                  window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('/sw.js');
-                  });
-                }
-              `,
-            }}
-          />
+          <Script id="sw-register" strategy="afterInteractive">
+            {`
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                  navigator.serviceWorker.register('/sw.js');
+                });
+              }
+            `}
+          </Script>
         )}
       </body>
     </html>
