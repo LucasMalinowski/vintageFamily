@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import { formatDate } from '@/lib/dates'
-import { CalendarCog, CalendarOff, X } from 'lucide-react'
+import { X } from 'lucide-react'
 
 type InviteRow = {
   id: string
@@ -22,15 +22,12 @@ type MemberRow = {
   role: string
 }
 
-const NEVER_EXPIRES_DATE = '2099-12-31'
-
 export default function FamilySettingsPage() {
   const { familyId, user } = useAuth()
   const [familyName, setFamilyName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [invites, setInvites] = useState<InviteRow[]>([])
   const [members, setMembers] = useState<MemberRow[]>([])
-  const [inviteEdits, setInviteEdits] = useState<Record<string, { date: string; never: boolean }>>({})
   const [loading, setLoading] = useState(true)
   const [savingFamily, setSavingFamily] = useState(false)
   const [savingMemberId, setSavingMemberId] = useState<string | null>(null)
@@ -72,22 +69,6 @@ export default function FamilySettingsPage() {
 
       setInvites(inviteRows ?? [])
       setMembers(memberRows ?? [])
-      if (inviteRows) {
-        const nextInviteEdits = inviteRows.reduce(
-          (acc, invite) => {
-            const dateValue = formatDate(invite.expires_at, 'yyyy-MM-dd')
-            acc[invite.id] = {
-              date: dateValue,
-              never: dateValue === NEVER_EXPIRES_DATE,
-            }
-            return acc
-          },
-          {} as Record<string, { date: string; never: boolean }>
-        )
-        setInviteEdits(nextInviteEdits)
-      } else {
-        setInviteEdits({})
-      }
       setLoading(false)
     }
 
@@ -150,20 +131,6 @@ export default function FamilySettingsPage() {
         .order('created_at', { ascending: false })
 
       setInvites(inviteRows ?? [])
-      if (inviteRows) {
-        const nextInviteEdits = inviteRows.reduce(
-          (acc, invite) => {
-            const dateValue = formatDate(invite.expires_at, 'yyyy-MM-dd')
-            acc[invite.id] = {
-              date: dateValue,
-              never: dateValue === NEVER_EXPIRES_DATE,
-            }
-            return acc
-          },
-          {} as Record<string, { date: string; never: boolean }>
-        )
-        setInviteEdits(nextInviteEdits)
-      }
     }
   }
 
@@ -241,37 +208,6 @@ export default function FamilySettingsPage() {
       setError(payload?.error || 'Erro ao cancelar convite.')
     } else {
       setInvites((prev) => prev.filter((invite) => invite.id !== inviteId))
-      setInviteEdits((prev) => {
-        const next = { ...prev }
-        delete next[inviteId]
-        return next
-      })
-    }
-
-    setSavingInviteId(null)
-  }
-
-  const updateInviteExpiry = async (inviteId: string, nextDate: string, neverExpires: boolean) => {
-    setSavingInviteId(inviteId)
-    setError(null)
-
-    const expiresAt = neverExpires ? NEVER_EXPIRES_DATE : nextDate
-    if (!expiresAt) {
-      setSavingInviteId(null)
-      return
-    }
-
-    const { error: updateError } = await supabase
-      .from('invites')
-      .update({ expires_at: expiresAt })
-      .eq('id', inviteId)
-
-    if (updateError) {
-      setError('Erro ao atualizar expiração do convite.')
-    } else {
-      setInvites((prev) =>
-        prev.map((invite) => (invite.id === inviteId ? { ...invite, expires_at: expiresAt } : invite))
-      )
     }
 
     setSavingInviteId(null)
@@ -433,52 +369,10 @@ export default function FamilySettingsPage() {
                     <span className="text-ink/70">
                       {invite.accepted ? 'Aceito' : 'Pendente'}
                     </span>
-                    <div className="text-ink/70">
-                      {inviteEdits[invite.id]?.never ? (
-                        <span>Sem expiração</span>
-                      ) : (
-                        <input
-                          type="date"
-                          value={inviteEdits[invite.id]?.date ?? formatDate(invite.expires_at, 'yyyy-MM-dd')}
-                          onChange={(event) => {
-                            const nextDate = event.target.value
-                            setInviteEdits((prev) => ({
-                              ...prev,
-                              [invite.id]: { date: nextDate, never: false },
-                            }))
-                            updateInviteExpiry(invite.id, nextDate, false)
-                          }}
-                          disabled={savingInviteId === invite.id}
-                          className="px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-petrol/50 disabled:opacity-60"
-                        />
-                      )}
-                    </div>
+                    <span className="text-ink/70">
+                      {formatDate(invite.expires_at)}
+                    </span>
                     <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const current = inviteEdits[invite.id] ?? {
-                            date: formatDate(invite.expires_at, 'yyyy-MM-dd'),
-                            never: false,
-                          }
-                          const nextNever = !current.never
-                          setInviteEdits((prev) => ({
-                            ...prev,
-                            [invite.id]: { ...current, never: nextNever },
-                          }))
-                          updateInviteExpiry(invite.id, current.date, nextNever)
-                        }}
-                        disabled={savingInviteId === invite.id}
-                        className="text-petrol hover:text-petrol/80 disabled:opacity-50"
-                        aria-label={inviteEdits[invite.id]?.never ? 'Definir expiração' : 'Remover expiração'}
-                        title={inviteEdits[invite.id]?.never ? 'Definir expiração' : 'Remover expiração'}
-                      >
-                        {inviteEdits[invite.id]?.never ? (
-                          <CalendarCog className="w-4 h-4" />
-                        ) : (
-                          <CalendarOff className="w-4 h-4" />
-                        )}
-                      </button>
                       {!invite.accepted && (
                         <button
                           type="button"
