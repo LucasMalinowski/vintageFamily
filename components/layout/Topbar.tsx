@@ -68,7 +68,11 @@ export default function Topbar({ title, subtitle, actions }: TopbarProps) {
         </div>
 
         <div className="flex items-center gap-4">
-          <button className="text-ink/70 hover:text-ink transition-vintage">
+          <button
+            onClick={() => router.push('/reminders')}
+            className="text-ink/70 hover:text-ink transition-vintage"
+            aria-label="Abrir lembretes"
+          >
             <Bell className="w-5 h-5" />
           </button>
           <button className="text-ink/70 hover:text-ink transition-vintage">

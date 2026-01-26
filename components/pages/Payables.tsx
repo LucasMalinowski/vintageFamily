@@ -304,6 +304,7 @@ export default function Payables() {
                 const isUpdating = updatingIds.includes(expense.id)
                 return (
                   <div
+                    id={`expense-${expense.id}`}
                     key={expense.id}
                     className={`flex items-center justify-between p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage ${
                       isUpdating ? 'opacity-60' : ''
@@ -389,6 +390,7 @@ export default function Payables() {
                 const isUpdating = updatingIds.includes(expense.id)
                 return (
                   <div
+                    id={`expense-${expense.id}`}
                     key={expense.id}
                     className={`flex items-center justify-between p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage ${
                       isUpdating ? 'opacity-60' : ''
