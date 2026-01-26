@@ -35,6 +35,7 @@ export default function Payables() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   
   // Filtros
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
@@ -62,6 +63,18 @@ export default function Payables() {
       loadExpenses()
     }
   }, [familyId, selectedMonth, selectedYear, selectedCategory, selectedStatus])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null
+      if (!target?.closest('[data-menu-root="payables-menu"]')) {
+        setOpenMenuId(null)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const loadCategories = async () => {
     const { data } = await supabase
@@ -251,8 +264,11 @@ export default function Payables() {
         {/* Lista */}
         <VintageCard>
           <h3 className="text-lg font-serif text-coffee mb-4">
-            Total recebido | {MONTHS[selectedMonth - 1]?.label} - {selectedYear}
+            Total do período | {MONTHS[selectedMonth - 1]?.label} - {selectedYear}
           </h3>
+          <p className="text-sm text-ink/60 italic mb-6">
+            Cada conta paga é um gesto de cuidado com o amanhã da família.
+          </p>
 
           {loading ? (
             <div className="text-center py-12 text-ink/60">Carregando...</div>
@@ -291,19 +307,37 @@ export default function Payables() {
                     <span className="font-numbers text-lg font-semibold">
                       {formatBRL(expense.amount_cents)}
                     </span>
-                    <button className="text-ink/40 hover:text-ink transition-vintage">
-                      <MoreVertical 
-                        className="w-5 h-5 cursor-pointer"
-                        onClick={() => {
-                          const action = confirm('Editar ou Remover?\n\nOK = Editar\nCancelar = Remover')
-                          if (action) {
-                            openModal(expense)
-                          } else {
-                            handleDelete(expense.id)
-                          }
-                        }}
-                      />
-                    </button>
+                    <div className="relative" data-menu-root="payables-menu">
+                      <button
+                        className="text-ink/40 hover:text-ink transition-vintage"
+                        onClick={() => setOpenMenuId(openMenuId === expense.id ? null : expense.id)}
+                        aria-label="Abrir menu da despesa"
+                      >
+                        <MoreVertical className="w-5 h-5 cursor-pointer" />
+                      </button>
+                      {openMenuId === expense.id && (
+                        <div className="absolute right-0 top-8 w-36 bg-paper border border-border rounded-lg shadow-soft z-10">
+                          <button
+                            onClick={() => {
+                              openModal(expense)
+                              setOpenMenuId(null)
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm hover:bg-paper-2 transition-vintage"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleDelete(expense.id)
+                              setOpenMenuId(null)
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-terracotta hover:bg-paper-2 transition-vintage"
+                          >
+                            Remover
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
