@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import AppLayout from '@/components/layout/AppLayout'
 import Topbar from '@/components/layout/Topbar'
 import VintageCard from '@/components/ui/VintageCard'
 import StatCard from '@/components/ui/StatCard'
-import FabButton from '@/components/ui/FabButton'
 import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
@@ -14,7 +13,7 @@ import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { formatBRL } from '@/lib/money'
 import { formatDate, getCurrentMonth, getCurrentYear, getMonthRange, getYearOptions, MONTHS } from '@/lib/dates'
-import { MoreVertical, Receipt } from 'lucide-react'
+import { Pencil, Receipt, Trash2 } from 'lucide-react'
 
 interface Expense {
   id: string
@@ -36,7 +35,6 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [totalCount, setTotalCount] = useState(0)
   const [page, setPage] = useState(1)
   const pageSize = 12
@@ -48,6 +46,9 @@ export default function ExpensesPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false)
+  const [pdfHtml, setPdfHtml] = useState('')
+  const pdfFrameRef = useRef<HTMLIFrameElement | null>(null)
 
   const [formData, setFormData] = useState({
     description: '',
@@ -64,18 +65,6 @@ export default function ExpensesPage() {
       loadExpenses()
     }
   }, [familyId, selectedMonth, selectedYear, selectedCategory, selectedStatus, page])
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null
-      if (!target?.closest('[data-menu-root="expenses-menu"]')) {
-        setOpenMenuId(null)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   const loadCategories = async () => {
     const { data } = await supabase
@@ -209,7 +198,15 @@ export default function ExpensesPage() {
   }
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
-  const exportExpenses = async () => {
+  const escapeHtml = (value: string) =>
+    value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+
+  const fetchExportRows = async () => {
     let query = supabase
       .from('expenses')
       .select('*')
@@ -240,14 +237,18 @@ export default function ExpensesPage() {
     }
 
     const { data } = await query
-    const rows = (data || []).map((row) => ({
+    return (data || []).map((row) => ({
       description: row.description,
       category: row.category_name,
-      amount: formatBRL(row.amount_cents),
+      amount_cents: row.amount_cents,
       date: formatDate(row.date),
       status: row.status === 'paid' ? 'Pago' : 'Em aberto',
       notes: row.notes || '',
     }))
+  }
+
+  const exportExpenses = async () => {
+    const rows = await fetchExportRows()
 
     const header = ['Descricao', 'Categoria', 'Valor', 'Data', 'Status', 'Observacao']
     const csvLines = [
@@ -256,7 +257,7 @@ export default function ExpensesPage() {
         [
           row.description,
           row.category,
-          row.amount,
+          formatBRL(row.amount_cents),
           row.date,
           row.status,
           row.notes,
@@ -275,6 +276,127 @@ export default function ExpensesPage() {
     URL.revokeObjectURL(url)
   }
 
+  const exportExpensesPdf = async () => {
+    const rows = await fetchExportRows()
+    const monthLabel = selectedMonth ? MONTHS[parseInt(selectedMonth) - 1]?.label : 'Todos'
+    const yearLabel = selectedYear || 'Todos'
+    const categoryLabel = selectedCategory || 'Todas'
+    const statusLabel =
+      selectedStatus === 'paid' ? 'Pago' : selectedStatus === 'open' ? 'Em aberto' : 'Todos'
+    const totalValue = formatBRL(rows.reduce((sum, row) => sum + row.amount_cents, 0))
+    const paidValue = formatBRL(
+      rows.reduce((sum, row) => sum + (row.status === 'Pago' ? row.amount_cents : 0), 0)
+    )
+    const openValue = formatBRL(
+      rows.reduce((sum, row) => sum + (row.status === 'Em aberto' ? row.amount_cents : 0), 0)
+    )
+
+    const html = `
+      <html>
+        <head>
+          <title>Despesas</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Lora:wght@400;500;600&family=Source+Serif+4:wght@500;600&display=swap');
+            :root {
+              --paper: #F4EFE6;
+              --ink: #2E2A24;
+              --coffee: #5A4633;
+              --petrol: #3A5A6A;
+              --olive: #7A8F6B;
+              --terracotta: #B5654D;
+              --border: #D9CFBF;
+              --paper-2: #EFE7DA;
+            }
+            @page { size: A4; margin: 20mm; }
+            body {
+              font-family: "Lora", serif;
+              color: var(--ink);
+              background-color: var(--paper);
+              background-image:
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='3' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E"),
+                radial-gradient(circle at 50% 50%, rgba(122,143,107,0.03) 0%, transparent 50%);
+              background-blend-mode: multiply;
+              background-size: 320px 320px, cover;
+            }
+            h1 { font-family: "Playfair Display", serif; font-size: 22px; margin: 0 0 4px; }
+            .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+            .brand img { width: 48px; height: 48px; object-fit: contain; }
+            .brand-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--coffee); }
+            .meta { font-size: 12px; color: #6b625a; margin-bottom: 16px; }
+            .summary { display: flex; gap: 16px; margin: 12px 0 20px; }
+            .card { border: 1px solid var(--border); padding: 10px 12px; border-radius: 8px; flex: 1; background: var(--paper-2); }
+            .card-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #8a7f74; }
+            .card-value { font-family: "Source Serif 4", serif; font-size: 16px; margin-top: 6px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+            th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #7d7368; }
+            .footer { margin-top: 18px; font-size: 11px; color: #9b9085; }
+            .signature { margin-top: 28px; display: flex; justify-content: space-between; gap: 16px; }
+            .signature-line { flex: 1; border-top: 1px solid #cdbfb0; padding-top: 6px; font-size: 11px; color: #8a7f74; }
+          </style>
+        </head>
+        <body>
+          <div class="brand">
+            <img src="/logo.png" alt="Logo" />
+            <div class="brand-title">Fintech Vintage</div>
+          </div>
+          <h1>Livro de Despesas</h1>
+          <div class="meta">Filtro: ${monthLabel} / ${yearLabel} • ${categoryLabel} • ${statusLabel}</div>
+          <div class="summary">
+            <div class="card">
+              <div class="card-title">Total</div>
+              <div class="card-value">${totalValue}</div>
+            </div>
+            <div class="card">
+              <div class="card-title">Pago</div>
+              <div class="card-value">${paidValue}</div>
+            </div>
+            <div class="card">
+              <div class="card-title">Em aberto</div>
+              <div class="card-value">${openValue}</div>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Descricao</th>
+                <th>Categoria</th>
+                <th>Valor</th>
+                <th>Data</th>
+                <th>Status</th>
+                <th>Observacao</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows
+                .map(
+                  (row) => `
+                <tr>
+                  <td>${escapeHtml(row.description)}</td>
+                  <td>${escapeHtml(row.category)}</td>
+                  <td>${formatBRL(row.amount_cents)}</td>
+                  <td>${row.date}</td>
+                  <td>${escapeHtml(row.status)}</td>
+                  <td>${escapeHtml(row.notes)}</td>
+                </tr>
+              `
+                )
+                .join('')}
+            </tbody>
+          </table>
+          <div class="footer">Gerado em ${formatDate(new Date())}</div>
+          <div class="signature">
+            <div class="signature-line">Assinatura Responsavel</div>
+            <div class="signature-line">Assinatura Financeiro</div>
+          </div>
+        </body>
+      </html>
+    `
+
+    setPdfHtml(html)
+    setIsPdfModalOpen(true)
+  }
+
   const total = expenses.reduce((sum, exp) => sum + exp.amount_cents, 0)
   const paid = expenses.filter((e) => e.status === 'paid').reduce((sum, e) => sum + e.amount_cents, 0)
   const open = total - paid
@@ -284,6 +406,14 @@ export default function ExpensesPage() {
       <Topbar
         title="Todas as Despesas"
         subtitle="A memória da casa também se faz com cada pequena despesa."
+        actions={
+          <button
+            onClick={() => openModal()}
+            className="px-4 py-2 bg-fab-green text-white rounded-lg hover:bg-fab-green/90 transition-vintage text-sm"
+          >
+            + Nova despesa
+          </button>
+        }
       />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
@@ -365,12 +495,20 @@ export default function ExpensesPage() {
             <p className="text-sm text-ink/60 italic">
               Quando tudo se reúne, o mês fica mais claro e a família respira melhor.
             </p>
-            <button
-              onClick={exportExpenses}
-              className="px-4 py-2 border border-border rounded-lg hover:bg-paper-2 transition-vintage text-sm"
-            >
-              Exportar CSV
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={exportExpenses}
+                className="px-4 py-2 border border-border rounded-lg hover:bg-paper-2 transition-vintage text-sm"
+              >
+                Exportar CSV
+              </button>
+              <button
+                onClick={exportExpensesPdf}
+                className="px-4 py-2 border border-border rounded-lg hover:bg-paper-2 transition-vintage text-sm"
+              >
+                Exportar PDF
+              </button>
+            </div>
           </div>
 
           {loading ? (
@@ -408,36 +546,29 @@ export default function ExpensesPage() {
                     <span className="font-numbers text-lg font-semibold">
                       {formatBRL(expense.amount_cents)}
                     </span>
-                    <div className="relative" data-menu-root="expenses-menu">
+                    <div className="flex items-center gap-2">
                       <button
-                        className="text-ink/40 hover:text-ink transition-vintage"
-                        onClick={() => setOpenMenuId(openMenuId === expense.id ? null : expense.id)}
-                        aria-label="Abrir menu da despesa"
+                        type="button"
+                        onClick={() => openModal(expense)}
+                        className="relative group text-ink/50 hover:text-ink transition-vintage"
+                        aria-label={`Editar ${expense.description}`}
                       >
-                        <MoreVertical className="w-5 h-5 cursor-pointer" />
+                        <Pencil className="w-5 h-5" />
+                        <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-coffee text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
+                          Editar {expense.description}
+                        </span>
                       </button>
-                      {openMenuId === expense.id && (
-                        <div className="absolute right-0 top-8 w-36 bg-paper border border-border rounded-lg shadow-soft z-10">
-                          <button
-                            onClick={() => {
-                              openModal(expense)
-                              setOpenMenuId(null)
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm hover:bg-paper-2 transition-vintage"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => {
-                              handleDelete(expense.id)
-                              setOpenMenuId(null)
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-terracotta hover:bg-paper-2 transition-vintage"
-                          >
-                            Remover
-                          </button>
-                        </div>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(expense.id)}
+                        className="relative group text-terracotta/70 hover:text-terracotta transition-vintage"
+                        aria-label={`Deletar ${expense.description}`}
+                      >
+                        <Trash2 className="w-5 h-5" />
+                        <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-terracotta text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
+                          Deletar {expense.description}
+                        </span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -468,7 +599,6 @@ export default function ExpensesPage() {
           </div>
         </div>
 
-        <FabButton onClick={() => openModal()} label="Nova despesa" />
       </div>
 
       <Modal
@@ -568,6 +698,45 @@ export default function ExpensesPage() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={isPdfModalOpen}
+        onClose={() => setIsPdfModalOpen(false)}
+        title="Preview do PDF"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="border border-border rounded-lg overflow-hidden bg-paper">
+            <iframe
+              ref={pdfFrameRef}
+              title="PDF preview"
+              srcDoc={pdfHtml}
+              className="w-full h-[70vh]"
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const frameWindow = pdfFrameRef.current?.contentWindow
+                if (!frameWindow) return
+                frameWindow.focus()
+                frameWindow.print()
+              }}
+              className="px-4 py-2 bg-coffee text-paper rounded-lg hover:bg-coffee/90 transition-vintage text-sm"
+            >
+              Imprimir ou salvar
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsPdfModalOpen(false)}
+              className="px-4 py-2 border border-border rounded-lg hover:bg-paper-2 transition-vintage text-sm"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
       </Modal>
     </AppLayout>
   )
