@@ -86,11 +86,6 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-/* -------------------------------------------------------
-   Paper / Grain (asset-based) — uses:
-   /public/textures/paper.jpg
-   /public/textures/grain.jpg
--------------------------------------------------------- */
 
 @layer components {
   .grain {
@@ -136,89 +131,4 @@ h1, h2, h3, h4, h5, h6 {
     }
   }
 
-  /* Base paper texture */
-  .paper-tex {
-    position: relative;
-    overflow: hidden;
-
-    background-color: var(--paper-2);
-    background-image:
-            url("/textures/paper.jpg"),
-            radial-gradient(circle at 30% 20%, rgba(122,143,107,0.06), transparent 55%),
-            radial-gradient(circle at 80% 10%, rgba(181,101,77,0.05), transparent 50%),
-            linear-gradient(180deg, rgba(46,42,36,0.04), transparent 35%);
-    background-repeat: repeat, no-repeat, no-repeat, no-repeat;
-    background-size: 900px 900px, cover, cover, cover;
-    background-blend-mode: multiply, normal, normal, normal;
-  }
-
-  /* Grain overlay image (on top of paper) */
-  .paper-grain-img::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-
-    background-image: url("/textures/grain.jpg");
-    background-repeat: repeat;
-    background-size: 320px 320px;
-
-    opacity: 0.22;            /* make it visible */
-    mix-blend-mode: multiply; /* try also: soft-light */
-  }
-
-  /* Vignette (aged edges) */
-  .paper-vignette::after {
-    content: "";
-    position: absolute;
-    inset: -25%;
-    pointer-events: none;
-
-    background: radial-gradient(
-            ellipse at center,
-            rgba(0,0,0,0) 45%,
-            rgba(0,0,0,0.22) 100%
-    );
-
-    opacity: 0.40;
-    mix-blend-mode: multiply;
-  }
-
-  /* Frame should NOT share pseudos with grain/vignette on the same element.
-     So apply frame to a parent wrapper (see demo below). */
-  .paper-frame {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .paper-frame::before {
-    content: "";
-    position: absolute;
-    inset: 16px;
-    pointer-events: none;
-    border: 1px solid rgba(90,70,51,0.22);
-    border-radius: 18px;
-  }
-
-  .paper-frame::after {
-    content: "";
-    position: absolute;
-    inset: 9px;
-    pointer-events: none;
-    border: 1px solid rgba(90,70,51,0.12);
-    border-radius: 22px;
-  }
-
-  /* Optional: “print wash” (subtle top shading) */
-  .paper-wash {
-    background-image:
-            linear-gradient(180deg, rgba(60,40,20,0.08), transparent 45%),
-            url("/textures/paper.jpg"),
-            radial-gradient(circle at 30% 20%, rgba(122,143,107,0.06), transparent 55%),
-            radial-gradient(circle at 80% 10%, rgba(181,101,77,0.05), transparent 50%);
-    background-repeat: no-repeat, repeat, no-repeat, no-repeat;
-    background-size: cover, 900px 900px, cover, cover;
-    background-color: var(--paper-2);
-    background-blend-mode: multiply, multiply, normal, normal;
-  }
 }
