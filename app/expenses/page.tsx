@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import AppLayout from '@/components/layout/AppLayout'
 import Topbar from '@/components/layout/Topbar'
 import VintageCard from '@/components/ui/VintageCard'
@@ -47,8 +49,19 @@ export default function ExpensesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false)
-  const [pdfHtml, setPdfHtml] = useState('')
-  const pdfFrameRef = useRef<HTMLIFrameElement | null>(null)
+  const [pdfUrl, setPdfUrl] = useState('')
+  const [includeSignatures, setIncludeSignatures] = useState(true)
+  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null)
+  const [exportRows, setExportRows] = useState<
+    {
+      description: string
+      category: string
+      amount_cents: number
+      date: string
+      status: string
+      notes: string
+    }[]
+  >([])
 
   const [formData, setFormData] = useState({
     description: '',
@@ -65,6 +78,17 @@ export default function ExpensesPage() {
       loadExpenses()
     }
   }, [familyId, selectedMonth, selectedYear, selectedCategory, selectedStatus, page])
+
+  useEffect(() => {
+    if (isPdfModalOpen) {
+      document.body.classList.add('no-grain')
+    } else {
+      document.body.classList.remove('no-grain')
+    }
+    return () => {
+      document.body.classList.remove('no-grain')
+    }
+  }, [isPdfModalOpen])
 
   const loadCategories = async () => {
     const { data } = await supabase
@@ -197,15 +221,15 @@ export default function ExpensesPage() {
     setEditingExpense(null)
   }
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
-  const escapeHtml = (value: string) =>
-    value
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;')
+  const closePdfModal = () => {
+    if (pdfUrl) {
+      URL.revokeObjectURL(pdfUrl)
+    }
+    setPdfUrl('')
+    setIsPdfModalOpen(false)
+  }
 
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const fetchExportRows = async () => {
     let query = supabase
       .from('expenses')
@@ -278,11 +302,57 @@ export default function ExpensesPage() {
 
   const exportExpensesPdf = async () => {
     const rows = await fetchExportRows()
-    const monthLabel = selectedMonth ? MONTHS[parseInt(selectedMonth) - 1]?.label : 'Todos'
-    const yearLabel = selectedYear || 'Todos'
-    const categoryLabel = selectedCategory || 'Todas'
+    setExportRows(rows)
+    const blob = await generatePdfBlob(rows)
+    updatePdfUrl(blob)
+    setIsPdfModalOpen(true)
+  }
+
+  const buildFilterSummary = () => {
+    const monthLabel = selectedMonth ? MONTHS[parseInt(selectedMonth) - 1]?.label : null
+    const yearLabel = selectedYear || null
+    const categoryLabel = selectedCategory || null
     const statusLabel =
-      selectedStatus === 'paid' ? 'Pago' : selectedStatus === 'open' ? 'Em aberto' : 'Todos'
+      selectedStatus === 'paid' ? 'Pago' : selectedStatus === 'open' ? 'Em aberto' : null
+
+    if (!monthLabel && !yearLabel && !categoryLabel && !statusLabel) {
+      return 'Sem filtros ativos'
+    }
+
+    const parts = [
+      monthLabel || 'Todos os meses',
+      yearLabel ? `Ano ${yearLabel}` : 'Todos os anos',
+      categoryLabel ? `Categoria: ${categoryLabel}` : 'Todas as categorias',
+      statusLabel ? `Status: ${statusLabel}` : 'Todos os status',
+    ]
+
+    return parts.join(' • ')
+  }
+
+  const loadLogoDataUrl = async () => {
+    if (logoDataUrl) return logoDataUrl
+    try {
+      const response = await fetch('/logo.png')
+      if (!response.ok) return null
+      const blob = await response.blob()
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = () => reject(new Error('Falha ao ler logo.'))
+        reader.readAsDataURL(blob)
+      })
+      setLogoDataUrl(dataUrl)
+      return dataUrl
+    } catch {
+      return null
+    }
+  }
+
+  const generatePdfBlob = async (rowsOverride?: typeof exportRows, includeSignatureOverride?: boolean) => {
+    const rows = rowsOverride ?? exportRows
+    const includeSignatureValue =
+      typeof includeSignatureOverride === 'boolean' ? includeSignatureOverride : includeSignatures
+    const filterSummary = buildFilterSummary()
     const totalValue = formatBRL(rows.reduce((sum, row) => sum + row.amount_cents, 0))
     const paidValue = formatBRL(
       rows.reduce((sum, row) => sum + (row.status === 'Pago' ? row.amount_cents : 0), 0)
@@ -291,110 +361,118 @@ export default function ExpensesPage() {
       rows.reduce((sum, row) => sum + (row.status === 'Em aberto' ? row.amount_cents : 0), 0)
     )
 
-    const html = `
-      <html>
-        <head>
-          <title>Despesas</title>
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Lora:wght@400;500;600&family=Source+Serif+4:wght@500;600&display=swap');
-            :root {
-              --paper: #F4EFE6;
-              --ink: #2E2A24;
-              --coffee: #5A4633;
-              --petrol: #3A5A6A;
-              --olive: #7A8F6B;
-              --terracotta: #B5654D;
-              --border: #D9CFBF;
-              --paper-2: #EFE7DA;
-            }
-            @page { size: A4; margin: 20mm; }
-            body {
-              font-family: "Lora", serif;
-              color: var(--ink);
-              background-color: var(--paper);
-              background-image:
-                url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='3' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E"),
-                radial-gradient(circle at 50% 50%, rgba(122,143,107,0.03) 0%, transparent 50%);
-              background-blend-mode: multiply;
-              background-size: 320px 320px, cover;
-            }
-            h1 { font-family: "Playfair Display", serif; font-size: 22px; margin: 0 0 4px; }
-            .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-            .brand img { width: 48px; height: 48px; object-fit: contain; }
-            .brand-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--coffee); }
-            .meta { font-size: 12px; color: #6b625a; margin-bottom: 16px; }
-            .summary { display: flex; gap: 16px; margin: 12px 0 20px; }
-            .card { border: 1px solid var(--border); padding: 10px 12px; border-radius: 8px; flex: 1; background: var(--paper-2); }
-            .card-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #8a7f74; }
-            .card-value { font-family: "Source Serif 4", serif; font-size: 16px; margin-top: 6px; }
-            table { width: 100%; border-collapse: collapse; font-size: 12px; }
-            th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
-            th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #7d7368; }
-            .footer { margin-top: 18px; font-size: 11px; color: #9b9085; }
-            .signature { margin-top: 28px; display: flex; justify-content: space-between; gap: 16px; }
-            .signature-line { flex: 1; border-top: 1px solid #cdbfb0; padding-top: 6px; font-size: 11px; color: #8a7f74; }
-          </style>
-        </head>
-        <body>
-          <div class="brand">
-            <img src="/logo.png" alt="Logo" />
-            <div class="brand-title">Fintech Vintage</div>
-          </div>
-          <h1>Livro de Despesas</h1>
-          <div class="meta">Filtro: ${monthLabel} / ${yearLabel} • ${categoryLabel} • ${statusLabel}</div>
-          <div class="summary">
-            <div class="card">
-              <div class="card-title">Total</div>
-              <div class="card-value">${totalValue}</div>
-            </div>
-            <div class="card">
-              <div class="card-title">Pago</div>
-              <div class="card-value">${paidValue}</div>
-            </div>
-            <div class="card">
-              <div class="card-title">Em aberto</div>
-              <div class="card-value">${openValue}</div>
-            </div>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Descricao</th>
-                <th>Categoria</th>
-                <th>Valor</th>
-                <th>Data</th>
-                <th>Status</th>
-                <th>Observacao</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows
-                .map(
-                  (row) => `
-                <tr>
-                  <td>${escapeHtml(row.description)}</td>
-                  <td>${escapeHtml(row.category)}</td>
-                  <td>${formatBRL(row.amount_cents)}</td>
-                  <td>${row.date}</td>
-                  <td>${escapeHtml(row.status)}</td>
-                  <td>${escapeHtml(row.notes)}</td>
-                </tr>
-              `
-                )
-                .join('')}
-            </tbody>
-          </table>
-          <div class="footer">Gerado em ${formatDate(new Date())}</div>
-          <div class="signature">
-            <div class="signature-line">Assinatura Responsavel</div>
-            <div class="signature-line">Assinatura Financeiro</div>
-          </div>
-        </body>
-      </html>
-    `
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+    doc.setFillColor(244, 239, 230)
+    doc.rect(0, 0, 210, 297, 'F')
 
-    setPdfHtml(html)
-    setIsPdfModalOpen(true)
+    const logoData = await loadLogoDataUrl()
+    if (logoData) {
+      doc.addImage(logoData, 'PNG', 24, 14, 10, 10)
+    }
+
+    doc.setTextColor(90, 70, 51)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.text('FINTECH VINTAGE', logoData ? 38 : 24, 20)
+
+    doc.setTextColor(46, 42, 36)
+    doc.setFontSize(18)
+    doc.text('Livro de Despesas', 24, 30)
+    doc.setFontSize(10)
+    doc.setTextColor(107, 98, 90)
+    doc.text(`Filtro: ${filterSummary}`, 24, 36)
+
+    const cards = [
+      { label: 'TOTAL', value: totalValue },
+      { label: 'PAGO', value: paidValue },
+      { label: 'EM ABERTO', value: openValue },
+    ]
+    const cardY = 42
+    const cardW = 52
+    const cardH = 18
+    const cardGap = 6
+
+    cards.forEach((card, index) => {
+      const x = 24 + index * (cardW + cardGap)
+      doc.setDrawColor(217, 207, 191)
+      doc.setFillColor(239, 231, 218)
+      doc.roundedRect(x, cardY, cardW, cardH, 2, 2, 'FD')
+      doc.setTextColor(138, 127, 116)
+      doc.setFontSize(8)
+      doc.text(card.label, x + 4, cardY + 6)
+      doc.setTextColor(46, 42, 36)
+      doc.setFontSize(11)
+      doc.text(card.value, x + 4, cardY + 13)
+    })
+
+    autoTable(doc, {
+      startY: cardY + cardH + 8,
+      head: [['Descricao', 'Categoria', 'Valor', 'Data', 'Status', 'Observacao']],
+      body: rows.map((row) => [
+        row.description,
+        row.category,
+        formatBRL(row.amount_cents),
+        row.date,
+        row.status,
+        row.notes,
+      ]),
+      styles: {
+        font: 'helvetica',
+        fontSize: 9,
+        textColor: [46, 42, 36],
+        cellPadding: 2,
+      },
+      headStyles: {
+        fillColor: [244, 239, 230],
+        textColor: [125, 115, 104],
+        fontStyle: 'bold',
+      },
+      alternateRowStyles: {
+        fillColor: [248, 243, 236],
+      },
+      tableLineColor: [217, 207, 191],
+      tableLineWidth: 0.1,
+      margin: { left: 24, right: 24 },
+    })
+
+    const footerY = (doc as any).lastAutoTable?.finalY
+      ? (doc as any).lastAutoTable.finalY + 10
+      : 260
+    doc.setFontSize(9)
+    doc.setTextColor(155, 144, 133)
+    doc.text(`Gerado em ${formatDate(new Date())}`, 24, footerY)
+
+    if (includeSignatureValue) {
+      const lineY = footerY + 12
+      doc.setDrawColor(205, 191, 176)
+      doc.line(24, lineY, 95, lineY)
+      doc.line(115, lineY, 186, lineY)
+      doc.setFontSize(9)
+      doc.setTextColor(138, 127, 116)
+      doc.text('Assinatura Responsavel', 24, lineY + 5)
+      doc.text('Assinatura Financeiro', 115, lineY + 5)
+    }
+
+    const blob = doc.output('blob')
+    return blob
+  }
+
+  const updatePdfUrl = (blob: Blob) => {
+    const url = URL.createObjectURL(blob)
+    setPdfUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return url
+    })
+  }
+
+  const downloadPdf = async () => {
+    const blob = await generatePdfBlob()
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `despesas_${selectedYear || 'todos'}_${selectedMonth || 'todos'}.pdf`
+    link.click()
+    URL.revokeObjectURL(url)
   }
 
   const total = expenses.reduce((sum, exp) => sum + exp.amount_cents, 0)
@@ -702,27 +780,50 @@ export default function ExpensesPage() {
 
       <Modal
         isOpen={isPdfModalOpen}
-        onClose={() => setIsPdfModalOpen(false)}
+        onClose={closePdfModal}
         title="Preview do PDF"
         size="lg"
       >
         <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-ink/60">
+              {buildFilterSummary()}
+            </p>
+            <label className="flex items-center gap-2 text-sm text-ink/70">
+              <input
+                type="checkbox"
+                checked={includeSignatures}
+                onChange={async (event) => {
+                  const nextValue = event.target.checked
+                  setIncludeSignatures(nextValue)
+                  if (pdfUrl) {
+                    const blob = await generatePdfBlob(exportRows, nextValue)
+                    updatePdfUrl(blob)
+                  }
+                }}
+                className="w-4 h-4 rounded border-border"
+              />
+              Assinaturas
+            </label>
+          </div>
           <div className="border border-border rounded-lg overflow-hidden bg-paper">
-            <iframe
-              ref={pdfFrameRef}
-              title="PDF preview"
-              srcDoc={pdfHtml}
-              className="w-full h-[70vh]"
-            />
+            {pdfUrl ? (
+              <iframe
+                title="PDF preview"
+                src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&zoom=90`}
+                className="w-full h-[70vh]"
+              />
+            ) : (
+              <div className="w-full h-[70vh] flex items-center justify-center text-sm text-ink/60">
+                Clique em &quot;Imprimir ou salvar&quot; para gerar o PDF.
+              </div>
+            )}
           </div>
           <div className="flex items-center justify-end gap-2">
             <button
               type="button"
-              onClick={() => {
-                const frameWindow = pdfFrameRef.current?.contentWindow
-                if (!frameWindow) return
-                frameWindow.focus()
-                frameWindow.print()
+              onClick={async () => {
+                await downloadPdf()
               }}
               className="px-4 py-2 bg-coffee text-paper rounded-lg hover:bg-coffee/90 transition-vintage text-sm"
             >
@@ -730,7 +831,7 @@ export default function ExpensesPage() {
             </button>
             <button
               type="button"
-              onClick={() => setIsPdfModalOpen(false)}
+              onClick={closePdfModal}
               className="px-4 py-2 border border-border rounded-lg hover:bg-paper-2 transition-vintage text-sm"
             >
               Fechar

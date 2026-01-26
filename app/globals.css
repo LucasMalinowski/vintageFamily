@@ -41,6 +41,10 @@ body::before {
   mix-blend-mode: multiply;
 }
 
+body.no-grain::before {
+  display: none;
+}
+
 * {
   position: relative;
 }
