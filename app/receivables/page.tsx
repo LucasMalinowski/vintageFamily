@@ -7,13 +7,12 @@ import { useAuth } from '@/components/AuthProvider'
 import Topbar from '@/components/layout/Topbar'
 import VintageCard from '@/components/ui/VintageCard'
 import StatCard from '@/components/ui/StatCard'
-import FabButton from '@/components/ui/FabButton'
 import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
 import { formatBRL } from '@/lib/money'
 import { formatDate, getCurrentMonth, getCurrentYear, MONTHS, getYearOptions, getMonthRange } from '@/lib/dates'
-import { DollarSign, MoreVertical } from 'lucide-react'
+import { DollarSign, Pencil, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface Income {
@@ -34,7 +33,6 @@ export default function ReceivablesPage() {
   const [incomes, setIncomes] = useState<Income[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
   const [selectedYear, setSelectedYear] = useState(getCurrentYear())
@@ -57,18 +55,6 @@ export default function ReceivablesPage() {
       loadIncomes()
     }
   }, [familyId, selectedMonth, selectedYear, selectedCategory])
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null
-      if (!target?.closest('[data-menu-root="receivables-menu"]')) {
-        setOpenMenuId(null)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   const loadCategories = async () => {
     const { data } = await supabase
@@ -176,6 +162,14 @@ export default function ReceivablesPage() {
       <Topbar 
         title="Contas a Receber" 
         subtitle="O fruto do trabalho honesto."
+        actions={
+          <button
+            onClick={() => openModal()}
+            className="px-4 py-2 bg-fab-green text-white rounded-lg hover:bg-fab-green/90 transition-vintage text-sm"
+          >
+            + Nova receita
+          </button>
+        }
       />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
@@ -256,36 +250,29 @@ export default function ReceivablesPage() {
                     <span className="font-numbers text-lg font-semibold text-olive">
                       {formatBRL(income.amount_cents)}
                     </span>
-                    <div className="relative" data-menu-root="receivables-menu">
+                    <div className="flex items-center gap-2">
                       <button
-                        className="text-ink/40 hover:text-ink transition-vintage"
-                        onClick={() => setOpenMenuId(openMenuId === income.id ? null : income.id)}
-                        aria-label="Abrir menu da receita"
+                        type="button"
+                        onClick={() => openModal(income)}
+                        className="relative group text-ink/50 hover:text-ink transition-vintage"
+                        aria-label={`Editar ${income.description}`}
                       >
-                        <MoreVertical className="w-5 h-5 cursor-pointer" />
+                        <Pencil className="w-5 h-5" />
+                        <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-coffee text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
+                          Editar {income.description}
+                        </span>
                       </button>
-                      {openMenuId === income.id && (
-                        <div className="absolute right-0 top-8 w-36 bg-paper border border-border rounded-lg shadow-soft z-10">
-                          <button
-                            onClick={() => {
-                              openModal(income)
-                              setOpenMenuId(null)
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm hover:bg-paper-2 transition-vintage"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => {
-                              handleDelete(income.id)
-                              setOpenMenuId(null)
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-terracotta hover:bg-paper-2 transition-vintage"
-                          >
-                            Remover
-                          </button>
-                        </div>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(income.id)}
+                        className="relative group text-terracotta/70 hover:text-terracotta transition-vintage"
+                        aria-label={`Deletar ${income.description}`}
+                      >
+                        <Trash2 className="w-5 h-5" />
+                        <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-terracotta text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
+                          Deletar {income.description}
+                        </span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -294,7 +281,6 @@ export default function ReceivablesPage() {
           )}
         </VintageCard>
 
-        <FabButton onClick={() => openModal()} label="Nova receita" />
       </div>
 
       <Modal
