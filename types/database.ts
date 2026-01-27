@@ -140,8 +140,12 @@ export type Database = {
           family_id: string
           id: string
           notes: string | null
+          payment_method: string | null
+          installment_group_id: string | null
+          installment_index: number | null
           paid_at: string | null
           status: string
+          installments: number | null
           updated_at: string
         }
         Insert: {
@@ -154,8 +158,12 @@ export type Database = {
           family_id: string
           id?: string
           notes?: string | null
+          payment_method?: string | null
+          installment_group_id?: string | null
+          installment_index?: number | null
           paid_at?: string | null
           status?: string
+          installments?: number | null
           updated_at?: string
         }
         Update: {
@@ -168,8 +176,12 @@ export type Database = {
           family_id?: string
           id?: string
           notes?: string | null
+          payment_method?: string | null
+          installment_group_id?: string | null
+          installment_index?: number | null
           paid_at?: string | null
           status?: string
+          installments?: number | null
           updated_at?: string
         }
         Relationships: [

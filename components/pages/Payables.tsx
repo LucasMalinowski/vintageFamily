@@ -11,8 +11,11 @@ import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
 import { formatBRL } from '@/lib/money'
 import { formatDate, getCurrentMonth, getCurrentYear, MONTHS, getYearOptions, getMonthRange } from '@/lib/dates'
+import { buildInstallmentDates, splitAmountCents } from '@/lib/installments'
 import { Pencil, Receipt, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
+
+type PaymentMethod = 'PIX' | 'Credito' | 'Debito'
 
 interface Expense {
   id: string
@@ -23,10 +26,33 @@ interface Expense {
   status: 'open' | 'paid'
   paid_at: string | null
   notes: string | null
+  payment_method: PaymentMethod | null
+  installments: number | null
+  installment_group_id: string | null
+  installment_index: number | null
 }
 
 interface Category {
   name: string
+}
+
+const formatPaymentLabel = (method: PaymentMethod | null, installments: number | null) => {
+  if (method === 'Credito') {
+    const count = installments && installments > 1 ? `${installments}x` : ''
+    return count ? `Credito ${count}` : 'Credito'
+  }
+  if (method === 'Debito') return 'Debito'
+  return 'PIX'
+}
+
+const buildInstallmentIndexes = (rows: Expense[]) => {
+  const indexMap = new Map<string, number>()
+  rows.forEach((row) => {
+    if (row.installment_index) {
+      indexMap.set(row.id, row.installment_index)
+    }
+  })
+  return indexMap
 }
 
 export default function Payables() {
@@ -41,6 +67,9 @@ export default function Payables() {
   const [selectedYear, setSelectedYear] = useState(getCurrentYear())
   const [selectedCategory, setSelectedCategory] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
+  const [onlyInstallments, setOnlyInstallments] = useState(false)
+  const [groupByPurchase, setGroupByPurchase] = useState(false)
   
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -54,6 +83,8 @@ export default function Payables() {
     date: format(new Date(), 'yyyy-MM-dd'),
     status: 'open' as 'open' | 'paid',
     notes: '',
+    paymentMethod: 'PIX' as PaymentMethod,
+    installments: 1,
   })
 
   useEffect(() => {
@@ -61,7 +92,15 @@ export default function Payables() {
       loadCategories()
       loadExpenses()
     }
-  }, [familyId, selectedMonth, selectedYear, selectedCategory, selectedStatus])
+  }, [
+    familyId,
+    selectedMonth,
+    selectedYear,
+    selectedCategory,
+    selectedStatus,
+    selectedPaymentMethod,
+    onlyInstallments,
+  ])
 
   const loadCategories = async () => {
     const { data } = await supabase
@@ -78,7 +117,9 @@ export default function Payables() {
 
   const loadExpenses = async () => {
     setLoading(true)
-    const { start, end } = getMonthRange(selectedMonth, selectedYear)
+    const resolvedMonth = Number.isFinite(selectedMonth) ? selectedMonth : getCurrentMonth()
+    const resolvedYear = Number.isFinite(selectedYear) ? selectedYear : getCurrentYear()
+    const { start, end } = getMonthRange(resolvedMonth, resolvedYear)
 
     let query = supabase
       .from('expenses')
@@ -96,6 +137,14 @@ export default function Payables() {
       query = query.eq('status', selectedStatus)
     }
 
+    if (selectedPaymentMethod) {
+      query = query.eq('payment_method', selectedPaymentMethod)
+    }
+
+    if (onlyInstallments) {
+      query = query.eq('payment_method', 'Credito').gt('installments', 1)
+    }
+
     const { data } = await query
 
     if (data) {
@@ -108,6 +157,10 @@ export default function Payables() {
         status: row.status === 'paid' ? 'paid' : 'open',
         paid_at: row.paid_at,
         notes: row.notes,
+        payment_method: row.payment_method || 'PIX',
+        installments: row.installments || 1,
+        installment_group_id: row.installment_group_id,
+        installment_index: row.installment_index,
       }))
       setExpenses(normalized)
     }
@@ -118,6 +171,8 @@ export default function Payables() {
     e.preventDefault()
     
     const amountCents = Math.round(parseFloat(formData.amount) * 100)
+    const paymentMethod = formData.paymentMethod
+    const installments = paymentMethod === 'Credito' ? Math.max(1, formData.installments) : 1
 
     const expenseData = {
       family_id: familyId!,
@@ -128,15 +183,76 @@ export default function Payables() {
       status: formData.status,
       paid_at: formData.status === 'paid' ? new Date().toISOString() : null,
       notes: formData.notes || null,
+      payment_method: paymentMethod,
+      installments,
+      installment_group_id: editingExpense?.installment_group_id || null,
+      installment_index: editingExpense?.installment_index || null,
+    }
+    if (paymentMethod !== 'Credito') {
+      expenseData.installment_group_id = null
+      expenseData.installment_index = null
     }
 
     if (editingExpense) {
-      await supabase
-        .from('expenses')
-        .update({ ...expenseData, updated_at: new Date().toISOString() })
-        .eq('id', editingExpense.id)
+      if (paymentMethod === 'Credito' && installments > 1) {
+        const amounts = splitAmountCents(amountCents, installments)
+        const dates = buildInstallmentDates(formData.date, installments)
+        const groupId = crypto.randomUUID()
+
+        if (editingExpense.installment_group_id) {
+          await supabase
+            .from('expenses')
+            .delete()
+            .eq('installment_group_id', editingExpense.installment_group_id)
+        } else {
+          await supabase.from('expenses').delete().eq('id', editingExpense.id)
+        }
+
+        const rows = amounts.map((amount, index) => ({
+          ...expenseData,
+          amount_cents: amount,
+          date: dates[index],
+          installment_group_id: groupId,
+          installment_index: index + 1,
+        }))
+        await supabase.from('expenses').insert(rows)
+      } else {
+        if (paymentMethod === 'Credito' && !expenseData.installment_group_id) {
+          expenseData.installment_group_id = crypto.randomUUID()
+          expenseData.installment_index = 1
+        }
+        if (editingExpense.installment_group_id) {
+          await supabase
+            .from('expenses')
+            .delete()
+            .eq('installment_group_id', editingExpense.installment_group_id)
+            .neq('id', editingExpense.id)
+        }
+        await supabase
+          .from('expenses')
+          .update({ ...expenseData, updated_at: new Date().toISOString() })
+          .eq('id', editingExpense.id)
+      }
     } else {
-      await supabase.from('expenses').insert(expenseData)
+      if (paymentMethod === 'Credito' && installments > 1) {
+        const amounts = splitAmountCents(amountCents, installments)
+        const dates = buildInstallmentDates(formData.date, installments)
+        const groupId = crypto.randomUUID()
+        const rows = amounts.map((amount, index) => ({
+          ...expenseData,
+          amount_cents: amount,
+          date: dates[index],
+          installment_group_id: groupId,
+          installment_index: index + 1,
+        }))
+        await supabase.from('expenses').insert(rows)
+      } else {
+        if (paymentMethod === 'Credito') {
+          expenseData.installment_group_id = crypto.randomUUID()
+          expenseData.installment_index = 1
+        }
+        await supabase.from('expenses').insert(expenseData)
+      }
     }
 
     closeModal()
@@ -179,6 +295,8 @@ export default function Payables() {
         date: expense.date,
         status: expense.status,
         notes: expense.notes || '',
+        paymentMethod: expense.payment_method || 'PIX',
+        installments: expense.installments || 1,
       })
     } else {
       setEditingExpense(null)
@@ -189,6 +307,8 @@ export default function Payables() {
         date: format(new Date(), 'yyyy-MM-dd'),
         status: 'open',
         notes: '',
+        paymentMethod: 'PIX',
+        installments: 1,
       })
     }
     setIsModalOpen(true)
@@ -203,6 +323,37 @@ export default function Payables() {
   const total = expenses.reduce((sum, exp) => sum + exp.amount_cents, 0)
   const paid = expenses.filter(e => e.status === 'paid').reduce((sum, e) => sum + e.amount_cents, 0)
   const open = total - paid
+  const installmentIndexes = buildInstallmentIndexes(expenses)
+  const groupedExpenses = expenses.reduce((acc, expense) => {
+    const groupId = expense.installment_group_id || expense.id
+    const group = acc.get(groupId) || {
+      id: groupId,
+      description: expense.description,
+      category_name: expense.category_name,
+      payment_method: expense.payment_method,
+      installments: expense.installments || 1,
+      total_cents: 0,
+      items: [] as Expense[],
+    }
+    group.total_cents += expense.amount_cents
+    group.items.push(expense)
+    acc.set(groupId, group)
+    return acc
+  }, new Map<string, {
+    id: string
+    description: string
+    category_name: string
+    payment_method: PaymentMethod | null
+    installments: number
+    total_cents: number
+    items: Expense[]
+  }>())
+
+  const groupedList = Array.from(groupedExpenses.values()).sort((a, b) => {
+    const aDate = a.items[0]?.date || ''
+    const bDate = b.items[0]?.date || ''
+    return bDate.localeCompare(aDate)
+  })
   const openExpenses = expenses
     .filter((expense) => expense.status !== 'paid')
     .sort((a, b) => b.date.localeCompare(a.date))
@@ -228,18 +379,24 @@ export default function Payables() {
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Filtros */}
         <VintageCard className="mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
             <Select
               label="Mês"
               value={selectedMonth.toString()}
-              onChange={(v) => setSelectedMonth(parseInt(v))}
+              onChange={(v) =>
+                setSelectedMonth(v ? parseInt(v, 10) : getCurrentMonth())
+              }
               options={MONTHS.map(m => ({ value: m.value.toString(), label: m.label }))}
+              placeholder="Atual"
             />
             <Select
               label="Ano"
               value={selectedYear.toString()}
-              onChange={(v) => setSelectedYear(parseInt(v))}
+              onChange={(v) =>
+                setSelectedYear(v ? parseInt(v, 10) : getCurrentYear())
+              }
               options={getYearOptions()}
+              placeholder="Atual"
             />
             <Select
               label="Categoria"
@@ -260,11 +417,33 @@ export default function Payables() {
                 { value: 'open', label: 'Em aberto' },
               ]}
             />
+            <Select
+              label="Metodo"
+              value={selectedPaymentMethod}
+              onChange={setSelectedPaymentMethod}
+              options={[
+                { value: '', label: 'Todos' },
+                { value: 'PIX', label: 'PIX' },
+                { value: 'Credito', label: 'Credito' },
+                { value: 'Debito', label: 'Debito' },
+              ]}
+            />
+            <label className="flex items-end gap-2 text-sm text-ink/70 pb-1">
+              <input
+                type="checkbox"
+                checked={onlyInstallments}
+                onChange={(event) => setOnlyInstallments(event.target.checked)}
+                className="w-4 h-4 rounded border-border"
+              />
+              Somente parceladas
+            </label>
             <div className="flex items-end">
               <button
                 onClick={() => {
                   setSelectedCategory('')
                   setSelectedStatus('')
+                  setSelectedPaymentMethod('')
+                  setOnlyInstallments(false)
                 }}
                 className="w-full px-4 py-3 border border-border rounded-lg hover:bg-paper-2 transition-vintage text-sm"
               >
@@ -286,18 +465,98 @@ export default function Payables() {
           <h3 className="text-lg font-serif text-coffee mb-4">
             Total do período | {MONTHS[selectedMonth - 1]?.label} - {selectedYear}
           </h3>
-          <p className="text-sm text-ink/60 italic mb-6">
-            Cada conta paga é um gesto de cuidado com o amanhã da família.
-          </p>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <p className="text-sm text-ink/60 italic">
+              Cada conta paga é um gesto de cuidado com o amanhã da família.
+            </p>
+            <label className="flex items-center gap-2 text-sm text-ink/70">
+              <input
+                type="checkbox"
+                checked={groupByPurchase}
+                onChange={(event) => setGroupByPurchase(event.target.checked)}
+                className="w-4 h-4 rounded border-border"
+              />
+              Agrupar por compra
+            </label>
+          </div>
 
           {loading ? (
             <div className="text-center py-12 text-ink/60">Carregando...</div>
           ) : expenses.length === 0 ? (
-            <EmptyState 
+            <EmptyState
               icon={<Receipt className="w-16 h-16" />}
               message="Ainda não há despesas aqui — um bom começo."
               submessage="Use o botão + para adicionar uma despesa."
             />
+          ) : groupByPurchase ? (
+            <div className="space-y-4">
+              {groupedList.map((group) => {
+                const sortedItems = group.items.slice().sort((a, b) => a.date.localeCompare(b.date))
+                const isInstallmentGroup =
+                  group.payment_method === 'Credito' && group.installments > 1
+                const paidCount = group.items.filter((item) => item.status === 'paid').length
+                const openCount = group.items.length - paidCount
+                return (
+                  <div
+                    key={group.id}
+                    className="p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="inline-flex items-center gap-2 text-xs uppercase tracking-wide text-ink/60">
+                            {isInstallmentGroup ? 'Parcelado' : 'Compra'}
+                          </span>
+                          <h4 className="font-body font-medium">{group.description}</h4>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm text-ink/60">
+                          <span>{group.category_name}</span>
+                          <span>•</span>
+                          <span>{formatPaymentLabel(group.payment_method, group.installments)}</span>
+                          {isInstallmentGroup ? (
+                            <>
+                              <span>•</span>
+                              <span>{group.installments}x</span>
+                            </>
+                          ) : null}
+                          <span>•</span>
+                          <span>{paidCount} pagas</span>
+                          <span>•</span>
+                          <span>{openCount} em aberto</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-ink/60">Total</div>
+                        <div className="font-numbers text-lg font-semibold">
+                          {formatBRL(group.total_cents)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      {sortedItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between text-sm text-ink/70"
+                        >
+                          <div className="flex items-center gap-3">
+                            {isInstallmentGroup ? (
+                              <span className="text-ink/50">
+                                Parcela {item.installment_index || 1}/{item.installments || 1}
+                              </span>
+                            ) : null}
+                            <span>{formatDate(item.date)}</span>
+                            <span className={item.status === 'paid' ? 'text-olive' : 'text-terracotta'}>
+                              {item.status === 'paid' ? 'Pago' : 'Em aberto'}
+                            </span>
+                          </div>
+                          <span className="font-numbers">{formatBRL(item.amount_cents)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           ) : (
             <div className="space-y-3">
               {openExpenses.map((expense) => {
@@ -322,11 +581,26 @@ export default function Payables() {
                         >
                           {expense.description}
                         </h4>
+                        {expense.payment_method === 'Credito' && (expense.installments || 1) > 1 ? (
+                          <span className="text-[10px] uppercase tracking-wide text-ink/60 border border-border px-2 py-0.5 rounded-full">
+                            Parcelado
+                          </span>
+                        ) : null}
                     </div>
                     <div className="flex items-center gap-4 text-sm text-ink/60">
                       <span>{expense.category_name}</span>
                       <span>•</span>
                       <span>{formatDate(expense.date)}</span>
+                      <span>•</span>
+                      <span>{formatPaymentLabel(expense.payment_method, expense.installments)}</span>
+                      {expense.payment_method === 'Credito' && (expense.installments || 1) > 1 ? (
+                        <>
+                          <span>•</span>
+                          <span>
+                            Parcela {installmentIndexes.get(expense.id) || 1}/{expense.installments}
+                          </span>
+                        </>
+                      ) : null}
                       <span>•</span>
                       <span className={expense.status === 'paid' ? 'text-olive' : 'text-terracotta'}>
                         {expense.status === 'paid' ? 'Pago' : 'Em aberto'}
@@ -402,11 +676,26 @@ export default function Payables() {
                         <h4 className="font-body font-medium line-through italic text-ink/60">
                           {expense.description}
                         </h4>
+                        {expense.payment_method === 'Credito' && (expense.installments || 1) > 1 ? (
+                          <span className="text-[10px] uppercase tracking-wide text-ink/60 border border-border px-2 py-0.5 rounded-full">
+                            Parcelado
+                          </span>
+                        ) : null}
                       </div>
                       <div className="flex items-center gap-4 text-sm text-ink/60">
                         <span>{expense.category_name}</span>
                         <span>•</span>
                         <span>{formatDate(expense.date)}</span>
+                        <span>•</span>
+                        <span>{formatPaymentLabel(expense.payment_method, expense.installments)}</span>
+                        {expense.payment_method === 'Credito' && (expense.installments || 1) > 1 ? (
+                          <>
+                            <span>•</span>
+                            <span>
+                              Parcela {installmentIndexes.get(expense.id) || 1}/{expense.installments}
+                            </span>
+                          </>
+                        ) : null}
                         <span>•</span>
                         <span className="text-olive">Pago</span>
                       </div>
@@ -491,6 +780,37 @@ export default function Payables() {
             options={categories.map(c => ({ value: c.name, label: c.name }))}
             required
           />
+
+          <Select
+            label="Método de pagamento"
+            value={formData.paymentMethod}
+            onChange={(value) =>
+              setFormData({
+                ...formData,
+                paymentMethod: value as PaymentMethod,
+                installments: value === 'Credito' ? formData.installments : 1,
+              })
+            }
+            options={[
+              { value: 'PIX', label: 'PIX' },
+              { value: 'Credito', label: 'Credito' },
+              { value: 'Debito', label: 'Debito' },
+            ]}
+            required
+          />
+
+          {formData.paymentMethod === 'Credito' ? (
+            <Select
+              label="Parcelas"
+              value={String(formData.installments)}
+              onChange={(value) => setFormData({ ...formData, installments: parseInt(value, 10) || 1 })}
+              options={Array.from({ length: 12 }, (_, index) => {
+                const count = index + 1
+                return { value: String(count), label: `${count}x` }
+              })}
+              required
+            />
+          ) : null}
 
           <div>
             <label className="block text-sm font-body text-ink mb-2">
