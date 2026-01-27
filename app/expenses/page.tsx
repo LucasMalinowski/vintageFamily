@@ -16,7 +16,7 @@ import { supabase } from '@/lib/supabase'
 import { formatBRL } from '@/lib/money'
 import { formatDate, getCurrentMonth, getCurrentYear, getMonthRange, getYearOptions, MONTHS } from '@/lib/dates'
 import { buildInstallmentDates, splitAmountCents } from '@/lib/installments'
-import { Pencil, Receipt, Trash2 } from 'lucide-react'
+import { ChevronDown, Pencil, Receipt, Trash2 } from 'lucide-react'
 
 type PaymentMethod = 'PIX' | 'Credito' | 'Debito'
 
@@ -100,6 +100,7 @@ export default function ExpensesPage() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
   const [onlyInstallments, setOnlyInstallments] = useState(false)
   const [groupByPurchase, setGroupByPurchase] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
@@ -694,7 +695,19 @@ export default function ExpensesPage() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <VintageCard className="mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+          <div className="flex items-center justify-between md:hidden mb-3">
+            <span className="text-xs uppercase tracking-wide text-ink/50">Filtros</span>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((prev) => !prev)}
+              className="text-petrol hover:text-petrol/80 transition-vintage"
+              aria-label="Alternar filtros"
+            >
+              <ChevronDown className={`w-4 h-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+          <div className={`${filtersOpen ? 'block' : 'hidden'} md:block`}>
+            <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
             <Select
               label="Mês"
               value={selectedMonth}
@@ -782,6 +795,7 @@ export default function ExpensesPage() {
                 Limpar filtros
               </button>
             </div>
+            </div>
           </div>
         </VintageCard>
 
@@ -799,7 +813,7 @@ export default function ExpensesPage() {
             <p className="text-sm text-ink/60 italic">
               Quando tudo se reúne, o mês fica mais claro e a família respira melhor.
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-2 text-sm text-ink/70">
                 <input
                   type="checkbox"
@@ -845,7 +859,7 @@ export default function ExpensesPage() {
                     key={group.id}
                     className="p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage"
                   >
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                       <div>
                         <div className="flex items-center gap-3 mb-2">
                           <span className="inline-flex items-center gap-2 text-xs uppercase tracking-wide text-ink/60">
@@ -853,7 +867,7 @@ export default function ExpensesPage() {
                           </span>
                           <h4 className="font-body font-medium">{group.description}</h4>
                         </div>
-                        <div className="flex items-center gap-3 text-sm text-ink/60">
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-ink/60">
                           <span>{group.category_name}</span>
                           <span>•</span>
                           <span>{formatPaymentLabel(group.payment_method, group.installments)}</span>
@@ -869,7 +883,7 @@ export default function ExpensesPage() {
                           <span>{openCount} em aberto</span>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-left sm:text-right">
                         <div className="text-xs text-ink/60">Total</div>
                         <div className="font-numbers text-lg font-semibold">
                           {formatBRL(group.total_cents)}
@@ -880,9 +894,9 @@ export default function ExpensesPage() {
                       {sortedItems.map((item) => (
                         <div
                           key={item.id}
-                          className="flex items-center justify-between text-sm text-ink/70"
+                          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-ink/70"
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex flex-wrap items-center gap-2">
                             {isInstallmentGroup ? (
                               <span className="text-ink/50">
                                 Parcela {item.installment_index || 1}/{item.installments || 1}
@@ -906,9 +920,9 @@ export default function ExpensesPage() {
               {expenses.map((expense) => (
                 <div
                   key={expense.id}
-                  className="flex items-center justify-between p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage"
                 >
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <span className={`w-2 h-2 rounded-full ${expense.status === 'paid' ? 'bg-olive' : 'bg-terracotta'}`} />
                       <h4 className="font-body font-medium">{expense.description}</h4>
@@ -918,7 +932,7 @@ export default function ExpensesPage() {
                         </span>
                       ) : null}
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-ink/60">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-ink/60">
                       <span>{expense.category_name}</span>
                       <span>•</span>
                       <span>{formatDate(expense.date)}</span>
@@ -939,7 +953,7 @@ export default function ExpensesPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-between sm:justify-start gap-4 w-full sm:w-auto">
                     <span className="font-numbers text-lg font-semibold">
                       {formatBRL(expense.amount_cents)}
                     </span>

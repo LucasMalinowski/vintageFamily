@@ -13,7 +13,7 @@ import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { formatBRL } from '@/lib/money'
 import { formatDate, getCurrentMonth, getCurrentYear, getMonthRange, getYearOptions, MONTHS } from '@/lib/dates'
-import { PiggyBank } from 'lucide-react'
+import { ChevronDown, PiggyBank } from 'lucide-react'
 
 interface Dream {
   id: string
@@ -37,6 +37,7 @@ export default function DreamsPage() {
 
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
   const [selectedYear, setSelectedYear] = useState(getCurrentYear())
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [formData, setFormData] = useState({
@@ -168,7 +169,19 @@ export default function DreamsPage() {
         </VintageCard>
 
         <VintageCard className="mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center justify-between md:hidden mb-3">
+            <span className="text-xs uppercase tracking-wide text-ink/50">Filtros</span>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((prev) => !prev)}
+              className="text-petrol hover:text-petrol/80 transition-vintage"
+              aria-label="Alternar filtros"
+            >
+              <ChevronDown className={`w-4 h-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+          <div className={`${filtersOpen ? 'block' : 'hidden'} md:block`}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
               label="Mês"
               value={selectedMonth.toString()}
@@ -181,6 +194,7 @@ export default function DreamsPage() {
               onChange={(value) => setSelectedYear(parseInt(value))}
               options={getYearOptions()}
             />
+            </div>
           </div>
         </VintageCard>
 
@@ -212,9 +226,9 @@ export default function DreamsPage() {
                 return (
                   <div
                     key={dream.id}
-                    className="flex items-center justify-between p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage"
                   >
-                    <div>
+                    <div className="min-w-0">
                       <h4 className="font-body font-medium">{dream.name}</h4>
                       <p className="text-sm text-ink/60 italic">
                         {count === 0 ? 'Sem aportes neste período.' : `${count} aporte${count > 1 ? 's' : ''} no período.`}
@@ -223,7 +237,7 @@ export default function DreamsPage() {
                         <p className="text-xs text-ink/50">Último aporte: {formatDate(lastDate)}</p>
                       )}
                     </div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right">
                       <div className="font-numbers text-lg font-semibold text-petrol">
                         {formatBRL(total)}
                       </div>

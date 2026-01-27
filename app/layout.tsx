@@ -2,6 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import Script from 'next/script'
 import Providers from '@/components/Providers'
+import PwaInstallPrompt from '@/components/PwaInstallPrompt'
 
 export const metadata: Metadata = {
   title: 'Livro de Finanças da Família',
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
   },
 }
 
@@ -30,6 +32,7 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
+        <PwaInstallPrompt />
         {process.env.NODE_ENV === 'production' && (
           <Script id="sw-register" strategy="afterInteractive">
             {`

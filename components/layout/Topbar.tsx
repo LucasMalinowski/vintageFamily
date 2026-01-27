@@ -58,16 +58,16 @@ export default function Topbar({ title, subtitle, actions }: TopbarProps) {
   }, [familyId])
 
   return (
-    <div className="bg-paper-2 border-b border-border px-6 py-4">
+    <div className="bg-paper-2 border-b border-border px-6 py-4 pl-16 md:pl-6">
       {/* Top row */}
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3 text-sm text-ink/70">
+        <div className="hidden sm:flex items-center gap-3 text-sm text-ink/70">
           <span>Família {familyName || ''}</span>
           <span className="text-ink/40">•</span>
           <span>{currentYear}</span>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <button
             onClick={() => router.push('/reminders')}
             className="text-ink/70 hover:text-ink transition-vintage"
@@ -75,45 +75,45 @@ export default function Topbar({ title, subtitle, actions }: TopbarProps) {
           >
             <Bell className="w-5 h-5" />
           </button>
-          <button className="text-ink/70 hover:text-ink transition-vintage">
+          <button className="hidden sm:inline-flex text-ink/70 hover:text-ink transition-vintage" aria-label="Buscar">
             <Search className="w-5 h-5" />
           </button>
+          <button
+            onClick={() => router.push('/settings')}
+            className="hidden sm:inline-flex text-ink/70 hover:text-ink transition-vintage"
+            aria-label="Abrir configurações"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-ink/70">
-              Bem-vindo{userName ? `, ${userName}` : ''}
-            </span>
             <div className="w-8 h-8 rounded-full bg-coffee/20 flex items-center justify-center overflow-hidden">
               {avatarUrl ? (
-                  <img
-                      src={avatarUrl}
-                      alt="Avatar"
-                      className="w-full h-full rounded-full object-cover"
-                  />
+                <img
+                  src={avatarUrl}
+                  alt="Avatar"
+                  className="w-full h-full rounded-full object-cover"
+                />
               ) : (
-                  <User className="w-4 h-4 text-coffee" />
+                <User className="w-4 h-4 text-coffee" />
               )}
             </div>
-            <button
-                onClick={() => router.push('/settings')}
-                className="text-ink/70 hover:text-ink transition-vintage"
-                aria-label="Abrir configurações"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
+            <span className="hidden md:inline text-ink/70">
+              Bem-vindo{userName ? `, ${userName}` : ''}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Title row */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0">
           <h1 className="text-3xl font-serif text-coffee mb-1">{title}</h1>
           {subtitle && (
             <p className="text-sm text-ink/60 italic font-body">{subtitle}</p>
           )}
         </div>
 
-        {actions && <div>{actions}</div>}
+        {actions && <div className="w-full md:w-auto">{actions}</div>}
       </div>
     </div>
   )

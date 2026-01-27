@@ -12,7 +12,7 @@ import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
 import { formatBRL } from '@/lib/money'
 import { formatDate, getCurrentMonth, getCurrentYear, MONTHS, getYearOptions, getMonthRange } from '@/lib/dates'
-import { DollarSign, Pencil, Trash2 } from 'lucide-react'
+import { ChevronDown, DollarSign, Pencil, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface Income {
@@ -37,6 +37,7 @@ export default function ReceivablesPage() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
   const [selectedYear, setSelectedYear] = useState(getCurrentYear())
   const [selectedCategory, setSelectedCategory] = useState('')
+  const [filtersOpen, setFiltersOpen] = useState(false)
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingIncome, setEditingIncome] = useState<Income | null>(null)
@@ -174,7 +175,19 @@ export default function ReceivablesPage() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <VintageCard className="mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="flex items-center justify-between md:hidden mb-3">
+            <span className="text-xs uppercase tracking-wide text-ink/50">Filtros</span>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((prev) => !prev)}
+              className="text-petrol hover:text-petrol/80 transition-vintage"
+              aria-label="Alternar filtros"
+            >
+              <ChevronDown className={`w-4 h-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+          <div className={`${filtersOpen ? 'block' : 'hidden'} md:block`}>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Select
               label="Mês"
               value={selectedMonth.toString()}
@@ -204,6 +217,7 @@ export default function ReceivablesPage() {
                 Limpar filtros
               </button>
             </div>
+            </div>
           </div>
         </VintageCard>
 
@@ -232,21 +246,21 @@ export default function ReceivablesPage() {
               {incomes.map((income) => (
                 <div
                   key={income.id}
-                  className="flex items-center justify-between p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage"
                 >
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <span className="w-2 h-2 rounded-full bg-olive" />
                       <h4 className="font-body font-medium">{income.description}</h4>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-ink/60">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-ink/60">
                       <span>{income.category_name}</span>
                       <span>•</span>
                       <span>{formatDate(income.date)}</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-between sm:justify-start gap-4 w-full sm:w-auto">
                     <span className="font-numbers text-lg font-semibold text-olive">
                       {formatBRL(income.amount_cents)}
                     </span>

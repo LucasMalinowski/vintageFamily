@@ -120,7 +120,7 @@ export default function ProfileSettingsPage() {
           <div className="bg-paper-2 border border-border rounded-vintage shadow-vintage p-6">
             <form onSubmit={handleSaveProfile} className="space-y-4">
               <h2 className="text-lg font-serif text-coffee">Seus dados</h2>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 <div className="w-16 h-16 rounded-full bg-coffee/20 flex items-center justify-center overflow-hidden">
                   {avatarPreview ? (
                     <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />

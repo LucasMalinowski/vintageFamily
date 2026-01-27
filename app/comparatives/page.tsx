@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import { getCurrentMonth, getCurrentYear, getMonthRange, getYearOptions, MONTHS } from '@/lib/dates'
 import { formatBRL } from '@/lib/money'
+import { ChevronDown } from 'lucide-react'
 
 interface Totals {
   income: number
@@ -24,6 +25,7 @@ export default function ComparativesPage() {
   const [loading, setLoading] = useState(true)
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
   const [selectedYear, setSelectedYear] = useState(getCurrentYear())
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [monthlyTotals, setMonthlyTotals] = useState<Totals>({
     income: 0,
     paid: 0,
@@ -140,7 +142,19 @@ export default function ComparativesPage() {
         </VintageCard>
 
         <VintageCard className="mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center justify-between md:hidden mb-3">
+            <span className="text-xs uppercase tracking-wide text-ink/50">Filtros</span>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((prev) => !prev)}
+              className="text-petrol hover:text-petrol/80 transition-vintage"
+              aria-label="Alternar filtros"
+            >
+              <ChevronDown className={`w-4 h-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+          <div className={`${filtersOpen ? 'block' : 'hidden'} md:block`}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
               label="Mês"
               value={selectedMonth.toString()}
@@ -153,6 +167,7 @@ export default function ComparativesPage() {
               onChange={(value) => setSelectedYear(parseInt(value))}
               options={getYearOptions()}
             />
+            </div>
           </div>
         </VintageCard>
 
