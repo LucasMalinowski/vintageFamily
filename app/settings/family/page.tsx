@@ -354,7 +354,7 @@ export default function FamilySettingsPage() {
             )}
             {invites.length > 0 && (
               <div className="border border-border rounded-lg overflow-hidden">
-                <div className="grid grid-cols-4 gap-4 bg-paper px-4 py-2 text-xs uppercase tracking-wide text-ink/60 font-body">
+                <div className="hidden sm:grid sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-4 bg-paper px-4 py-2 text-xs uppercase tracking-wide text-ink/60 font-body">
                   <span>Email</span>
                   <span>Status</span>
                   <span>Expiração</span>
@@ -363,16 +363,26 @@ export default function FamilySettingsPage() {
                 {invites.map((invite) => (
                   <div
                     key={invite.id}
-                    className="grid grid-cols-4 gap-4 px-4 py-3 text-sm font-body border-t border-border items-center"
+                    className="grid grid-cols-1 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 sm:gap-4 px-4 py-3 text-sm font-body border-t border-border items-center"
                   >
-                    <span className="text-ink">{invite.email}</span>
-                    <span className="text-ink/70">
-                      {invite.accepted ? 'Aceito' : 'Pendente'}
-                    </span>
-                    <span className="text-ink/70">
-                      {formatDate(invite.expires_at)}
-                    </span>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] uppercase tracking-wide text-ink/50 sm:hidden">Email</span>
+                      <span className="text-ink break-all">{invite.email}</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] uppercase tracking-wide text-ink/50 sm:hidden">Status</span>
+                      <span className="text-ink/70">
+                        {invite.accepted ? 'Aceito' : 'Pendente'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] uppercase tracking-wide text-ink/50 sm:hidden">Expiração</span>
+                      <span className="text-ink/70">
+                        {formatDate(invite.expires_at)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:items-start">
+                      <span className="text-[11px] uppercase tracking-wide text-ink/50 sm:hidden">Ações</span>
                       {!invite.accepted && (
                         <button
                           type="button"
