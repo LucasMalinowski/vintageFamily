@@ -17,6 +17,13 @@ import { format } from 'date-fns'
 
 type PaymentMethod = 'PIX' | 'Credito' | 'Debito'
 
+const normalizePaymentMethod = (method: string | null): PaymentMethod | null => {
+  if (method === 'PIX' || method === 'Credito' || method === 'Debito') {
+    return method
+  }
+  return null
+}
+
 interface Expense {
   id: string
   description: string
@@ -157,7 +164,7 @@ export default function Payables() {
         status: row.status === 'paid' ? 'paid' : 'open',
         paid_at: row.paid_at,
         notes: row.notes,
-        payment_method: row.payment_method || 'PIX',
+        payment_method: normalizePaymentMethod(row.payment_method) ?? 'PIX',
         installments: row.installments || 1,
         installment_group_id: row.installment_group_id,
         installment_index: row.installment_index,
