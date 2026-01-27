@@ -179,17 +179,11 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <VintageCard>
-            <div className="flex items-start justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
               <div>
                 <h3 className="text-lg font-serif text-coffee">Contas pendentes</h3>
                 <p className="text-sm text-ink/60 italic">Pagamentos abertos em ordem de vencimento.</p>
               </div>
-              <Link
-                href="/payables"
-                className="text-sm text-petrol hover:text-petrol/80 transition-vintage"
-              >
-                Ver todos
-              </Link>
             </div>
 
             {loadingPayables ? (
@@ -222,29 +216,29 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
+            <div className="pt-3">
+              <Link
+                href="/payables"
+                className="text-xs italic text-ink/40 hover:text-ink/60 transition-vintage"
+              >
+                Ver todos
+              </Link>
+            </div>
           </VintageCard>
 
           <VintageCard>
-            <div className="flex items-start justify-between mb-4">
-              <div>
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="min-w-0">
                 <h3 className="text-lg font-serif text-coffee">Lembretes da casa</h3>
                 <p className="text-sm text-ink/60 italic">Notas de cuidado para o mês.</p>
               </div>
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/reminders"
-                  className="text-sm text-petrol hover:text-petrol/80 transition-vintage"
-                >
-                  Ver todos
-                </Link>
-                <button
-                  onClick={() => setIsReminderModalOpen(true)}
-                  className="w-9 h-9 rounded-full bg-fab-green text-white flex items-center justify-center hover:bg-fab-green/90 transition-vintage"
-                  aria-label="Novo lembrete"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
+              <button
+                onClick={() => setIsReminderModalOpen(true)}
+                className="w-9 h-9 rounded-full bg-fab-green text-white flex items-center justify-center hover:bg-fab-green/90 transition-vintage shrink-0"
+                aria-label="Novo lembrete"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
             </div>
 
             {loading ? (
@@ -294,6 +288,14 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
+            <div className="pt-3">
+              <Link
+                href="/reminders"
+                className="text-xs italic text-ink/40 hover:text-ink/60 transition-vintage"
+              >
+                Ver todos
+              </Link>
+            </div>
           </VintageCard>
         </div>
       </div>
