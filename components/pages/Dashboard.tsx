@@ -29,7 +29,7 @@ interface Payable {
 
 export default function Dashboard() {
   const router = useRouter()
-  const { familyId } = useAuth()
+  const { familyId, familyName } = useAuth()
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [pendingPayables, setPendingPayables] = useState<Payable[]>([])
   const [loading, setLoading] = useState(true)
@@ -132,59 +132,43 @@ export default function Dashboard() {
 
   return (
     <>
-      <Topbar 
-        title="Início" 
+      <Topbar
+        title="Início"
         subtitle="Bem-vindo ao seu espaço financeiro familiar"
+        texture
       />
-      <div className="min-h-screen">
-      {/* Hero Section */}
-      <div className="relative bg-paper-2 border-b border-border px-6 py-16 md:py-24">
-        <div className="max-w-4xl mx-auto text-center relative">
-          {/* Ornament */}
-          <svg width="100" height="50" viewBox="0 0 100 50" fill="none" className="mx-auto mb-6">
-            <path d="M0 25 Q 25 15, 50 25 T 100 25" stroke="#5A4633" strokeWidth="1" fill="none" />
-            <circle cx="50" cy="25" r="4" fill="#5A4633" />
-          </svg>
-
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif text-coffee mb-6">
-            Livro de Finanças da Família
-          </h1>
-
-          <p className="text-lg md:text-xl text-ink/70 italic font-body mb-8 max-w-2xl mx-auto">
-            Organizar o dinheiro é cuidar do tempo que ainda vamos viver.
-          </p>
-
-          <button
-            onClick={() => router.push('/balance')}
-            className="bg-coffee text-paper px-8 py-4 rounded-lg font-body text-lg hover:bg-coffee/90 transition-vintage shadow-soft"
-          >
-            Abrir o livro do mês
-          </button>
-
-          {/* Ornament Bottom */}
-          <svg width="120" height="30" viewBox="0 0 120 30" fill="none" className="mx-auto mt-8">
-            <path d="M0 15 L 120 15" stroke="#D9CFBF" strokeWidth="1" />
-            <circle cx="60" cy="15" r="3" fill="#D9CFBF" />
-          </svg>
-        </div>
-      </div>
-
-      {/* Reminders Section */}
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="text-center mb-6">
-          <p className="text-sm text-ink/60 italic">
-            No rodapé, os lembretes da casa, como notas de cuidado.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <VintageCard>
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-              <div>
-                <h3 className="text-lg font-serif text-coffee">Contas pendentes</h3>
-                <p className="text-sm text-ink/60 italic">Pagamentos abertos em ordem de vencimento.</p>
-              </div>
+      <div className="min-h-screen paper-texture bg-paper-2">
+        <div className="max-w-6xl mx-auto px-6 py-10">
+          <div className="bg-paper rounded-3xl border border-border p-6 md:p-10 shadow-soft text-center">
+            <h1 className="text-3xl md:text-4xl font-serif text-olive">
+              Livro de Finanças da Família {familyName || 'XXXXX'}
+            </h1>
+            <img
+              src="/flowers.png"
+              alt="Flores decorativas"
+              className="w-full max-w-xl mx-auto mt-6 rounded-2xl"
+            />
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <button
+                onClick={() => router.push('/balance')}
+                className="px-6 py-3 rounded-full bg-olive text-white font-medium hover:bg-olive/90 transition-vintage"
+              >
+                Abrir o livro do mês
+              </button>
+              <p className="text-sm text-ink/60 italic max-w-md">
+                Organizar o dinheiro é cuidar do tempo que ainda vamos viver.
+              </p>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-10">
+            <VintageCard className="bg-paper">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <h3 className="text-lg font-serif text-olive">Contas pendentes</h3>
+                  <p className="text-sm text-ink/60 italic">Que a casa siga leve.</p>
+                </div>
+              </div>
 
             {loadingPayables ? (
               <div className="text-center py-8 text-ink/60">Carregando...</div>
@@ -226,15 +210,15 @@ export default function Dashboard() {
             </div>
           </VintageCard>
 
-          <VintageCard>
+          <VintageCard className="bg-paper">
             <div className="flex items-start justify-between gap-3 mb-4">
               <div className="min-w-0">
-                <h3 className="text-lg font-serif text-coffee">Lembretes da casa</h3>
+                <h3 className="text-lg font-serif text-olive">Lembretes da casa</h3>
                 <p className="text-sm text-ink/60 italic">Notas de cuidado para o mês.</p>
               </div>
               <button
                 onClick={() => setIsReminderModalOpen(true)}
-                className="w-9 h-9 rounded-full bg-fab-green text-white flex items-center justify-center hover:bg-fab-green/90 transition-vintage shrink-0"
+                className="w-9 h-9 rounded-full bg-terracotta text-white flex items-center justify-center hover:bg-terracotta/90 transition-vintage shrink-0"
                 aria-label="Novo lembrete"
               >
                 <Plus className="w-4 h-4" />
@@ -297,8 +281,8 @@ export default function Dashboard() {
               </Link>
             </div>
           </VintageCard>
+          </div>
         </div>
-      </div>
       </div>
 
       <Modal

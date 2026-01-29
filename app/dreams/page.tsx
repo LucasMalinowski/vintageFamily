@@ -149,12 +149,13 @@ export default function DreamsPage() {
   return (
     <AppLayout>
       <Topbar
-        title="Poupança / Sonhos"
+        title="Poupança"
         subtitle="Todo grande sonho começa com pequenos passos."
+        texture
         actions={
           <button
             onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 bg-fab-green text-white rounded-lg hover:bg-fab-green/90 transition-vintage text-sm"
+            className="px-4 py-2 bg-olive text-white rounded-full hover:bg-olive/90 transition-vintage text-sm"
           >
             + Nova poupança
           </button>
@@ -162,7 +163,7 @@ export default function DreamsPage() {
       />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <VintageCard className="mb-6">
+        <VintageCard className="mb-6 paper-texture">
           <p className="text-ink/70 italic font-body">
             Guardar hoje para viver amanhã: cada contribuição carrega um desejo em silêncio.
           </p>
@@ -248,6 +249,21 @@ export default function DreamsPage() {
             </div>
           )}
         </VintageCard>
+
+        <div className="flex justify-end gap-2 mt-6">
+          <button
+            type="button"
+            className="px-4 py-2 rounded-full border border-border text-sm text-ink/70 hover:bg-paper transition-vintage"
+          >
+            Gerar CSV
+          </button>
+          <button
+            type="button"
+            className="px-4 py-2 rounded-full border border-border text-sm text-ink/70 hover:bg-paper transition-vintage"
+          >
+            Gerar PDF
+          </button>
+        </div>
 
       </div>
 

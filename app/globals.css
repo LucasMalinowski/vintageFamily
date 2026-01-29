@@ -1,48 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Lora:wght@400;500;600&family=Source+Serif+4:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --paper: #F4EFE6;
-  --ink: #2E2A24;
-  --coffee: #5A4633;
-  --petrol: #3A5A6A;
-  --olive: #7A8F6B;
-  --terracotta: #B5654D;
-  --border: #D9CFBF;
-  --paper-2: #EFE7DA;
-  --shadow: 0 10px 30px rgba(46,42,36,.12);
-  --shadow-soft: 0 8px 18px rgba(46,42,36,.10);
-  --radius: 18px;
+  --paper: #FAF9F7;
+  --paper-2: #F3ECDD;
+  --ink: #2F2A24;
+  --coffee: #C2A45D;
+  --petrol: #2F6F7E;
+  --olive: #3E5F4B;
+  --terracotta: #6FBF8A;
+  --border: #E5DCCB;
+  --shadow: 0 18px 40px rgba(47, 42, 36, 0.12);
+  --shadow-soft: 0 10px 20px rgba(47, 42, 36, 0.08);
+  --radius: 20px;
 }
 
 body {
   background-color: var(--paper);
   color: var(--ink);
-  font-family: 'Lora', serif;
-  position: relative;
-}
-
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: 
-    url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='3' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E"),
-    radial-gradient(circle at 50% 50%, rgba(122,143,107,0.03) 0%, transparent 50%);
-  opacity: 0.08;
-  pointer-events: none;
-  z-index: 0;
-  mix-blend-mode: multiply;
-}
-
-body.no-grain::before {
-  display: none;
+  font-family: 'Inter', sans-serif;
 }
 
 * {
@@ -55,7 +34,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .font-numbers {
-  font-family: 'Source Serif 4', serif;
+  font-family: 'Inter', sans-serif;
 }
 
 input,
@@ -110,47 +89,12 @@ input[type='date'] {
 
 
 @layer components {
-  .grain {
-    min-height: 100vh;
-    position: relative;
-    background-color: var(--paper);
+  .paper-texture {
+    background-image: url('/texture.png');
+    background-size: cover;
+    background-repeat: repeat;
   }
-  .grain:after {
-    animation: grain 8s steps(10) infinite;
-    background-image: url('https://grainy-gradients.vercel.app/noise.svg');
-    content: "";
-    height: 300%;
-    width: 300%;
-    left: -100%;
-    top: -110%;
-    opacity: 0.45;
-    position: fixed;
-    pointer-events: none;
-    z-index: 50;
+  .gold-pill {
+    background: linear-gradient(180deg, rgba(194, 164, 93, 0.9), rgba(194, 164, 93, 0.7));
   }
-
-  .grain2 {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 100%;
-    pointer-event: none;
-    z-index: 300;
-    transform: translateZ(0);
-
-    &:before {
-      content: "";
-      top: -10rem;
-      left: -10rem;
-      width: calc(100% + 20rem);
-      height: calc(100% + 20rem);
-      z-index: 9999;
-      position: fixed;
-      background-image: url(https://upload.wikimedia.org/wikipedia/commons/5/5c/Image_gaussian_noise_example.png);
-      opacity: 0.25;
-      pointer-events: none;
-    }
-  }
-
 }

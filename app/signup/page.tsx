@@ -40,35 +40,26 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Ornament */}
-        <div className="text-center mb-8">
-          <div className="inline-block">
-            <svg width="80" height="40" viewBox="0 0 80 40" fill="none" className="mx-auto mb-4">
-              <path d="M0 20 Q 20 10, 40 20 T 80 20" stroke="#5A4633" strokeWidth="1" fill="none" />
-              <circle cx="40" cy="20" r="3" fill="#5A4633" />
-            </svg>
-          </div>
-          <h1 className="text-4xl font-serif text-coffee mb-2">
-            Criar Família
-          </h1>
-          <p className="text-ink/60 italic font-body">
+    <div className="min-h-screen bg-moss text-white flex items-center justify-center p-6">
+      <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+        <div className="space-y-6">
+          <img src="/logo1.png" alt="Florim" className="w-20 h-20 object-contain" />
+          <p className="text-gold text-lg italic max-w-sm">
             Uma casa tranquila nasce de pequenas escolhas repetidas.
           </p>
         </div>
 
-        {/* Card */}
-        <div className="bg-paper-2 rounded-vintage border border-border shadow-vintage p-8">
+        <div className="bg-paper-2 text-ink rounded-3xl p-8 shadow-xl border border-border">
+          <h1 className="text-3xl font-serif text-olive mb-6">Criar família</h1>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="bg-terracotta/10 border border-terracotta/30 text-terracotta px-4 py-3 rounded-lg text-sm">
+              <div className="bg-terracotta/10 border border-terracotta/40 text-terracotta px-4 py-3 rounded-lg text-sm">
                 {error}
               </div>
             )}
 
             <div>
-              <label htmlFor="name" className="block text-sm font-body text-ink mb-2">
+              <label htmlFor="name" className="block text-sm text-olive mb-2">
                 Seu nome
               </label>
               <input
@@ -77,13 +68,13 @@ export default function SignUpPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 transition-vintage"
+                className="w-full px-4 py-3 bg-warm border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-gold/40"
                 placeholder="João Silva"
               />
             </div>
 
             <div>
-              <label htmlFor="familyName" className="block text-sm font-body text-ink mb-2">
+              <label htmlFor="familyName" className="block text-sm text-olive mb-2">
                 Nome da família
               </label>
               <input
@@ -92,13 +83,13 @@ export default function SignUpPage() {
                 value={familyName}
                 onChange={(e) => setFamilyName(e.target.value)}
                 required
-                className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 transition-vintage"
+                className="w-full px-4 py-3 bg-warm border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-gold/40"
                 placeholder="Família Silva"
               />
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-body text-ink mb-2">
+              <label htmlFor="email" className="block text-sm text-olive mb-2">
                 E-mail
               </label>
               <input
@@ -107,13 +98,13 @@ export default function SignUpPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 transition-vintage"
+                className="w-full px-4 py-3 bg-warm border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-gold/40"
                 placeholder="seu@email.com"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-body text-ink mb-2">
+              <label htmlFor="password" className="block text-sm text-olive mb-2">
                 Senha
               </label>
               <input
@@ -123,13 +114,13 @@ export default function SignUpPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 transition-vintage"
+                className="w-full px-4 py-3 bg-warm border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-gold/40"
                 placeholder="••••••••"
               />
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-body text-ink mb-2">
+              <label htmlFor="confirmPassword" className="block text-sm text-olive mb-2">
                 Confirmar senha
               </label>
               <input
@@ -139,7 +130,7 @@ export default function SignUpPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 minLength={6}
-                className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 transition-vintage"
+                className="w-full px-4 py-3 bg-warm border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-gold/40"
                 placeholder="••••••••"
               />
             </div>
@@ -147,27 +138,18 @@ export default function SignUpPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-coffee text-paper py-3 rounded-lg font-body hover:bg-coffee/90 transition-vintage disabled:opacity-50"
+              className="w-full bg-olive text-white py-3 rounded-full font-medium hover:bg-olive/90 transition-vintage disabled:opacity-50"
             >
               {loading ? 'Criando...' : 'Criar família'}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <Link
-              href="/login"
-              className="text-petrol hover:text-petrol/80 transition-vintage text-sm font-body"
-            >
-              Já tem uma conta? Entrar
+          <div className="mt-6 text-center text-sm text-olive/70">
+            Já tem uma conta?{' '}
+            <Link href="/login" className="text-gold hover:text-gold/80 transition-vintage">
+              Entrar
             </Link>
           </div>
-        </div>
-
-        {/* Footer ornament */}
-        <div className="mt-8 text-center">
-          <svg width="60" height="20" viewBox="0 0 60 20" fill="none" className="mx-auto">
-            <path d="M0 10 L 60 10" stroke="#D9CFBF" strokeWidth="1" />
-          </svg>
         </div>
       </div>
     </div>

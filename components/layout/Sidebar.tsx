@@ -2,53 +2,41 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, BanknoteArrowUp, BanknoteArrowDown, Receipt, PiggyBank, ChartColumnBig, LogOut, Menu, X, List } from 'lucide-react'
+import { Home, BanknoteArrowUp, BanknoteArrowDown, Receipt, PiggyBank, ChartColumnBig, LogOut, Menu, X, List, Info } from 'lucide-react'
 import { useAuth } from '@/components/AuthProvider'
-import { supabase } from '@/lib/supabase'
 import { useEffect, useState } from 'react'
 
 const menuItems = [
-  { icon: Home, label: 'Dashboard', href: '/' },
+  { icon: Home, label: 'Início', href: '/' },
   { icon: BanknoteArrowUp, label: 'Contas a Pagar', href: '/payables' },
-  { icon: List, label: 'Todas as Despesas', href: '/expenses' },
-  { icon: BanknoteArrowDown, label: 'Valores a Receber', href: '/receivables' },
-  { icon: PiggyBank, label: 'Poupança / Sonhos', href: '/dreams' },
+  { icon: List, label: 'Despesas', href: '/expenses' },
+  { icon: BanknoteArrowDown, label: 'Contas a Receber', href: '/receivables' },
+  { icon: PiggyBank, label: 'Poupança', href: '/dreams' },
   { icon: Receipt, label: 'Saldo', href: '/balance' },
-  { icon: ChartColumnBig, label: 'Comparativos', href: '/comparatives' },
+  { icon: ChartColumnBig, label: 'Dashboard', href: '/comparatives' },
+  { icon: Info, label: 'Sobre', href: '/about' },
 ]
 
 export default function Sidebar() {
   const pathname = usePathname()
-  const { signOut, familyId } = useAuth()
+  const { signOut, familyName } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
-  const [familyName, setFamilyName] = useState('')
+  const [familyNameLocal, setFamilyNameLocal] = useState('')
 
   useEffect(() => {
-    const loadFamilyName = async () => {
-      if (!familyId) return
-      const { data: familyRow } = await supabase
-        .from('families')
-        .select('name')
-        .eq('id', familyId)
-        .maybeSingle()
-
-      if (familyRow?.name) {
-        setFamilyName(familyRow.name)
-      }
+    if (familyName) {
+      setFamilyNameLocal(familyName)
     }
-
-    loadFamilyName()
-  }, [familyId])
+  }, [familyName])
 
   const SidebarContent = () => (
     <>
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3">
-            <img src="/logo1.png" alt="Logo" className="w-24 h-24 object-contain" />
-            {/*<img src="/logo.png" alt="Logo" className="w-20 h-20 object-contain" />*/}
+          <img src="/logo1.png" alt="Logo Florim" className="w-16 h-16 object-contain" />
           <div>
-            <h2 className="text-white font-serif text-lg">Família</h2>
-            <p className="text-white/70 text-sm">{familyName || 'Carregando...'}</p>
+            <h2 className="text-white font-serif text-lg leading-tight">Florim</h2>
+            <p className="text-white/70 text-sm">{familyNameLocal || 'Carregando...'}</p>
           </div>
         </div>
       </div>

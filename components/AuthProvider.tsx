@@ -8,6 +8,10 @@ import { useRouter } from 'next/navigation'
 interface AuthContextType {
   user: User | null
   familyId: string | null
+  familyName: string | null
+  familyCreatedAt: string | null
+  trialEndsAt: Date | null
+  isTrialExpired: boolean
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, name: string, familyName: string) => Promise<void>
@@ -20,6 +24,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [familyId, setFamilyId] = useState<string | null>(null)
+  const [familyName, setFamilyName] = useState<string | null>(null)
+  const [familyCreatedAt, setFamilyCreatedAt] = useState<string | null>(null)
+  const [trialEndsAt, setTrialEndsAt] = useState<Date | null>(null)
+  const [isTrialExpired, setIsTrialExpired] = useState(false)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
@@ -42,6 +50,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loadFamilyId(session.user.id)
       } else {
         setFamilyId(null)
+        setFamilyName(null)
+        setFamilyCreatedAt(null)
+        setTrialEndsAt(null)
+        setIsTrialExpired(false)
       }
     })
 
@@ -61,11 +73,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      if (data) {
+      if (data?.family_id) {
         setFamilyId(data.family_id)
+        await loadFamilyData(data.family_id)
       }
     } catch (error) {
       console.error('Error in loadFamilyId:', error)
+    }
+  }
+
+  const loadFamilyData = async (id: string) => {
+    const { data, error } = await supabase
+      .from('families')
+      .select('name, created_at')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (error) {
+      console.error('Error loading family data:', error)
+      return
+    }
+
+    if (data) {
+      setFamilyName(data.name)
+      setFamilyCreatedAt(data.created_at)
+      const createdAt = new Date(data.created_at)
+      const trialEnd = new Date(createdAt.getTime())
+      trialEnd.setDate(trialEnd.getDate() + 7)
+      setTrialEndsAt(trialEnd)
+      setIsTrialExpired(new Date() > trialEnd)
     }
   }
 
@@ -132,6 +168,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // 6. Set family ID and redirect
       setFamilyId(family.id)
+      setFamilyName(family.name)
+      setFamilyCreatedAt(family.created_at)
+      const trialEnd = new Date(family.created_at)
+      trialEnd.setDate(trialEnd.getDate() + 7)
+      setTrialEndsAt(trialEnd)
+      setIsTrialExpired(new Date() > trialEnd)
       router.push('/')
     } catch (error: any) {
       console.error('SignUp error:', error)
@@ -179,6 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const payload = await response.json()
       setFamilyId(payload.familyId)
+      await loadFamilyData(payload.familyId)
       router.push('/')
     } catch (error: any) {
       console.error('AcceptInvite error:', error)
@@ -192,7 +235,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, familyId, loading, signIn, signUp, acceptInvite, signOut }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        familyId,
+        familyName,
+        familyCreatedAt,
+        trialEndsAt,
+        isTrialExpired,
+        loading,
+        signIn,
+        signUp,
+        acceptInvite,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

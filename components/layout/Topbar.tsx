@@ -1,7 +1,7 @@
 'use client'
 
 import { Bell, Search, Settings, User } from 'lucide-react'
-import { getCurrentMonth, getCurrentYear, MONTHS } from '@/lib/dates'
+import { getCurrentYear } from '@/lib/dates'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
@@ -11,15 +11,14 @@ interface TopbarProps {
   title: string
   subtitle?: string
   actions?: React.ReactNode
+  texture?: boolean
 }
 
-export default function Topbar({ title, subtitle, actions }: TopbarProps) {
-  const currentMonth = MONTHS[getCurrentMonth() - 1]?.label
+export default function Topbar({ title, subtitle, actions, texture }: TopbarProps) {
   const currentYear = getCurrentYear()
   const router = useRouter()
-  const { user, familyId } = useAuth()
+  const { user, familyName } = useAuth()
   const [userName, setUserName] = useState('')
-  const [familyName, setFamilyName] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
 
   useEffect(() => {
@@ -41,24 +40,8 @@ export default function Topbar({ title, subtitle, actions }: TopbarProps) {
     loadHeaderData()
   }, [user])
 
-  useEffect(() => {
-    const loadFamilyName = async () => {
-      if (!familyId) return
-      const { data: familyRow } = await supabase
-        .from('families')
-        .select('name')
-        .eq('id', familyId)
-        .maybeSingle()
-      if (familyRow?.name) {
-        setFamilyName(familyRow.name)
-      }
-    }
-
-    loadFamilyName()
-  }, [familyId])
-
   return (
-    <div className="bg-paper-2 border-b border-border px-6 py-4 pl-16 md:pl-6">
+    <div className={`border-b border-border px-6 py-4 pl-16 md:pl-6 ${texture ? 'paper-texture bg-paper-2' : 'bg-paper'}`}>
       {/* Top row */}
       <div className="flex items-center justify-between mb-4">
         <div className="hidden sm:flex items-center gap-3 text-sm text-ink/70">
@@ -86,7 +69,7 @@ export default function Topbar({ title, subtitle, actions }: TopbarProps) {
             <Settings className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2 text-sm">
-            <div className="w-8 h-8 rounded-full bg-coffee/20 flex items-center justify-center overflow-hidden">
+            <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center overflow-hidden">
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
@@ -94,7 +77,7 @@ export default function Topbar({ title, subtitle, actions }: TopbarProps) {
                   className="w-full h-full rounded-full object-cover"
                 />
               ) : (
-                <User className="w-4 h-4 text-coffee" />
+                <User className="w-4 h-4 text-gold" />
               )}
             </div>
             <span className="hidden md:inline text-ink/70">
@@ -107,7 +90,7 @@ export default function Topbar({ title, subtitle, actions }: TopbarProps) {
       {/* Title row */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
-          <h1 className="text-3xl font-serif text-coffee mb-1">{title}</h1>
+          <h1 className="text-3xl font-serif text-olive mb-1">{title}</h1>
           {subtitle && (
             <p className="text-sm text-ink/60 italic font-body">{subtitle}</p>
           )}

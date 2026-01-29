@@ -81,75 +81,77 @@ function InvitePageContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-serif text-coffee mb-2">Aceitar convite</h1>
-          <p className="text-ink/60 italic font-body">
+    <div className="min-h-screen bg-moss text-white flex items-center justify-center p-6">
+      <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+        <div className="space-y-6">
+          <img src="/logo1.png" alt="Florim" className="w-20 h-20 object-contain" />
+          <p className="text-gold text-lg italic max-w-sm">
             Entre para a sua nova família financeira.
           </p>
         </div>
 
-        <div className="bg-paper-2 rounded-vintage border border-border shadow-vintage p-8">
+        <div className="bg-paper-2 text-ink rounded-3xl p-8 shadow-xl border border-border">
+          <h1 className="text-3xl font-serif text-olive mb-6">Aceitar convite</h1>
+
           {loading ? (
-            <p className="text-sm text-ink/60 font-body">Carregando convite...</p>
+            <p className="text-sm text-ink/60">Carregando convite...</p>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="bg-terracotta/10 border border-terracotta/30 text-terracotta px-4 py-3 rounded-lg text-sm">
+                <div className="bg-terracotta/10 border border-terracotta/40 text-terracotta px-4 py-3 rounded-lg text-sm">
                   {error}
                 </div>
               )}
 
               {inviteInfo && (
-                <div className="bg-paper border border-border rounded-lg px-4 py-3 text-sm text-ink/70 font-body">
+                <div className="bg-warm border border-border rounded-full px-4 py-3 text-sm text-ink/70">
                   Você foi convidado para <strong>{inviteInfo.familyName}</strong>.
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-body text-ink mb-2">Email</label>
+                <label className="block text-sm text-olive mb-2">Email</label>
                 <input
                   type="email"
                   value={inviteInfo?.email ?? ''}
                   disabled
-                  className="w-full px-4 py-3 bg-paper border border-border rounded-lg text-ink/60"
+                  className="w-full px-4 py-3 bg-warm border border-border rounded-full text-ink/60"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-body text-ink mb-2">Seu nome</label>
+                <label className="block text-sm text-olive mb-2">Seu nome</label>
                 <input
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   required
-                  className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 transition-vintage"
+                  className="w-full px-4 py-3 bg-warm border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-gold/40"
                   placeholder="Nome completo"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-body text-ink mb-2">Senha</label>
+                <label className="block text-sm text-olive mb-2">Senha</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   required
                   minLength={6}
-                  className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 transition-vintage"
+                  className="w-full px-4 py-3 bg-warm border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-gold/40"
                   placeholder="••••••••"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-body text-ink mb-2">Confirmar senha</label>
+                <label className="block text-sm text-olive mb-2">Confirmar senha</label>
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
                   required
                   minLength={6}
-                  className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 transition-vintage"
+                  className="w-full px-4 py-3 bg-warm border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-gold/40"
                   placeholder="••••••••"
                 />
               </div>
@@ -157,7 +159,7 @@ function InvitePageContent() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-coffee text-paper py-3 rounded-lg font-body hover:bg-coffee/90 transition-vintage disabled:opacity-50"
+                className="w-full bg-olive text-white py-3 rounded-full font-medium hover:bg-olive/90 transition-vintage disabled:opacity-50"
               >
                 {submitting ? 'Criando...' : 'Aceitar convite'}
               </button>

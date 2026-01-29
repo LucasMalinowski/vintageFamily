@@ -12,7 +12,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import { formatBRL } from '@/lib/money'
 import { formatDate, getCurrentMonth, getCurrentYear, MONTHS, getYearOptions, getMonthRange } from '@/lib/dates'
 import { buildInstallmentDates, splitAmountCents } from '@/lib/installments'
-import { ChevronDown, Pencil, Receipt, Trash2 } from 'lucide-react'
+import { ChevronDown, MoreVertical, Receipt } from 'lucide-react'
 import { format } from 'date-fns'
 
 type PaymentMethod = 'PIX' | 'Credito' | 'Debito'
@@ -62,6 +62,22 @@ const buildInstallmentIndexes = (rows: Expense[]) => {
   return indexMap
 }
 
+const extractAttachmentUrls = (notes?: string | null) => {
+  if (!notes) return []
+  return notes
+    .split('\n')
+    .filter((line) => line.startsWith('Anexo: '))
+    .map((line) => line.replace('Anexo: ', '').trim())
+    .filter(Boolean)
+}
+
+const appendAttachmentNote = (notes: string | null, url: string) => {
+  const prefix = `Anexo: ${url}`
+  if (!notes) return prefix
+  if (notes.includes(prefix)) return notes
+  return `${notes}\n${prefix}`
+}
+
 export default function Payables() {
   const { familyId } = useAuth()
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -82,6 +98,9 @@ export default function Payables() {
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
+  const [detailExpense, setDetailExpense] = useState<Expense | null>(null)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [attachmentUploading, setAttachmentUploading] = useState(false)
   
   // Form
   const [formData, setFormData] = useState({
@@ -322,6 +341,43 @@ export default function Payables() {
     setIsModalOpen(true)
   }
 
+  const openDetails = (expense: Expense) => {
+    setDetailExpense(expense)
+    setIsDetailOpen(true)
+  }
+
+  const handleAttachFile = (expense: Expense) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*,application/pdf'
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+      setAttachmentUploading(true)
+      try {
+        const path = `expenses/${expense.id}/${Date.now()}-${file.name}`
+        const { error } = await supabase.storage.from('attachments').upload(path, file, {
+          upsert: true,
+        })
+        if (error) throw error
+        const { data } = supabase.storage.from('attachments').getPublicUrl(path)
+        const updatedNotes = appendAttachmentNote(expense.notes, data.publicUrl)
+        await supabase
+          .from('expenses')
+          .update({ notes: updatedNotes, updated_at: new Date().toISOString() })
+          .eq('id', expense.id)
+        setExpenses((prev) =>
+          prev.map((item) => (item.id === expense.id ? { ...item, notes: updatedNotes } : item))
+        )
+      } catch (err) {
+        console.error('Erro ao anexar arquivo', err)
+      } finally {
+        setAttachmentUploading(false)
+      }
+    }
+    input.click()
+  }
+
   const closeModal = () => {
     setIsModalOpen(false)
     setEditingExpense(null)
@@ -371,13 +427,14 @@ export default function Payables() {
 
   return (
     <>
-      <Topbar 
-        title="Contas a Pagar" 
+      <Topbar
+        title="Contas a Pagar"
         subtitle="Compromissos honrados constroem segurança."
+        texture
         actions={
           <button
             onClick={() => openModal()}
-            className="px-4 py-2 bg-fab-green text-white rounded-lg hover:bg-fab-green/90 transition-vintage text-sm"
+            className="px-4 py-2 bg-olive text-white rounded-full hover:bg-olive/90 transition-vintage text-sm"
           >
             + Nova despesa
           </button>
@@ -386,7 +443,7 @@ export default function Payables() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Filtros */}
-        <VintageCard className="mb-6">
+        <VintageCard className="mb-6 paper-texture">
           <div className="flex items-center justify-between md:hidden mb-3">
             <span className="text-xs uppercase tracking-wide text-ink/50">Filtros</span>
             <button
@@ -644,32 +701,42 @@ export default function Payables() {
                     <span className="font-numbers text-lg font-semibold">
                       {formatBRL(expense.amount_cents)}
                     </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openModal(expense)}
-                        disabled={isUpdating}
-                        className="relative group text-ink/50 hover:text-ink transition-vintage disabled:opacity-50"
-                        aria-label={`Editar ${expense.description}`}
-                      >
-                        <Pencil className="w-5 h-5" />
-                        <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-coffee text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
-                          Editar {expense.description}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(expense.id)}
-                        disabled={isUpdating}
-                        className="relative group text-terracotta/70 hover:text-terracotta transition-vintage disabled:opacity-50"
-                        aria-label={`Deletar ${expense.description}`}
-                      >
-                        <Trash2 className="w-5 h-5" />
-                        <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-terracotta text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
-                          Deletar {expense.description}
-                        </span>
-                      </button>
-                    </div>
+                    <details className="relative">
+                      <summary className="list-none cursor-pointer text-ink/60 hover:text-ink transition-vintage">
+                        <MoreVertical className="w-5 h-5" />
+                      </summary>
+                      <div className="absolute right-0 mt-2 w-40 bg-paper border border-border rounded-xl shadow-soft z-10">
+                        <button
+                          type="button"
+                          onClick={() => openModal(expense)}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-paper-2"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openDetails(expense)}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-paper-2"
+                        >
+                          Ver detalhes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleAttachFile(expense)}
+                          disabled={attachmentUploading}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-paper-2 disabled:opacity-60"
+                        >
+                          Inserir arquivo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(expense.id)}
+                          className="w-full text-left px-4 py-2 text-sm text-terracotta hover:bg-paper-2"
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </details>
                   </div>
                   </div>
                 )
@@ -737,32 +804,42 @@ export default function Payables() {
                       <span className="font-numbers text-lg font-semibold">
                         {formatBRL(expense.amount_cents)}
                       </span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openModal(expense)}
-                          disabled={isUpdating}
-                          className="relative group text-ink/50 hover:text-ink transition-vintage disabled:opacity-50"
-                          aria-label={`Editar ${expense.description}`}
-                        >
-                          <Pencil className="w-5 h-5" />
-                          <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-coffee text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
-                            Editar {expense.description}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(expense.id)}
-                          disabled={isUpdating}
-                          className="relative group text-terracotta/70 hover:text-terracotta transition-vintage disabled:opacity-50"
-                          aria-label={`Deletar ${expense.description}`}
-                        >
-                          <Trash2 className="w-5 h-5" />
-                          <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-terracotta text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
-                            Deletar {expense.description}
-                          </span>
-                        </button>
-                      </div>
+                      <details className="relative">
+                        <summary className="list-none cursor-pointer text-ink/60 hover:text-ink transition-vintage">
+                          <MoreVertical className="w-5 h-5" />
+                        </summary>
+                        <div className="absolute right-0 mt-2 w-40 bg-paper border border-border rounded-xl shadow-soft z-10">
+                          <button
+                            type="button"
+                            onClick={() => openModal(expense)}
+                            className="w-full text-left px-4 py-2 text-sm hover:bg-paper-2"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openDetails(expense)}
+                            className="w-full text-left px-4 py-2 text-sm hover:bg-paper-2"
+                          >
+                            Ver detalhes
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAttachFile(expense)}
+                            disabled={attachmentUploading}
+                            className="w-full text-left px-4 py-2 text-sm hover:bg-paper-2 disabled:opacity-60"
+                          >
+                            Inserir arquivo
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(expense.id)}
+                            className="w-full text-left px-4 py-2 text-sm text-terracotta hover:bg-paper-2"
+                          >
+                            Excluir
+                          </button>
+                        </div>
+                      </details>
                     </div>
                   </div>
                 )
@@ -770,6 +847,21 @@ export default function Payables() {
             </div>
           )}
         </VintageCard>
+
+        <div className="flex justify-end gap-2 mt-6">
+          <button
+            type="button"
+            className="px-4 py-2 rounded-full border border-border text-sm text-ink/70 hover:bg-paper transition-vintage"
+          >
+            Gerar CSV
+          </button>
+          <button
+            type="button"
+            className="px-4 py-2 rounded-full border border-border text-sm text-ink/70 hover:bg-paper transition-vintage"
+          >
+            Gerar PDF
+          </button>
+        </div>
 
       </div>
 
@@ -902,6 +994,40 @@ export default function Payables() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        title="Detalhes da despesa"
+      >
+        {detailExpense && (
+          <div className="space-y-3 text-sm text-ink/70">
+            <p><strong>Descrição:</strong> {detailExpense.description}</p>
+            <p><strong>Categoria:</strong> {detailExpense.category_name}</p>
+            <p><strong>Data:</strong> {formatDate(detailExpense.date)}</p>
+            <p><strong>Status:</strong> {detailExpense.status === 'paid' ? 'Pago' : 'Em aberto'}</p>
+            <p><strong>Método:</strong> {formatPaymentLabel(detailExpense.payment_method, detailExpense.installments)}</p>
+            {detailExpense.installments && detailExpense.installments > 1 && (
+              <p><strong>Parcelas:</strong> {detailExpense.installments}</p>
+            )}
+            <p><strong>Observações:</strong> {detailExpense.notes || '—'}</p>
+            {extractAttachmentUrls(detailExpense.notes).length > 0 && (
+              <div>
+                <strong>Anexos:</strong>
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  {extractAttachmentUrls(detailExpense.notes).map((url) => (
+                    <li key={url}>
+                      <a href={url} target="_blank" className="text-petrol underline" rel="noreferrer">
+                        {url}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
     </>
   )

@@ -683,10 +683,11 @@ export default function ExpensesPage() {
       <Topbar
         title="Todas as Despesas"
         subtitle="A memória da casa também se faz com cada pequena despesa."
+        texture
         actions={
           <button
             onClick={() => openModal()}
-            className="px-4 py-2 bg-fab-green text-white rounded-lg hover:bg-fab-green/90 transition-vintage text-sm"
+            className="px-4 py-2 bg-olive text-white rounded-full hover:bg-olive/90 transition-vintage text-sm"
           >
             + Nova despesa
           </button>
@@ -694,7 +695,7 @@ export default function ExpensesPage() {
       />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <VintageCard className="mb-6">
+        <VintageCard className="mb-6 paper-texture">
           <div className="flex items-center justify-between md:hidden mb-3">
             <span className="text-xs uppercase tracking-wide text-ink/50">Filtros</span>
             <button

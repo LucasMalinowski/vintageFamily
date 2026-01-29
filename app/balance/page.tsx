@@ -78,10 +78,11 @@ export default function BalancePage() {
       <Topbar
         title="Saldo"
         subtitle="O equilíbrio é a chave para a paz financeira."
+        texture
       />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <VintageCard className="mb-6">
+        <VintageCard className="mb-6 paper-texture">
           <p className="text-ink/70 italic font-body">
             Quando o mês fecha, escutamos o silêncio do dinheiro e medimos o que ficou.
           </p>

@@ -39,31 +39,80 @@ export default function ComparativesPage() {
     balance: 0,
   })
 
-  const renderBars = (totals: Totals) => {
+  const renderBarChart = (totals: Totals) => {
     const values = [
-      { label: 'Recebido', value: totals.income, color: 'bg-olive' },
-      { label: 'Pago', value: totals.paid, color: 'bg-terracotta' },
-      { label: 'Poupado', value: totals.saved, color: 'bg-petrol' },
-      { label: 'Saldo', value: totals.balance, color: totals.balance >= 0 ? 'bg-coffee' : 'bg-terracotta' },
+      { label: 'Recebido', value: totals.income, color: '#3E5F4B' },
+      { label: 'Pago', value: totals.paid, color: '#6FBF8A' },
+      { label: 'Poupado', value: totals.saved, color: '#2F6F7E' },
+      { label: 'Saldo', value: totals.balance, color: totals.balance >= 0 ? '#C2A45D' : '#6FBF8A' },
     ]
     const maxValue = Math.max(1, ...values.map((item) => Math.abs(item.value)))
-
     return (
-      <div className="space-y-3">
+      <div className="grid grid-cols-4 gap-4 items-end h-40">
         {values.map((item) => {
-          const width = Math.round((Math.abs(item.value) / maxValue) * 100)
+          const height = Math.round((Math.abs(item.value) / maxValue) * 100)
           return (
-            <div key={item.label} className="space-y-1">
-              <div className="flex items-center justify-between text-sm text-ink/70">
-                <span>{item.label}</span>
-                <span className="font-numbers">{formatBRL(item.value)}</span>
+            <div key={item.label} className="flex flex-col items-center gap-2">
+              <div className="w-full bg-paper-2 rounded-2xl border border-border h-28 flex items-end overflow-hidden">
+                <div
+                  className="w-full rounded-2xl"
+                  style={{ height: `${height}%`, backgroundColor: item.color }}
+                />
               </div>
-              <div className="h-2 rounded-full bg-paper-2 border border-border overflow-hidden">
-                <div className={`h-full ${item.color}`} style={{ width: `${width}%` }} />
-              </div>
+              <span className="text-xs text-ink/60">{item.label}</span>
             </div>
           )
         })}
+      </div>
+    )
+  }
+
+  const renderPieChart = (totals: Totals) => {
+    const values = [
+      { label: 'Recebido', value: totals.income, color: '#3E5F4B' },
+      { label: 'Pago', value: totals.paid, color: '#6FBF8A' },
+      { label: 'Poupado', value: totals.saved, color: '#2F6F7E' },
+      { label: 'Saldo', value: Math.max(0, totals.balance), color: '#C2A45D' },
+    ]
+    const total = values.reduce((sum, item) => sum + Math.abs(item.value), 0) || 1
+    let offset = 0
+    const radius = 44
+    const circumference = 2 * Math.PI * radius
+
+    return (
+      <div className="flex flex-col md:flex-row items-center gap-6">
+        <svg width="140" height="140" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r={radius} fill="none" stroke="#F3ECDD" strokeWidth="20" />
+          {values.map((slice) => {
+            const value = Math.abs(slice.value)
+            const dash = (value / total) * circumference
+            const circle = (
+              <circle
+                key={slice.label}
+                cx="60"
+                cy="60"
+                r={radius}
+                fill="none"
+                stroke={slice.color}
+                strokeWidth="20"
+                strokeDasharray={`${dash} ${circumference - dash}`}
+                strokeDashoffset={-offset}
+                strokeLinecap="round"
+              />
+            )
+            offset += dash
+            return circle
+          })}
+        </svg>
+        <div className="space-y-2 text-sm text-ink/70">
+          {values.map((slice) => (
+            <div key={slice.label} className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: slice.color }} />
+              <span>{slice.label}</span>
+              <span className="ml-auto font-numbers">{formatBRL(slice.value)}</span>
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -130,12 +179,13 @@ export default function ComparativesPage() {
   return (
     <AppLayout>
       <Topbar
-        title="Comparativos"
+        title="Dashboard"
         subtitle="Entender o passado nos ajuda a construir o futuro."
+        texture
       />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <VintageCard className="mb-6">
+        <VintageCard className="mb-6 paper-texture">
           <p className="text-ink/70 italic font-body">
             As cifras contam a história: meses que crescem e anos que ensinam.
           </p>
@@ -185,8 +235,9 @@ export default function ComparativesPage() {
                 <StatCard label="Poupado" value={monthlyTotals.saved} color="petrol" size="sm" />
                 <StatCard label="Saldo" value={monthlyTotals.balance} color="coffee" size="sm" />
               </div>
-              <div className="mt-6">
-                {renderBars(monthlyTotals)}
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                {renderBarChart(monthlyTotals)}
+                {renderPieChart(monthlyTotals)}
               </div>
             </VintageCard>
 
@@ -200,8 +251,9 @@ export default function ComparativesPage() {
                 <StatCard label="Poupado" value={yearlyTotals.saved} color="petrol" size="sm" />
                 <StatCard label="Saldo" value={yearlyTotals.balance} color="coffee" size="sm" />
               </div>
-              <div className="mt-6">
-                {renderBars(yearlyTotals)}
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                {renderBarChart(yearlyTotals)}
+                {renderPieChart(yearlyTotals)}
               </div>
             </VintageCard>
           </div>
