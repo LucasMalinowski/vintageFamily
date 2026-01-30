@@ -7,6 +7,7 @@ import AppLayout from '@/components/layout/AppLayout'
 const settingsItems = [
   { label: 'Perfil', href: '/settings/profile' },
   { label: 'Familia', href: '/settings/family' },
+  { label: 'Assinatura', href: '/settings/billing' },
 ]
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {

@@ -1,48 +1,29 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Lora:wght@400;500;600&family=Source+Serif+4:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700,0,800;0,900;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --paper: #F4EFE6;
-  --ink: #2E2A24;
-  --coffee: #5A4633;
-  --petrol: #3A5A6A;
-  --olive: #7A8F6B;
-  --terracotta: #B5654D;
-  --border: #D9CFBF;
-  --paper-2: #EFE7DA;
-  --shadow: 0 10px 30px rgba(46,42,36,.12);
-  --shadow-soft: 0 8px 18px rgba(46,42,36,.10);
+  --paper: #F3ECDD;
+  --paper-2: #FAF9F7;
+  --ink: #2F3B33;
+  --coffee: #3E5F4B;
+  --petrol: #2F6F7E;
+  --olive: #6FBF8A;
+  --terracotta: #C2A45D;
+  --border: #E4D7C2;
+  --sidebar: #3E5F4B;
+  --shadow: 0 14px 32px rgba(47,59,51,.12);
+  --shadow-soft: 0 8px 18px rgba(47,59,51,.08);
   --radius: 18px;
 }
 
 body {
   background-color: var(--paper);
   color: var(--ink);
-  font-family: 'Lora', serif;
+  font-family: 'Inter', sans-serif;
   position: relative;
-}
-
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: 
-    url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='3' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E"),
-    radial-gradient(circle at 50% 50%, rgba(122,143,107,0.03) 0%, transparent 50%);
-  opacity: 0.08;
-  pointer-events: none;
-  z-index: 0;
-  mix-blend-mode: multiply;
-}
-
-body.no-grain::before {
-  display: none;
 }
 
 * {
@@ -55,7 +36,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .font-numbers {
-  font-family: 'Source Serif 4', serif;
+  font-family: 'Inter', sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 
 input,
@@ -87,7 +69,7 @@ input[type='date'] {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: var(--scrollbar-thumb, var(--border));
   border-radius: 4px;
 }
 
@@ -110,47 +92,27 @@ input[type='date'] {
 
 
 @layer components {
-  .grain {
-    min-height: 100vh;
-    position: relative;
-    background-color: var(--paper);
-  }
-  .grain:after {
-    animation: grain 8s steps(10) infinite;
-    background-image: url('https://grainy-gradients.vercel.app/noise.svg');
-    content: "";
-    height: 300%;
-    width: 300%;
-    left: -100%;
-    top: -110%;
-    opacity: 0.45;
-    position: fixed;
-    pointer-events: none;
-    z-index: 50;
+  .bg-texture {
+    background-image: url('/texture.png');
+    background-size: 520px;
+    background-repeat: repeat;
   }
 
-  .grain2 {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 100%;
-    pointer-event: none;
-    z-index: 300;
-    transform: translateZ(0);
-
-    &:before {
-      content: "";
-      top: -10rem;
-      left: -10rem;
-      width: calc(100% + 20rem);
-      height: calc(100% + 20rem);
-      z-index: 9999;
-      position: fixed;
-      background-image: url(https://upload.wikimedia.org/wikipedia/commons/5/5c/Image_gaussian_noise_example.png);
-      opacity: 0.25;
-      pointer-events: none;
-    }
+  .bg-texture-soft {
+    background-image: linear-gradient(rgba(250, 249, 247, 0.86), rgba(250, 249, 247, 0.86)), url('/texture.png');
+    background-size: 520px;
+    background-repeat: repeat;
   }
 
+  .bg-texture-muted {
+    background-image: linear-gradient(rgba(243, 236, 221, 0.50), rgba(243, 236, 221, 0.50)), url('/texture.png');
+    background-size: 520px;
+    background-repeat: repeat;
+  }
+
+  .bg-texture-sidebar-muted {
+    background-image: linear-gradient(rgba(62, 95, 75, 0.92), rgba(62, 95, 75, 0.92)), url('/texture.png');
+    background-size: 520px;
+    background-repeat: repeat;
+  }
 }

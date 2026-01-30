@@ -28,7 +28,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body className="grain">
+      <body className="bg-paper text-ink font-body">
         <Providers>
           {children}
         </Providers>
