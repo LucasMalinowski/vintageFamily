@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     if (error) throw error
-    router.push('/')
+    router.push('/inicio')
   }
 
   const signUp = async (email: string, password: string, name: string, familyName: string) => {
@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // 6. Set family ID and redirect
       setFamilyId(family.id)
-      router.push('/')
+      router.push('/inicio')
     } catch (error: any) {
       console.error('SignUp error:', error)
       throw error
@@ -179,7 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const payload = await response.json()
       setFamilyId(payload.familyId)
-      router.push('/')
+      router.push('/inicio')
     } catch (error: any) {
       console.error('AcceptInvite error:', error)
       throw error
