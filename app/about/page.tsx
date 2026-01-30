@@ -11,17 +11,17 @@ export default function AboutPage() {
         <section
           className="bg-[url('/texture-green.png')] bg-cover bg-center px-6 pb-8 pt-24 sm:px-8 lg:px-10 lg:pb-12 lg:pt-24 text-paper"
         >
-          <div className="px-36 pt-10">
-            <h1 className="text-[40px] sm:text-[44px] lg:text-[50px] leading-[1.15] font-serif text-paper mb-4">
-              Sistema de controle financeiro familiar
+          <div className="px-48 pt-10">
+            <h1 className="text-[28px] sm:text-[28px] lg:text-[34px] leading-[1.15] font-normal font-serif text-paper mb-4">
+              Sistema de controle <br/> financeiro familiar
             </h1>
 
-            <p className="text-[#C2A45D] italic mb-6 text-[21px] font-light font-serif leading-relaxed">
+            <p className="text-[#C2A45D] italic mb-6 text-[20px] font-light font-serif leading-relaxed">
               O <span className={"text-paper"}>Florim</span> é um sistema de organização financeira familiar criado para trazer clareza, diálogo e
               tranquilidade ao cotidiano da casa.
             </p>
 
-            <div className="space-y-5 text-[#C2A45D] leading-relaxed text-[21px] font-light font-serif">
+            <div className="space-y-3 text-[#C2A45D] italic leading-relaxed text-[20px] font-light font-serif">
               <p>
                 Ele vai além da gestão de números.
                 <br />
@@ -42,9 +42,9 @@ export default function AboutPage() {
             <div className="mt-10 flex justify-center">
               <Link
                 href="/plans"
-                className="inline-flex w-86 items-center justify-center rounded-full bg-paper px-12 py-3 text-sm font-semibold text-coffee shadow-soft hover:opacity-90 transition-vintage sm:w-72"
+                className="inline-flex w-full items-center justify-center rounded-full bg-paper py-3 text-sm font-semibold text-coffee shadow-soft hover:opacity-90 transition-vintage"
               >
-                Conferir nossos Planos
+                Conheça nossos Planos!
               </Link>
             </div>
           </div>
