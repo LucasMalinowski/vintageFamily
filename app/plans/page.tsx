@@ -8,9 +8,14 @@ export default function PlansPage() {
   const [step, setStep] = useState<'intro' | 'plans'>('intro')
 
   return (
-    <div className="relative h-screen bg-paper">
-      <PublicNavbar color={step === 'intro' ? 'paper' : 'sidebar'} showWordmark={false} />
-      {step === 'intro' ? (
+    <div className={`relative h-screen bg-paper ${step === 'intro' ? 'overflow-hidden' : 'overflow-visible'}`}>
+      <div
+        className={`absolute inset-0 transition-all duration-500 ease-out ${
+          step === 'intro'
+            ? 'opacity-100 translate-y-0 pointer-events-auto'
+            : 'opacity-0 -translate-y-2 pointer-events-none'
+        }`}
+      >
         <div className="grid h-screen lg:grid-cols-[1fr,2fr]">
           <section className="relative h-full min-h-0 overflow-hidden bg-transparent">
             <video
@@ -23,12 +28,13 @@ export default function PlansPage() {
             />
           </section>
 
-          <section className="relative h-full min-h-0 bg-texture-sidebar-muted bg-cover bg-center px-8 pt-24 pb-10 sm:px-12 lg:px-14 text-paper">
-            <div className="flex h-full items-center justify-center text-center">
-              <div className="w-full max-w-2xl border-l-4 border-paper/40 pl-6 pr-4 text-left">
-                <div className="text-[26px] sm:text-[30px] lg:text-[34px] font-thin font-serif leading-tight text-paper/90">
+          <section className="bg-[url('/texture-green.png')] bg-cover bg-center relative h-full min-h-0 justify-items-center bg-texture-sidebar-muted bg-cover bg-center px-8 sm:px-12 lg:px-14 text-paper">
+            <img src="/logo-florim.png" alt="Florim" className="w-40 h-40 object-contain mt-16" />
+            <div className="absolute inset-0 flex items-center justify-center text-center">
+              <div className="w-full max-w-2xl border-l-4 border-gold/40 pl-6 pr-4 text-left">
+                <div className="text-[22px] sm:text-[24px] lg:text-[24px] font-light font-serif leading-tight text-paper/90">
                   <p className="mb-4">
-                    O Florim foi pensado para caber no orçamento da casa e, ser valioso o suficiente para
+                    O Florim foi pensado para caber no orçamento da casa e ser valioso o suficiente para
                     fazer diferença no dia a dia.
                   </p>
                   <p>
@@ -49,8 +55,17 @@ export default function PlansPage() {
             </div>
           </section>
         </div>
-      ) : (
-        <section className="min-h-screen bg-texture-muted bg-cover bg-center px-24 pt-28 sm:px-24 lg:px-64 text-coffee">
+      </div>
+
+      <div
+        className={`absolute inset-0 transition-all duration-500 ease-out ${
+          step === 'plans'
+            ? 'opacity-100 translate-y-0 pointer-events-auto'
+            : 'opacity-0 translate-y-2 pointer-events-none'
+        }`}
+      >
+        <PublicNavbar color="sidebar" showWordmark={false} />
+        <section className="min-h-screen bg-texture-muted bg-cover bg-center px-24 pt-28 sm:px-24 lg:px-64 text-coffee overflow-y-auto">
           <div className="mx-auto flex w-full max-w-6xl flex-col">
             <div className="grid grid-cols-[auto,1fr,auto] items-center">
               <button
@@ -67,8 +82,8 @@ export default function PlansPage() {
               <div className="rounded-[22px] border border-gold/40 bg-paper-2/80 px-5 py-4 text-coffee shadow-soft">
                 <div className="px-4">
                   <h3 className="font-serif text-2xl text-gold mb-3">Plano Mensal</h3>
-                  <p className="text-sm text-coffee/60 mb-4">Ideal para quem quer começar com flexibilidade.</p>
-                  <div className="text-2xl font-semibold text-coffee justify-center items-center flex">
+                  <p className="text-sm text-lightGray mb-4">Ideal para quem quer começar com flexibilidade.</p>
+                  <div className="text-base font-semibold text-coffee justify-center items-center flex">
                     R$ <span className="text-4xl ml-2">29,90</span> <span className="text-base ml-2 text-coffee/60">/ mês</span>
                   </div>
                 </div>
@@ -77,8 +92,8 @@ export default function PlansPage() {
               <div className="rounded-[22px] border border-gold/40 bg-paper-2/80 px-5 py-4 text-coffee shadow-soft">
                 <div className="px-4">
                   <h3 className="font-serif text-2xl text-gold mb-3">Plano Anual</h3>
-                  <p className="text-sm text-coffee/60 mb-4">Para famílias que desejam compromisso e continuidade.</p>
-                  <div className="text-2xl font-semibold text-coffee justify-center items-center flex">
+                  <p className="text-sm text-lightGray mb-4">Para famílias que desejam compromisso e continuidade.</p>
+                  <div className="text-base font-semibold text-coffee justify-center items-center flex">
                     R$ <span className="text-4xl ml-2">299,00</span> <span className="text-base ml-2 text-coffee/60">/ ano</span>
                   </div>
                 </div>
@@ -87,8 +102,8 @@ export default function PlansPage() {
               <div className="rounded-[22px] border border-gold/40 bg-paper-2/80 px-5 py-4 text-coffee shadow-soft">
                 <div className="px-4">
                   <h3 className="font-serif text-2xl text-gold mb-3">Plano Fundadores</h3>
-                  <p className="text-sm text-coffee/60 mb-4">Exclusivo para os primeiros usuários do Florim.</p>
-                  <div className="text-2xl font-semibold text-coffee justify-center items-center flex">
+                  <p className="text-sm text-lightGray mb-4">Exclusivo para os primeiros usuários do Florim.</p>
+                  <div className="text-base font-semibold text-coffee justify-center items-center flex">
                     R$ <span className="text-4xl ml-2">199,00</span> <span className="text-base ml-2 text-coffee/60">/ ano</span>
                   </div>
                 </div>
@@ -160,7 +175,7 @@ export default function PlansPage() {
             </div>
           </div>
         </section>
-      )}
+      </div>
     </div>
   )
 }

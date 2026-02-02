@@ -11,13 +11,13 @@ export default function AboutPage() {
         <section
           className="bg-[url('/texture-green.png')] bg-cover bg-center px-6 pb-8 pt-24 sm:px-8 lg:px-10 lg:pb-12 lg:pt-24 text-paper"
         >
-          <div className="px-48 pt-10">
-            <h1 className="text-[28px] sm:text-[28px] lg:text-[34px] leading-[1.15] font-normal font-serif text-paper mb-4">
+          <div className="px-48 pt-14">
+            <h1 className="text-[28px] sm:text-[28px] lg:text-[34px] leading-[1.15] font-normal font-serif text-paper mb-6">
               Sistema de controle <br/> financeiro familiar
             </h1>
 
             <p className="text-[#C2A45D] italic mb-6 text-[20px] font-light font-serif leading-relaxed">
-              O <span className={"text-paper"}>Florim</span> é um sistema de organização financeira familiar criado para trazer clareza, diálogo e
+              O <span className={"text-paper/90"}>Florim</span> é um sistema de organização financeira familiar criado para trazer clareza, diálogo e
               tranquilidade ao cotidiano da casa.
             </p>
 
@@ -25,7 +25,7 @@ export default function AboutPage() {
               <p>
                 Ele vai além da gestão de números.
                 <br />
-                O Florim cuida da vida real. Pois não nasceu em uma sala de reunião, mas <span className={"text-paper"}>dentro de casa</span>.
+                O Florim cuida da vida real. Pois não nasceu em uma sala de reunião, mas <span className={"text-paper/90"}>dentro de casa</span>.
               </p>
               <p>
                 Aqui, entendemos que dinheiro envolve emoções, decisões e relações humanas.
@@ -42,7 +42,7 @@ export default function AboutPage() {
             <div className="mt-10 flex justify-center">
               <Link
                 href="/plans"
-                className="inline-flex w-full items-center justify-center rounded-full bg-paper py-3 text-sm font-semibold text-coffee shadow-soft hover:opacity-90 transition-vintage"
+                className="inline-flex w-full items-center justify-center rounded-full bg-paper/80 py-3 text-sm font-medium text-coffee shadow-soft hover:opacity-90 transition-vintage"
               >
                 Conheça nossos Planos!
               </Link>

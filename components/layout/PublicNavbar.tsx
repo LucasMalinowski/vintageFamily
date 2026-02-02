@@ -26,7 +26,7 @@ const styles: Record<
     scrollbarThumb: 'var(--coffee)',
   },
   light: {
-    wrapper: 'bg-paper/70 border-coffee/10',
+    wrapper: 'bg-paper/85 border-coffee/10',
     link: 'text-coffee/70 hover:text-coffee',
     active: '!text-gold',
     primary: 'bg-coffee text-paper',
@@ -73,8 +73,8 @@ export default function PublicNavbar({ color = 'sidebar', showWordmark = true }:
       <div
         className={`w-full px-6 py-5 flex items-center justify-between backdrop-blur-sm border-b ${theme.wrapper}`}
       >
-        <div className="flex flex-col items-center">
-          <img src="/logo.png" alt="Florim" className="w-12 h-12 object-contain" />
+        <div className="flex items-center">
+          <img src="/logo.png" alt="Florim" className="w-16 h-16 object-contain" />
           {showWordmark ? (
             <span className="font-serif text-lg font-thin tracking-wide text-gold">FLORIM</span>
           ) : null}
