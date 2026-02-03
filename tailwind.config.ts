@@ -20,12 +20,13 @@ const config: Config = {
         sidebar: '#3E5F4B',
         gold: '#C2A45D',
         lightGray: '#b4b4b4',
-        'fab-green': '#6FBF8A',
+        fabGreen: '#6FBF8A',
       },
       fontFamily: {
         serif: ['Playfair Display', 'serif'],
         body: ['Inter', 'sans-serif'],
         numbers: ['Inter', 'sans-serif'],
+        ptSerif: ['PT Serif', 'serif'],
       },
       boxShadow: {
         soft: '0 8px 18px rgba(47,59,51,.08)',

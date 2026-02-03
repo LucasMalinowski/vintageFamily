@@ -114,7 +114,7 @@ export default function Sidebar() {
                   `}
                 >
                   <Icon className="w-5 h-5" />
-                  <span className="font-body text-sm">{item.label}</span>
+                  <span className="font-ptSerif| text-sm">{item.label}</span>
                 </Link>
               </li>
             )

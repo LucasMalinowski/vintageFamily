@@ -79,7 +79,7 @@ export default function Topbar({ title, subtitle, actions, variant = 'default' }
                 <User className="w-4 h-4 text-paper" />
               )}
             </div>
-            <span className="hidden md:inline text-paper">
+            <span className="hidden md:inline text-paper font-ptSerif">
               {userName ? `${userName}` : ''}
             </span>
           </div>
