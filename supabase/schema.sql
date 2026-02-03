@@ -58,6 +58,7 @@ CREATE TABLE public.families (
                                  id uuid NOT NULL DEFAULT gen_random_uuid(),
                                  name text NOT NULL,
                                  created_at timestamp with time zone NOT NULL DEFAULT now(),
+                                 trial_expires_at timestamp with time zone,
                                  CONSTRAINT families_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.incomes (

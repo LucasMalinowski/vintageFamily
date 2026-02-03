@@ -99,9 +99,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (signInError) throw signInError
 
       // 3. Create family
+      const trialExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
       const { data: family, error: familyError } = await supabase
         .from('families')
-        .insert({ name: familyName })
+        .insert({ name: familyName, trial_expires_at: trialExpiresAt })
         .select()
         .single()
 

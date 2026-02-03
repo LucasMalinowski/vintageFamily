@@ -19,6 +19,7 @@ const config: Config = {
         border: '#E4D7C2',
         sidebar: '#3E5F4B',
         gold: '#C2A45D',
+        lightGray: '#b4b4b4',
         'fab-green': '#6FBF8A',
       },
       fontFamily: {
