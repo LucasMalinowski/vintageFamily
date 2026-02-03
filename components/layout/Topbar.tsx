@@ -15,9 +15,11 @@ interface TopbarProps {
 
 export default function Topbar({ title, subtitle, actions, variant = 'default' }: TopbarProps) {
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, familyId } = useAuth()
   const [userName, setUserName] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null)
+  const totalTrialDays = 15
 
   useEffect(() => {
     const loadHeaderData = async () => {
@@ -38,6 +40,30 @@ export default function Topbar({ title, subtitle, actions, variant = 'default' }
     loadHeaderData()
   }, [user])
 
+  useEffect(() => {
+    const loadTrialStatus = async () => {
+      if (!familyId) return
+      const { data: familyRow } = await supabase
+        .from('families')
+        .select('trial_expires_at')
+        .eq('id', familyId)
+        .maybeSingle()
+
+      if (!familyRow?.trial_expires_at) {
+        setTrialDaysLeft(null)
+        return
+      }
+
+      const expiresAt = new Date(familyRow.trial_expires_at)
+      const diffMs = expiresAt.getTime() - Date.now()
+      const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+
+      setTrialDaysLeft(Math.max(daysLeft, 0))
+    }
+
+    loadTrialStatus()
+  }, [familyId])
+
   return (
     <div className={`${variant === 'textured' ? 'bg-texture' : 'bg-paper-2'} px-6 py-4 pl-16 md:pl-6`}>
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -50,6 +76,11 @@ export default function Topbar({ title, subtitle, actions, variant = 'default' }
 
         <div className="flex items-start gap-3 sm:gap-4 md:self-start md:-mt-1">
           {actions && <div className="w-full md:w-auto">{actions}</div>}
+          {trialDaysLeft !== null && trialDaysLeft > 0 && (
+            <div className="mt-1 rounded-full border border-coffee/20 bg-paper px-3 py-1 text-xs font-semibold text-coffee">
+              {trialDaysLeft}/{totalTrialDays} dias de teste restantes
+            </div>
+          )}
           <button
             onClick={() => router.push('/reminders')}
             className="text-coffee hover:text-coffee/80 transition-vintage mt-1"
