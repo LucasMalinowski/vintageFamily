@@ -65,7 +65,7 @@ export default function PlansPage() {
         }`}
       >
         <PublicNavbar color="sidebar" showWordmark={false} />
-        <section className="min-h-screen bg-texture-muted bg-cover bg-center px-24 pt-28 sm:px-24 lg:px-64 text-coffee overflow-y-auto">
+        <section className="min-h-screen bg-texture-muted bg-cover bg-center px-24 pt-32 sm:px-24 lg:px-64 text-coffee overflow-y-auto">
           <div className="mx-auto flex w-full max-w-6xl flex-col">
             <div className="grid grid-cols-[auto,1fr,auto] items-center">
               <button
@@ -83,8 +83,8 @@ export default function PlansPage() {
                 <div className="px-4">
                   <h3 className="font-serif text-2xl text-gold mb-3">Plano Mensal</h3>
                   <p className="text-sm text-lightGray mb-4">Ideal para quem quer começar com flexibilidade.</p>
-                  <div className="text-base font-semibold text-coffee justify-center items-center flex">
-                    R$ <span className="text-4xl ml-2">29,90</span> <span className="text-base ml-2 text-coffee/60">/ mês</span>
+                  <div className="text-base text-coffee/60 justify-center items-center flex">
+                    R$ <span className="text-coffee text-4xl font-normal ml-2">29,90</span> <span className="text-base ml-2 text-coffee/60">/ mês</span>
                   </div>
                 </div>
               </div>
@@ -93,8 +93,8 @@ export default function PlansPage() {
                 <div className="px-4">
                   <h3 className="font-serif text-2xl text-gold mb-3">Plano Anual</h3>
                   <p className="text-sm text-lightGray mb-4">Para famílias que desejam compromisso e continuidade.</p>
-                  <div className="text-base font-semibold text-coffee justify-center items-center flex">
-                    R$ <span className="text-4xl ml-2">299,00</span> <span className="text-base ml-2 text-coffee/60">/ ano</span>
+                  <div className="text-base text-coffee/60 justify-center items-center flex">
+                    R$ <span className="text-coffee text-4xl font-normal ml-2">299,00</span> <span className="text-base ml-2 text-coffee/60">/ ano</span>
                   </div>
                 </div>
               </div>
@@ -103,8 +103,8 @@ export default function PlansPage() {
                 <div className="px-4">
                   <h3 className="font-serif text-2xl text-gold mb-3">Plano Fundadores</h3>
                   <p className="text-sm text-lightGray mb-4">Exclusivo para os primeiros usuários do Florim.</p>
-                  <div className="text-base font-semibold text-coffee justify-center items-center flex">
-                    R$ <span className="text-4xl ml-2">199,00</span> <span className="text-base ml-2 text-coffee/60">/ ano</span>
+                  <div className="text-base text-coffee/60 justify-center items-center flex">
+                    R$ <span className="text-coffee text-4xl font-normal ml-2">199,00</span> <span className="text-base ml-2 text-coffee/60">/ ano</span>
                   </div>
                 </div>
               </div>
@@ -112,7 +112,7 @@ export default function PlansPage() {
 
             <div className="mt-8 grid gap-6 lg:grid-cols-3 text-base text-coffee/70">
               <div>
-                <div className="text-coffee font-semibold mb-2">Benefícios:</div>
+                <div className="text-coffee font-medium mb-2">Benefícios:</div>
                 <ul className="space-y-2">
                   <li>• Controle de contas a pagar e a receber</li>
                   <li>• Organização de sonhos e poupanças</li>
@@ -123,7 +123,7 @@ export default function PlansPage() {
                 </ul>
               </div>
               <div>
-                <div className="text-coffee font-semibold mb-2">Benefícios:</div>
+                <div className="text-coffee font-medium mb-2">Benefícios:</div>
                 <ul className="space-y-2">
                   <li>• Equivalente a R$ 24,90/mês</li>
                   <li>• Economia de dois meses</li>
@@ -133,7 +133,7 @@ export default function PlansPage() {
                 </ul>
               </div>
               <div>
-                <div className="text-coffee font-semibold mb-2">Benefícios especiais:</div>
+                <div className="text-coffee font-medium mb-2">Benefícios especiais:</div>
                 <ul className="space-y-2">
                   <li>• Valor promocional vitalício</li>
                   <li>• Acesso antecipado a novidades</li>
@@ -148,9 +148,9 @@ export default function PlansPage() {
               <p className={"flex justify-center text-center"}>Quem chega primeiro, constrói junto.</p>
             </div>
 
-            <div className="flex flex-col text-center mt-10">
-              <div className="font-serif text-4xl text-coffee mb-4">Benefícios-chave</div>
-              <div className="flex flex-wrap justify-center gap-3 px-32">
+            <div className="flex flex-col mt-8">
+              <div className="font-serif text-[40px] text-coffee mb-8 ml-16">Benefícios-chave</div>
+              <div className="flex flex-wrap justify-center gap-3">
                 {[
                   'Clareza financeira no dia a dia',
                   'Menos conflitos, mais alinhamento',
@@ -160,7 +160,7 @@ export default function PlansPage() {
                 ].map((item) => (
                   <div
                     key={item}
-                    className="w-full rounded-full border border-gold/60 bg-paper-2 py-2 text-center text-xs text-coffee sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-0.75rem)]"
+                    className="w-full rounded-full border border-gold/60 bg-paper-2 py-2 text-center text-[15px] text-coffee sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-0.75rem)]"
                   >
                     ✓ {item}
                   </div>
@@ -168,7 +168,7 @@ export default function PlansPage() {
               </div>
             </div>
 
-            <div className="my-10 text-center text-base text-gold/70 italic">
+            <div className="my-10 text-center text-base text-gold/70 italic font-serif">
               Cuidar das finanças é cuidar da casa.
               <br />
               O Florim está aqui para ajudar nisso.
