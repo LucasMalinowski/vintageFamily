@@ -38,7 +38,7 @@ export default function LoginPage() {
       <img
         src="/logo-florim.png"
         alt="Florim"
-        className="w-32 h-32 object-contain absolute left-8 top-8"
+        className="w-44 h-44 object-contain absolute left-8 top-8"
       />
       <div className="w-full max-w-6xl flex flex-col gap-10 md:flex-row md:items-center md:justify-between">
         <div className="text-center md:text-left">
@@ -99,7 +99,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-sidebar text-paper py-3 rounded-full font-semibold hover:opacity-90 transition-vintage disabled:opacity-50"
+              className="w-full bg-sidebar/90 text-paper py-3 rounded-full font-semibold hover:opacity-90 transition-vintage disabled:opacity-50"
             >
               {loading ? 'Entrando...' : 'Acessar'}
             </button>
