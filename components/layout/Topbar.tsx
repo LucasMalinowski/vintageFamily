@@ -52,17 +52,17 @@ export default function Topbar({ title, subtitle, actions, variant = 'default' }
           {actions && <div className="w-full md:w-auto">{actions}</div>}
           <button
             onClick={() => router.push('/reminders')}
-            className="text-coffee hover:text-coffee/80 transition-vintage"
+            className="text-coffee hover:text-coffee/80 transition-vintage mt-1"
             aria-label="Abrir lembretes"
           >
             <Bell className="w-6 h-6" />
           </button>
-          <button className="hidden sm:inline-flex text-coffee hover:text-coffee/80 transition-vintage" aria-label="Buscar">
+          <button className="hidden sm:inline-flex text-coffee hover:text-coffee/80 transition-vintage mt-1" aria-label="Buscar">
             <Search className="w-6 h-6" />
           </button>
           <button
             onClick={() => router.push('/settings')}
-            className="hidden sm:inline-flex text-coffee hover:text-coffee/80 transition-vintage"
+            className="hidden sm:inline-flex text-coffee hover:text-coffee/80 transition-vintage mt-1"
             aria-label="Abrir configurações"
           >
             <Settings className="w-6 h-6" />
