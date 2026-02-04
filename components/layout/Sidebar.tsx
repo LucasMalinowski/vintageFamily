@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, BanknoteArrowUp, BanknoteArrowDown, PiggyBank, ChartColumnBig, LogOut, Menu, X, List, Info } from 'lucide-react'
+import { Home, BanknoteArrowUp, BanknoteArrowDown, PiggyBank, ChartColumnBig, LogOut, Menu, X, Info } from 'lucide-react'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { useEffect, useMemo, useState } from 'react'
@@ -10,7 +10,6 @@ import { useEffect, useMemo, useState } from 'react'
 const menuItems = [
   { icon: Home, label: 'Início', href: '/inicio' },
   { icon: BanknoteArrowUp, label: 'Contas a Pagar', href: '/payables' },
-  { icon: List, label: 'Despesas', href: '/expenses' },
   { icon: BanknoteArrowDown, label: 'Contas a Receber', href: '/receivables' },
   { icon: PiggyBank, label: 'Poupança', href: '/dreams' },
   { icon: ChartColumnBig, label: 'Dashboard', href: '/comparatives' },
