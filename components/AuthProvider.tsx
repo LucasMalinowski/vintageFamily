@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const trialExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
       const { data: family, error: familyError } = await supabase
         .from('families')
-        .insert({ name: familyName, trial_expires_at: trialExpiresAt })
+        .insert({ name: familyName, trial_expires_at: trialExpiresAt, created_by: authData.user.id })
         .select()
         .single()
 
