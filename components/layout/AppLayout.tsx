@@ -52,8 +52,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     )
   }
 
-  const isBillingPage = useMemo(() => pathname?.startsWith('/settings/billing'), [pathname])
 
+  const isBillingPage = useMemo(() => pathname?.startsWith('/settings/billing'), [pathname])
   if (!user) {
     return null
   }

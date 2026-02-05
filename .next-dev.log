@@ -1,0 +1,310 @@
+
+> fintech-vintage@1.0.0 dev
+> next dev --port 3010
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3010
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 1174ms
+ ○ Compiling /signup ...
+ ✓ Compiled /signup in 1463ms (599 modules)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /signup 200 in 1599ms
+ ✓ Compiled /_not-found in 187ms (588 modules)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /.well-known/appspecific/com.chrome.devtools.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /.well-known/appspecific/com.chrome.devtools.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 143ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /signup 200 in 22ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /.well-known/appspecific/com.chrome.devtools.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /.well-known/appspecific/com.chrome.devtools.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 14ms
+ ✓ Compiled in 96ms (305 modules)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ✓ Compiled in 130ms (599 modules)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ✓ Compiled in 173ms (599 modules)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /signup 200 in 53ms
+ ○ Compiling /inicio ...
+ ⨯ ./components/layout/AppLayout.tsx
+Error: 
+  [31mx[0m Unexpected token `div`. Expected jsx identifier
+    ,-[[36;1;4m/home/lucas/vintageFamily/components/layout/AppLayout.tsx[0m:60:1]
+ [2m60[0m |   const showTrialBlock = trialExpired && !isBillingPage
+ [2m61[0m | 
+ [2m62[0m |   return (
+ [2m63[0m |     <div className="flex min-h-screen bg-paper">
+    : [31;1m     ^^^[0m
+ [2m64[0m |       <Sidebar />
+ [2m65[0m |       <main className="flex-1 overflow-auto ml-0 md:ml-72 bg-paper">
+ [2m66[0m |         <div className={\`\${showTrialBlock ? 'pointer-events-none select-none blur-[1px]' : ''} min-h-screen\`}>
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/layout/AppLayout.tsx
+./app/inicio/page.tsx
+ ⨯ ./components/layout/AppLayout.tsx
+Error: 
+  [31mx[0m Unexpected token `div`. Expected jsx identifier
+    ,-[[36;1;4m/home/lucas/vintageFamily/components/layout/AppLayout.tsx[0m:60:1]
+ [2m60[0m |   const showTrialBlock = trialExpired && !isBillingPage
+ [2m61[0m | 
+ [2m62[0m |   return (
+ [2m63[0m |     <div className="flex min-h-screen bg-paper">
+    : [31;1m     ^^^[0m
+ [2m64[0m |       <Sidebar />
+ [2m65[0m |       <main className="flex-1 overflow-auto ml-0 md:ml-72 bg-paper">
+ [2m66[0m |         <div className={\`\${showTrialBlock ? 'pointer-events-none select-none blur-[1px]' : ''} min-h-screen\`}>
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/layout/AppLayout.tsx
+./app/inicio/page.tsx
+ ⨯ ./components/layout/AppLayout.tsx
+Error: 
+  [31mx[0m Unexpected token `div`. Expected jsx identifier
+    ,-[[36;1;4m/home/lucas/vintageFamily/components/layout/AppLayout.tsx[0m:60:1]
+ [2m60[0m |   const showTrialBlock = trialExpired && !isBillingPage
+ [2m61[0m | 
+ [2m62[0m |   return (
+ [2m63[0m |     <div className="flex min-h-screen bg-paper">
+    : [31;1m     ^^^[0m
+ [2m64[0m |       <Sidebar />
+ [2m65[0m |       <main className="flex-1 overflow-auto ml-0 md:ml-72 bg-paper">
+ [2m66[0m |         <div className={\`\${showTrialBlock ? 'pointer-events-none select-none blur-[1px]' : ''} min-h-screen\`}>
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/layout/AppLayout.tsx
+./app/inicio/page.tsx
+ GET /inicio 500 in 4ms
+ ⨯ ./components/layout/AppLayout.tsx
+Error: 
+  [31mx[0m Unexpected token `div`. Expected jsx identifier
+    ,-[[36;1;4m/home/lucas/vintageFamily/components/layout/AppLayout.tsx[0m:60:1]
+ [2m60[0m |   const showTrialBlock = trialExpired && !isBillingPage
+ [2m61[0m | 
+ [2m62[0m |   return (
+ [2m63[0m |     <div className="flex min-h-screen bg-paper">
+    : [31;1m     ^^^[0m
+ [2m64[0m |       <Sidebar />
+ [2m65[0m |       <main className="flex-1 overflow-auto ml-0 md:ml-72 bg-paper">
+ [2m66[0m |         <div className={\`\${showTrialBlock ? 'pointer-events-none select-none blur-[1px]' : ''} min-h-screen\`}>
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/layout/AppLayout.tsx
+./app/inicio/page.tsx
+ ✓ Compiled /_error in 138ms (1154 modules)
+ ✓ Compiled /inicio in 166ms (2143 modules)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /_next/static/webpack/e02692cc9f340b61.webpack.hot-update.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /_next/static/webpack/e02692cc9f340b61.webpack.hot-update.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /inicio 200 in 305ms
+ GET /_next/static/webpack/e02692cc9f340b61.webpack.hot-update.json 404 in 307ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /inicio 200 in 13ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /inicio 200 in 11ms
+ ⨯ ./components/layout/AppLayout.tsx
+Error: 
+  [31mx[0m Unexpected token `div`. Expected jsx identifier
+    ,-[[36;1;4m/home/lucas/vintageFamily/components/layout/AppLayout.tsx[0m:60:1]
+ [2m60[0m |   const showTrialBlock = trialExpired && !isBillingPage
+ [2m61[0m | 
+ [2m62[0m |   return (
+ [2m63[0m |     <div className="flex min-h-screen bg-paper">
+    : [31;1m     ^^^[0m
+ [2m64[0m |       <Sidebar />
+ [2m65[0m |       <main className="flex-1 overflow-auto ml-0 md:ml-72 bg-paper">
+ [2m66[0m |         <div className={\`\${showTrialBlock ? 'pointer-events-none select-none blur-[1px]' : ''} min-h-screen\`}>
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/layout/AppLayout.tsx
+./app/inicio/page.tsx
+ ⨯ ./components/layout/AppLayout.tsx
+Error: 
+  [31mx[0m Unexpected token `div`. Expected jsx identifier
+    ,-[[36;1;4m/home/lucas/vintageFamily/components/layout/AppLayout.tsx[0m:60:1]
+ [2m60[0m |   const showTrialBlock = trialExpired && !isBillingPage
+ [2m61[0m | 
+ [2m62[0m |   return (
+ [2m63[0m |     <div className="flex min-h-screen bg-paper">
+    : [31;1m     ^^^[0m
+ [2m64[0m |       <Sidebar />
+ [2m65[0m |       <main className="flex-1 overflow-auto ml-0 md:ml-72 bg-paper">
+ [2m66[0m |         <div className={\`\${showTrialBlock ? 'pointer-events-none select-none blur-[1px]' : ''} min-h-screen\`}>
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/layout/AppLayout.tsx
+./app/inicio/page.tsx
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 156ms (2154 modules)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /inicio 200 in 141ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 256ms (2154 modules)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /inicio 200 in 196ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /inicio 200 in 14ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /signup. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /signup 200 in 14ms
+ ✓ Compiled /login in 257ms (2146 modules)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /login. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /login. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ✓ Compiled /payables in 397ms (2176 modules)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /payables. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /payables. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ✓ Compiled /receivables in 179ms (2186 modules)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /receivables. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /receivables. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ✓ Compiled /dreams in 181ms (2194 modules)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /dreams. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /dreams. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ✓ Compiled in 521ms (2193 modules)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ✓ Compiled /_not-found in 269ms (2182 modules)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /.well-known/appspecific/com.chrome.devtools.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /.well-known/appspecific/com.chrome.devtools.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 351ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /inicio 200 in 27ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /.well-known/appspecific/com.chrome.devtools.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /.well-known/appspecific/com.chrome.devtools.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 10ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /inicio 200 in 13ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /.well-known/appspecific/com.chrome.devtools.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /.well-known/appspecific/com.chrome.devtools.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 12ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /inicio 200 in 12ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /.well-known/appspecific/com.chrome.devtools.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /.well-known/appspecific/com.chrome.devtools.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 8ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /inicio 200 in 8ms
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /.well-known/appspecific/com.chrome.devtools.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /.well-known/appspecific/com.chrome.devtools.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 14ms
+ ✓ Compiled in 261ms (2193 modules)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /inicio. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /inicio 200 in 64ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled /_not-found in 97ms (2182 modules)
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /.well-known/appspecific/com.chrome.devtools.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /.well-known/appspecific/com.chrome.devtools.json. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 122ms
