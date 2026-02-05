@@ -43,7 +43,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-paper">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-coffee/30 border-t-coffee rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-ink/60 font-body">Carregando...</p>
@@ -63,8 +63,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen bg-paper">
       <Sidebar />
       <main className="flex-1 overflow-auto ml-0 md:ml-72 bg-paper">
-        <div className={showTrialBlock ? 'pointer-events-none select-none blur-[1px]' : ''}>
-          {children}
+        <div className={\`\${showTrialBlock ? 'pointer-events-none select-none blur-[1px]' : ''} min-h-screen\`}>
+          <div className="max-w-7xl mx-auto px-6 py-8 md:px-10 md:py-10">
+            {children}
+          </div>
         </div>
       </main>
 
