@@ -67,7 +67,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-paper">
       <Sidebar />
-      <main className="flex-1 overflow-auto ml-0 md:ml-72 bg-paper">
+      <main className="app-main flex-1 overflow-auto bg-paper">
         <div className={showTrialBlock ? 'pointer-events-none select-none blur-[1px]' : ''}>
           {children}
         </div>

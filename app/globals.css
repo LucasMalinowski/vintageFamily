@@ -28,6 +28,20 @@ body {
   position: relative;
 }
 
+.app-main {
+  margin-left: 0;
+}
+
+@media (min-width: 768px) {
+  .app-main {
+    margin-left: 18rem;
+  }
+
+  html[data-sidebar-collapsed='true'] .app-main {
+    margin-left: 5rem;
+  }
+}
+
 * {
   position: relative;
 }
