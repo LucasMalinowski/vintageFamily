@@ -189,6 +189,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('sidebar-collapsed')
+      delete document.documentElement.dataset.sidebarCollapsed
+    }
     await supabase.auth.signOut()
     router.push('/login')
   }
