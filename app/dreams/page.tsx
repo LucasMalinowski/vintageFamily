@@ -4,15 +4,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import AppLayout from '@/components/layout/AppLayout'
 import Topbar from '@/components/layout/Topbar'
-import VintageCard from '@/components/ui/VintageCard'
 import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
+import ActionMenu from '@/components/ui/ActionMenu'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { formatBRL } from '@/lib/money'
 import { formatDate, getCurrentMonth, getCurrentYear, getMonthRange, getYearOptions, MONTHS } from '@/lib/dates'
-import { MoreVertical, PiggyBank } from 'lucide-react'
+import { PiggyBank } from 'lucide-react'
 
 interface Dream {
   id: string
@@ -39,6 +39,9 @@ export default function DreamsPage() {
   const [selectedDreamId, setSelectedDreamId] = useState('')
 
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isEditDreamModalOpen, setIsEditDreamModalOpen] = useState(false)
+  const [editingDream, setEditingDream] = useState<Dream | null>(null)
+  const [dreamNameInput, setDreamNameInput] = useState('')
   const [formData, setFormData] = useState({
     dreamId: '',
     dreamName: '',
@@ -126,6 +129,59 @@ export default function DreamsPage() {
     })
 
     closeModal()
+    loadDreams()
+    loadContributions()
+  }
+
+  const openEditDreamModal = (dream: Dream) => {
+    setEditingDream(dream)
+    setDreamNameInput(dream.name)
+    setIsEditDreamModalOpen(true)
+  }
+
+  const closeEditDreamModal = () => {
+    setEditingDream(null)
+    setDreamNameInput('')
+    setIsEditDreamModalOpen(false)
+  }
+
+  const handleRenameDream = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!editingDream || !familyId) return
+
+    const nextName = dreamNameInput.trim()
+    if (!nextName) return
+
+    await supabase
+      .from('dreams')
+      .update({ name: nextName, updated_at: new Date().toISOString() })
+      .eq('id', editingDream.id)
+      .eq('family_id', familyId)
+
+    closeEditDreamModal()
+    loadDreams()
+  }
+
+  const handleDeleteDream = async (dream: Dream) => {
+    if (!familyId) return
+    if (!confirm(`Excluir a categoria "${dream.name}" e todos os aportes dela?`)) return
+
+    await supabase
+      .from('dream_contributions')
+      .delete()
+      .eq('family_id', familyId)
+      .eq('dream_id', dream.id)
+
+    await supabase
+      .from('dreams')
+      .delete()
+      .eq('family_id', familyId)
+      .eq('id', dream.id)
+
+    if (selectedDreamId === dream.id) {
+      setSelectedDreamId('')
+    }
+
     loadDreams()
     loadContributions()
   }
@@ -250,13 +306,11 @@ export default function DreamsPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <h4 className="text-xl font-medium text-petrol font-serif">{dream.name}</h4>
-                        <button
-                          type="button"
-                          className="text-gold hover:text-gold/80 transition-vintage"
-                          aria-label={`Abrir ações de ${dream.name}`}
-                        >
-                          <MoreVertical className="w-6 h-6" />
-                        </button>
+                        <ActionMenu
+                          onView={() => setSelectedDreamId(dream.id)}
+                          onEdit={() => openEditDreamModal(dream)}
+                          onDelete={() => handleDeleteDream(dream)}
+                        />
                       </div>
                       <p className="text-sm text-ink/25 mb-2">
                         Última atualização {lastDate ? formatDate(lastDate) : '—'}
@@ -388,6 +442,44 @@ export default function DreamsPage() {
             <button
               type="button"
               onClick={closeModal}
+              className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg hover:bg-coffee/90 transition-vintage"
+            >
+              Salvar
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={isEditDreamModalOpen}
+        onClose={closeEditDreamModal}
+        title="Editar Categoria"
+      >
+        <form onSubmit={handleRenameDream} className="space-y-4">
+          <div>
+            <label className="block font-body text-ink mb-2 font-serif">
+              Nome da categoria <span className="text-terracotta">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={dreamNameInput}
+              onChange={(event) => setDreamNameInput(event.target.value)}
+              className="w-full px-4 py-3 bg-paper-2/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+              placeholder="Ex: Viagem"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={closeEditDreamModal}
               className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage"
             >
               Cancelar
