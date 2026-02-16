@@ -6,14 +6,15 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import Topbar from '@/components/layout/Topbar'
 import VintageCard from '@/components/ui/VintageCard'
-import StatCard from '@/components/ui/StatCard'
 import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
 import { formatBRL } from '@/lib/money'
 import { formatDate, getCurrentMonth, getCurrentYear, MONTHS, getYearOptions, getMonthRange } from '@/lib/dates'
-import { ChevronDown, DollarSign, Pencil, Trash2 } from 'lucide-react'
+import { DollarSign } from 'lucide-react'
 import { format } from 'date-fns'
+import ActionMenu from '@/components/ui/ActionMenu'
+import { mergeAttachment, parseAttachment } from '@/lib/attachments'
 
 interface Income {
   id: string
@@ -37,10 +38,12 @@ export default function ReceivablesPage() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
   const [selectedYear, setSelectedYear] = useState(getCurrentYear())
   const [selectedCategory, setSelectedCategory] = useState('')
-  const [filtersOpen, setFiltersOpen] = useState(false)
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingIncome, setEditingIncome] = useState<Income | null>(null)
+  const [detailIncome, setDetailIncome] = useState<Income | null>(null)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [currentAttachmentUrl, setCurrentAttachmentUrl] = useState<string | null>(null)
   
   const [formData, setFormData] = useState({
     description: '',
@@ -105,7 +108,7 @@ export default function ReceivablesPage() {
       category_name: formData.category,
       amount_cents: amountCents,
       date: formData.date,
-      notes: formData.notes || null,
+      notes: mergeAttachment(formData.notes || null, currentAttachmentUrl),
     }
 
     if (editingIncome) {
@@ -128,18 +131,52 @@ export default function ReceivablesPage() {
     }
   }
 
+  const openDetails = (income: Income) => {
+    setDetailIncome(income)
+    setIsDetailOpen(true)
+  }
+
+  const handleAttachIncome = async (income: Income, file: File) => {
+    if (!familyId) return
+    const safeName = file.name.replace(/\s+/g, '-')
+    const filePath = `${familyId}/${income.id}/${Date.now()}-${safeName}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('attachments')
+      .upload(filePath, file, { upsert: true })
+
+    if (uploadError) {
+      alert('Erro ao enviar arquivo.')
+      return
+    }
+
+    const { data: publicUrlData } = supabase.storage.from('attachments').getPublicUrl(filePath)
+    const { cleanNotes } = parseAttachment(income.notes)
+    const mergedNotes = mergeAttachment(cleanNotes || null, publicUrlData.publicUrl)
+
+    await supabase
+      .from('incomes')
+      .update({ notes: mergedNotes, updated_at: new Date().toISOString() })
+      .eq('id', income.id)
+
+    loadIncomes()
+  }
+
   const openModal = (income?: Income) => {
     if (income) {
+      const { attachmentUrl, cleanNotes } = parseAttachment(income.notes)
       setEditingIncome(income)
+      setCurrentAttachmentUrl(attachmentUrl)
       setFormData({
         description: income.description,
         category: income.category_name,
         amount: (income.amount_cents / 100).toFixed(2),
         date: income.date,
-        notes: income.notes || '',
+        notes: cleanNotes || '',
       })
     } else {
       setEditingIncome(null)
+      setCurrentAttachmentUrl(null)
       setFormData({
         description: '',
         category: '',
@@ -154,147 +191,145 @@ export default function ReceivablesPage() {
   const closeModal = () => {
     setIsModalOpen(false)
     setEditingIncome(null)
+    setCurrentAttachmentUrl(null)
   }
 
   const total = incomes.reduce((sum, inc) => sum + inc.amount_cents, 0)
 
   return (
     <AppLayout>
-      <Topbar 
-        title="Valores a Receber"
-        subtitle="O fruto do trabalho honesto."
-        actions={
-          <button
-            onClick={() => openModal()}
-            className="px-4 py-2 bg-fab-green text-white rounded-lg hover:bg-fab-green/90 transition-vintage text-sm"
-          >
-            + Nova receita
-          </button>
-        }
-      />
-
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <VintageCard className="mb-6">
-          <div className="flex items-center justify-between md:hidden mb-3">
-            <span className="text-xs uppercase tracking-wide text-ink/50">Filtros</span>
-            <button
-              type="button"
-              onClick={() => setFiltersOpen((prev) => !prev)}
-              className="text-petrol hover:text-petrol/80 transition-vintage"
-              aria-label="Alternar filtros"
-            >
-              <ChevronDown className={`w-4 h-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
-            </button>
-          </div>
-          <div className={`${filtersOpen ? 'block' : 'hidden'} md:block`}>
+      <div className="min-h-screen flex flex-col">
+        <Topbar
+          title="Contas a Receber"
+          subtitle="O fruto do trabalho em forma de números."
+          variant="textured"
+          filters={
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Select
-              label="Mês"
-              value={selectedMonth.toString()}
-              onChange={(v) => setSelectedMonth(parseInt(v))}
-              options={MONTHS.map(m => ({ value: m.value.toString(), label: m.label }))}
-            />
-            <Select
-              label="Ano"
-              value={selectedYear.toString()}
-              onChange={(v) => setSelectedYear(parseInt(v))}
-              options={getYearOptions()}
-            />
-            <Select
-              label="Categoria"
-              value={selectedCategory}
-              onChange={setSelectedCategory}
-              options={[
-                { value: '', label: 'Todas' },
-                ...categories.map(c => ({ value: c.name, label: c.name }))
-              ]}
-            />
-            <div className="flex items-end">
+              <Select
+                variant="filter"
+                label="Mês"
+                value={selectedMonth.toString()}
+                onChange={(v) => setSelectedMonth(parseInt(v))}
+                options={MONTHS.map(m => ({ value: m.value.toString(), label: m.label }))}
+              />
+              <Select
+                variant="filter"
+                label="Ano"
+                value={selectedYear.toString()}
+                onChange={(v) => setSelectedYear(parseInt(v))}
+                options={getYearOptions()}
+              />
+              <Select
+                variant="filter"
+                label="Categoria"
+                value={selectedCategory}
+                onChange={setSelectedCategory}
+                options={[
+                  { value: '', label: 'Todas' },
+                  ...categories.map(c => ({ value: c.name, label: c.name }))
+                ]}
+              />
+              <div className="flex items-end">
+                <button
+                  onClick={() => setSelectedCategory('')}
+                  className="w-full px-4 py-3 rounded-lg bg-paper-2/80 transition-vintage text-sm text-petrol"
+                >
+                  Limpar filtros
+                </button>
+              </div>
+            </div>
+          }
+        />
+
+        <div className="flex-1 flex flex-col">
+          <div className="px-6 py-4 w-full flex flex-col">
+            <div className="flex justify-end mb-4">
               <button
-                onClick={() => setSelectedCategory('')}
-                className="w-full px-4 py-3 border border-border rounded-lg hover:bg-paper-2 transition-vintage text-sm"
+                onClick={() => openModal()}
+                className="px-5 py-2 bg-petrol text-white rounded-md hover:bg-petrol/90 transition-vintage text-sm"
               >
-                Limpar filtros
+                Nova Receita
               </button>
             </div>
-            </div>
-          </div>
-        </VintageCard>
 
-        <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-6">
-          <StatCard label="Total recebido" value={total} color="olive" />
-        </div>
-
-        <VintageCard>
-          <h3 className="text-lg font-serif text-coffee mb-4">
-            Total recebido | {MONTHS[selectedMonth - 1]?.label} - {selectedYear}
-          </h3>
-          <p className="text-sm text-ink/60 italic mb-6">
-            O trabalho em família floresce quando cada receita encontra seu lugar.
-          </p>
-
-          {loading ? (
-            <div className="text-center py-12 text-ink/60">Carregando...</div>
-          ) : incomes.length === 0 ? (
-            <EmptyState 
-              icon={<DollarSign className="w-16 h-16" />}
-              message="Ainda não há receitas registradas."
-              submessage="Use o botão + para adicionar uma receita."
-            />
-          ) : (
-            <div className="space-y-3">
-              {incomes.map((income) => (
-                <div
-                  key={income.id}
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="w-2 h-2 rounded-full bg-olive" />
-                      <h4 className="font-body font-medium">{income.description}</h4>
+            {loading ? (
+              <div className="text-center py-12 text-ink/60">Carregando...</div>
+            ) : incomes.length === 0 ? (
+              <EmptyState
+                icon={<DollarSign className="w-16 h-16" />}
+                message="Ainda não há receitas registradas."
+                submessage="Use o botão + para adicionar uma receita."
+              />
+            ) : (
+              <div className="space-y-3">
+                {incomes.map((income) => (
+                  <div
+                    key={income.id}
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xl font-medium text-petrol font-serif">
+                        {income.description}
+                      </h4>
+                      <p className="text-sm text-ink/50">
+                        {income.category_name} • {formatDate(income.date)}
+                      </p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 text-sm text-ink/60">
-                      <span>{income.category_name}</span>
-                      <span>•</span>
-                      <span>{formatDate(income.date)}</span>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                      <span className="font-numbers text-lg font-semibold text-olive">
+                        {formatBRL(income.amount_cents)}
+                      </span>
+                      <ActionMenu
+                        onView={() => openDetails(income)}
+                        onEdit={() => openModal(income)}
+                        onDelete={() => handleDelete(income.id)}
+                        onAttach={(file) => handleAttachIncome(income, file)}
+                      />
                     </div>
                   </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-                  <div className="flex items-center justify-between sm:justify-start gap-4 w-full sm:w-auto">
-                    <span className="font-numbers text-lg font-semibold text-olive">
-                      {formatBRL(income.amount_cents)}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openModal(income)}
-                        className="relative group text-ink/50 hover:text-ink transition-vintage"
-                        aria-label={`Editar ${income.description}`}
-                      >
-                        <Pencil className="w-5 h-5" />
-                        <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-coffee text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
-                          Editar {income.description}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(income.id)}
-                        className="relative group text-terracotta/70 hover:text-terracotta transition-vintage"
-                        aria-label={`Deletar ${income.description}`}
-                      >
-                        <Trash2 className="w-5 h-5" />
-                        <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-terracotta text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
-                          Deletar {income.description}
-                        </span>
-                      </button>
-                    </div>
+          <footer className="mt-auto w-full">
+            <div className="px-6 mb-4">
+              <div className="mt-10 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-center">
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <div className="rounded-[16px] px-10 py-5 bg-olive text-white text-center shadow-soft min-w-[200px]">
+                    <div className="text-sm uppercase tracking-wide text-white/80 mb-2">Recebido</div>
+                    <div className="font-numbers text-xl font-semibold">{formatBRL(total)}</div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </VintageCard>
+                <div className="text-center md:text-right">
+                  <div className="text-sm uppercase tracking-wide text-ink/50">Total</div>
+                  <div className="font-numbers text-xl font-semibold text-petrol">{incomes.length}</div>
+                </div>
+              </div>
 
+              <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-paper-2 hover:text-petrol transition-vintage text-sm"
+                >
+                  Gerar CSV
+                </button>
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-paper-2 hover:text-petrol transition-vintage text-sm"
+                >
+                  Gerar PDF
+                </button>
+              </div>
+            </div>
+            <div className="h-[76px] bg-texture flex items-center justify-center px-6">
+              <p className="text-center text-[13px] text-gold italic">
+                Acompanhe o que entra para decidir para onde a vida vai.
+              </p>
+            </div>
+          </footer>
+        </div>
       </div>
 
       <Modal
@@ -304,7 +339,7 @@ export default function ReceivablesPage() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-body text-ink mb-2">
+            <label className="block font-body text-ink mb-2 font-serif">
               Descrição <span className="text-terracotta">*</span>
             </label>
             <input
@@ -312,7 +347,7 @@ export default function ReceivablesPage() {
               required
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+              className="w-full px-4 py-3 bg-paper-2/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
               placeholder="Ex: Salário"
             />
           </div>
@@ -326,7 +361,7 @@ export default function ReceivablesPage() {
           />
 
           <div>
-            <label className="block text-sm font-body text-ink mb-2">
+            <label className="block font-serif font-body text-ink mb-2">
               Valor (R$) <span className="text-terracotta">*</span>
             </label>
             <input
@@ -335,13 +370,13 @@ export default function ReceivablesPage() {
               required
               value={formData.amount}
               onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+              className="w-full px-4 py-3 bg-paper-2/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
               placeholder="0.00"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-body text-ink mb-2">
+            <label className="block font-serif font-body text-ink mb-2">
               Data <span className="text-terracotta">*</span>
             </label>
             <input
@@ -349,18 +384,18 @@ export default function ReceivablesPage() {
               required
               value={formData.date}
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+              className="w-full px-4 py-3 bg-paper-2/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-body text-ink mb-2">
+            <label className="block font-serif font-body text-ink mb-2">
               Observação
             </label>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 resize-none"
+              className="w-full px-4 py-3 bg-paper-2/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 resize-none"
               rows={3}
               placeholder="Notas adicionais..."
             />
@@ -382,6 +417,57 @@ export default function ReceivablesPage() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        title="Detalhes da receita"
+      >
+        {detailIncome && (() => {
+          const { attachmentUrl, cleanNotes } = parseAttachment(detailIncome.notes)
+          return (
+            <div className="space-y-3 text-sm text-ink/70">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-ink/50">Descrição</p>
+                <p className="text-base text-ink">{detailIncome.description}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">Categoria</p>
+                  <p>{detailIncome.category_name}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">Data</p>
+                  <p>{formatDate(detailIncome.date)}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">Valor</p>
+                  <p className="font-numbers">{formatBRL(detailIncome.amount_cents)}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-ink/50">Observação</p>
+                <p>{cleanNotes || '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-ink/50">Arquivo</p>
+                {attachmentUrl ? (
+                  <a
+                    href={attachmentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-petrol hover:opacity-80 transition-vintage"
+                  >
+                    Visualizar anexo
+                  </a>
+                ) : (
+                  <p>Sem arquivo anexado</p>
+                )}
+              </div>
+            </div>
+          )
+        })()}
       </Modal>
     </AppLayout>
   )
