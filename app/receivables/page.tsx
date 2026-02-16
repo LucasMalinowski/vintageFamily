@@ -38,6 +38,9 @@ export default function ReceivablesPage() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
   const [selectedYear, setSelectedYear] = useState(getCurrentYear())
   const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState('')
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
+  const [onlyInstallments, setOnlyInstallments] = useState(false)
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingIncome, setEditingIncome] = useState<Income | null>(null)
@@ -204,7 +207,7 @@ export default function ReceivablesPage() {
           subtitle="O fruto do trabalho em forma de números."
           variant="textured"
           filters={
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-7 gap-4 ">
               <Select
                 variant="filter"
                 label="Mês"
@@ -229,9 +232,46 @@ export default function ReceivablesPage() {
                   ...categories.map(c => ({ value: c.name, label: c.name }))
                 ]}
               />
+              <Select
+                variant="filter"
+                label="Status"
+                value={selectedStatus}
+                onChange={setSelectedStatus}
+                options={[
+                  { value: '', label: 'Todos' },
+                  { value: 'paid', label: 'Pago' },
+                  { value: 'open', label: 'Em aberto' },
+                ]}
+              />
+              <Select
+                variant="filter"
+                label="Metodo"
+                value={selectedPaymentMethod}
+                onChange={setSelectedPaymentMethod}
+                options={[
+                  { value: '', label: 'Todos' },
+                  { value: 'PIX', label: 'PIX' },
+                  { value: 'Credito', label: 'Credito' },
+                  { value: 'Debito', label: 'Debito' },
+                ]}
+              />
+              <label className="flex items-center gap-2 text-sm text-gold pt-8">
+                <input
+                  type="checkbox"
+                  checked={onlyInstallments}
+                  onChange={(event) => setOnlyInstallments(event.target.checked)}
+                  className="w-4 h-4 rounded border-gold/60 accent-gold"
+                />
+                Somente parceladas
+              </label>
               <div className="flex items-end">
                 <button
-                  onClick={() => setSelectedCategory('')}
+                  onClick={() => {
+                    setSelectedCategory('')
+                    setSelectedStatus('')
+                    setSelectedPaymentMethod('')
+                    setOnlyInstallments(false)
+                  }}
                   className="w-full px-4 py-3 rounded-lg bg-paper-2/80 transition-vintage text-sm text-petrol"
                 >
                   Limpar filtros
