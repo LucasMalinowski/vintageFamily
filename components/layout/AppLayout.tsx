@@ -24,13 +24,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       if (!familyId) return
       const { data: familyRow } = await supabase
         .from('families')
-        .select('created_at')
+        .select('trial_expires_at')
         .eq('id', familyId)
         .maybeSingle()
 
-      if (!familyRow?.created_at) return
-      const createdAt = new Date(familyRow.created_at)
-      const expiresAt = new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000)
+      if (!familyRow) return
+      if (!familyRow.trial_expires_at) {
+        setTrialExpired(false)
+        setTrialDaysLeft(null)
+        return
+      }
+
+      const expiresAt = new Date(familyRow.trial_expires_at)
       const diffMs = expiresAt.getTime() - Date.now()
       const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
 
@@ -40,6 +45,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     loadTrialStatus()
   }, [familyId])
+
+  const isBillingPage = pathname?.startsWith('/settings/billing')
+  const showTrialBlock = trialExpired && !isBillingPage
 
   if (loading) {
     return (
@@ -56,9 +64,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return null
   }
 
-  const isBillingPage = useMemo(() => pathname?.startsWith('/settings/billing'), [pathname])
-  const showTrialBlock = trialExpired && !isBillingPage
-
   return (
     <div className="flex min-h-screen bg-paper">
       <Sidebar />
@@ -73,7 +78,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="max-w-md w-full bg-paper-2 border border-border rounded-[28px] p-8 text-center shadow-vintage">
             <h2 className="text-2xl font-serif text-coffee mb-3">Seu teste terminou</h2>
             <p className="text-sm text-ink/70 mb-6">
-              O período de 7 dias encerrou. Para continuar usando o Florim, finalize a assinatura.
+              Seu período de teste encerrou. Para continuar usando o Florim, finalize a assinatura.
               {trialDaysLeft !== null && trialDaysLeft > 0 ? ` Restam ${trialDaysLeft} dias.` : ''}
             </p>
             <button
