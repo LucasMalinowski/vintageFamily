@@ -559,7 +559,7 @@ export default function Payables() {
               </button>
             </div>
           </div>
-          <div className="h-[76px] bg-texture flex items-center justify-center px-6">
+          <div className="h-[56px] bg-texture flex items-center justify-center px-6">
             <p className="text-center text-[13px] text-gold italic">
               Cada conta paga é um gesto de cuidado com o amanhã da família.
             </p>
