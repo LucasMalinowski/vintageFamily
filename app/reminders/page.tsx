@@ -109,7 +109,7 @@ export default function RemindersPage() {
         actions={
           <button
             onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 bg-fab-green text-white rounded-lg hover:bg-fab-green/90 transition-vintage text-sm"
+            className="px-4 py-2 bg-fabGreen text-white rounded-lg hover:bg-fabGreen/90 transition-vintage text-sm"
           >
             + Novo lembrete
           </button>

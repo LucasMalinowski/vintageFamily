@@ -123,7 +123,7 @@ export default function Topbar({ title, subtitle, actions, filters, variant = 'd
         </div>
 
         {filters && (
-          <div className="mb-6 rounded-[20px] border px-4 pb-4 bg-paper">
+          <div className="mb-6 rounded-[20px] border px-4 py-2 bg-paper">
             <div className="flex items-center justify-between md:hidden mb-3">
               <span className="text-xs uppercase tracking-wide text-ink/50">Filtros</span>
               <button
