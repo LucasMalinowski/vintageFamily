@@ -26,9 +26,9 @@ export default function FabButton({
       onClick={onClick}
       className={`
         fixed ${positionClasses[position]} z-40
-        w-14 h-14 bg-fab-green text-white rounded-full 
+        w-14 h-14 bg-fabGreen text-white rounded-full 
         shadow-vintage flex items-center justify-center 
-        hover:bg-fab-green/90 transition-vintage
+        hover:bg-fabGreen/90 transition-vintage
         group
       `}
       title={label}
