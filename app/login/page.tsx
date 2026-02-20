@@ -34,7 +34,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[url('/texture-green.png')] bg-cover bg-center text-paper flex items-center justify-center px-6 py-10 relative">
+    <div className="min-h-screen bg-sidebar text-paper flex items-center justify-center px-6 py-10 relative">
       <img
         src="/logo-florim.png"
         alt="Florim"
@@ -47,7 +47,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="bg-paper/80 backdrop-blur-sm rounded-[28px] border border-border/70 shadow-vintage p-12 w-full md:max-w-xl md:-translate-y-6">
+        <div className="bg-paper backdrop-blur-sm rounded-[28px] border border-border/70 shadow-vintage p-12 w-full md:max-w-xl md:-translate-y-6">
           <h2 className="text-2xl font-serif text-coffee mb-6">Entre na sua conta</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -67,7 +67,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-3 bg-white/70 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-petrol/40 transition-vintage"
+                className="w-full px-4 py-3 bg-white/70 text-ink/80 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-petrol/40 transition-vintage"
                 placeholder="seu@email.com"
               />
             </div>
@@ -82,7 +82,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-3 bg-white/70 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-petrol/40 transition-vintage"
+                className="w-full px-4 py-3 bg-white/70 text-ink/80 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-petrol/40 transition-vintage"
                 placeholder="••••••••"
               />
             </div>
