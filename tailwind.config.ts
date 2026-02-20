@@ -10,15 +10,15 @@ const config: Config = {
     extend: {
       colors: {
         bg: '#FAF9F7',
-        paper: '#F3ECDD',
-        'paper-2': '#FAF9F7',
+        paper: '#f5f1eb',
+        'paper-2': '#f5f1eb',
         ink: '#2F3B33',
         coffee: '#3E5F4B',
         petrol: '#2F6F7E',
         olive: '#6FBF8A',
         terracotta: '#C2A45D',
         border: '#E4D7C2',
-        sidebar: '#3E5F4B',
+        sidebar: 'rgb(var(--sidebar-rgb) / <alpha-value>)',
         gold: '#C2A45D',
         lightGray: '#b4b4b4',
         fabGreen: '#6FBF8A',
