@@ -20,7 +20,8 @@
     "nodemailer": "^7.0.12",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "recharts": "^2.10.4"
+    "recharts": "^2.10.4",
+    "supabase": "^2.76.12"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",
