@@ -11,7 +11,7 @@ const config: Config = {
       colors: {
         bg: '#FAF9F7',
         paper: '#f5f1eb',
-        'paper-2': '#f5f1eb',
+        'paper-2': '#baac8a',
         ink: '#2F3B33',
         coffee: '#3E5F4B',
         petrol: '#2F6F7E',
