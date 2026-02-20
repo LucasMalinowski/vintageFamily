@@ -10,6 +10,7 @@ import VintageCard from '../ui/VintageCard'
 import Modal from '../ui/Modal'
 import Select from '../ui/Select'
 import { formatDate, isDueDateToday, isDueDateOverdue } from '@/lib/dates'
+import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
 
 interface Reminder {
   id: string
@@ -79,6 +80,12 @@ export default function Dashboard() {
   }
 
   const loadFamilyName = async () => {
+    const cachedFamilyName = window.localStorage.getItem(LOCAL_STORAGE_KEYS.familyName)
+    if (cachedFamilyName) {
+      setFamilyName(cachedFamilyName)
+      return
+    }
+
     let effectiveFamilyId = familyId
 
     if (!effectiveFamilyId && user?.id) {
@@ -95,6 +102,7 @@ export default function Dashboard() {
 
     if (!effectiveFamilyId) {
       setFamilyName('')
+      window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
       return
     }
 
@@ -106,6 +114,7 @@ export default function Dashboard() {
 
     if (familyRow?.name) {
       setFamilyName(familyRow.name)
+      window.localStorage.setItem(LOCAL_STORAGE_KEYS.familyName, familyRow.name)
       return
     }
 
@@ -122,7 +131,13 @@ export default function Dashboard() {
     if (!response.ok) return
 
     const payload = await response.json().catch(() => ({}))
-    setFamilyName(payload?.familyName || '')
+    const resolvedFamilyName = payload?.familyName || ''
+    setFamilyName(resolvedFamilyName)
+    if (resolvedFamilyName) {
+      window.localStorage.setItem(LOCAL_STORAGE_KEYS.familyName, resolvedFamilyName)
+    } else {
+      window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
+    }
   }
 
   const toggleDone = async (id: string, isDone: boolean) => {
@@ -184,25 +199,25 @@ export default function Dashboard() {
         subtitle="Bem-vindo ao seu espaço financeiro familiar"
         variant="textured"
       />
-      <div className="min-h-screen bg-texture">
+      <div className="bg-paper">
         <div className="max-w-7xl mx-auto px-6 py-10">
-          <div className="bg-[linear-gradient(rgba(47,59,51,0.35),rgba(47,59,51,0.35)),url('/flowers.png')] bg-cover bg-center border border-border/70 rounded-lg p-10 shadow-soft text-center text-paper">
-            <h1 className="text-3xl md:text-4xl  font-serif text-paper">
+          <div className="bg-[url('/texture-green.png')] bg-cover bg-center border border-border/70 rounded-lg p-10 shadow-soft text-center text-paper">
+            <h1 className="text-3xl md:text-4xl font-serif font-thin text-paper">
               Livro de Finanças da<br/> Família {familyName || '—'}
             </h1>
           </div>
-          <div className="mt-6">
-            <div className="max-w-md bg-paper border border-gold/70 px-6 py-4 shadow-soft text-ink/70 font-ptSerif italic">
+          <div className="mt-6 justify-self-center">
+            <div className="max-w-md bg-paper px-6 py-4 shadow-soft text-ink/70 font-ptSerif italic">
               Organizar o dinheiro é cuidar do tempo que ainda vamos viver.
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-14">
             <VintageCard className="!bg-paper">
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div>
-                  <h3 className="text-xl font-serif text-gold">Contas pendentes</h3>
-                  <p className="text-sm text-ink/60 ">Que a casa siga leve.</p>
+                  <h3 className="text-xl font-body font-thin text-sidebar">Contas pendentes</h3>
+                  <p className="text-sm text-ink/40 ">Que a casa siga leve.</p>
                 </div>
               </div>
 
@@ -210,7 +225,7 @@ export default function Dashboard() {
                 <div className="text-center py-8 text-ink/60">Carregando...</div>
               ) : pendingPayables.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-ink/60  mb-2">Sem contas pendentes</p>
+                  <p className="text-petrol mb-2">Sem contas pendentes</p>
                 </div>
               ) : (
                 <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
@@ -218,7 +233,7 @@ export default function Dashboard() {
                     <Link
                       key={payable.id}
                       href={`/payables#expense-${payable.id}`}
-                      className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border hover:bg-paper transition-vintage"
+                      className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-paper transition-vintage"
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-body text-ink truncate">{payable.description}</p>
@@ -248,8 +263,8 @@ export default function Dashboard() {
             <VintageCard className="!bg-paper">
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div className="min-w-0">
-                  <h3 className="text-lg font-serif text-coffee">Lembretes da casa</h3>
-                  <p className="text-sm text-ink/60 ">Notas de cuidado com aquilo que valorizamos.</p>
+                  <h3 className="text-lg font-body font-thin text-sidebar">Lembretes da casa</h3>
+                  <p className="text-sm text-ink/40 ">Notas de cuidado com aquilo que valorizamos.</p>
                 </div>
                 <button
                   onClick={() => setIsReminderModalOpen(true)}
@@ -264,7 +279,7 @@ export default function Dashboard() {
                 <div className="text-center py-8 text-ink/60">Carregando...</div>
               ) : reminders.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-ink/60  mb-2">Sem lembretes por agora</p>
+                  <p className="text-petrol  mb-2">Sem lembretes por agora</p>
                 </div>
               ) : (
                 <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
