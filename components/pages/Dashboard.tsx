@@ -27,7 +27,7 @@ interface Payable {
 }
 
 export default function Dashboard() {
-  const { familyId } = useAuth()
+  const { familyId, user } = useAuth()
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [pendingPayables, setPendingPayables] = useState<Payable[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,9 +44,9 @@ export default function Dashboard() {
     if (familyId) {
       loadReminders()
       loadPendingPayables()
-      loadFamilyName()
     }
-  }, [familyId])
+    loadFamilyName()
+  }, [familyId, user?.id])
 
   const loadReminders = async () => {
     const { data } = await supabase
@@ -79,16 +79,50 @@ export default function Dashboard() {
   }
 
   const loadFamilyName = async () => {
-    if (!familyId) return
+    let effectiveFamilyId = familyId
+
+    if (!effectiveFamilyId && user?.id) {
+      const { data: profileRow } = await supabase
+        .from('users')
+        .select('family_id')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (profileRow?.family_id) {
+        effectiveFamilyId = profileRow.family_id
+      }
+    }
+
+    if (!effectiveFamilyId) {
+      setFamilyName('')
+      return
+    }
+
     const { data: familyRow } = await supabase
       .from('families')
       .select('name')
-      .eq('id', familyId)
+      .eq('id', effectiveFamilyId)
       .maybeSingle()
 
     if (familyRow?.name) {
       setFamilyName(familyRow.name)
+      return
     }
+
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
+    if (!token) return
+
+    const response = await fetch('/api/families/me', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) return
+
+    const payload = await response.json().catch(() => ({}))
+    setFamilyName(payload?.familyName || '')
   }
 
   const toggleDone = async (id: string, isDone: boolean) => {
