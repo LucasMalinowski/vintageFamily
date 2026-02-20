@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
 import { useRouter } from 'next/navigation'
 
 interface AuthContextType {
@@ -42,6 +43,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loadFamilyId(session.user.id)
       } else {
         setFamilyId(null)
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
+        }
       }
     })
 
@@ -190,7 +194,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     if (typeof window !== 'undefined') {
-      window.localStorage.removeItem('sidebar-collapsed')
+      window.localStorage.removeItem(LOCAL_STORAGE_KEYS.sidebarCollapsed)
+      window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
       delete document.documentElement.dataset.sidebarCollapsed
     }
     await supabase.auth.signOut()
