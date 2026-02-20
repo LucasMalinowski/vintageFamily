@@ -28,10 +28,10 @@ export default function PlansPage() {
             />
           </section>
 
-          <section className="bg-[url('/texture-green.png')] bg-cover bg-center relative h-full min-h-0 justify-items-center bg-texture-sidebar-muted bg-cover bg-center px-8 sm:px-12 lg:px-14 text-paper">
+          <section className="bg-sidebar relative h-full min-h-0 justify-items-center px-8 sm:px-12 lg:px-14 text-paper">
             <img src="/logo-florim.png" alt="Florim" className="w-40 h-40 object-contain mt-16" />
             <div className="absolute inset-0 flex items-center justify-center text-center">
-              <div className="w-full max-w-2xl border-l-4 border-gold/40 pl-6 pr-4 text-left">
+              <div className="w-full max-w-2xl border-l-4 border-paper/80 pl-6 pr-4 text-left">
                 <div className="text-[22px] sm:text-[24px] lg:text-[24px] font-light font-serif leading-tight text-paper/90">
                   <p className="mb-4">
                     O Florim foi pensado para caber no orçamento da casa e ser valioso o suficiente para
@@ -65,7 +65,7 @@ export default function PlansPage() {
         }`}
       >
         <PublicNavbar color="sidebar" showWordmark={false} />
-        <section className="min-h-screen bg-texture-muted bg-cover bg-center px-24 pt-32 sm:px-24 lg:px-64 text-coffee overflow-y-auto">
+        <section className="min-h-screen bg-paper px-24 pt-32 sm:px-24 lg:px-48 text-coffee overflow-y-auto">
           <div className="mx-auto flex w-full max-w-6xl flex-col">
             <div className="grid grid-cols-[auto,1fr,auto] items-center">
               <button
@@ -79,7 +79,7 @@ export default function PlansPage() {
             </div>
 
             <div className="mt-8 grid gap-5 lg:grid-cols-3">
-              <div className="rounded-[22px] border border-gold/40 bg-paper-2/80 px-5 py-4 text-coffee shadow-soft">
+              <div className="rounded-[22px] border border-paper-2/40 bg-paper/80 px-5 py-4 text-coffee shadow-soft">
                 <div className="px-4">
                   <h3 className="font-serif text-2xl text-gold mb-3">Plano Mensal</h3>
                   <p className="text-sm text-lightGray mb-4">Ideal para quem quer começar com flexibilidade.</p>
@@ -89,7 +89,7 @@ export default function PlansPage() {
                 </div>
               </div>
 
-              <div className="rounded-[22px] border border-gold/40 bg-paper-2/80 px-5 py-4 text-coffee shadow-soft">
+              <div className="rounded-[22px] border border-paper-2/40 bg-paper/80 px-5 py-4 text-coffee shadow-soft">
                 <div className="px-4">
                   <h3 className="font-serif text-2xl text-gold mb-3">Plano Anual</h3>
                   <p className="text-sm text-lightGray mb-4">Para famílias que desejam compromisso e continuidade.</p>
@@ -99,7 +99,7 @@ export default function PlansPage() {
                 </div>
               </div>
 
-              <div className="rounded-[22px] border border-gold/40 bg-paper-2/80 px-5 py-4 text-coffee shadow-soft">
+              <div className="rounded-[22px] border border-paper-2/40 bg-paper/80 px-5 py-4 text-coffee shadow-soft">
                 <div className="px-4">
                   <h3 className="font-serif text-2xl text-gold mb-3">Plano Fundadores</h3>
                   <p className="text-sm text-lightGray mb-4">Exclusivo para os primeiros usuários do Florim.</p>
@@ -110,7 +110,7 @@ export default function PlansPage() {
               </div>
             </div>
 
-            <div className="mt-8 grid gap-6 lg:grid-cols-3 text-base text-coffee/70">
+            <div className="mt-12 grid gap-6 lg:grid-cols-3 text-base text-coffee/70">
               <div>
                 <div className="text-coffee font-medium mb-2">Benefícios:</div>
                 <ul className="space-y-2">
@@ -142,14 +142,14 @@ export default function PlansPage() {
                 </ul>
               </div>
             </div>
-            <div className="mt-4 grid gap-6 lg:grid-cols-3 text-lg italic text-gold/70 font-serif">
+            <div className="mt-8 grid gap-6 lg:grid-cols-3 text-lg italic text-gold/70 font-serif">
               <p className={"flex justify-center text-center"}>Menos do que um jantar fora. <br/> Mais do que uma planilha.</p>
               <p className={"flex justify-center text-center"}>Um pequeno investimento para cuidar do que sustenta a casa.</p>
               <p className={"flex justify-center text-center"}>Quem chega primeiro, constrói junto.</p>
             </div>
 
-            <div className="flex flex-col mt-8">
-              <div className="font-serif text-[40px] text-coffee mb-8 ml-16">Benefícios-chave</div>
+            <div className="flex flex-col mt-16">
+              <div className="font-serif text-[40px] text-center text-coffee mb-8">Benefícios-chave</div>
               <div className="flex flex-wrap justify-center gap-3">
                 {[
                   'Clareza financeira no dia a dia',
@@ -160,7 +160,7 @@ export default function PlansPage() {
                 ].map((item) => (
                   <div
                     key={item}
-                    className="w-full rounded-full border border-gold/60 bg-paper-2 py-2 text-center text-[15px] text-coffee sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-0.75rem)]"
+                    className="w-full rounded-full bg-paper py-2 text-center text-[15px] text-coffee sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-0.75rem)]"
                   >
                     ✓ {item}
                   </div>
@@ -168,7 +168,7 @@ export default function PlansPage() {
               </div>
             </div>
 
-            <div className="my-10 text-center text-base text-gold/70 italic font-serif">
+            <div className="my-24 text-center text-base text-gold/70 italic font-serif">
               Cuidar das finanças é cuidar da casa.
               <br />
               O Florim está aqui para ajudar nisso.
