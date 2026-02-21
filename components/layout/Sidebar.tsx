@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
+import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
 import { useEffect, useMemo, useState } from 'react'
 
 const menuItems = [
@@ -73,6 +74,14 @@ export default function Sidebar() {
 
   useEffect(() => {
     const loadFamilyName = async () => {
+      const cachedFamilyName = window.localStorage.getItem(LOCAL_STORAGE_KEYS.familyName)
+      if (cachedFamilyName) {
+        setFamilyName(cachedFamilyName)
+        setFamilyNameLoading(false)
+        setFamilyNameError(false)
+        return
+      }
+
       let effectiveFamilyId = familyId
 
       if (!effectiveFamilyId && user?.id) {
@@ -93,6 +102,7 @@ export default function Sidebar() {
 
       if (!effectiveFamilyId) {
         setFamilyName('')
+        window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
         setFamilyNameLoading(false)
         setFamilyNameError(false)
         if (process.env.NODE_ENV !== 'production') {
@@ -121,6 +131,7 @@ export default function Sidebar() {
 
       if (familyRow?.name) {
         setFamilyName(familyRow.name)
+        window.localStorage.setItem(LOCAL_STORAGE_KEYS.familyName, familyRow.name)
       } else {
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
         const token = sessionData.session?.access_token
@@ -146,6 +157,11 @@ export default function Sidebar() {
         const payload = await response.json().catch(() => ({}))
         resolvedFamilyName = payload?.familyName || ''
         setFamilyName(resolvedFamilyName)
+        if (resolvedFamilyName) {
+          window.localStorage.setItem(LOCAL_STORAGE_KEYS.familyName, resolvedFamilyName)
+        } else {
+          window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
+        }
       }
 
       if (process.env.NODE_ENV !== 'production') {
@@ -159,7 +175,7 @@ export default function Sidebar() {
   }, [familyId, user?.id])
 
   useEffect(() => {
-    const storedState = window.localStorage.getItem('sidebar-collapsed')
+    const storedState = window.localStorage.getItem(LOCAL_STORAGE_KEYS.sidebarCollapsed)
     if (storedState) {
       setIsCollapsed(storedState === 'true')
     }
@@ -167,7 +183,7 @@ export default function Sidebar() {
 
   useEffect(() => {
     document.documentElement.dataset.sidebarCollapsed = isCollapsed ? 'true' : 'false'
-    window.localStorage.setItem('sidebar-collapsed', String(isCollapsed))
+    window.localStorage.setItem(LOCAL_STORAGE_KEYS.sidebarCollapsed, String(isCollapsed))
   }, [isCollapsed])
 
   const SidebarContent = () => (
