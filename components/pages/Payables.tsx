@@ -576,7 +576,7 @@ export default function Payables() {
                 { value: 'Debito', label: 'Debito' },
               ]}
             />
-            <label className="flex items-center gap-2 text-sm text-gold pt-2">
+            <label className="flex items-center gap-2 text-sm text-petrol pt-2">
               <input
                 type="checkbox"
                 checked={onlyInstallments}
