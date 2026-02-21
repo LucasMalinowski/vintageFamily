@@ -610,7 +610,7 @@ export default function Payables() {
                     }`}
                   >
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-xl font-medium text-petrol font-serif">
+                      <h4 className="text-xl font-medium text-sidebar font-serif">
                         {expense.description}
                       </h4>
                       <p className="text-sm text-ink/50">
@@ -635,7 +635,7 @@ export default function Payables() {
                       </button>
                       <span
                         className={`font-numbers text-lg font-semibold ${
-                          expense.status === 'paid' ? 'text-olive' : 'text-terracotta'
+                          expense.status === 'paid' ? 'text-sidebar/80' : 'text-terracotta'
                         }`}
                       >
                         {formatBRL(expense.amount_cents)}
