@@ -438,7 +438,7 @@ export default function ReceivablesPage() {
                     className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage"
                   >
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-xl font-medium text-petrol font-serif">
+                      <h4 className="text-xl font-medium text-sidebar font-serif">
                         {income.description}
                       </h4>
                       <p className="text-sm text-ink/50">
@@ -447,7 +447,7 @@ export default function ReceivablesPage() {
                     </div>
 
                     <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
-                      <span className="font-numbers text-lg font-semibold text-olive">
+                      <span className="font-numbers text-lg font-semibold text-sidebar">
                         {formatBRL(income.amount_cents)}
                       </span>
                       <ActionMenu
