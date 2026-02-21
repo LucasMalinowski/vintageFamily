@@ -75,7 +75,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {showTrialBlock && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
-          <div className="max-w-md w-full bg-paper-2 border border-border rounded-[28px] p-8 text-center shadow-vintage">
+          <div className="max-w-md w-full bg-bg border border-border rounded-[28px] p-8 text-center shadow-vintage">
             <h2 className="text-2xl font-serif text-coffee mb-3">Seu teste terminou</h2>
             <p className="text-sm text-ink/70 mb-6">
               Seu período de teste encerrou. Para continuar usando o Florim, finalize a assinatura.

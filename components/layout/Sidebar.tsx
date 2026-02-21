@@ -172,7 +172,7 @@ export default function Sidebar() {
 
   const SidebarContent = () => (
     <>
-      <div className={`border-b border-white/10 bg-[url('/texture-green.png')] bg-cover bg-center ${isCollapsed ? 'p-4' : 'p-6'}`}>
+      <div className={`border-b border-white/10 bg-sidebar ${isCollapsed ? 'p-4' : 'p-6'}`}>
         <div className={`flex ${isCollapsed ? 'flex-col items-center' : 'items-center gap-3'}`}>
           <img src="/logo.png" alt="Logo Florim" className={`${isCollapsed ? 'w-12 h-12' : 'w-14 h-14'} object-contain`} />
           {!isCollapsed && (

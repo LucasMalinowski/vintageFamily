@@ -81,7 +81,7 @@ function InvitePageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[url('/texture-green.png')] bg-cover bg-center text-paper flex items-center justify-center px-6 py-10 relative">
+    <div className="min-h-screen bg-sidebar text-paper flex items-center justify-center px-6 py-10 relative">
       <img
         src="/logo-florim.png"
         alt="Florim"
@@ -94,7 +94,7 @@ function InvitePageContent() {
           </p>
         </div>
 
-        <div className="bg-paper/80 backdrop-blur-sm rounded-[28px] border border-border/70 shadow-vintage p-12 w-full md:max-w-xl md:-translate-y-6">
+        <div className="bg-paper backdrop-blur-sm rounded-[28px] border border-border/70 shadow-vintage p-12 w-full md:max-w-xl md:-translate-y-6">
           <h2 className="text-2xl font-serif text-coffee mb-6">Aceitar convite</h2>
           {loading ? (
             <p className="text-sm text-ink/60 font-body">Carregando convite...</p>

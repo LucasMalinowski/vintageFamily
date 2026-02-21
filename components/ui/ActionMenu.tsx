@@ -46,7 +46,7 @@ export default function ActionMenu({ onEdit, onDelete, onView, onAttach, disable
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-44 rounded-lg border border-border bg-paper-2 shadow-vintage z-20">
+        <div className="absolute right-0 mt-2 w-44 rounded-lg border border-border bg-bg shadow-vintage z-20">
           <button
             type="button"
             onClick={() => {

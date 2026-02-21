@@ -59,7 +59,7 @@ export default function SignUpPage() {
         </div>
 
         {/* Card */}
-        <div className="bg-paper-2 rounded-vintage border border-border shadow-vintage p-8">
+        <div className="bg-bg rounded-vintage border border-border shadow-vintage p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="bg-terracotta/10 border border-terracotta/30 text-terracotta px-4 py-3 rounded-lg text-sm">

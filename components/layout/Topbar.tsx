@@ -67,7 +67,7 @@ export default function Topbar({ title, subtitle, actions, filters, variant = 'd
   }, [familyId])
 
   return (
-    <div className={`${variant === 'textured' ? 'bg-texture' : 'bg-paper-2'} px-6 py-5.5 pl-16 md:pl-6`}>
+    <div className={`${variant === 'textured' ? 'bg-paper' : 'bg-bg'} px-6 py-5.5 pl-16 md:pl-6`}>
       <div className={`${filters ? 'flex flex-col gap-2' : ''}`}>
         <div className="min-h-[103px] flex items-center">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between w-full">
@@ -103,7 +103,7 @@ export default function Topbar({ title, subtitle, actions, filters, variant = 'd
                 <Settings className="w-6 h-6" />
               </button>
               <div className="flex items-center gap-2 text-sm bg-sidebar text-paper pl-4 pr-6 py-4 -mr-6 -mt-5 -mb-4 rounded-none">
-                <div className="w-8 h-8 rounded-full bg-paper/20 text-paper flex items-center justify-center overflow-hidden">
+                <div className="w-8 h-8 rounded-full bg-paper text-paper flex items-center justify-center overflow-hidden">
                   {avatarUrl ? (
                     <img
                       src={avatarUrl}
@@ -123,7 +123,7 @@ export default function Topbar({ title, subtitle, actions, filters, variant = 'd
         </div>
 
         {filters && (
-          <div className="mb-6 rounded-[20px] border px-4 py-2 bg-paper">
+          <div className="mb-6 rounded-[20px] border px-4 py-2 bg-bg">
             <div className="flex items-center justify-between md:hidden mb-3">
               <span className="text-xs uppercase tracking-wide text-ink/50">Filtros</span>
               <button

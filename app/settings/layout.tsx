@@ -18,7 +18,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       <div className="min-h-screen bg-paper">
         <div className="max-w-6xl mx-auto px-6 py-8">
           <div className="flex flex-col md:flex-row gap-6">
-            <aside className="md:w-64 bg-paper-2 border border-border rounded-vintage shadow-vintage">
+            <aside className="md:w-64 bg-bg border border-border rounded-vintage shadow-vintage">
               <div className="px-5 py-4 border-b border-border">
                 <h2 className="text-lg font-serif text-coffee">Configurações</h2>
                 <p className="text-sm text-ink/60 font-body">Sua família e perfil</p>

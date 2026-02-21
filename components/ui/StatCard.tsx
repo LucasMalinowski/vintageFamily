@@ -16,7 +16,7 @@ export default function StatCard({ label, value, color = 'default', size = 'md',
     terracotta: 'bg-gold text-sidebar',
     petrol: 'bg-petrol text-white',
     coffee: 'bg-sidebar text-paper',
-    default: 'bg-paper-2 text-ink border border-border',
+    default: 'bg-bg text-ink border border-border',
   }
 
   const sizeClasses = {

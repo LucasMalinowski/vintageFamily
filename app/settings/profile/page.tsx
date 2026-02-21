@@ -98,7 +98,7 @@ export default function ProfileSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-paper-2 border border-border rounded-vintage shadow-vintage p-6">
+      <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
         <h1 className="text-2xl font-serif text-coffee mb-2">Perfil</h1>
         <p className="text-sm text-ink/60 font-body">
           Atualize seus dados pessoais e a identidade da família.
@@ -112,12 +112,12 @@ export default function ProfileSettingsPage() {
       )}
 
       {loading ? (
-        <div className="bg-paper-2 border border-border rounded-vintage shadow-vintage p-6">
+        <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
           <p className="text-sm text-ink/60 font-body">Carregando...</p>
         </div>
       ) : (
         <>
-          <div className="bg-paper-2 border border-border rounded-vintage shadow-vintage p-6">
+          <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
             <form onSubmit={handleSaveProfile} className="space-y-4">
               <h2 className="text-lg font-serif text-coffee">Seus dados</h2>
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">

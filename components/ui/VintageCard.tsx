@@ -17,7 +17,7 @@ export default function VintageCard({ children, className, padding = 'md' }: Vin
 
   return (
     <div className={clsx(
-      'bg-paper-2 rounded-[8px] border border-border shadow-soft',
+      'bg-bg rounded-[8px] shadow-soft',
       paddingClasses[padding],
       className
     )}>
