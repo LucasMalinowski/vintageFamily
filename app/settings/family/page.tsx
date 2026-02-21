@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import { formatDate } from '@/lib/dates'
+import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
 import { X } from 'lucide-react'
 
 type InviteRow = {
@@ -64,7 +65,13 @@ export default function FamilySettingsPage() {
       }
 
       if (familyRow) {
-        setFamilyName(familyRow.name ?? '')
+        const resolvedFamilyName = familyRow.name ?? ''
+        setFamilyName(resolvedFamilyName)
+        if (resolvedFamilyName) {
+          window.localStorage.setItem(LOCAL_STORAGE_KEYS.familyName, resolvedFamilyName)
+        } else {
+          window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
+        }
       }
 
       setInvites(inviteRows ?? [])
@@ -78,17 +85,25 @@ export default function FamilySettingsPage() {
   const handleSaveFamily = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!familyId) return
+    const normalizedFamilyName = familyName.trim()
     setSavingFamily(true)
     setInviteStatus(null)
     setError(null)
 
     const { error: updateError } = await supabase
       .from('families')
-      .update({ name: familyName.trim() })
+      .update({ name: normalizedFamilyName })
       .eq('id', familyId)
 
     if (updateError) {
       setError('Erro ao salvar família.')
+    } else {
+      setFamilyName(normalizedFamilyName)
+      if (normalizedFamilyName) {
+        window.localStorage.setItem(LOCAL_STORAGE_KEYS.familyName, normalizedFamilyName)
+      } else {
+        window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
+      }
     }
 
     setSavingFamily(false)
@@ -215,7 +230,7 @@ export default function FamilySettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-paper-2 border border-border rounded-vintage shadow-vintage p-6">
+      <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
         <h1 className="text-2xl font-serif text-coffee mb-2">Família</h1>
         <p className="text-sm text-ink/60 font-body">
           Gerencie o nome da família e os convites enviados.
@@ -229,12 +244,12 @@ export default function FamilySettingsPage() {
       )}
 
       {loading ? (
-        <div className="bg-paper-2 border border-border rounded-vintage shadow-vintage p-6">
+        <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
           <p className="text-sm text-ink/60 font-body">Carregando...</p>
         </div>
       ) : (
         <>
-          <div className="bg-paper-2 border border-border rounded-vintage shadow-vintage p-6">
+          <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
             <form onSubmit={handleSaveFamily} className="space-y-4">
               <h2 className="text-lg font-serif text-coffee">Nome da família</h2>
               <div>
@@ -242,7 +257,7 @@ export default function FamilySettingsPage() {
                 <input
                   value={familyName}
                   onChange={(event) => setFamilyName(event.target.value)}
-                  className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 transition-vintage"
+                  className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
                   placeholder="Família"
                 />
               </div>
@@ -256,7 +271,7 @@ export default function FamilySettingsPage() {
             </form>
           </div>
 
-          <div className="bg-paper-2 border border-border rounded-vintage shadow-vintage p-6 space-y-4">
+          <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6 space-y-4">
             <div>
               <h2 className="text-lg font-serif text-coffee">Membros</h2>
               <p className="text-sm text-ink/60 font-body">
@@ -301,7 +316,7 @@ export default function FamilySettingsPage() {
                           value={member.role}
                           onChange={(event) => handleUpdateMemberRole(member.id, event.target.value)}
                           disabled={savingMemberId === member.id}
-                          className="px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-petrol/50 disabled:opacity-60"
+                          className="px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50 disabled:opacity-60"
                         >
                           <option value="admin">Admin</option>
                           <option value="member">Membro</option>
@@ -324,7 +339,7 @@ export default function FamilySettingsPage() {
             )}
           </div>
 
-          <div className="bg-paper-2 border border-border rounded-vintage shadow-vintage p-6 space-y-4">
+          <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6 space-y-4">
             <div>
               <h2 className="text-lg font-serif text-coffee">Convites</h2>
               <p className="text-sm text-ink/60 font-body">
@@ -337,7 +352,7 @@ export default function FamilySettingsPage() {
                 value={inviteEmail}
                 onChange={(event) => setInviteEmail(event.target.value)}
                 required
-                className="flex-1 px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 transition-vintage"
+                className="flex-1 px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
                 placeholder="email@exemplo.com"
               />
               <button
