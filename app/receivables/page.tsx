@@ -1,11 +1,12 @@
 'use client'
 
 import AppLayout from '@/components/layout/AppLayout'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import Topbar from '@/components/layout/Topbar'
-import VintageCard from '@/components/ui/VintageCard'
+import FilterSidebar from '@/components/layout/FilterSidebar'
+import FilterSearchBar from '@/components/layout/FilterSearchBar'
 import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
@@ -15,42 +16,50 @@ import { DollarSign } from 'lucide-react'
 import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
 import { mergeAttachment, parseAttachment } from '@/lib/attachments'
+import CategorySettingsModal from '@/components/categories/CategorySettingsModal'
+import {
+  buildCategoryLabelMap,
+  buildCategoryOptions,
+  CategoryRecord,
+  findCategoryIdByStoredName,
+} from '@/lib/categories'
+import { matchesSearch } from '@/lib/filterSearch'
 
 interface Income {
   id: string
   description: string
+  category_id: string | null
   category_name: string
   amount_cents: number
   date: string
   notes: string | null
 }
 
-interface Category {
-  name: string
-}
-
 export default function ReceivablesPage() {
   const { familyId } = useAuth()
   const [incomes, setIncomes] = useState<Income[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
+  const [categories, setCategories] = useState<CategoryRecord[]>([])
   const [loading, setLoading] = useState(true)
-  
+
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
   const [selectedYear, setSelectedYear] = useState(getCurrentYear())
-  const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedCategoryId, setSelectedCategoryId] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
   const [onlyInstallments, setOnlyInstallments] = useState(false)
-  
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filtersOpen, setFiltersOpen] = useState(true)
+
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isCategorySettingsOpen, setIsCategorySettingsOpen] = useState(false)
   const [editingIncome, setEditingIncome] = useState<Income | null>(null)
   const [detailIncome, setDetailIncome] = useState<Income | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [currentAttachmentUrl, setCurrentAttachmentUrl] = useState<string | null>(null)
-  
+
   const [formData, setFormData] = useState({
     description: '',
-    category: '',
+    categoryId: '',
     amount: '',
     date: format(new Date(), 'yyyy-MM-dd'),
     notes: '',
@@ -59,21 +68,55 @@ export default function ReceivablesPage() {
   useEffect(() => {
     if (familyId) {
       loadCategories()
+    }
+  }, [familyId])
+
+  useEffect(() => {
+    if (familyId) {
       loadIncomes()
     }
-  }, [familyId, selectedMonth, selectedYear, selectedCategory])
+  }, [familyId, selectedMonth, selectedYear, selectedCategoryId])
+
+  const categoryById = useMemo(
+    () => new Map<string, CategoryRecord>(categories.map((category) => [category.id, category])),
+    [categories]
+  )
+  const categoryLabelMap = useMemo(() => buildCategoryLabelMap(categories), [categories])
+  const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories])
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem('app-filters-open')
+    if (stored === '0') setFiltersOpen(false)
+    if (stored === '1') setFiltersOpen(true)
+  }, [])
+
+  useEffect(() => {
+    window.localStorage.setItem('app-filters-open', filtersOpen ? '1' : '0')
+  }, [filtersOpen])
+
+  useEffect(() => {
+    if (!selectedCategoryId) return
+    if (!categoryById.has(selectedCategoryId)) {
+      setSelectedCategoryId('')
+    }
+  }, [selectedCategoryId, categoryById])
+
+  const getCategoryLabel = (categoryId: string | null, fallbackName: string) => {
+    if (categoryId) {
+      return categoryLabelMap.get(categoryId) || fallbackName
+    }
+    return fallbackName
+  }
 
   const loadCategories = async () => {
     const { data } = await supabase
       .from('categories')
-      .select('name')
+      .select('id,name,kind,parent_id,is_system')
       .eq('family_id', familyId!)
       .eq('kind', 'income')
       .order('name')
 
-    if (data) {
-      setCategories(data)
-    }
+    setCategories((data || []) as CategoryRecord[])
   }
 
   const loadIncomes = async () => {
@@ -88,8 +131,8 @@ export default function ReceivablesPage() {
       .lte('date', format(end, 'yyyy-MM-dd'))
       .order('date', { ascending: false })
 
-    if (selectedCategory) {
-      query = query.eq('category_name', selectedCategory)
+    if (selectedCategoryId) {
+      query = query.eq('category_id', selectedCategoryId)
     }
 
     const { data } = await query
@@ -102,13 +145,21 @@ export default function ReceivablesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const amountCents = Math.round(parseFloat(formData.amount) * 100)
+    const category = categoryById.get(formData.categoryId)
+    const categoryLabel = category ? (categoryLabelMap.get(category.id) || category.name) : null
+
+    if (!category || !categoryLabel) {
+      alert('Selecione uma categoria válida.')
+      return
+    }
 
     const incomeData = {
       family_id: familyId!,
       description: formData.description,
-      category_name: formData.category,
+      category_id: category.id,
+      category_name: categoryLabel,
       amount_cents: amountCents,
       date: formData.date,
       notes: mergeAttachment(formData.notes || null, currentAttachmentUrl),
@@ -172,7 +223,7 @@ export default function ReceivablesPage() {
       setCurrentAttachmentUrl(attachmentUrl)
       setFormData({
         description: income.description,
-        category: income.category_name,
+        categoryId: income.category_id || findCategoryIdByStoredName(categories, income.category_name) || '',
         amount: (income.amount_cents / 100).toFixed(2),
         date: income.date,
         notes: cleanNotes || '',
@@ -182,7 +233,7 @@ export default function ReceivablesPage() {
       setCurrentAttachmentUrl(null)
       setFormData({
         description: '',
-        category: '',
+        categoryId: '',
         amount: '',
         date: format(new Date(), 'yyyy-MM-dd'),
         notes: '',
@@ -197,7 +248,73 @@ export default function ReceivablesPage() {
     setCurrentAttachmentUrl(null)
   }
 
-  const total = incomes.reduce((sum, inc) => sum + inc.amount_cents, 0)
+  const filteredIncomes = incomes.filter((income) =>
+    matchesSearch(
+      searchTerm,
+      income.description,
+      getCategoryLabel(income.category_id, income.category_name)
+    )
+  )
+  const total = filteredIncomes.reduce((sum, inc) => sum + inc.amount_cents, 0)
+  const activeFiltersCount = [
+    selectedMonth !== getCurrentMonth(),
+    selectedYear !== getCurrentYear(),
+    selectedCategoryId !== '',
+    selectedStatus !== '',
+    selectedPaymentMethod !== '',
+    onlyInstallments,
+  ].filter(Boolean).length
+
+  const clearFilters = () => {
+    setSelectedMonth(getCurrentMonth())
+    setSelectedYear(getCurrentYear())
+    setSelectedCategoryId('')
+    setSelectedStatus('')
+    setSelectedPaymentMethod('')
+    setOnlyInstallments(false)
+  }
+  const activeFilterChips = [
+    {
+      key: 'month',
+      label: MONTHS.find((month) => month.value === selectedMonth)?.label ?? String(selectedMonth),
+      onRemove: () => setSelectedMonth(getCurrentMonth()),
+      disabled: selectedMonth === getCurrentMonth(),
+    },
+    {
+      key: 'year',
+      label: String(selectedYear),
+      onRemove: () => setSelectedYear(getCurrentYear()),
+      disabled: selectedYear === getCurrentYear(),
+    },
+    ...(selectedCategoryId
+      ? [{
+          key: 'category',
+          label: getCategoryLabel(selectedCategoryId, 'Categoria'),
+          onRemove: () => setSelectedCategoryId(''),
+        }]
+      : []),
+    ...(selectedStatus
+      ? [{
+          key: 'status',
+          label: selectedStatus === 'paid' ? 'Pago' : 'Em aberto',
+          onRemove: () => setSelectedStatus(''),
+        }]
+      : []),
+    ...(selectedPaymentMethod
+      ? [{
+          key: 'method',
+          label: selectedPaymentMethod,
+          onRemove: () => setSelectedPaymentMethod(''),
+        }]
+      : []),
+    ...(onlyInstallments
+      ? [{
+          key: 'installments',
+          label: 'Somente parceladas',
+          onRemove: () => setOnlyInstallments(false),
+        }]
+      : []),
+  ]
 
   return (
     <AppLayout>
@@ -206,8 +323,45 @@ export default function ReceivablesPage() {
           title="Contas a Receber"
           subtitle="O fruto do trabalho em forma de números."
           variant="textured"
-          filters={
-            <div className="grid grid-cols-1 md:grid-cols-7 gap-4 ">
+        />
+
+        <div className="flex-1 flex flex-col">
+          <div className="px-6 py-4">
+            <FilterSearchBar
+              value={searchTerm}
+              onChange={setSearchTerm}
+              onToggleFilters={() => setFiltersOpen((prev) => !prev)}
+              filtersOpen={filtersOpen}
+              placeholder="Buscar por nome ou categoria"
+              filterChips={activeFilterChips}
+              rightSlot={
+                <>
+                  <button
+                    onClick={() => setIsCategorySettingsOpen(true)}
+                    className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
+                  >
+                    Categorias
+                  </button>
+                  <button
+                    onClick={() => openModal()}
+                    className="px-5 py-2 bg-petrol text-white rounded-md hover:bg-petrol/90 transition-vintage text-sm"
+                  >
+                    Nova Receita
+                  </button>
+                </>
+              }
+            />
+          </div>
+
+          <div className={`px-6 pb-4 w-full flex ${filtersOpen ? 'gap-4' : 'gap-0'} flex-1 items-stretch`}>
+            <FilterSidebar
+              open={filtersOpen}
+              onOpenChange={setFiltersOpen}
+              showToggle={false}
+              collapsedWidthClass="w-0"
+              activeFiltersCount={activeFiltersCount}
+              onClearFilters={clearFilters}
+            >
               <Select
                 variant="filter"
                 label="Mês"
@@ -225,11 +379,11 @@ export default function ReceivablesPage() {
               <Select
                 variant="filter"
                 label="Categoria"
-                value={selectedCategory}
-                onChange={setSelectedCategory}
+                value={selectedCategoryId}
+                onChange={setSelectedCategoryId}
                 options={[
                   { value: '', label: 'Todas' },
-                  ...categories.map(c => ({ value: c.name, label: c.name }))
+                  ...categoryOptions,
                 ]}
               />
               <Select
@@ -255,7 +409,7 @@ export default function ReceivablesPage() {
                   { value: 'Debito', label: 'Debito' },
                 ]}
               />
-              <label className="flex items-center gap-2 text-sm text-gold pt-8">
+              <label className="flex items-center gap-2 text-sm text-petrol pt-2">
                 <input
                   type="checkbox"
                   checked={onlyInstallments}
@@ -264,37 +418,13 @@ export default function ReceivablesPage() {
                 />
                 Somente parceladas
               </label>
-              <div className="flex items-end">
-                <button
-                  onClick={() => {
-                    setSelectedCategory('')
-                    setSelectedStatus('')
-                    setSelectedPaymentMethod('')
-                    setOnlyInstallments(false)
-                  }}
-                  className="w-full px-4 py-3 rounded-lg bg-paper-2/80 transition-vintage text-sm text-petrol"
-                >
-                  Limpar filtros
-                </button>
-              </div>
-            </div>
-          }
-        />
+            </FilterSidebar>
 
-        <div className="flex-1 flex flex-col">
-          <div className="px-6 py-4 w-full flex flex-col">
-            <div className="flex justify-end mb-4">
-              <button
-                onClick={() => openModal()}
-                className="px-5 py-2 bg-petrol text-white rounded-md hover:bg-petrol/90 transition-vintage text-sm"
-              >
-                Nova Receita
-              </button>
-            </div>
+            <div className="flex-1 min-w-0 flex flex-col">
 
             {loading ? (
               <div className="text-center py-12 text-ink/60">Carregando...</div>
-            ) : incomes.length === 0 ? (
+            ) : filteredIncomes.length === 0 ? (
               <EmptyState
                 icon={<DollarSign className="w-16 h-16" />}
                 message="Ainda não há receitas registradas."
@@ -302,17 +432,17 @@ export default function ReceivablesPage() {
               />
             ) : (
               <div className="space-y-3">
-                {incomes.map((income) => (
+                {filteredIncomes.map((income) => (
                   <div
                     key={income.id}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage"
                   >
                     <div className="flex-1 min-w-0">
                       <h4 className="text-xl font-medium text-petrol font-serif">
                         {income.description}
                       </h4>
                       <p className="text-sm text-ink/50">
-                        {income.category_name} • {formatDate(income.date)}
+                        {getCategoryLabel(income.category_id, income.category_name)} • {formatDate(income.date)}
                       </p>
                     </div>
 
@@ -331,6 +461,7 @@ export default function ReceivablesPage() {
                 ))}
               </div>
             )}
+            </div>
           </div>
 
           <footer className="mt-auto w-full">
@@ -344,26 +475,26 @@ export default function ReceivablesPage() {
                 </div>
                 <div className="text-center md:text-right">
                   <div className="text-sm uppercase tracking-wide text-ink/50">Total</div>
-                  <div className="font-numbers text-xl font-semibold text-petrol">{incomes.length}</div>
+                  <div className="font-numbers text-xl font-semibold text-petrol">{filteredIncomes.length}</div>
                 </div>
               </div>
 
               <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
                 <button
                   type="button"
-                  className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-paper-2 hover:text-petrol transition-vintage text-sm"
+                  className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
                 >
                   Gerar CSV
                 </button>
                 <button
                   type="button"
-                  className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-paper-2 hover:text-petrol transition-vintage text-sm"
+                  className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
                 >
                   Gerar PDF
                 </button>
               </div>
             </div>
-            <div className="h-[56px] bg-texture flex items-center justify-center px-6">
+            <div className="h-[56px] bg-paper flex items-center justify-center px-6">
               <p className="text-center text-[13px] text-gold italic">
                 Acompanhe o que entra para decidir para onde a vida vai.
               </p>
@@ -387,17 +518,18 @@ export default function ReceivablesPage() {
               required
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-3 bg-paper-2/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+              className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder="Ex: Salário"
             />
           </div>
 
           <Select
             label="Categoria"
-            value={formData.category}
-            onChange={(v) => setFormData({ ...formData, category: v })}
-            options={categories.map(c => ({ value: c.name, label: c.name }))}
+            value={formData.categoryId}
+            onChange={(v) => setFormData({ ...formData, categoryId: v })}
+            options={categoryOptions}
             required
+            variant="modal"
           />
 
           <div>
@@ -410,7 +542,7 @@ export default function ReceivablesPage() {
               required
               value={formData.amount}
               onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              className="w-full px-4 py-3 bg-paper-2/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+              className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder="0.00"
             />
           </div>
@@ -424,7 +556,7 @@ export default function ReceivablesPage() {
               required
               value={formData.date}
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              className="w-full px-4 py-3 bg-paper-2/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+              className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
 
@@ -435,7 +567,7 @@ export default function ReceivablesPage() {
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-4 py-3 bg-paper-2/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 resize-none"
+              className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 resize-none"
               rows={3}
               placeholder="Notas adicionais..."
             />
@@ -475,7 +607,7 @@ export default function ReceivablesPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-ink/50">Categoria</p>
-                  <p>{detailIncome.category_name}</p>
+                  <p>{getCategoryLabel(detailIncome.category_id, detailIncome.category_name)}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-ink/50">Data</p>
@@ -509,6 +641,17 @@ export default function ReceivablesPage() {
           )
         })()}
       </Modal>
+
+      <CategorySettingsModal
+        isOpen={isCategorySettingsOpen}
+        onClose={() => setIsCategorySettingsOpen(false)}
+        familyId={familyId}
+        kind="income"
+        onChanged={() => {
+          loadCategories()
+          loadIncomes()
+        }}
+      />
     </AppLayout>
   )
 }
