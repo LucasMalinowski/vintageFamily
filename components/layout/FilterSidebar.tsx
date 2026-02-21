@@ -66,7 +66,7 @@ export default function FilterSidebar({
         ) : null}
 
         {open ? (
-          <div className={`${showToggle ? 'mt-3' : ''} flex-1 rounded-[18px] border-2 border-border bg-offWhite/85 p-3 overflow-hidden`}>
+          <div className={`${showToggle ? 'mt-3' : ''} flex-1 rounded-[18px] border-2 border-border/40 bg-offWhite p-3`}>
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="text-lg leading-none font-semibold text-petrol">
                 Filtros <span className="text-ink/60 text-base">({activeFiltersCount})</span>

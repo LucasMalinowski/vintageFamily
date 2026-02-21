@@ -216,7 +216,7 @@ export default function CategorySettingsModal({
                 type="text"
                 value={draftName}
                 onChange={(event) => setDraftName(event.target.value)}
-                className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+                className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
                 placeholder="Nova Categoria Principal"
               />
               <button
@@ -302,7 +302,7 @@ export default function CategorySettingsModal({
                       type="text"
                       value={draftName}
                       onChange={(event) => setDraftName(event.target.value)}
-                      className="w-full px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+                      className="w-full px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
                       placeholder="Nome da categoria principal"
                     />
                     <div className="flex gap-2">
@@ -385,7 +385,7 @@ export default function CategorySettingsModal({
                       type="text"
                       value={draftName}
                       onChange={(event) => setDraftName(event.target.value)}
-                      className="w-full px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+                      className="w-full px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
                       placeholder="Nome da subcategoria"
                     />
                     <div className="flex gap-2">

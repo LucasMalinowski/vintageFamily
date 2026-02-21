@@ -183,7 +183,7 @@ export default function RemindersPage() {
               required
               value={formData.title}
               onChange={(event) => setFormData({ ...formData, title: event.target.value })}
-              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder="Ex: Conferir conta de água"
             />
           </div>
@@ -194,7 +194,7 @@ export default function RemindersPage() {
               type="date"
               value={formData.due_date}
               onChange={(event) => setFormData({ ...formData, due_date: event.target.value })}
-              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
 

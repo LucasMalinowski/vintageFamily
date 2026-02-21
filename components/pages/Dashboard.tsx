@@ -349,7 +349,7 @@ export default function Dashboard() {
               required
               value={reminderForm.title}
               onChange={(event) => setReminderForm({ ...reminderForm, title: event.target.value })}
-              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder="Ex: Conferir conta de água"
             />
           </div>
@@ -360,7 +360,7 @@ export default function Dashboard() {
               type="date"
               value={reminderForm.due_date}
               onChange={(event) => setReminderForm({ ...reminderForm, due_date: event.target.value })}
-              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
 

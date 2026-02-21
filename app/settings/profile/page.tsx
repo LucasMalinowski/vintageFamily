@@ -145,7 +145,7 @@ export default function ProfileSettingsPage() {
                 <input
                   value={profileName}
                   onChange={(event) => setProfileName(event.target.value)}
-                  className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 transition-vintage"
+                  className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
                   placeholder="Seu nome"
                 />
               </div>

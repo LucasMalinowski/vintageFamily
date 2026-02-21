@@ -28,10 +28,10 @@ export default function Select({
     ? 'block font-serif text-petrol mb-2 text-left font-semibold'
     : 'block font-serif text-ink mb-2'
   const selectClassName = variant === 'filter'
-    ? 'w-full px-4 py-2.5 bg-paper rounded-md focus:outline-none focus:ring-2 focus:ring-petrol/40 transition-vintage appearance-none cursor-pointer text-petrol text-left'
+    ? 'w-full px-4 py-2.5 bg-paper rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-paper-2/40 transition-vintage appearance-none cursor-pointer text-petrol text-left'
     : variant === 'modal'
-      ? 'w-full px-4 py-2.5 bg-paper rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-petrol/40 transition-vintage appearance-none cursor-pointer'
-      : 'w-full px-4 py-2.5 bg-bg rounded-md focus:outline-none focus:ring-2 focus:ring-petrol/40 transition-vintage appearance-none cursor-pointer'
+      ? 'w-full px-4 py-2.5 bg-paper rounded-md border border-border focus:outline-none focus:ring-2 focus:ring-inset focus:ring-paper-2/40 transition-vintage appearance-none cursor-pointer'
+      : 'w-full px-4 py-2.5 bg-bg rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-paper-2/40 transition-vintage appearance-none cursor-pointer'
 
   return (
     <div>

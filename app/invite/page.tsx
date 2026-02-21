@@ -128,7 +128,7 @@ function InvitePageContent() {
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   required
-                  className="w-full px-4 py-3 bg-white/70 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-petrol/40 transition-vintage"
+                  className="w-full px-4 py-3 bg-white/70 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
                   placeholder="Nome completo"
                 />
               </div>
@@ -141,7 +141,7 @@ function InvitePageContent() {
                   onChange={(event) => setPassword(event.target.value)}
                   required
                   minLength={6}
-                  className="w-full px-4 py-3 bg-white/70 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-petrol/40 transition-vintage"
+                  className="w-full px-4 py-3 bg-white/70 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
                   placeholder="••••••••"
                 />
               </div>
@@ -154,7 +154,7 @@ function InvitePageContent() {
                   onChange={(event) => setConfirmPassword(event.target.value)}
                   required
                   minLength={6}
-                  className="w-full px-4 py-3 bg-white/70 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-petrol/40 transition-vintage"
+                  className="w-full px-4 py-3 bg-white/70 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
                   placeholder="••••••••"
                 />
               </div>
