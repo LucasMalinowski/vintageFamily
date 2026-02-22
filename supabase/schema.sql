@@ -30,10 +30,13 @@ CREATE TABLE public.dreams (
                                id uuid NOT NULL DEFAULT gen_random_uuid(),
                                family_id uuid NOT NULL,
                                name text NOT NULL,
+                               parent_id uuid,
+                               is_system boolean NOT NULL DEFAULT false,
                                target_cents integer,
                                created_at timestamp with time zone NOT NULL DEFAULT now(),
                                updated_at timestamp with time zone NOT NULL DEFAULT now(),
                                CONSTRAINT dreams_pkey PRIMARY KEY (id),
+                               CONSTRAINT dreams_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.dreams(id),
                                CONSTRAINT dreams_family_id_fkey FOREIGN KEY (family_id) REFERENCES public.families(id)
 );
 CREATE TABLE public.expenses (

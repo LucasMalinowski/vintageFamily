@@ -112,7 +112,9 @@ export type Database = {
           created_at: string
           family_id: string
           id: string
+          is_system: boolean
           name: string
+          parent_id: string | null
           target_cents: number | null
           updated_at: string
         }
@@ -120,7 +122,9 @@ export type Database = {
           created_at?: string
           family_id: string
           id?: string
+          is_system?: boolean
           name: string
+          parent_id?: string | null
           target_cents?: number | null
           updated_at?: string
         }
@@ -128,11 +132,20 @@ export type Database = {
           created_at?: string
           family_id?: string
           id?: string
+          is_system?: boolean
           name?: string
+          parent_id?: string | null
           target_cents?: number | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "dreams_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "dreams"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "dreams_family_id_fkey"
             columns: ["family_id"]
