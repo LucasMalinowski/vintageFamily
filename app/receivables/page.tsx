@@ -466,14 +466,14 @@ export default function ReceivablesPage() {
 
           <footer className="mt-auto w-full">
             <div className="px-6 mb-4">
-              <div className="mt-10 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6 items-center">
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                   <div className="rounded-[16px] px-10 py-5 bg-olive text-white text-center shadow-soft min-w-[200px]">
                     <div className="text-sm uppercase tracking-wide text-white/80 mb-2">Recebido</div>
                     <div className="font-numbers text-xl font-semibold">{formatBRL(total)}</div>
                   </div>
                 </div>
-                <div className="text-center md:text-right">
+                <div className="text-center sm:text-left">
                   <div className="text-sm uppercase tracking-wide text-ink/50">Total</div>
                   <div className="font-numbers text-xl font-semibold text-petrol">{filteredIncomes.length}</div>
                 </div>
