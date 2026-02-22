@@ -17,7 +17,7 @@ const menuItems = [
   { icon: BanknoteArrowDown, label: 'Contas a Receber', href: '/receivables' },
   { icon: PiggyBank, label: 'Poupança', href: '/dreams' },
   { icon: ChartColumnBig, label: 'Dashboard', href: '/comparatives' },
-  { icon: Info, label: 'Sobre', href: '/about' },
+  { icon: Info, label: 'Sobre', href: '/sobre' },
 ]
 
 const dailyPhrases = [
