@@ -10,6 +10,7 @@ import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
 import ActionMenu from '@/components/ui/ActionMenu'
+import CategorySettingsModal from '@/components/categories/CategorySettingsModal'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { formatBRL } from '@/lib/money'
@@ -21,6 +22,12 @@ interface Dream {
   id: string
   name: string
   target_cents: number | null
+  parent_id: string | null
+  is_system: boolean
+}
+
+interface DreamNode extends Dream {
+  children: Dream[]
 }
 
 interface Contribution {
@@ -29,6 +36,50 @@ interface Contribution {
   amount_cents: number
   date: string
   notes: string | null
+}
+
+const buildDreamTree = (dreams: Dream[]): DreamNode[] => {
+  const main = dreams
+    .filter((dream) => !dream.parent_id)
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+
+  return main.map((dream) => ({
+    ...dream,
+    children: dreams
+      .filter((child) => child.parent_id === dream.id)
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+  }))
+}
+
+const buildDreamLabelMap = (dreams: Dream[]) => {
+  const byId = new Map<string, Dream>(dreams.map((dream) => [dream.id, dream]))
+  const labels = new Map<string, string>()
+
+  for (const dream of dreams) {
+    if (!dream.parent_id) {
+      labels.set(dream.id, dream.name)
+      continue
+    }
+
+    const parent = byId.get(dream.parent_id)
+    labels.set(dream.id, parent ? `${parent.name} / ${dream.name}` : dream.name)
+  }
+
+  return labels
+}
+
+const buildDreamOptions = (dreams: Dream[]) => {
+  const tree = buildDreamTree(dreams)
+  const options: Array<{ value: string; label: string }> = []
+
+  for (const main of tree) {
+    options.push({ value: main.id, label: main.name })
+    for (const child of main.children) {
+      options.push({ value: child.id, label: `-- ${main.name} / ${child.name}` })
+    }
+  }
+
+  return options
 }
 
 export default function DreamsPage() {
@@ -44,12 +95,9 @@ export default function DreamsPage() {
   const [filtersOpen, setFiltersOpen] = useState(true)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isEditDreamModalOpen, setIsEditDreamModalOpen] = useState(false)
-  const [editingDream, setEditingDream] = useState<Dream | null>(null)
-  const [dreamNameInput, setDreamNameInput] = useState('')
+  const [isDreamSettingsOpen, setIsDreamSettingsOpen] = useState(false)
   const [formData, setFormData] = useState({
     dreamId: '',
-    dreamName: '',
     amount: '',
     date: format(new Date(), 'yyyy-MM-dd'),
     notes: '',
@@ -72,14 +120,29 @@ export default function DreamsPage() {
     }
   }, [familyId, selectedMonth, selectedYear, selectedDreamId])
 
+  const dreamLabelMap = useMemo(() => buildDreamLabelMap(dreams), [dreams])
+  const dreamOptions = useMemo(() => buildDreamOptions(dreams), [dreams])
+
+  useEffect(() => {
+    if (!selectedDreamId) return
+    const exists = dreams.some((dream) => dream.id === selectedDreamId)
+    if (!exists) {
+      setSelectedDreamId('')
+    }
+  }, [dreams, selectedDreamId])
+
+  const getDreamLabel = (dreamId: string) => {
+    return dreamLabelMap.get(dreamId) || dreams.find((dream) => dream.id === dreamId)?.name || 'Categoria'
+  }
+
   const loadDreams = async () => {
     const { data } = await supabase
       .from('dreams')
-      .select('*')
+      .select('id,name,target_cents,parent_id,is_system')
       .eq('family_id', familyId!)
       .order('name')
 
-    setDreams(data || [])
+    setDreams((data || []) as Dream[])
   }
 
   const loadContributions = async () => {
@@ -107,7 +170,6 @@ export default function DreamsPage() {
     setIsModalOpen(false)
     setFormData({
       dreamId: '',
-      dreamName: '',
       amount: '',
       date: format(new Date(), 'yyyy-MM-dd'),
       notes: '',
@@ -118,20 +180,7 @@ export default function DreamsPage() {
     event.preventDefault()
 
     const amountCents = Math.round(parseFloat(formData.amount) * 100)
-    let dreamId = formData.dreamId
-
-    if (dreamId === '__new__') {
-      const dreamName = formData.dreamName.trim()
-      if (!dreamName) return
-      const { data: newDream } = await supabase
-        .from('dreams')
-        .insert({ family_id: familyId!, name: dreamName })
-        .select('id')
-        .single()
-
-      if (!newDream?.id) return
-      dreamId = newDream.id
-    }
+    const dreamId = formData.dreamId
 
     if (!dreamId) return
 
@@ -144,59 +193,6 @@ export default function DreamsPage() {
     })
 
     closeModal()
-    loadDreams()
-    loadContributions()
-  }
-
-  const openEditDreamModal = (dream: Dream) => {
-    setEditingDream(dream)
-    setDreamNameInput(dream.name)
-    setIsEditDreamModalOpen(true)
-  }
-
-  const closeEditDreamModal = () => {
-    setEditingDream(null)
-    setDreamNameInput('')
-    setIsEditDreamModalOpen(false)
-  }
-
-  const handleRenameDream = async (event: React.FormEvent) => {
-    event.preventDefault()
-    if (!editingDream || !familyId) return
-
-    const nextName = dreamNameInput.trim()
-    if (!nextName) return
-
-    await supabase
-      .from('dreams')
-      .update({ name: nextName, updated_at: new Date().toISOString() })
-      .eq('id', editingDream.id)
-      .eq('family_id', familyId)
-
-    closeEditDreamModal()
-    loadDreams()
-  }
-
-  const handleDeleteDream = async (dream: Dream) => {
-    if (!familyId) return
-    if (!confirm(`Excluir a categoria "${dream.name}" e todos os aportes dela?`)) return
-
-    await supabase
-      .from('dream_contributions')
-      .delete()
-      .eq('family_id', familyId)
-      .eq('dream_id', dream.id)
-
-    await supabase
-      .from('dreams')
-      .delete()
-      .eq('family_id', familyId)
-      .eq('id', dream.id)
-
-    if (selectedDreamId === dream.id) {
-      setSelectedDreamId('')
-    }
-
     loadDreams()
     loadContributions()
   }
@@ -224,7 +220,7 @@ export default function DreamsPage() {
   const totalRedeemed = 0
   const visibleDreams = (selectedDreamId
     ? dreams.filter((dream) => dream.id === selectedDreamId)
-    : dreams).filter((dream) => matchesSearch(searchTerm, dream.name, dream.name))
+    : dreams).filter((dream) => matchesSearch(searchTerm, dream.name, getDreamLabel(dream.id)))
   const activeFiltersCount = [
     selectedMonth !== getCurrentMonth(),
     selectedYear !== getCurrentYear(),
@@ -252,7 +248,7 @@ export default function DreamsPage() {
     ...(selectedDreamId
       ? [{
           key: 'category',
-          label: dreams.find((dream) => dream.id === selectedDreamId)?.name ?? 'Categoria',
+          label: getDreamLabel(selectedDreamId),
           onRemove: () => setSelectedDreamId(''),
         }]
       : []),
@@ -285,13 +281,10 @@ export default function DreamsPage() {
                     Guardar
                   </button>
                   <button
-                    onClick={() => {
-                      setFormData((prev) => ({ ...prev, dreamId: '__new__' }))
-                      setIsModalOpen(true)
-                    }}
+                    onClick={() => setIsDreamSettingsOpen(true)}
                     className="px-5 py-2 bg-petrol text-white rounded-md hover:bg-petrol/90 transition-vintage text-sm font-semibold"
                   >
-                    Nova Categoria
+                    Categorias
                   </button>
                   <button
                     type="button"
@@ -334,7 +327,7 @@ export default function DreamsPage() {
                 onChange={setSelectedDreamId}
                 options={[
                   { value: '', label: 'Todas' },
-                  ...dreams.map((dream) => ({ value: dream.id, label: dream.name })),
+                  ...dreamOptions,
                 ]}
               />
             </FilterSidebar>
@@ -362,11 +355,14 @@ export default function DreamsPage() {
                       className="p-4 bg-offWhite rounded-[12px] border border-border hover:shadow-soft transition-vintage"
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <h4 className="text-xl font-medium text-sidebar font-serif">{dream.name}</h4>
+                        <div className="flex flex-row gap-2 items-end">
+                          <h4 className="text-xl font-medium text-sidebar font-serif">{getDreamLabel(dream.id)}</h4>
+                          {dream.is_system ? (
+                            <span className="flex text-center text-[11px] h-5 px-2 py-0.5 my-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>
+                          ) : null}
+                        </div>
                         <ActionMenu
                           onView={() => setSelectedDreamId(dream.id)}
-                          onEdit={() => openEditDreamModal(dream)}
-                          onDelete={() => handleDeleteDream(dream)}
                         />
                       </div>
                       <p className="text-sm text-ink/25 mb-2">
@@ -432,28 +428,10 @@ export default function DreamsPage() {
             label="Categoria do sonho"
             value={formData.dreamId}
             onChange={(value) => setFormData({ ...formData, dreamId: value })}
-            options={[
-              { value: '__new__', label: 'Nova categoria' },
-              ...dreams.map((dream) => ({ value: dream.id, label: dream.name })),
-            ]}
+            options={dreamOptions}
             required
+            variant="modal"
           />
-
-          {formData.dreamId === '__new__' && (
-            <div>
-              <label className="block font-body text-ink mb-2 font-serif">
-                Nome da nova categoria <span className="text-terracotta">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.dreamName}
-                onChange={(event) => setFormData({ ...formData, dreamName: event.target.value })}
-                className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-                placeholder="Ex: Reforma da casa"
-              />
-            </div>
-          )}
 
           <div>
             <label className="block font-serif font-body text-ink mb-2">
@@ -514,43 +492,16 @@ export default function DreamsPage() {
         </form>
       </Modal>
 
-      <Modal
-        isOpen={isEditDreamModalOpen}
-        onClose={closeEditDreamModal}
-        title="Editar Categoria"
-      >
-        <form onSubmit={handleRenameDream} className="space-y-4">
-          <div>
-            <label className="block font-body text-ink mb-2 font-serif">
-              Nome da categoria <span className="text-terracotta">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={dreamNameInput}
-              onChange={(event) => setDreamNameInput(event.target.value)}
-              className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-              placeholder="Ex: Viagem"
-            />
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={closeEditDreamModal}
-              className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg hover:bg-coffee/90 transition-vintage"
-            >
-              Salvar
-            </button>
-          </div>
-        </form>
-      </Modal>
+      <CategorySettingsModal
+        isOpen={isDreamSettingsOpen}
+        onClose={() => setIsDreamSettingsOpen(false)}
+        familyId={familyId}
+        scope="dreams"
+        onChanged={() => {
+          loadDreams()
+          loadContributions()
+        }}
+      />
     </AppLayout>
   )
 }

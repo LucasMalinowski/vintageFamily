@@ -4,118 +4,147 @@ import { useEffect, useMemo, useState } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
-import {
-  buildCategoryTree,
-  CategoryKind,
-  CategoryRecord,
-  normalizeCategoryName,
-} from '@/lib/categories'
+import { CategoryKind, normalizeCategoryName } from '@/lib/categories'
+
+type Scope = 'categories' | 'dreams'
+
+type NodeItem = {
+  id: string
+  name: string
+  parent_id: string | null
+  is_system: boolean
+}
 
 interface CategorySettingsModalProps {
   isOpen: boolean
   onClose: () => void
   familyId: string | null
-  kind: CategoryKind
   onChanged?: () => void
+  scope?: Scope
+  kind?: CategoryKind
 }
 
 type ComposerMode = 'main' | 'child' | null
+
+const buildTree = (items: NodeItem[]) => {
+  const main = items
+    .filter((item) => !item.parent_id)
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+
+  return main.map((item) => ({
+    ...item,
+    children: items
+      .filter((child) => child.parent_id === item.id)
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+  }))
+}
 
 export default function CategorySettingsModal({
   isOpen,
   onClose,
   familyId,
-  kind,
   onChanged,
+  scope = 'categories',
+  kind,
 }: CategorySettingsModalProps) {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [categories, setCategories] = useState<CategoryRecord[]>([])
+  const [items, setItems] = useState<NodeItem[]>([])
 
-  const [selectedMainCategoryId, setSelectedMainCategoryId] = useState<string | null>(null)
+  const [selectedMainId, setSelectedMainId] = useState<string | null>(null)
 
   const [composerMode, setComposerMode] = useState<ComposerMode>(null)
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [draftName, setDraftName] = useState('')
   const [draftParentId, setDraftParentId] = useState<string | null>(null)
 
   useEffect(() => {
     if (isOpen && familyId) {
-      loadCategories()
+      loadItems()
     }
     if (!isOpen) {
       resetComposer()
-      setSelectedMainCategoryId(null)
+      setSelectedMainId(null)
     }
-  }, [isOpen, familyId, kind])
+  }, [isOpen, familyId, scope, kind])
 
-  const loadCategories = async () => {
+  const loadItems = async () => {
     if (!familyId) return
+
     setLoading(true)
+
+    if (scope === 'dreams') {
+      const { data } = await supabase
+        .from('dreams')
+        .select('id,name,parent_id,is_system')
+        .eq('family_id', familyId)
+        .order('name')
+
+      setItems((data || []) as NodeItem[])
+      setLoading(false)
+      return
+    }
 
     const { data } = await supabase
       .from('categories')
-      .select('id,name,kind,parent_id,is_system')
+      .select('id,name,parent_id,is_system')
       .eq('family_id', familyId)
-      .eq('kind', kind)
+      .eq('kind', kind!)
       .order('name')
 
-    setCategories((data || []) as CategoryRecord[])
+    setItems((data || []) as NodeItem[])
     setLoading(false)
   }
 
-  const tree = useMemo(() => buildCategoryTree(categories), [categories])
-  const selectedMainCategory = useMemo(
-    () => tree.find((main) => main.id === selectedMainCategoryId) || null,
-    [tree, selectedMainCategoryId]
+  const tree = useMemo(() => buildTree(items), [items])
+  const selectedMain = useMemo(
+    () => tree.find((main) => main.id === selectedMainId) || null,
+    [tree, selectedMainId]
   )
 
   useEffect(() => {
     if (tree.length === 0) {
-      setSelectedMainCategoryId(null)
+      setSelectedMainId(null)
       return
     }
 
-    const stillExists = selectedMainCategoryId
-      ? tree.some((main) => main.id === selectedMainCategoryId)
-      : false
-
+    const stillExists = selectedMainId ? tree.some((main) => main.id === selectedMainId) : false
     if (!stillExists) {
-      setSelectedMainCategoryId(tree[0].id)
+      setSelectedMainId(tree[0].id)
     }
-  }, [tree, selectedMainCategoryId])
+  }, [tree, selectedMainId])
 
   const resetComposer = () => {
     setComposerMode(null)
-    setEditingCategoryId(null)
+    setEditingId(null)
     setDraftName('')
     setDraftParentId(null)
   }
 
   const startCreateMain = () => {
     setComposerMode('main')
-    setEditingCategoryId(null)
+    setEditingId(null)
     setDraftParentId(null)
     setDraftName('')
   }
 
   const startCreateChild = () => {
-    if (!selectedMainCategory) {
+    if (!selectedMain) {
       alert('Selecione uma categoria principal primeiro.')
       return
     }
 
     setComposerMode('child')
-    setEditingCategoryId(null)
-    setDraftParentId(selectedMainCategory.id)
+    setEditingId(null)
+    setDraftParentId(selectedMain.id)
     setDraftName('')
   }
 
-  const startEdit = (category: CategoryRecord) => {
-    setComposerMode(category.parent_id ? 'child' : 'main')
-    setEditingCategoryId(category.id)
-    setDraftParentId(category.parent_id)
-    setDraftName(category.name)
+  const startEdit = (item: NodeItem) => {
+    setComposerMode(item.parent_id ? 'child' : 'main')
+    setEditingId(item.id)
+    setDraftParentId(item.parent_id)
+    setDraftName(item.name)
   }
 
   const saveComposer = async () => {
@@ -130,30 +159,57 @@ export default function CategorySettingsModal({
     setSaving(true)
     let errorMessage: string | null = null
 
-    if (editingCategoryId) {
-      const { error } = await supabase
-        .from('categories')
-        .update({
-          name,
-          parent_id: draftParentId,
-        })
-        .eq('id', editingCategoryId)
-        .eq('family_id', familyId)
-        .eq('kind', kind)
+    if (scope === 'dreams') {
+      if (editingId) {
+        const { error } = await supabase
+          .from('dreams')
+          .update({
+            name,
+            parent_id: draftParentId,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', editingId)
+          .eq('family_id', familyId)
 
-      errorMessage = error?.message || null
+        errorMessage = error?.message || null
+      } else {
+        const { error } = await supabase
+          .from('dreams')
+          .insert({
+            family_id: familyId,
+            name,
+            parent_id: draftParentId,
+            is_system: false,
+          })
+
+        errorMessage = error?.message || null
+      }
     } else {
-      const { error } = await supabase
-        .from('categories')
-        .insert({
-          family_id: familyId,
-          kind,
-          is_system: false,
-          name,
-          parent_id: draftParentId,
-        })
+      if (editingId) {
+        const { error } = await supabase
+          .from('categories')
+          .update({
+            name,
+            parent_id: draftParentId,
+          })
+          .eq('id', editingId)
+          .eq('family_id', familyId)
+          .eq('kind', kind!)
 
-      errorMessage = error?.message || null
+        errorMessage = error?.message || null
+      } else {
+        const { error } = await supabase
+          .from('categories')
+          .insert({
+            family_id: familyId,
+            kind: kind!,
+            is_system: false,
+            name,
+            parent_id: draftParentId,
+          })
+
+        errorMessage = error?.message || null
+      }
     }
 
     setSaving(false)
@@ -164,32 +220,53 @@ export default function CategorySettingsModal({
     }
 
     resetComposer()
-    await loadCategories()
+    await loadItems()
     onChanged?.()
   }
 
-  const handleDelete = async (category: CategoryRecord) => {
+  const handleDelete = async (item: NodeItem) => {
     if (!familyId) return
+    if (!confirm(`Excluir a categoria "${item.name}"?`)) return
 
-    if (!confirm(`Excluir a categoria "${category.name}"?`)) return
+    if (scope === 'dreams') {
+      const childIds = items.filter((it) => it.parent_id === item.id).map((it) => it.id)
+      const idsToDelete = [item.id, ...childIds]
 
-    const { error } = await supabase
-      .from('categories')
-      .delete()
-      .eq('id', category.id)
-      .eq('family_id', familyId)
-      .eq('kind', kind)
+      await supabase
+        .from('dream_contributions')
+        .delete()
+        .eq('family_id', familyId)
+        .in('dream_id', idsToDelete)
 
-    if (error) {
-      alert(error.message)
-      return
+      const { error } = await supabase
+        .from('dreams')
+        .delete()
+        .eq('family_id', familyId)
+        .in('id', idsToDelete)
+
+      if (error) {
+        alert(error.message)
+        return
+      }
+    } else {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', item.id)
+        .eq('family_id', familyId)
+        .eq('kind', kind!)
+
+      if (error) {
+        alert(error.message)
+        return
+      }
     }
 
-    if (editingCategoryId === category.id) {
+    if (editingId === item.id) {
       resetComposer()
     }
 
-    await loadCategories()
+    await loadItems()
     onChanged?.()
   }
 
@@ -197,12 +274,7 @@ export default function CategorySettingsModal({
   const isChildComposer = composerMode === 'child'
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Categorias"
-      size="xl"
-    >
+    <Modal isOpen={isOpen} onClose={onClose} title="Categorias" size="xl">
       <div className="rounded-lg border border-border bg-paper p-4 min-h-[72vh] flex flex-col">
         <h4 className="text-sm font-semibold text-coffee mb-3">Categorias atuais</h4>
 
@@ -238,30 +310,30 @@ export default function CategorySettingsModal({
             <div className="rounded-lg border border-border/80 bg-bg/50 p-2">
               <p className="text-xs uppercase tracking-wide text-ink/50 px-2 py-1">Categorias principais</p>
               <div className="space-y-1 max-h-[56vh] overflow-auto pr-1">
-                {tree.map((mainCategory) => {
-                  const active = selectedMainCategoryId === mainCategory.id
+                {tree.map((main) => {
+                  const active = selectedMainId === main.id
                   return (
                     <div
-                      key={mainCategory.id}
+                      key={main.id}
                       className={`rounded-md border ${active ? 'border-petrol/40 bg-paper' : 'border-transparent'}`}
                     >
                       <button
                         type="button"
-                        onClick={() => setSelectedMainCategoryId(mainCategory.id)}
+                        onClick={() => setSelectedMainId(main.id)}
                         className="w-full flex items-center justify-between px-2.5 py-2 text-left"
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="font-semibold text-petrol truncate">{mainCategory.name}</span>
+                          <span className="font-semibold text-petrol truncate">{main.name}</span>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <button
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation()
-                              startEdit(mainCategory)
+                              startEdit(main)
                             }}
                             className="p-1 rounded border border-border text-ink/70 hover:bg-paper"
-                            aria-label={`Editar ${mainCategory.name}`}
+                            aria-label={`Editar ${main.name}`}
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
@@ -269,17 +341,17 @@ export default function CategorySettingsModal({
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation()
-                              handleDelete(mainCategory)
+                              handleDelete(main)
                             }}
                             className="p-1 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10"
-                            aria-label={`Excluir ${mainCategory.name}`}
+                            aria-label={`Excluir ${main.name}`}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </button>
                       <div className="px-2.5 pb-2 min-h-7 flex items-center">
-                        {mainCategory.is_system ? (
+                        {main.is_system ? (
                           <span className="text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>
                         ) : null}
                       </div>
@@ -319,7 +391,7 @@ export default function CategorySettingsModal({
                         disabled={saving}
                         className="px-3 py-2 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60"
                       >
-                        {saving ? 'Salvando...' : editingCategoryId ? 'Salvar' : 'Criar'}
+                        {saving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}
                       </button>
                     </div>
                   </div>
@@ -329,15 +401,15 @@ export default function CategorySettingsModal({
 
             <div className="rounded-lg border border-border/80 bg-bg/50 p-2">
               <p className="text-xs uppercase tracking-wide text-ink/50 px-2 py-1">
-                {selectedMainCategory ? `Subcategorias de ${selectedMainCategory.name}` : 'Subcategorias'}
+                {selectedMain ? `Subcategorias de ${selectedMain.name}` : 'Subcategorias'}
               </p>
-              {!selectedMainCategory ? (
+              {!selectedMain ? (
                 <p className="text-sm text-ink/60 px-2 py-3">Selecione uma categoria principal.</p>
-              ) : selectedMainCategory.children.length === 0 ? (
+              ) : selectedMain.children.length === 0 ? (
                 <p className="text-sm text-ink/60 px-2 py-3">Sem subcategorias.</p>
               ) : (
                 <div className="space-y-1 max-h-[56vh] overflow-auto pr-1">
-                  {selectedMainCategory.children.map((child) => (
+                  {selectedMain.children.map((child) => (
                     <div key={child.id} className="rounded-md border border-transparent">
                       <div className="w-full flex items-center justify-between px-2.5 py-2 text-left">
                         <span className="text-sm text-ink/80 truncate">{child.name}</span>
@@ -375,7 +447,7 @@ export default function CategorySettingsModal({
                   type="button"
                   onClick={startCreateChild}
                   className="w-full px-3 py-2 rounded-md bg-petrol text-white text-sm hover:bg-petrol/90 transition-vintage"
-                  disabled={!selectedMainCategory}
+                  disabled={!selectedMain}
                 >
                   Nova Subcategoria
                 </button>
@@ -402,7 +474,7 @@ export default function CategorySettingsModal({
                         disabled={saving}
                         className="px-3 py-2 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60"
                       >
-                        {saving ? 'Salvando...' : editingCategoryId ? 'Salvar' : 'Criar'}
+                        {saving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}
                       </button>
                     </div>
                   </div>
