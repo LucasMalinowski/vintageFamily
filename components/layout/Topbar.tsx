@@ -12,9 +12,19 @@ interface TopbarProps {
   actions?: React.ReactNode
   filters?: React.ReactNode
   variant?: 'default' | 'textured'
+  titleClassName?: string
+  subtitleClassName?: string
 }
 
-export default function Topbar({ title, subtitle, actions, filters, variant = 'default' }: TopbarProps) {
+export default function Topbar({
+  title,
+  subtitle,
+  actions,
+  filters,
+  variant = 'default',
+  titleClassName = '',
+  subtitleClassName = '',
+}: TopbarProps) {
   const router = useRouter()
   const { user, familyId } = useAuth()
   const [userName, setUserName] = useState('')
@@ -72,9 +82,9 @@ export default function Topbar({ title, subtitle, actions, filters, variant = 'd
         <div className="min-h-[103px] flex items-center">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between w-full">
             <div className="min-w-0">
-              <h1 className="text-3xl font-serif text-coffee mb-1">{title}</h1>
+              <h1 className={`text-3xl font-serif text-coffee mb-1 ${titleClassName}`}>{title}</h1>
               {subtitle && (
-                <p className="text-sm text-ink/70 font-body">{subtitle}</p>
+                <p className={`text-sm text-ink/70 font-body ${subtitleClassName}`}>{subtitle}</p>
               )}
             </div>
 
