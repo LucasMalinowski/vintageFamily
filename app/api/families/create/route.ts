@@ -72,9 +72,9 @@ export async function POST(request: Request) {
     }
 
     const dreams = [
-      { family_id: family.id, name: 'Casa' },
-      { family_id: family.id, name: 'Carro' },
-      { family_id: family.id, name: 'Viagem' },
+      { family_id: family.id, name: 'Casa', is_system: true },
+      { family_id: family.id, name: 'Carro', is_system: true },
+      { family_id: family.id, name: 'Viagem', is_system: true },
     ]
 
     const { error: dreamsError } = await supabaseAdmin.from('dreams').insert(dreams)
