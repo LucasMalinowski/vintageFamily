@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { useEffect, useState } from 'react'
+import { getAuthBearerToken } from '@/lib/billing/client'
 
 interface TopbarProps {
   title: string
@@ -55,18 +56,27 @@ export default function Topbar({
   useEffect(() => {
     const loadTrialStatus = async () => {
       if (!familyId) return
-      const { data: familyRow } = await supabase
-        .from('families')
-        .select('trial_expires_at')
-        .eq('id', familyId)
-        .maybeSingle()
 
-      if (!familyRow?.trial_expires_at) {
+      const token = await getAuthBearerToken()
+      if (!token) {
         setTrialDaysLeft(null)
         return
       }
 
-      const expiresAt = new Date(familyRow.trial_expires_at)
+      const response = await fetch('/api/families/me', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      const payload = await response.json().catch(() => null)
+
+      if (!response.ok || !payload?.trialExpiresAt) {
+        setTrialDaysLeft(null)
+        return
+      }
+
+      const expiresAt = new Date(payload.trialExpiresAt)
       const diffMs = expiresAt.getTime() - Date.now()
       const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
 
@@ -91,8 +101,8 @@ export default function Topbar({
             <div className="flex items-start gap-3 sm:gap-4 md:self-start md:-mt-1">
               {actions && <div className="w-full md:w-auto">{actions}</div>}
               {trialDaysLeft !== null && trialDaysLeft > 0 && (
-                <div className="mt-1 rounded-full border border-coffee/20 bg-paper px-3 py-1 text-xs font-semibold text-coffee">
-                  {trialDaysLeft}/{totalTrialDays} dias de teste restantes
+                <div className="rounded-full border border-coffee/20 bg-paper px-3 py-1 text-xs font-semibold text-coffee">
+                  {trialDaysLeft} dias de teste restantes
                 </div>
               )}
               <button
