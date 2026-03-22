@@ -1,8 +1,11 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import AppLayout from '@/components/layout/AppLayout'
+import { useAuth } from '@/components/AuthProvider'
+import { supabase } from '@/lib/supabase'
 
 const settingsItems = [
   { label: 'Perfil', href: '/settings/profile' },
@@ -11,7 +14,29 @@ const settingsItems = [
 ]
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth()
   const pathname = usePathname()
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+
+  useEffect(() => {
+    const loadRole = async () => {
+      if (!user) return
+
+      const { data } = await supabase
+        .from('users')
+        .select('super_admin')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      setIsSuperAdmin(Boolean(data?.super_admin))
+    }
+
+    loadRole()
+  }, [user])
+
+  const visibleItems = isSuperAdmin
+    ? [...settingsItems, { label: 'Super Admin', href: '/settings/admin' }]
+    : settingsItems
 
   return (
     <AppLayout>
@@ -25,7 +50,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               </div>
               <nav className="p-3">
                 <ul className="space-y-2">
-                  {settingsItems.map((item) => {
+                  {visibleItems.map((item) => {
                     const isActive = pathname === item.href
                     return (
                       <li key={item.href}>

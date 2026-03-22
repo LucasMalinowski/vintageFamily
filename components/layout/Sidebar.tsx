@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
-import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
+import { getSidebarCollapsedStorageKey, LOCAL_STORAGE_KEYS } from '@/lib/storage'
 import { useEffect, useMemo, useState } from 'react'
 
 const menuItems = [
@@ -64,6 +64,7 @@ export default function Sidebar() {
   const { signOut, familyId, user } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [hasLoadedCollapsedState, setHasLoadedCollapsedState] = useState(false)
   const [familyName, setFamilyName] = useState('')
   const [familyNameLoading, setFamilyNameLoading] = useState(false)
   const [familyNameError, setFamilyNameError] = useState(false)
@@ -175,16 +176,35 @@ export default function Sidebar() {
   }, [familyId, user?.id])
 
   useEffect(() => {
-    const storedState = window.localStorage.getItem(LOCAL_STORAGE_KEYS.sidebarCollapsed)
-    if (storedState) {
-      setIsCollapsed(storedState === 'true')
+    if (!user?.id) {
+      setIsCollapsed(false)
+      setHasLoadedCollapsedState(true)
+      return
     }
-  }, [])
+
+    const scopedStorageKey = getSidebarCollapsedStorageKey(user.id)
+    const storedState = window.localStorage.getItem(scopedStorageKey)
+    const legacyStoredState = window.localStorage.getItem(LOCAL_STORAGE_KEYS.sidebarCollapsed)
+
+    if (storedState !== null) {
+      setIsCollapsed(storedState === 'true')
+    } else if (legacyStoredState !== null) {
+      const nextState = legacyStoredState === 'true'
+      setIsCollapsed(nextState)
+      window.localStorage.setItem(scopedStorageKey, String(nextState))
+    } else {
+      setIsCollapsed(false)
+    }
+
+    setHasLoadedCollapsedState(true)
+  }, [user?.id])
 
   useEffect(() => {
+    if (!user?.id || !hasLoadedCollapsedState) return
+
     document.documentElement.dataset.sidebarCollapsed = isCollapsed ? 'true' : 'false'
-    window.localStorage.setItem(LOCAL_STORAGE_KEYS.sidebarCollapsed, String(isCollapsed))
-  }, [isCollapsed])
+    window.localStorage.setItem(getSidebarCollapsedStorageKey(user.id), String(isCollapsed))
+  }, [hasLoadedCollapsedState, isCollapsed, user?.id])
 
   const SidebarContent = () => (
     <>

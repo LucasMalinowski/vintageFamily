@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import Topbar from '@/components/layout/Topbar'
-import VintageCard from '@/components/ui/VintageCard'
 import Modal from '@/components/ui/Modal'
 import Select from '@/components/ui/Select'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
-import { Check, Plus } from 'lucide-react'
+import EmptyState from '@/components/ui/EmptyState'
+import { BellRing, Check } from 'lucide-react'
 import { formatDate, isDueDateToday, isDueDateOverdue } from '@/lib/dates'
 
 interface Reminder {
@@ -103,69 +103,99 @@ export default function RemindersPage() {
 
   return (
     <AppLayout>
-      <Topbar
-        title="Lembretes"
-        subtitle="Pequenas lembranças para um mês mais leve."
-        actions={
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 bg-fabGreen text-white rounded-lg hover:bg-fabGreen/90 transition-vintage text-sm"
-          >
-            + Novo lembrete
-          </button>
-        }
-      />
+      <div className="min-h-screen flex flex-col">
+        <Topbar
+          title="Lembretes"
+          subtitle="Pequenas lembranças para um mês mais leve."
+          variant="textured"
+          actions={
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="min-w-[160px] px-5 py-2 bg-sidebar text-white rounded-md hover:bg-olive/90 transition-vintage text-sm font-semibold"
+            >
+              + Novo lembrete
+            </button>
+          }
+        />
 
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        <VintageCard>
+        <div className="flex-1 px-6 pb-4">
           {loading ? (
-            <div className="text-center py-12 text-ink/60">Carregando...</div>
+            <div className="py-12 text-center text-ink/60">Carregando...</div>
           ) : reminders.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-ink/60 italic mb-2">Sem lembretes por agora.</p>
-              <p className="text-ink/40 text-sm">Que o mês siga tranquilo.</p>
+            <div className="rounded-[12px] border border-border bg-offWhite px-6 py-10 shadow-soft">
+              <EmptyState
+                icon={<BellRing className="w-16 h-16" />}
+                message="Sem lembretes por agora."
+                submessage="Que o mês siga tranquilo."
+              />
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {reminders.map((reminder) => (
                 <div
                   key={reminder.id}
-                  className={`flex items-start gap-3 p-4 rounded-lg border border-border transition-vintage ${
-                    reminder.is_done ? 'opacity-60' : ''
+                  className={`rounded-[12px] border border-border bg-offWhite p-5 shadow-soft transition-vintage ${
+                    reminder.is_done ? 'opacity-65' : 'hover:shadow-vintage'
                   }`}
                 >
-                  <button
-                    onClick={() => toggleDone(reminder.id, reminder.is_done)}
-                    className={`w-5 h-5 rounded border-2 flex-shrink-0 mt-0.5 transition-vintage ${
-                      reminder.is_done
-                        ? 'bg-olive border-olive'
-                        : 'border-border hover:border-olive'
-                    }`}
-                    aria-label={`Marcar ${reminder.title} como ${reminder.is_done ? 'pendente' : 'feito'}`}
-                  >
-                    {reminder.is_done && <Check className="w-4 h-4 text-white" />}
-                  </button>
+                  <div className="flex items-start gap-4">
+                    <button
+                      onClick={() => toggleDone(reminder.id, reminder.is_done)}
+                      className={`mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md border transition-vintage ${
+                        reminder.is_done
+                          ? 'border-olive bg-olive'
+                          : 'border-border bg-paper hover:border-olive'
+                      }`}
+                      aria-label={`Marcar ${reminder.title} como ${reminder.is_done ? 'pendente' : 'feito'}`}
+                    >
+                      {reminder.is_done ? <Check className="h-4 w-4 text-white" /> : null}
+                    </button>
 
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-body ${reminder.is_done ? 'line-through' : ''}`}>
-                      {reminder.title}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      {reminder.due_date && (
-                        <span className={`text-xs px-2 py-0.5 rounded ${getReminderBadgeColor(reminder)}`}>
-                          {formatDate(reminder.due_date, 'dd/MM')}
-                        </span>
-                      )}
-                      <span className={`text-xs px-2 py-0.5 rounded ${getCategoryColors[reminder.category] || getCategoryColors['Outros']}`}>
-                        {reminder.category}
-                      </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <p className={`font-body text-base text-sidebar ${reminder.is_done ? 'line-through' : ''}`}>
+                            {reminder.title}
+                          </p>
+                          <p className="mt-1 text-sm text-ink/45">
+                            {reminder.is_done
+                              ? 'Concluído.'
+                              : reminder.due_date
+                                ? `Vence em ${formatDate(reminder.due_date)}.`
+                                : 'Sem data definida.'}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          {reminder.due_date ? (
+                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getReminderBadgeColor(reminder)}`}>
+                              {formatDate(reminder.due_date, 'dd/MM')}
+                            </span>
+                          ) : null}
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                              getCategoryColors[reminder.category] || getCategoryColors['Outros']
+                            }`}
+                          >
+                            {reminder.category}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </VintageCard>
+        </div>
+
+        <footer className="mt-auto w-full">
+          <div className="h-[56px] bg-paper flex items-center justify-center px-6">
+            <p className="text-center text-[13px] text-gold italic">
+              Lembrar com calma tambem e uma forma de cuidar da casa.
+            </p>
+          </div>
+        </footer>
       </div>
 
       <Modal
@@ -221,7 +251,7 @@ export default function RemindersPage() {
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg hover:bg-coffee/90 transition-vintage"
+              className="flex-1 px-4 py-3 bg-sidebar text-paper rounded-lg hover:bg-olive/90 transition-vintage"
             >
               Salvar
             </button>

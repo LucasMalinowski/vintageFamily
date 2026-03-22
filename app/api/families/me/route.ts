@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 
   const { data: family, error: familyError } = await supabaseAdmin
     .from('families')
-    .select('id,name')
+    .select('id,name,trial_expires_at')
     .eq('id', profile.family_id)
     .maybeSingle()
 
@@ -42,5 +42,6 @@ export async function GET(request: Request) {
   return NextResponse.json({
     familyId: family.id,
     familyName: family.name ?? null,
+    trialExpiresAt: family.trial_expires_at ?? null,
   })
 }

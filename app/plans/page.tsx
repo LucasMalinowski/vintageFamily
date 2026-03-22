@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import PublicNavbar from '@/components/layout/PublicNavbar'
 import { ArrowLeft } from 'lucide-react'
@@ -86,6 +87,12 @@ export default function PlansPage() {
                   <div className="text-base text-coffee/60 justify-center items-center flex">
                     R$ <span className="text-coffee text-4xl font-normal ml-2">29,90</span> <span className="text-base ml-2 text-coffee/60">/ mês</span>
                   </div>
+                  <Link
+                    href="/signup"
+                    className="mt-6 flex w-full items-center justify-center rounded-full bg-gold px-4 py-3 text-sm font-semibold text-sidebar transition-vintage hover:opacity-90"
+                  >
+                    Entre para testar
+                  </Link>
                 </div>
               </div>
 
@@ -96,6 +103,12 @@ export default function PlansPage() {
                   <div className="text-base text-coffee/60 justify-center items-center flex">
                     R$ <span className="text-coffee text-4xl font-normal ml-2">299,00</span> <span className="text-base ml-2 text-coffee/60">/ ano</span>
                   </div>
+                  <Link
+                    href="/signup"
+                    className="mt-6 flex w-full items-center justify-center rounded-full bg-gold px-4 py-3 text-sm font-semibold text-sidebar transition-vintage hover:opacity-90"
+                  >
+                    Entre para testar
+                  </Link>
                 </div>
               </div>
 
@@ -106,6 +119,12 @@ export default function PlansPage() {
                   <div className="text-base text-coffee/60 justify-center items-center flex">
                     R$ <span className="text-coffee text-4xl font-normal ml-2">199,00</span> <span className="text-base ml-2 text-coffee/60">/ ano</span>
                   </div>
+                  <Link
+                    href="/signup"
+                    className="mt-6 flex w-full items-center justify-center rounded-full bg-gold px-4 py-3 text-sm font-semibold text-sidebar transition-vintage hover:opacity-90"
+                  >
+                    Entre para testar
+                  </Link>
                 </div>
               </div>
             </div>

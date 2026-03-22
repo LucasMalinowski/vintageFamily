@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
+import { getSidebarCollapsedStorageKey, LOCAL_STORAGE_KEYS } from '@/lib/storage'
 import { useRouter } from 'next/navigation'
 
 interface AuthContextType {
@@ -18,6 +18,18 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+function setAccessTokenCookie(accessToken: string | null) {
+  if (typeof window === 'undefined') return
+
+  if (!accessToken) {
+    document.cookie = 'app_access_token=; Path=/; Max-Age=0; SameSite=Lax'
+    return
+  }
+
+  const secureFlag = window.location.protocol === 'https:' ? '; Secure' : ''
+  document.cookie = `app_access_token=${encodeURIComponent(accessToken)}; Path=/; Max-Age=2592000; SameSite=Lax${secureFlag}`
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [familyId, setFamilyId] = useState<string | null>(null)
@@ -28,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
+      setAccessTokenCookie(session?.access_token ?? null)
       if (session?.user) {
         loadFamilyId(session.user.id)
       }
@@ -39,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
+      setAccessTokenCookie(session?.access_token ?? null)
       if (session?.user) {
         loadFamilyId(session.user.id)
       } else {
@@ -102,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (signInError) throw signInError
 
-      let session = signInData.session
+      let session: typeof signInData.session | null = signInData.session ?? null
       if (!session) {
         const { data: sessionData } = await supabase.auth.getSession()
         session = sessionData.session
@@ -113,7 +127,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Ensure the client is using the authenticated session before RLS writes
-      await supabase.auth.setSession(session)
+      await supabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      })
 
       // 3. Create family + profile + defaults on server (service role)
       const response = await fetch('/api/families/create', {
@@ -154,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (authError) throw authError
 
-      let session = authData.session
+      let session: typeof authData.session | null = authData.session ?? null
       if (!session) {
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email,
@@ -193,7 +210,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
+    setAccessTokenCookie(null)
     if (typeof window !== 'undefined') {
+      if (user?.id) {
+        window.localStorage.removeItem(getSidebarCollapsedStorageKey(user.id))
+      }
       window.localStorage.removeItem(LOCAL_STORAGE_KEYS.sidebarCollapsed)
       window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
       delete document.documentElement.dataset.sidebarCollapsed

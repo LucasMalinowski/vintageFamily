@@ -17,7 +17,7 @@ const styles: Record<
     scrollbarThumb: string
   }
 > = {
-  dark: {
+  sidebar: {
     wrapper: 'bg-sidebar/80',
     link: 'text-paper/80 hover:text-paper',
     active: '!text-gold',
@@ -25,7 +25,7 @@ const styles: Record<
     secondary: 'border-gold text-gold hover:bg-gold hover:text-sidebar',
     scrollbarThumb: 'var(--coffee)',
   },
-  light: {
+  paper: {
     wrapper: 'bg-paper/80',
     link: 'text-coffee/70 hover:text-coffee',
     active: '!text-gold',
@@ -40,16 +40,11 @@ interface PublicNavbarProps {
   showWordmark?: boolean
 }
 
-const themeByColor: Record<PublicNavbarColor, keyof typeof styles> = {
-  sidebar: 'dark',
-  paper: 'light',
-}
-
 export default function PublicNavbar({ color = 'sidebar', showWordmark = true }: PublicNavbarProps) {
-  const theme = styles[themeByColor[color]]
+  const theme = styles[color]
   const pathname = usePathname()
   const isAbout = pathname.startsWith('/about')
-  const isPlans = pathname.startsWith('/plans')
+  const isPlans = pathname.startsWith('/plans') || pathname.startsWith('/pricing')
 
   useEffect(() => {
     const root = document.documentElement

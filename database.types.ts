@@ -230,19 +230,25 @@ export type Database = {
       families: {
         Row: {
           created_at: string
+          founders_enabled: boolean
           id: string
+          lifetime_access: boolean
           name: string
           trial_expires_at: string | null
         }
         Insert: {
           created_at?: string
+          founders_enabled?: boolean
           id?: string
+          lifetime_access?: boolean
           name: string
           trial_expires_at?: string | null
         }
         Update: {
           created_at?: string
+          founders_enabled?: boolean
           id?: string
+          lifetime_access?: boolean
           name?: string
           trial_expires_at?: string | null
         }
@@ -413,6 +419,7 @@ export type Database = {
           name: string
           password_hash: string
           role: string
+          super_admin: boolean
         }
         Insert: {
           avatar_url?: string | null
@@ -423,6 +430,7 @@ export type Database = {
           name: string
           password_hash: string
           role?: string
+          super_admin?: boolean
         }
         Update: {
           avatar_url?: string | null
@@ -433,6 +441,7 @@ export type Database = {
           name?: string
           password_hash?: string
           role?: string
+          super_admin?: boolean
         }
         Relationships: [
           {
