@@ -12,7 +12,7 @@ async function requireSuperAdmin(request: Request) {
 
   const profile = await getProfileByUserId(auth.user.id)
   if (!profile?.super_admin) {
-    return { ok: false as const, response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+    return { ok: false as const, response: NextResponse.json({ error: 'Acesso negado.' }, { status: 403 }) }
   }
 
   return { ok: true as const }
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   const code = body?.code?.trim().toUpperCase()
 
   if (!code) {
-    return NextResponse.json({ error: 'Code is required.' }, { status: 400 })
+    return NextResponse.json({ error: 'O código é obrigatório.' }, { status: 400 })
   }
 
   const { data, error } = await supabaseService
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   if (error || !data) {
-    return NextResponse.json({ error: error?.message || 'Could not create coupon.' }, { status: 500 })
+    return NextResponse.json({ error: error?.message || 'Não foi possível criar o cupom.' }, { status: 500 })
   }
 
   return NextResponse.json({ coupon: data })
@@ -68,7 +68,7 @@ export async function PATCH(request: Request) {
 
   const code = body?.code?.trim().toUpperCase()
   if (!code) {
-    return NextResponse.json({ error: 'Code is required.' }, { status: 400 })
+    return NextResponse.json({ error: 'O código é obrigatório.' }, { status: 400 })
   }
 
   const updatePayload: Record<string, unknown> = {}
@@ -76,7 +76,7 @@ export async function PATCH(request: Request) {
   if (body && 'stripe_coupon_id' in body) updatePayload.stripe_coupon_id = body.stripe_coupon_id || null
 
   if (Object.keys(updatePayload).length === 0) {
-    return NextResponse.json({ error: 'No changes provided.' }, { status: 400 })
+    return NextResponse.json({ error: 'Nenhuma alteração foi informada.' }, { status: 400 })
   }
 
   const { data, error } = await supabaseService
@@ -87,7 +87,7 @@ export async function PATCH(request: Request) {
     .maybeSingle()
 
   if (error || !data) {
-    return NextResponse.json({ error: error?.message || 'Coupon not found.' }, { status: 500 })
+    return NextResponse.json({ error: error?.message || 'Cupom não encontrado.' }, { status: 500 })
   }
 
   return NextResponse.json({ coupon: data })

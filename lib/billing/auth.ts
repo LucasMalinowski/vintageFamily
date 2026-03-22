@@ -48,13 +48,13 @@ export function getAccessTokenFromCookieStore(cookieStore: CookieStoreLike) {
 
 export async function requireUserByAccessToken(accessToken: string | null) {
   if (!accessToken) {
-    return { error: 'Unauthorized', status: 401 as const, user: null }
+    return { error: 'Não autorizado.', status: 401 as const, user: null }
   }
 
   const { data, error } = await supabaseService.auth.getUser(accessToken)
 
   if (error || !data.user) {
-    return { error: 'Unauthorized', status: 401 as const, user: null }
+    return { error: 'Não autorizado.', status: 401 as const, user: null }
   }
 
   return { error: null, status: 200 as const, user: data.user }

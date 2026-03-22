@@ -253,7 +253,6 @@ export default function FamilySettingsPage() {
             <form onSubmit={handleSaveFamily} className="space-y-4">
               <h2 className="text-lg font-serif text-coffee">Nome da família</h2>
               <div>
-                <label className="block text-sm font-body text-ink mb-2">Nome</label>
                 <input
                   value={familyName}
                   onChange={(event) => setFamilyName(event.target.value)}
@@ -318,7 +317,7 @@ export default function FamilySettingsPage() {
                           disabled={savingMemberId === member.id}
                           className="px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50 disabled:opacity-60"
                         >
-                          <option value="admin">Admin</option>
+                          <option value="admin">Administrador</option>
                           <option value="member">Membro</option>
                         </select>
                         <button

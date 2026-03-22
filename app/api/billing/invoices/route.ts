@@ -3,7 +3,7 @@ import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessTo
 import { stripe } from '@/lib/billing/stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   try {
     const accessToken = getAccessTokenFromAuthHeader(request)
     const auth = await requireUserByAccessToken(accessToken)
@@ -21,29 +21,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Apenas administradores da família podem gerenciar cobrança.' }, { status: 403 })
     }
 
-    const { data: customerRow } = await supabaseService
+    const { data: stripeCustomer } = await supabaseService
       .from('stripe_customers')
       .select('stripe_customer_id')
       .eq('family_id', profile.family_id)
       .maybeSingle()
 
-    if (!customerRow?.stripe_customer_id) {
-      return NextResponse.json({ error: 'Cliente Stripe não encontrado.' }, { status: 404 })
+    if (!stripeCustomer?.stripe_customer_id) {
+      return NextResponse.json({ invoices: [] })
     }
 
-    if (!process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID) {
-      return NextResponse.json({ error: 'Configuração do portal de cobrança ausente.' }, { status: 500 })
-    }
-
-    const portal = await stripe.billingPortal.sessions.create({
-      customer: customerRow.stripe_customer_id,
-      configuration: process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings/billing`,
+    const invoices = await stripe.invoices.list({
+      customer: stripeCustomer.stripe_customer_id,
+      limit: 12,
     })
 
-    return NextResponse.json({ url: portal.url })
+    return NextResponse.json({
+      invoices: invoices.data.map((invoice) => ({
+        id: invoice.id,
+        number: invoice.number,
+        status: invoice.status,
+        currency: invoice.currency,
+        amount_paid: invoice.amount_paid,
+        amount_due: invoice.amount_due,
+        created: invoice.created,
+        hosted_invoice_url: invoice.hosted_invoice_url,
+      })),
+    })
   } catch (error: any) {
-    console.error('create-portal-session failed', error)
-    return NextResponse.json({ error: error?.message || 'Erro inesperado na cobrança.' }, { status: 500 })
+    console.error('billing-invoices failed', error)
+    return NextResponse.json({ error: error?.message || 'Erro inesperado ao carregar faturas.' }, { status: 500 })
   }
 }

@@ -98,6 +98,8 @@ export default function PricingExperience({
   const [selectedPlan, setSelectedPlan] = useState<PlanSetting['plan_code'] | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [waitingForActivation, setWaitingForActivation] = useState(false)
+  const [activationMessage, setActivationMessage] = useState('Confirmando seus dados...')
 
   useEffect(() => {
     setStep(showIntro ? 'intro' : 'plans')
@@ -169,6 +171,62 @@ export default function PricingExperience({
 
     load()
   }, [requireAuth, router])
+
+  useEffect(() => {
+    if (!waitingForActivation) return
+
+    let cancelled = false
+
+    const poll = async () => {
+      const token = await getAuthBearerToken()
+
+      if (!token) {
+        if (!cancelled) {
+          setActivationMessage('Sessão inválida. Faça login novamente.')
+          setWaitingForActivation(false)
+        }
+        return
+      }
+
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        if (cancelled) return
+
+        const response = await fetch('/api/billing/checkout-status', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        const payload = await response.json().catch(() => null)
+
+        if (response.ok && payload?.ready) {
+          router.push('/inicio')
+          return
+        }
+
+        if (!response.ok) {
+          setActivationMessage(payload?.error || 'Falha ao confirmar a assinatura.')
+          setWaitingForActivation(false)
+          return
+        }
+
+        await new Promise((resolve) => {
+          window.setTimeout(resolve, 2000)
+        })
+      }
+
+      if (!cancelled) {
+        setActivationMessage('Pagamento confirmado, mas a sincronização ainda está pendente. Tente novamente em alguns instantes.')
+        setWaitingForActivation(false)
+      }
+    }
+
+    poll()
+
+    return () => {
+      cancelled = true
+    }
+  }, [router, waitingForActivation])
 
   const visiblePlans = useMemo(() => plans, [plans])
 
@@ -310,11 +368,23 @@ export default function PricingExperience({
 
               <PlanCheckout
                 planCode={selectedPlan}
+                onCancel={() => setSelectedPlan(null)}
                 onSuccess={() => {
-                  setMessage('Assinatura criada com sucesso. A confirmação final vem via webhook.')
                   setSelectedPlan(null)
+                  setActivationMessage('Confirmando seus dados...')
+                  setWaitingForActivation(true)
                 }}
               />
+            </div>
+          ) : null}
+
+          {waitingForActivation ? (
+            <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/35 px-4 py-6 backdrop-blur-sm">
+              <div className="w-full max-w-md rounded-[24px] border border-border bg-bg px-8 py-10 text-center shadow-vintage">
+                <div className="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-4 border-sidebar/20 border-t-sidebar" />
+                <h3 className="text-2xl font-serif text-coffee">Ativando assinatura</h3>
+                <p className="mt-3 text-sm text-ink/65">{activationMessage}</p>
+              </div>
             </div>
           ) : null}
 

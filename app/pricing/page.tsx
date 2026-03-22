@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/layout/AppLayout'
 import Topbar from '@/components/layout/Topbar'
 import PlanCheckout from '@/components/billing/PlanCheckout'
@@ -79,11 +80,14 @@ const KEY_BENEFITS = [
 ]
 
 export default function PricingPage() {
+  const router = useRouter()
   const [plans, setPlans] = useState<PlanSetting[]>([])
   const [foundersEligible, setFoundersEligible] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<PlanSetting['plan_code'] | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [waitingForActivation, setWaitingForActivation] = useState(false)
+  const [activationMessage, setActivationMessage] = useState('Confirmando seus dados...')
 
   useEffect(() => {
     const load = async () => {
@@ -117,7 +121,64 @@ export default function PricingPage() {
     load()
   }, [])
 
+  useEffect(() => {
+    if (!waitingForActivation) return
+
+    let cancelled = false
+
+    const poll = async () => {
+      const token = await getAuthBearerToken()
+
+      if (!token) {
+        if (!cancelled) {
+          setActivationMessage('Sessão inválida. Faça login novamente.')
+          setWaitingForActivation(false)
+        }
+        return
+      }
+
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        if (cancelled) return
+
+        const response = await fetch('/api/billing/checkout-status', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        const payload = await response.json().catch(() => null)
+
+        if (response.ok && payload?.ready) {
+          router.push('/inicio')
+          return
+        }
+
+        if (!response.ok) {
+          setActivationMessage(payload?.error || 'Falha ao confirmar a assinatura.')
+          setWaitingForActivation(false)
+          return
+        }
+
+        await new Promise((resolve) => {
+          window.setTimeout(resolve, 2000)
+        })
+      }
+
+      if (!cancelled) {
+        setActivationMessage('Pagamento confirmado, mas a sincronização ainda está pendente. Tente novamente em alguns instantes.')
+        setWaitingForActivation(false)
+      }
+    }
+
+    poll()
+
+    return () => {
+      cancelled = true
+    }
+  }, [router, waitingForActivation])
+
   const visiblePlans = useMemo(() => plans, [plans])
+  const selectedPlanContent = selectedPlan ? PLAN_CONTENT[selectedPlan] : null
 
   return (
     <AppLayout>
@@ -148,12 +209,10 @@ export default function PricingPage() {
                     >
                       <div className="flex flex-1 flex-col">
                         <div className="flex items-start justify-between gap-3">
-                          <h3 className="font-serif text-2xl text-sidebar">{content.name}</h3>
-                          {isFounders ? (
-                            <span className="rounded-full border border-gold px-2 py-1 text-xs text-gold">
-                              Founders
-                            </span>
-                          ) : null}
+                        <h3 className="font-serif text-2xl text-sidebar">{content.name}</h3>
+                        {isFounders ? (
+                          <span className="rounded-full border border-gold px-2 py-1 text-xs text-gold">Fundadores</span>
+                        ) : null}
                         </div>
                         <p className="mt-3 min-h-[44px] text-sm text-ink/55">{content.teaser}</p>
                         <div className="mt-6 flex items-end justify-center text-coffee/60">
@@ -223,27 +282,58 @@ export default function PricingPage() {
                 </div>
               </div>
 
-              {selectedPlan ? (
-                <div className="rounded-vintage border border-border bg-bg p-6 shadow-vintage">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h3 className="text-lg font-serif text-coffee">Checkout integrado</h3>
-                    <button className="text-sm text-ink/70" onClick={() => setSelectedPlan(null)}>
-                      Fechar
-                    </button>
-                  </div>
-
-                  <PlanCheckout
-                    planCode={selectedPlan}
-                    onSuccess={() => {
-                      setMessage('Assinatura criada com sucesso. A confirmação final vem via webhook.')
-                      setSelectedPlan(null)
-                    }}
-                  />
-                </div>
-              ) : null}
             </div>
           )}
         </div>
+
+        {selectedPlan && selectedPlanContent ? (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/35 px-4 py-6 backdrop-blur-sm">
+            <div className="w-full max-w-2xl overflow-hidden rounded-[24px] border border-border bg-bg shadow-vintage">
+              <div className="border-b border-border bg-offWhite px-6 py-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.24em] text-coffee/55">Checkout</p>
+                    <h3 className="mt-1 text-2xl font-serif text-coffee">{selectedPlanContent.name}</h3>
+                    <p className="mt-2 text-sm text-ink/65">{selectedPlanContent.teaser}</p>
+                  </div>
+                  <button
+                    className="rounded-full border border-border px-3 py-2 text-sm text-ink/70 transition-vintage hover:bg-paper"
+                    onClick={() => setSelectedPlan(null)}
+                  >
+                    Fechar
+                  </button>
+                </div>
+                <div className="mt-4 inline-flex items-end rounded-full bg-paper px-4 py-2 text-coffee/70">
+                  <span className="text-sm">R$</span>
+                  <span className="ml-2 text-3xl leading-none text-sidebar">{selectedPlanContent.price}</span>
+                  <span className="ml-2 text-sm">{selectedPlanContent.period}</span>
+                </div>
+              </div>
+
+              <div className="px-6 py-6">
+                <PlanCheckout
+                  planCode={selectedPlan}
+                  onCancel={() => setSelectedPlan(null)}
+                  onSuccess={() => {
+                    setSelectedPlan(null)
+                    setActivationMessage('Confirmando seus dados...')
+                    setWaitingForActivation(true)
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {waitingForActivation ? (
+          <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/35 px-4 py-6 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-[24px] border border-border bg-bg px-8 py-10 text-center shadow-vintage">
+              <div className="mx-auto mb-5 h-12 w-12 rounded-full border-4 border-sidebar/20 border-t-sidebar animate-spin" />
+              <h3 className="text-2xl font-serif text-coffee">Ativando assinatura</h3>
+              <p className="mt-3 text-sm text-ink/65">{activationMessage}</p>
+            </div>
+          </div>
+        ) : null}
       </div>
     </AppLayout>
   )

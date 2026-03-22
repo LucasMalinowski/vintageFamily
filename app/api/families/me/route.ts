@@ -11,12 +11,12 @@ function getAccessToken(request: Request) {
 export async function GET(request: Request) {
   const accessToken = getAccessToken(request)
   if (!accessToken) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
   }
 
   const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken)
   if (authError || !authData.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
   }
 
   const { data: profile, error: profileError } = await supabaseAdmin
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     .maybeSingle()
 
   if (profileError || !profile?.family_id) {
-    return NextResponse.json({ error: 'Profile not found.' }, { status: 404 })
+    return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 404 })
   }
 
   const { data: family, error: familyError } = await supabaseAdmin
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     .maybeSingle()
 
   if (familyError || !family) {
-    return NextResponse.json({ error: 'Family not found.' }, { status: 404 })
+    return NextResponse.json({ error: 'Família não encontrada.' }, { status: 404 })
   }
 
   return NextResponse.json({

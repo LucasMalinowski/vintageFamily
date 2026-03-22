@@ -1,27 +1,27 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useMemo, useState } from 'react'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
-import { getAuthBearerToken } from '@/lib/billing/client'
 
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null
 
-function CheckoutForm({
+function BillingPaymentForm({
   clientSecret,
+  submitLabel,
   onSuccess,
   onCancel,
 }: {
   clientSecret: string
-  onSuccess: () => void
+  submitLabel: string
+  onSuccess: (result?: { setupIntentId?: string; paymentIntentId?: string }) => void
   onCancel: () => void
 }) {
   const stripe = useStripe()
   const elements = useElements()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
   const isSetupIntent = useMemo(() => clientSecret.startsWith('seti_'), [clientSecret])
 
   const handleSubmit = async (event: FormEvent) => {
@@ -39,9 +39,9 @@ function CheckoutForm({
       })
 
       if (result.error) {
-        setError(result.error.message || 'Pagamento não pôde ser confirmado.')
+        setError(result.error.message || 'Não foi possível atualizar o método de pagamento.')
       } else {
-        onSuccess()
+        onSuccess({ setupIntentId: result.setupIntent?.id })
       }
 
       setSubmitting(false)
@@ -57,9 +57,9 @@ function CheckoutForm({
     })
 
     if (result.error) {
-      setError(result.error.message || 'Pagamento não pôde ser confirmado.')
+      setError(result.error.message || 'Não foi possível confirmar o pagamento.')
     } else {
-      onSuccess()
+      onSuccess({ paymentIntentId: result.paymentIntent?.id })
     }
 
     setSubmitting(false)
@@ -84,72 +84,26 @@ function CheckoutForm({
           disabled={!stripe || submitting}
           className="rounded-full bg-sidebar px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
         >
-          {submitting ? 'Processando...' : 'Confirmar assinatura'}
+          {submitting ? 'Processando...' : submitLabel}
         </button>
       </div>
     </form>
   )
 }
 
-export default function PlanCheckout({
-  planCode,
+export default function BillingPaymentElement({
+  clientSecret,
+  submitLabel,
   onSuccess,
   onCancel,
 }: {
-  planCode: string
-  onSuccess: () => void
+  clientSecret: string
+  submitLabel: string
+  onSuccess: (result?: { setupIntentId?: string; paymentIntentId?: string }) => void
   onCancel: () => void
 }) {
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const run = async () => {
-      setLoading(true)
-      setError(null)
-      setClientSecret(null)
-
-      const token = await getAuthBearerToken()
-      if (!token) {
-        setError('Sessão inválida. Faça login novamente.')
-        setLoading(false)
-        return
-      }
-
-      const response = await fetch('/api/billing/create-subscription', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ plan_code: planCode }),
-      })
-
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        setError(payload?.error || 'Não foi possível iniciar a assinatura.')
-        setLoading(false)
-        return
-      }
-
-      setClientSecret(payload.client_secret)
-      setLoading(false)
-    }
-
-    run()
-  }, [planCode])
-
-  if (loading) {
-    return <p className="text-sm text-ink/60">Inicializando checkout...</p>
-  }
-
   if (!stripePromise) {
     return <p className="text-sm text-red-700">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY nao configurada.</p>
-  }
-
-  if (error || !clientSecret) {
-    return <p className="text-sm text-red-700">{error || 'Erro no checkout.'}</p>
   }
 
   return (
@@ -184,7 +138,12 @@ export default function PlanCheckout({
         },
       }}
     >
-      <CheckoutForm clientSecret={clientSecret} onSuccess={onSuccess} onCancel={onCancel} />
+      <BillingPaymentForm
+        clientSecret={clientSecret}
+        submitLabel={submitLabel}
+        onSuccess={onSuccess}
+        onCancel={onCancel}
+      />
     </Elements>
   )
 }

@@ -362,7 +362,7 @@ export default function ComparativesPage() {
   return (
     <AppLayout>
       <Topbar
-        title="Dashboard"
+        title="Comparativos"
         subtitle="Entender o passado nos ajuda a construir o futuro."
         variant="textured"
       />

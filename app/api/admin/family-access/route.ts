@@ -12,7 +12,7 @@ async function requireSuperAdmin(request: Request) {
 
   const profile = await getProfileByUserId(auth.user.id)
   if (!profile?.super_admin) {
-    return { ok: false as const, response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+    return { ok: false as const, response: NextResponse.json({ error: 'Acesso negado.' }, { status: 403 }) }
   }
 
   return { ok: true as const, profile }
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
   ])
 
   if (familiesError || usersError) {
-    return NextResponse.json({ error: familiesError?.message || usersError?.message || 'Could not load families.' }, { status: 500 })
+    return NextResponse.json({ error: familiesError?.message || usersError?.message || 'Não foi possível carregar as famílias.' }, { status: 500 })
   }
 
   const rows = (families ?? []).map((family) => {
@@ -64,11 +64,11 @@ export async function PATCH(request: Request) {
   } | null
 
   if (!body?.family_id) {
-    return NextResponse.json({ error: 'Invalid family_id.' }, { status: 400 })
+    return NextResponse.json({ error: 'Família inválida.' }, { status: 400 })
   }
 
   if (typeof body.lifetime_access !== 'boolean' && typeof body.founders_enabled !== 'boolean') {
-    return NextResponse.json({ error: 'No changes provided.' }, { status: 400 })
+    return NextResponse.json({ error: 'Nenhuma alteração foi informada.' }, { status: 400 })
   }
 
   const { data: familyUsers, error: usersError } = await supabaseService
@@ -109,7 +109,7 @@ export async function PATCH(request: Request) {
     .maybeSingle()
 
   if (familyError || !family) {
-    return NextResponse.json({ error: familyError?.message || 'Could not reload family access.' }, { status: 500 })
+    return NextResponse.json({ error: familyError?.message || 'Não foi possível recarregar o acesso da família.' }, { status: 500 })
   }
 
   return NextResponse.json({

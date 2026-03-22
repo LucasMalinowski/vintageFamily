@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
     const profile = await getProfileByUserId(auth.user.id)
     if (!profile) {
-      return NextResponse.json({ error: 'Profile not found.' }, { status: 404 })
+      return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 404 })
     }
 
     const [familyResult, plansResult] = await Promise.all([
@@ -49,6 +49,6 @@ export async function GET(request: Request) {
     })
   } catch (error: any) {
     console.error('billing-eligibility failed', error)
-    return NextResponse.json({ error: error?.message || 'Unexpected billing error.' }, { status: 500 })
+    return NextResponse.json({ error: error?.message || 'Erro inesperado na cobrança.' }, { status: 500 })
   }
 }

@@ -16,18 +16,18 @@ export async function POST(request: Request) {
 
     const profile = await getProfileByUserId(auth.user.id)
     if (!profile) {
-      return NextResponse.json({ error: 'User profile not found.' }, { status: 404 })
+      return NextResponse.json({ error: 'Perfil do usuário não encontrado.' }, { status: 404 })
     }
 
     if (profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Only family admins can manage billing.' }, { status: 403 })
+      return NextResponse.json({ error: 'Apenas administradores da família podem gerenciar cobrança.' }, { status: 403 })
     }
 
     const body = (await request.json().catch(() => null)) as { plan_code?: string } | null
     const targetPlanCode = body?.plan_code
 
     if (!targetPlanCode || !isPlanCode(targetPlanCode)) {
-      return NextResponse.json({ error: 'Invalid plan_code.' }, { status: 400 })
+      return NextResponse.json({ error: 'Plano inválido.' }, { status: 400 })
     }
 
     const { data: currentSubscription } = await supabaseService
@@ -37,16 +37,16 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (!currentSubscription?.stripe_subscription_id || !currentSubscription.plan_code) {
-      return NextResponse.json({ error: 'No active subscription to upgrade.' }, { status: 400 })
+      return NextResponse.json({ error: 'Nenhuma assinatura ativa disponível para upgrade.' }, { status: 400 })
     }
 
     if (!currentSubscription.status || !ACTIVE_SUBSCRIPTION_STATUSES.has(currentSubscription.status)) {
-      return NextResponse.json({ error: 'Current subscription is not eligible for upgrade.' }, { status: 400 })
+      return NextResponse.json({ error: 'A assinatura atual não pode ser atualizada.' }, { status: 400 })
     }
 
     const allowedUpgrades = UPGRADE_PATHS[currentSubscription.plan_code as keyof typeof UPGRADE_PATHS] || []
     if (!allowedUpgrades.includes(targetPlanCode)) {
-      return NextResponse.json({ error: 'Upgrade path is not allowed.' }, { status: 400 })
+      return NextResponse.json({ error: 'Este upgrade não é permitido.' }, { status: 400 })
     }
 
     const { data: planSetting } = await supabaseService
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (!planSetting?.is_active) {
-      return NextResponse.json({ error: 'Target plan is not active.' }, { status: 400 })
+      return NextResponse.json({ error: 'O plano de destino está indisponível.' }, { status: 400 })
     }
 
     if (targetPlanCode === 'founders_yearly') {
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
         .maybeSingle()
 
       if (!family?.founders_enabled) {
-        return NextResponse.json({ error: 'User is not eligible for Founders plan.' }, { status: 403 })
+        return NextResponse.json({ error: 'Sua família não está habilitada para o Plano Fundadores.' }, { status: 403 })
       }
     }
 
@@ -78,26 +78,27 @@ export async function POST(request: Request) {
     const currentPlanCodeFromStripe = getPlanCodeByPriceId(currentItem?.price.id ?? null)
 
     if (!currentItem) {
-      return NextResponse.json({ error: 'Stripe subscription item not found.' }, { status: 400 })
+      return NextResponse.json({ error: 'Item da assinatura não encontrado no Stripe.' }, { status: 400 })
     }
 
     if (!ACTIVE_SUBSCRIPTION_STATUSES.has(stripeSubscription.status)) {
-      return NextResponse.json({ error: 'Stripe subscription is not eligible for upgrade.' }, { status: 400 })
+      return NextResponse.json({ error: 'A assinatura no Stripe não pode ser atualizada agora.' }, { status: 400 })
     }
 
     if (currentPlanCodeFromStripe !== currentSubscription.plan_code) {
-      return NextResponse.json({ error: 'Subscription state is out of sync. Refresh billing data first.' }, { status: 409 })
+      return NextResponse.json({ error: 'A assinatura está fora de sincronia. Atualize os dados e tente novamente.' }, { status: 409 })
     }
 
     const updated = await stripe.subscriptions.update(currentSubscription.stripe_subscription_id, {
       items: [{ id: currentItem.id, price: priceId }],
       proration_behavior: 'create_prorations',
       payment_behavior: 'pending_if_incomplete',
-      expand: ['latest_invoice.confirmation_secret'],
-      metadata: {
-        plan_code: targetPlanCode,
-      },
+      expand: ['latest_invoice', 'latest_invoice.confirmation_secret'],
     })
+
+    const latestInvoice = updated.latest_invoice && !Array.isArray(updated.latest_invoice)
+      ? updated.latest_invoice as any
+      : null
 
     await supabaseService
       .from('subscriptions')
@@ -119,12 +120,18 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       subscription_id: updated.id,
-      client_secret: updated.latest_invoice && !Array.isArray(updated.latest_invoice)
-        ? (updated.latest_invoice as any)?.confirmation_secret?.client_secret ?? null
-        : null,
+      client_secret: latestInvoice?.confirmation_secret?.client_secret ?? null,
+      upgrade_preview: {
+        current_plan: currentSubscription.plan_code,
+        target_plan: targetPlanCode,
+        amount_due: latestInvoice?.amount_due ?? 0,
+        currency: latestInvoice?.currency ?? updated.currency ?? 'brl',
+        current_recurring_amount: currentItem.price.unit_amount ?? null,
+        target_recurring_amount: updated.items.data[0]?.price.unit_amount ?? null,
+      },
     })
   } catch (error: any) {
     console.error('upgrade-subscription failed', error)
-    return NextResponse.json({ error: error?.message || 'Unexpected billing error.' }, { status: 500 })
+    return NextResponse.json({ error: error?.message || 'Erro inesperado na cobrança.' }, { status: 500 })
   }
 }

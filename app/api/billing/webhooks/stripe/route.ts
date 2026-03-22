@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
     if (!signature || !webhookSecret) {
-      return NextResponse.json({ error: 'Webhook signature config missing.' }, { status: 400 })
+      return NextResponse.json({ error: 'Configuração da assinatura do webhook ausente.' }, { status: 400 })
     }
 
     const payload = await request.text()
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       event = stripe.webhooks.constructEvent(payload, signature, webhookSecret)
     } catch (error: any) {
       console.error('webhook signature verification failed', error)
-      return NextResponse.json({ error: 'Invalid signature.' }, { status: 400 })
+      return NextResponse.json({ error: 'Assinatura inválida.' }, { status: 400 })
     }
 
     const { error: insertEventError } = await supabaseService.from('billing_events').insert({
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
       }
 
       console.error('webhook idempotency insert failed', insertEventError)
-      return NextResponse.json({ error: 'Could not persist event.' }, { status: 500 })
+      return NextResponse.json({ error: 'Não foi possível registrar o evento.' }, { status: 500 })
     }
 
     try {

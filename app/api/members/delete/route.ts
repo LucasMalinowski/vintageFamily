@@ -11,17 +11,17 @@ function getAccessToken(request: Request) {
 export async function POST(request: Request) {
   const accessToken = getAccessToken(request)
   if (!accessToken) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
   }
 
   const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken)
   if (authError || !authData.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
   }
 
   const { memberId } = await request.json()
   if (!memberId) {
-    return NextResponse.json({ error: 'Member obrigatório.' }, { status: 400 })
+    return NextResponse.json({ error: 'Membro obrigatório.' }, { status: 400 })
   }
 
   if (memberId === authData.user.id) {

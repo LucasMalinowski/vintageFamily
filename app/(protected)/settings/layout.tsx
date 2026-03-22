@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase'
 
 const settingsItems = [
   { label: 'Perfil', href: '/settings/profile' },
-  { label: 'Familia', href: '/settings/family' },
+  { label: 'Família', href: '/settings/family' },
   { label: 'Assinatura', href: '/settings/billing' },
 ]
 
@@ -35,7 +35,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   }, [user])
 
   const visibleItems = isSuperAdmin
-    ? [...settingsItems, { label: 'Super Admin', href: '/settings/admin' }]
+    ? [...settingsItems, { label: 'Superadministrador', href: '/settings/admin' }]
     : settingsItems
 
   return (

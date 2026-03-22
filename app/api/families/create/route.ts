@@ -13,17 +13,17 @@ export async function POST(request: Request) {
     const accessToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
 
     if (!accessToken) {
-      return NextResponse.json({ error: 'Missing access token.' }, { status: 401 })
+      return NextResponse.json({ error: 'Token de acesso ausente.' }, { status: 401 })
     }
 
     const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken)
     if (authError || !authData.user) {
-      return NextResponse.json({ error: 'Invalid session.' }, { status: 401 })
+      return NextResponse.json({ error: 'Sessão inválida.' }, { status: 401 })
     }
 
     const { familyName, name, email } = (await request.json()) as CreateFamilyBody
     if (!familyName || !name || !email) {
-      return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 })
+      return NextResponse.json({ error: 'Campos obrigatórios ausentes.' }, { status: 400 })
     }
 
     const trialExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       .single()
 
     if (familyError || !family) {
-      return NextResponse.json({ error: familyError?.message || 'Failed to create family.' }, { status: 500 })
+      return NextResponse.json({ error: familyError?.message || 'Não foi possível criar a família.' }, { status: 500 })
     }
 
     const { error: userError } = await supabaseAdmin.from('users').insert({
@@ -88,6 +88,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ familyId: family.id })
   } catch (error: any) {
-    return NextResponse.json({ error: error?.message || 'Unexpected error.' }, { status: 500 })
+    return NextResponse.json({ error: error?.message || 'Erro inesperado.' }, { status: 500 })
   }
 }

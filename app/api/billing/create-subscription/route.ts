@@ -37,16 +37,16 @@ export async function POST(request: Request) {
     const planCode = body?.plan_code
 
     if (!planCode || !isPlanCode(planCode)) {
-      return NextResponse.json({ error: 'Invalid plan_code.' }, { status: 400 })
+      return NextResponse.json({ error: 'Plano inválido.' }, { status: 400 })
     }
 
     const profile = await getProfileByUserId(auth.user.id)
     if (!profile) {
-      return NextResponse.json({ error: 'User profile not found.' }, { status: 404 })
+      return NextResponse.json({ error: 'Perfil do usuário não encontrado.' }, { status: 404 })
     }
 
     if (profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Only family admins can manage billing.' }, { status: 403 })
+      return NextResponse.json({ error: 'Apenas administradores da família podem gerenciar cobrança.' }, { status: 403 })
     }
 
     const [{ data: existingSubscription }, { data: family }] = await Promise.all([
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     ])
 
     if (!family) {
-      return NextResponse.json({ error: 'Family not found.' }, { status: 404 })
+      return NextResponse.json({ error: 'Família não encontrada.' }, { status: 404 })
     }
 
     const { data: planSetting, error: planError } = await supabaseService
@@ -73,16 +73,16 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (planError || !planSetting) {
-      return NextResponse.json({ error: 'Plan settings not found.' }, { status: 404 })
+      return NextResponse.json({ error: 'Configuração do plano não encontrada.' }, { status: 404 })
     }
 
     if (!planSetting.is_active) {
-      return NextResponse.json({ error: 'Plan is currently inactive.' }, { status: 400 })
+      return NextResponse.json({ error: 'Este plano está indisponível no momento.' }, { status: 400 })
     }
 
     if (planCode === 'founders_yearly') {
       if (!family.founders_enabled) {
-        return NextResponse.json({ error: 'User is not eligible for Founders plan.' }, { status: 403 })
+        return NextResponse.json({ error: 'Sua família não está habilitada para o Plano Fundadores.' }, { status: 403 })
       }
     }
 
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
         const clientSecret = extractClientSecret(checkoutSubscription)
 
         if (!clientSecret) {
-          return NextResponse.json({ error: 'Existing incomplete subscription could not be resumed.' }, { status: 409 })
+          return NextResponse.json({ error: 'Não foi possível retomar a assinatura pendente.' }, { status: 409 })
         }
 
         await supabaseService.from('subscriptions').upsert({
@@ -155,7 +155,7 @@ export async function POST(request: Request) {
         })
       }
 
-      return NextResponse.json({ error: 'Subscription already exists. Use upgrade flow or portal.' }, { status: 409 })
+      return NextResponse.json({ error: 'Esta família já possui uma assinatura. Use o fluxo interno de upgrade.' }, { status: 409 })
     }
 
     const priceId = getPriceIdByPlanCode(planCode)
@@ -195,7 +195,7 @@ export async function POST(request: Request) {
 
     if (!clientSecret) {
       console.error('create-subscription: missing client secret', { subscriptionId: subscription.id })
-      return NextResponse.json({ error: 'Unable to initialize payment flow.' }, { status: 500 })
+      return NextResponse.json({ error: 'Não foi possível iniciar o pagamento.' }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -204,6 +204,6 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     console.error('create-subscription failed', error)
-    return NextResponse.json({ error: error?.message || 'Unexpected billing error.' }, { status: 500 })
+    return NextResponse.json({ error: error?.message || 'Erro inesperado na cobrança.' }, { status: 500 })
   }
 }

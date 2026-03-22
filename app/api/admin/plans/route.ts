@@ -13,7 +13,7 @@ async function requireSuperAdmin(request: Request) {
 
   const profile = await getProfileByUserId(auth.user.id)
   if (!profile?.super_admin) {
-    return { ok: false as const, response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+    return { ok: false as const, response: NextResponse.json({ error: 'Acesso negado.' }, { status: 403 }) }
   }
 
   return { ok: true as const }
@@ -48,11 +48,11 @@ export async function PATCH(request: Request) {
     | null
 
   if (!body?.plan_code || !isPlanCode(body.plan_code)) {
-    return NextResponse.json({ error: 'Invalid plan_code.' }, { status: 400 })
+    return NextResponse.json({ error: 'Plano inválido.' }, { status: 400 })
   }
 
   if (typeof body.is_visible !== 'boolean' && typeof body.is_active !== 'boolean') {
-    return NextResponse.json({ error: 'No changes provided.' }, { status: 400 })
+    return NextResponse.json({ error: 'Nenhuma alteração foi informada.' }, { status: 400 })
   }
 
   const updatePayload: Record<string, boolean> = {}
@@ -67,7 +67,7 @@ export async function PATCH(request: Request) {
     .maybeSingle()
 
   if (error || !data) {
-    return NextResponse.json({ error: error?.message || 'Plan not found.' }, { status: 500 })
+    return NextResponse.json({ error: error?.message || 'Plano não encontrado.' }, { status: 500 })
   }
 
   return NextResponse.json({ plan: data })

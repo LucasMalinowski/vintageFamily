@@ -21,29 +21,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Apenas administradores da família podem gerenciar cobrança.' }, { status: 403 })
     }
 
-    const { data: customerRow } = await supabaseService
+    const { data: stripeCustomer } = await supabaseService
       .from('stripe_customers')
       .select('stripe_customer_id')
       .eq('family_id', profile.family_id)
       .maybeSingle()
 
-    if (!customerRow?.stripe_customer_id) {
-      return NextResponse.json({ error: 'Cliente Stripe não encontrado.' }, { status: 404 })
+    if (!stripeCustomer?.stripe_customer_id) {
+      return NextResponse.json({ error: 'Cliente Stripe não encontrado para esta família.' }, { status: 404 })
     }
 
-    if (!process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID) {
-      return NextResponse.json({ error: 'Configuração do portal de cobrança ausente.' }, { status: 500 })
-    }
-
-    const portal = await stripe.billingPortal.sessions.create({
-      customer: customerRow.stripe_customer_id,
-      configuration: process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings/billing`,
+    const setupIntent = await stripe.setupIntents.create({
+      customer: stripeCustomer.stripe_customer_id,
+      usage: 'off_session',
+      automatic_payment_methods: {
+        enabled: true,
+      },
+      metadata: {
+        user_id: auth.user.id,
+        family_id: profile.family_id,
+      },
     })
 
-    return NextResponse.json({ url: portal.url })
+    if (!setupIntent.client_secret) {
+      return NextResponse.json({ error: 'Não foi possível iniciar a atualização do método de pagamento.' }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      client_secret: setupIntent.client_secret,
+      setup_intent_id: setupIntent.id,
+    })
   } catch (error: any) {
-    console.error('create-portal-session failed', error)
-    return NextResponse.json({ error: error?.message || 'Erro inesperado na cobrança.' }, { status: 500 })
+    console.error('create-payment-method-setup failed', error)
+    return NextResponse.json({ error: error?.message || 'Erro inesperado ao iniciar atualização de pagamento.' }, { status: 500 })
   }
 }

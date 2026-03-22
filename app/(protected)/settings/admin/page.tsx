@@ -122,8 +122,8 @@ export default function SuperAdminSettingsPage() {
   return (
     <div className="space-y-6">
       <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
-        <h1 className="text-2xl font-serif text-coffee mb-2">Super Admin</h1>
-        <p className="text-sm text-ink/60">Controle acesso vitalicio e elegibilidade Founders por familia.</p>
+        <h1 className="text-2xl font-serif text-coffee mb-2">Superadministrador</h1>
+        <p className="text-sm text-ink/60">Controle acesso vitalício e elegibilidade de fundadores por família.</p>
       </div>
 
       {message ? (
@@ -137,7 +137,7 @@ export default function SuperAdminSettingsPage() {
           <table className="min-w-full text-sm">
             <thead className="bg-paper border-b border-border">
               <tr className="text-left text-ink/60">
-                <th className="px-4 py-3 font-medium">Familia</th>
+                <th className="px-4 py-3 font-medium">Família</th>
                 <th className="px-4 py-3 font-medium">Membros</th>
                 <th className="px-4 py-3 font-medium">Fundadores</th>
                 <th className="px-4 py-3 font-medium">Permanente</th>
@@ -176,7 +176,7 @@ export default function SuperAdminSettingsPage() {
                             updateFamily(family.id, { founders_enabled: !family.founders_enabled })
                           }
                         />
-                        <span>{family.founders_enabled ? 'Ativo' : 'Inativo'}</span>
+                          <span>{family.founders_enabled ? 'Ativo' : 'Inativo'}</span>
                       </label>
                     </td>
                     <td className="px-4 py-4">
@@ -189,7 +189,7 @@ export default function SuperAdminSettingsPage() {
                             updateFamily(family.id, { lifetime_access: !family.lifetime_access })
                           }
                         />
-                        <span>{family.lifetime_access ? 'Ativo' : 'Inativo'}</span>
+                          <span>{family.lifetime_access ? 'Ativo' : 'Inativo'}</span>
                       </label>
                     </td>
                   </tr>
