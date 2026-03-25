@@ -15,13 +15,6 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'Florim',
   },
-  icons: {
-    icon: [
-      { url: '/favicon.ico' },
-      { url: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
-    ],
-    apple: '/apple-touch-icon.png',
-  },
 }
 
 export default function RootLayout({
