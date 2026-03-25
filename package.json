@@ -1,12 +1,13 @@
 {
-  "name": "fintech-vintage",
+  "name": "florim",
   "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint .",
+    "test": "vitest run"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.18",
@@ -20,6 +21,7 @@
     "lucide-react": "^0.563.0",
     "next": "^14.1.0",
     "nodemailer": "^7.0.12",
+    "pdf-parse": "^2.4.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "recharts": "^2.10.4",
@@ -37,6 +39,7 @@
     "postcss": "^8.4.33",
     "sharp": "^0.34.5",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.0"
   }
 }

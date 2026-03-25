@@ -5,7 +5,7 @@ import Providers from '@/components/Providers'
 import PwaInstallPrompt from '@/components/PwaInstallPrompt'
 
 export const metadata: Metadata = {
-  title: 'Livro de Finanças da Família',
+  title: 'Florim',
   description: 'Gestão financeira familiar com alma vintage',
   manifest: '/manifest.json',
   themeColor: '#3E5F4B',
@@ -13,10 +13,13 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Finanças',
+    title: 'Florim',
   },
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
+    ],
     apple: '/apple-touch-icon.png',
   },
 }
