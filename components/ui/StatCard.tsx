@@ -13,10 +13,10 @@ interface StatCardProps {
 export default function StatCard({ label, value, color = 'default', size = 'md', detail }: StatCardProps) {
   const colorClasses = {
     olive: 'bg-olive text-white',
-    terracotta: 'bg-terracotta text-white',
+    terracotta: 'bg-gold text-sidebar',
     petrol: 'bg-petrol text-white',
-    coffee: 'bg-coffee text-white',
-    default: 'bg-paper-2 text-ink border border-border',
+    coffee: 'bg-sidebar text-paper',
+    default: 'bg-bg text-ink border border-border',
   }
 
   const sizeClasses = {
@@ -32,7 +32,7 @@ export default function StatCard({ label, value, color = 'default', size = 'md',
   }
 
   return (
-    <div className={`rounded-vintage shadow-soft ${colorClasses[color]} ${sizeClasses[size]}`}>
+    <div className={`rounded-[20px] shadow-soft ${colorClasses[color]} ${sizeClasses[size]}`}>
       <div className={`text-xs uppercase tracking-wide mb-2 ${color === 'default' ? 'text-ink/60' : 'text-white/80'}`}>
         {label}
       </div>

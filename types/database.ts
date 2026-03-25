@@ -22,6 +22,8 @@ export type Database = {
           is_system: boolean
           kind: string
           name: string
+          parent_id: string | null
+          updated_at: string
         }
         Insert: {
           created_at?: string
@@ -30,6 +32,8 @@ export type Database = {
           is_system?: boolean
           kind: string
           name: string
+          parent_id?: string | null
+          updated_at?: string
         }
         Update: {
           created_at?: string
@@ -38,8 +42,17 @@ export type Database = {
           is_system?: boolean
           kind?: string
           name?: string
+          parent_id?: string | null
+          updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "categories_family_id_fkey"
             columns: ["family_id"]
@@ -99,7 +112,9 @@ export type Database = {
           created_at: string
           family_id: string
           id: string
+          is_system: boolean
           name: string
+          parent_id: string | null
           target_cents: number | null
           updated_at: string
         }
@@ -107,7 +122,9 @@ export type Database = {
           created_at?: string
           family_id: string
           id?: string
+          is_system?: boolean
           name: string
+          parent_id?: string | null
           target_cents?: number | null
           updated_at?: string
         }
@@ -115,11 +132,20 @@ export type Database = {
           created_at?: string
           family_id?: string
           id?: string
+          is_system?: boolean
           name?: string
+          parent_id?: string | null
           target_cents?: number | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "dreams_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "dreams"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "dreams_family_id_fkey"
             columns: ["family_id"]
@@ -204,18 +230,27 @@ export type Database = {
       families: {
         Row: {
           created_at: string
+          founders_enabled: boolean
           id: string
+          lifetime_access: boolean
           name: string
+          trial_expires_at: string | null
         }
         Insert: {
           created_at?: string
+          founders_enabled?: boolean
           id?: string
+          lifetime_access?: boolean
           name: string
+          trial_expires_at?: string | null
         }
         Update: {
           created_at?: string
+          founders_enabled?: boolean
           id?: string
+          lifetime_access?: boolean
           name?: string
+          trial_expires_at?: string | null
         }
         Relationships: []
       }
@@ -384,6 +419,7 @@ export type Database = {
           name: string
           password_hash: string
           role: string
+          super_admin: boolean
         }
         Insert: {
           avatar_url?: string | null
@@ -394,6 +430,7 @@ export type Database = {
           name: string
           password_hash: string
           role?: string
+          super_admin?: boolean
         }
         Update: {
           avatar_url?: string | null
@@ -404,6 +441,7 @@ export type Database = {
           name?: string
           password_hash?: string
           role?: string
+          super_admin?: boolean
         }
         Relationships: [
           {

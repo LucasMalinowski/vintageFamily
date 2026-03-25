@@ -6,9 +6,12 @@ CREATE TABLE public.categories (
                                    family_id uuid NOT NULL,
                                    kind text NOT NULL,
                                    name text NOT NULL,
+                                   parent_id uuid,
                                    is_system boolean NOT NULL DEFAULT false,
                                    created_at timestamp with time zone NOT NULL DEFAULT now(),
+                                   updated_at timestamp with time zone NOT NULL DEFAULT now(),
                                    CONSTRAINT categories_pkey PRIMARY KEY (id),
+                                   CONSTRAINT categories_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.categories(id),
                                    CONSTRAINT categories_family_id_fkey FOREIGN KEY (family_id) REFERENCES public.families(id)
 );
 CREATE TABLE public.dream_contributions (
@@ -27,10 +30,13 @@ CREATE TABLE public.dreams (
                                id uuid NOT NULL DEFAULT gen_random_uuid(),
                                family_id uuid NOT NULL,
                                name text NOT NULL,
+                               parent_id uuid,
+                               is_system boolean NOT NULL DEFAULT false,
                                target_cents integer,
                                created_at timestamp with time zone NOT NULL DEFAULT now(),
                                updated_at timestamp with time zone NOT NULL DEFAULT now(),
                                CONSTRAINT dreams_pkey PRIMARY KEY (id),
+                               CONSTRAINT dreams_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.dreams(id),
                                CONSTRAINT dreams_family_id_fkey FOREIGN KEY (family_id) REFERENCES public.families(id)
 );
 CREATE TABLE public.expenses (
@@ -52,12 +58,13 @@ CREATE TABLE public.expenses (
                                  updated_at timestamp with time zone NOT NULL DEFAULT now(),
                                  CONSTRAINT expenses_pkey PRIMARY KEY (id),
                                  CONSTRAINT expenses_family_id_fkey FOREIGN KEY (family_id) REFERENCES public.families(id),
-                                 CONSTRAINT expenses_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id)
+                                 CONSTRAINT expenses_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id) ON DELETE SET NULL
 );
 CREATE TABLE public.families (
                                  id uuid NOT NULL DEFAULT gen_random_uuid(),
                                  name text NOT NULL,
                                  created_at timestamp with time zone NOT NULL DEFAULT now(),
+                                 trial_expires_at timestamp with time zone,
                                  CONSTRAINT families_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.incomes (
@@ -73,7 +80,7 @@ CREATE TABLE public.incomes (
                                 updated_at timestamp with time zone NOT NULL DEFAULT now(),
                                 CONSTRAINT incomes_pkey PRIMARY KEY (id),
                                 CONSTRAINT incomes_family_id_fkey FOREIGN KEY (family_id) REFERENCES public.families(id),
-                                CONSTRAINT incomes_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id)
+                                CONSTRAINT incomes_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id) ON DELETE SET NULL
 );
 CREATE TABLE public.invites (
                                 id uuid NOT NULL DEFAULT gen_random_uuid(),

@@ -9,7 +9,7 @@ interface ModalProps {
   onClose: () => void
   title: string
   children: React.ReactNode
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
 }
 
 export default function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {
@@ -17,6 +17,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
     sm: 'max-w-md',
     md: 'max-w-lg',
     lg: 'max-w-2xl',
+    xl: 'max-w-4xl',
   }
 
   return (
@@ -45,7 +46,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className={`w-full ${sizeClasses[size]} bg-paper-2 rounded-vintage border border-border shadow-vintage p-6`}>
+              <Dialog.Panel className={`w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden bg-paper rounded-vintage border border-border shadow-vintage p-6`}>
                 <div className="flex items-center justify-between mb-4">
                   <Dialog.Title className="text-2xl font-serif text-coffee">
                     {title}
@@ -58,7 +59,9 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
                   </button>
                 </div>
 
-                {children}
+                <div className="max-h-[calc(90vh-5rem)] overflow-hidden">
+                  {children}
+                </div>
               </Dialog.Panel>
             </Transition.Child>
           </div>

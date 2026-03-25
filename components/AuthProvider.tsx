@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { getSidebarCollapsedStorageKey, LOCAL_STORAGE_KEYS } from '@/lib/storage'
 import { useRouter } from 'next/navigation'
 
 interface AuthContextType {
@@ -17,6 +18,18 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+function setAccessTokenCookie(accessToken: string | null) {
+  if (typeof window === 'undefined') return
+
+  if (!accessToken) {
+    document.cookie = 'app_access_token=; Path=/; Max-Age=0; SameSite=Lax'
+    return
+  }
+
+  const secureFlag = window.location.protocol === 'https:' ? '; Secure' : ''
+  document.cookie = `app_access_token=${encodeURIComponent(accessToken)}; Path=/; Max-Age=2592000; SameSite=Lax${secureFlag}`
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [familyId, setFamilyId] = useState<string | null>(null)
@@ -27,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
+      setAccessTokenCookie(session?.access_token ?? null)
       if (session?.user) {
         loadFamilyId(session.user.id)
       }
@@ -38,10 +52,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
+      setAccessTokenCookie(session?.access_token ?? null)
       if (session?.user) {
         loadFamilyId(session.user.id)
       } else {
         setFamilyId(null)
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
+        }
       }
     })
 
@@ -76,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     if (error) throw error
-    router.push('/')
+    router.push('/inicio')
   }
 
   const signUp = async (email: string, password: string, name: string, familyName: string) => {
@@ -91,48 +109,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!authData.user) throw new Error('User creation failed')
 
       // 2. Sign in immediately (bypass email confirmation)
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (signInError) throw signInError
 
-      // 3. Create family
-      const { data: family, error: familyError } = await supabase
-        .from('families')
-        .insert({ name: familyName })
-        .select()
-        .single()
-
-      if (familyError) {
-        console.error('Family creation error:', familyError)
-        throw new Error('Erro ao criar família: ' + familyError.message)
+      let session: typeof signInData.session | null = signInData.session ?? null
+      if (!session) {
+        const { data: sessionData } = await supabase.auth.getSession()
+        session = sessionData.session
       }
 
-      // 4. Create user profile
-      const { error: userError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          family_id: family.id,
-          name,
-          email,
-          password_hash: 'managed_by_supabase_auth',
-          role: 'admin',
-        })
-
-      if (userError) {
-        console.error('User profile error:', userError)
-        throw new Error('Erro ao criar perfil: ' + userError.message)
+      if (!session) {
+        throw new Error('Não foi possível autenticar o usuário.')
       }
 
-      // 5. Create default categories
-      await createDefaultCategories(family.id)
+      // Ensure the client is using the authenticated session before RLS writes
+      await supabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      })
 
-      // 6. Set family ID and redirect
-      setFamilyId(family.id)
-      router.push('/')
+      // 3. Create family + profile + defaults on server (service role)
+      const response = await fetch('/api/families/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ familyName, name, email }),
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload?.error || 'Erro ao criar família.')
+      }
+
+      const payload = await response.json()
+      const createdFamilyId = payload.familyId as string | undefined
+      if (!createdFamilyId) {
+        throw new Error('Resposta inválida ao criar família.')
+      }
+
+      // 4. Set family ID and redirect
+      setFamilyId(createdFamilyId)
+      router.push('/inicio')
     } catch (error: any) {
       console.error('SignUp error:', error)
       throw error
@@ -148,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (authError) throw authError
 
-      let session = authData.session
+      let session: typeof authData.session | null = authData.session ?? null
       if (!session) {
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email,
@@ -179,7 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const payload = await response.json()
       setFamilyId(payload.familyId)
-      router.push('/')
+      router.push('/inicio')
     } catch (error: any) {
       console.error('AcceptInvite error:', error)
       throw error
@@ -187,6 +210,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
+    setAccessTokenCookie(null)
+    if (typeof window !== 'undefined') {
+      if (user?.id) {
+        window.localStorage.removeItem(getSidebarCollapsedStorageKey(user.id))
+      }
+      window.localStorage.removeItem(LOCAL_STORAGE_KEYS.sidebarCollapsed)
+      window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
+      delete document.documentElement.dataset.sidebarCollapsed
+    }
     await supabase.auth.signOut()
     router.push('/login')
   }
@@ -204,33 +236,4 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider')
   }
   return context
-}
-
-async function createDefaultCategories(familyId: string) {
-  const categories = [
-    // Expenses
-    { family_id: familyId, kind: 'expense', name: 'Aluguel', is_system: true },
-    { family_id: familyId, kind: 'expense', name: 'Energia', is_system: true },
-    { family_id: familyId, kind: 'expense', name: 'Água', is_system: true },
-    { family_id: familyId, kind: 'expense', name: 'Mercado', is_system: true },
-    { family_id: familyId, kind: 'expense', name: 'Lazer', is_system: true },
-    { family_id: familyId, kind: 'expense', name: 'Investimentos para casa', is_system: true },
-    { family_id: familyId, kind: 'expense', name: 'Saúde', is_system: true },
-    { family_id: familyId, kind: 'expense', name: 'Educação', is_system: true },
-    { family_id: familyId, kind: 'expense', name: 'Hobbie', is_system: true },
-    // Incomes
-    { family_id: familyId, kind: 'income', name: 'Renda Familiar', is_system: true },
-    { family_id: familyId, kind: 'income', name: 'Outras Receitas', is_system: true },
-  ]
-
-  await supabase.from('categories').insert(categories)
-
-  // Create default dreams
-  const dreams = [
-    { family_id: familyId, name: 'Casa' },
-    { family_id: familyId, name: 'Carro' },
-    { family_id: familyId, name: 'Viagem' },
-  ]
-
-  await supabase.from('dreams').insert(dreams)
 }

@@ -64,7 +64,7 @@ export default function PwaInstallPrompt() {
 
   return (
     <div className="fixed inset-x-4 bottom-4 z-50">
-      <div className="bg-paper-2 border border-border shadow-vintage rounded-vintage p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="bg-bg border border-border shadow-vintage rounded-vintage p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="text-sm text-ink/80 font-body">
           {iosPromptVisible ? (
             <>

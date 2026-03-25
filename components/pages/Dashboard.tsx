@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Check, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -11,6 +10,7 @@ import VintageCard from '../ui/VintageCard'
 import Modal from '../ui/Modal'
 import Select from '../ui/Select'
 import { formatDate, isDueDateToday, isDueDateOverdue } from '@/lib/dates'
+import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
 
 interface Reminder {
   id: string
@@ -28,12 +28,12 @@ interface Payable {
 }
 
 export default function Dashboard() {
-  const router = useRouter()
-  const { familyId } = useAuth()
+  const { familyId, user } = useAuth()
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [pendingPayables, setPendingPayables] = useState<Payable[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingPayables, setLoadingPayables] = useState(true)
+  const [familyName, setFamilyName] = useState('')
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false)
   const [reminderForm, setReminderForm] = useState({
     title: '',
@@ -46,7 +46,8 @@ export default function Dashboard() {
       loadReminders()
       loadPendingPayables()
     }
-  }, [familyId])
+    loadFamilyName()
+  }, [familyId, user?.id])
 
   const loadReminders = async () => {
     const { data } = await supabase
@@ -76,6 +77,67 @@ export default function Dashboard() {
       setPendingPayables(data)
     }
     setLoadingPayables(false)
+  }
+
+  const loadFamilyName = async () => {
+    const cachedFamilyName = window.localStorage.getItem(LOCAL_STORAGE_KEYS.familyName)
+    if (cachedFamilyName) {
+      setFamilyName(cachedFamilyName)
+      return
+    }
+
+    let effectiveFamilyId = familyId
+
+    if (!effectiveFamilyId && user?.id) {
+      const { data: profileRow } = await supabase
+        .from('users')
+        .select('family_id')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (profileRow?.family_id) {
+        effectiveFamilyId = profileRow.family_id
+      }
+    }
+
+    if (!effectiveFamilyId) {
+      setFamilyName('')
+      window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
+      return
+    }
+
+    const { data: familyRow } = await supabase
+      .from('families')
+      .select('name')
+      .eq('id', effectiveFamilyId)
+      .maybeSingle()
+
+    if (familyRow?.name) {
+      setFamilyName(familyRow.name)
+      window.localStorage.setItem(LOCAL_STORAGE_KEYS.familyName, familyRow.name)
+      return
+    }
+
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
+    if (!token) return
+
+    const response = await fetch('/api/families/me', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) return
+
+    const payload = await response.json().catch(() => ({}))
+    const resolvedFamilyName = payload?.familyName || ''
+    setFamilyName(resolvedFamilyName)
+    if (resolvedFamilyName) {
+      window.localStorage.setItem(LOCAL_STORAGE_KEYS.familyName, resolvedFamilyName)
+    } else {
+      window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
+    }
   }
 
   const toggleDone = async (id: string, isDone: boolean) => {
@@ -132,173 +194,144 @@ export default function Dashboard() {
 
   return (
     <>
-      <Topbar 
-        title="Início" 
+      <Topbar
+        title="Início"
         subtitle="Bem-vindo ao seu espaço financeiro familiar"
+        variant="textured"
       />
-      <div className="min-h-screen">
-      {/* Hero Section */}
-      <div className="relative bg-paper-2 border-b border-border px-6 py-16 md:py-24">
-        <div className="max-w-4xl mx-auto text-center relative">
-          {/* Ornament */}
-          <svg width="100" height="50" viewBox="0 0 100 50" fill="none" className="mx-auto mb-6">
-            <path d="M0 25 Q 25 15, 50 25 T 100 25" stroke="#5A4633" strokeWidth="1" fill="none" />
-            <circle cx="50" cy="25" r="4" fill="#5A4633" />
-          </svg>
-
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif text-coffee mb-6">
-            Livro de Finanças da Família
-          </h1>
-
-          <p className="text-lg md:text-xl text-ink/70 italic font-body mb-8 max-w-2xl mx-auto">
-            Organizar o dinheiro é cuidar do tempo que ainda vamos viver.
-          </p>
-
-          <button
-            onClick={() => router.push('/balance')}
-            className="bg-coffee text-paper px-8 py-4 rounded-lg font-body text-lg hover:bg-coffee/90 transition-vintage shadow-soft"
-          >
-            Abrir o livro do mês
-          </button>
-
-          {/* Ornament Bottom */}
-          <svg width="120" height="30" viewBox="0 0 120 30" fill="none" className="mx-auto mt-8">
-            <path d="M0 15 L 120 15" stroke="#D9CFBF" strokeWidth="1" />
-            <circle cx="60" cy="15" r="3" fill="#D9CFBF" />
-          </svg>
-        </div>
-      </div>
-
-      {/* Reminders Section */}
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="text-center mb-6">
-          <p className="text-sm text-ink/60 italic">
-            No rodapé, os lembretes da casa, como notas de cuidado.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <VintageCard>
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-              <div>
-                <h3 className="text-lg font-serif text-coffee">Contas pendentes</h3>
-                <p className="text-sm text-ink/60 italic">Pagamentos abertos em ordem de vencimento.</p>
-              </div>
+      <div className="bg-paper">
+        <div className="max-w-7xl mx-auto px-6 py-10">
+          <div className="bg-[url('/texture-green.png')] bg-cover bg-center border border-border/70 rounded-lg p-10 shadow-soft text-center text-paper">
+            <h1 className="text-3xl md:text-4xl font-serif font-thin text-paper">
+              Livro de Finanças da<br/> Família {familyName || '—'}
+            </h1>
+          </div>
+          <div className="mt-6 justify-self-center">
+            <div className="max-w-md bg-paper px-6 py-4 shadow-soft text-ink/70 font-ptSerif italic">
+              Organizar o dinheiro é cuidar do tempo que ainda vamos viver.
             </div>
+          </div>
 
-            {loadingPayables ? (
-              <div className="text-center py-8 text-ink/60">Carregando...</div>
-            ) : pendingPayables.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-ink/60 italic mb-2">Sem contas pendentes.</p>
-                <p className="text-ink/40 text-sm">Que a casa siga leve.</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-14">
+            <VintageCard className="!bg-paper">
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div>
+                  <h3 className="text-xl font-body font-thin text-sidebar">Contas pendentes</h3>
+                  <p className="text-sm text-ink/40 ">Que a casa siga leve.</p>
+                </div>
               </div>
-            ) : (
-              <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                {pendingPayables.map((payable) => (
-                  <Link
-                    key={payable.id}
-                    href={`/payables#expense-${payable.id}`}
-                    className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border hover:bg-paper-2 transition-vintage"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-body text-ink truncate">{payable.description}</p>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-ink/60">
-                        <span>{formatDate(payable.date, 'dd/MM')}</span>
-                        <span>•</span>
-                        <span>{payable.category_name}</span>
-                      </div>
-                    </div>
-                    <span className="text-xs px-2 py-0.5 rounded bg-terracotta/20 text-terracotta">
-                      Em aberto
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            )}
-            <div className="pt-3">
-              <Link
-                href="/payables"
-                className="text-xs italic text-ink/40 hover:text-ink/60 transition-vintage"
-              >
-                Ver todos
-              </Link>
-            </div>
-          </VintageCard>
 
-          <VintageCard>
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <div className="min-w-0">
-                <h3 className="text-lg font-serif text-coffee">Lembretes da casa</h3>
-                <p className="text-sm text-ink/60 italic">Notas de cuidado para o mês.</p>
-              </div>
-              <button
-                onClick={() => setIsReminderModalOpen(true)}
-                className="w-9 h-9 rounded-full bg-fab-green text-white flex items-center justify-center hover:bg-fab-green/90 transition-vintage shrink-0"
-                aria-label="Novo lembrete"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-
-            {loading ? (
-              <div className="text-center py-8 text-ink/60">Carregando...</div>
-            ) : reminders.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-ink/60 italic mb-2">Sem lembretes por agora.</p>
-                <p className="text-ink/40 text-sm">Que o mês siga tranquilo.</p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                {reminders.map((reminder) => (
-                  <div
-                    key={reminder.id}
-                    className={`flex items-start gap-3 p-3 rounded-lg border border-border transition-vintage ${
-                      reminder.is_done ? 'opacity-60' : ''
-                    }`}
-                  >
-                    <button
-                      onClick={() => toggleDone(reminder.id, reminder.is_done)}
-                      className={`w-5 h-5 rounded border-2 flex-shrink-0 mt-0.5 transition-vintage ${
-                        reminder.is_done
-                          ? 'bg-olive border-olive'
-                          : 'border-border hover:border-olive'
-                      }`}
-                      aria-label={`Marcar ${reminder.title} como ${reminder.is_done ? 'pendente' : 'feito'}`}
+              {loadingPayables ? (
+                <div className="text-center py-8 text-ink/60">Carregando...</div>
+              ) : pendingPayables.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-petrol mb-2">Sem contas pendentes</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                  {pendingPayables.map((payable) => (
+                    <Link
+                      key={payable.id}
+                      href={`/payables#expense-${payable.id}`}
+                      className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-paper transition-vintage"
                     >
-                      {reminder.is_done && <Check className="w-4 h-4 text-white" />}
-                    </button>
+                      <div className="min-w-0">
+                        <p className="text-sm font-body text-ink truncate">{payable.description}</p>
+                        <div className="flex items-center gap-2 mt-1 text-xs text-ink/60">
+                          <span>{formatDate(payable.date, 'dd/MM')}</span>
+                          <span>•</span>
+                          <span>{payable.category_name}</span>
+                        </div>
+                      </div>
+                      <span className="text-xs px-2 py-0.5 rounded bg-gold/20 text-gold">
+                        Em aberto
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+              <div className="pt-3">
+                <Link
+                  href="/payables"
+                  className="text-xs  text-ink/40 hover:text-ink/60 transition-vintage"
+                >
+                  Ver todos
+                </Link>
+              </div>
+            </VintageCard>
 
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-body ${reminder.is_done ? 'line-through' : ''}`}>
-                        {reminder.title}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        {reminder.due_date && (
-                          <span className={`text-xs px-2 py-0.5 rounded ${getReminderBadgeColor(reminder)}`}>
-                            {formatDate(reminder.due_date, 'dd/MM')}
+            <VintageCard className="!bg-paper">
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div className="min-w-0">
+                  <h3 className="text-lg font-body font-thin text-sidebar">Lembretes da casa</h3>
+                  <p className="text-sm text-ink/40 ">Notas de cuidado com aquilo que valorizamos.</p>
+                </div>
+                <button
+                  onClick={() => setIsReminderModalOpen(true)}
+                  className="w-9 h-9 rounded-full bg-petrol text-white flex items-center justify-center hover:opacity-90 transition-vintage shrink-0"
+                  aria-label="Novo lembrete"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+
+              {loading ? (
+                <div className="text-center py-8 text-ink/60">Carregando...</div>
+              ) : reminders.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-petrol  mb-2">Sem lembretes por agora</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                  {reminders.map((reminder) => (
+                    <div
+                      key={reminder.id}
+                      className={`flex items-start gap-3 p-3 rounded-lg border border-border transition-vintage ${
+                        reminder.is_done ? 'opacity-60' : ''
+                      }`}
+                    >
+                      <button
+                        onClick={() => toggleDone(reminder.id, reminder.is_done)}
+                        className={`w-5 h-5 rounded border-2 flex-shrink-0 mt-0.5 transition-vintage ${
+                          reminder.is_done
+                            ? 'bg-olive border-olive'
+                            : 'border-border hover:border-olive'
+                        }`}
+                        aria-label={`Marcar ${reminder.title} como ${reminder.is_done ? 'pendente' : 'feito'}`}
+                      >
+                        {reminder.is_done && <Check className="w-4 h-4 text-white" />}
+                      </button>
+
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-body ${reminder.is_done ? 'line-through' : ''}`}>
+                          {reminder.title}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {reminder.due_date && (
+                            <span className={`text-xs px-2 py-0.5 rounded ${getReminderBadgeColor(reminder)}`}>
+                              {formatDate(reminder.due_date, 'dd/MM')}
+                            </span>
+                          )}
+                          <span className={`text-xs px-2 py-0.5 rounded ${getCategoryColors[reminder.category] || getCategoryColors['Outros']}`}>
+                            {reminder.category}
                           </span>
-                        )}
-                        <span className={`text-xs px-2 py-0.5 rounded ${getCategoryColors[reminder.category] || getCategoryColors['Outros']}`}>
-                          {reminder.category}
-                        </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              )}
+              <div className="pt-3">
+                <Link
+                  href="/reminders"
+                  className="text-xs  text-ink/40 hover:text-ink/60 transition-vintage"
+                >
+                  Ver todos
+                </Link>
               </div>
-            )}
-            <div className="pt-3">
-              <Link
-                href="/reminders"
-                className="text-xs italic text-ink/40 hover:text-ink/60 transition-vintage"
-              >
-                Ver todos
-              </Link>
-            </div>
-          </VintageCard>
+            </VintageCard>
+          </div>
         </div>
-      </div>
       </div>
 
       <Modal
@@ -316,7 +349,7 @@ export default function Dashboard() {
               required
               value={reminderForm.title}
               onChange={(event) => setReminderForm({ ...reminderForm, title: event.target.value })}
-              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder="Ex: Conferir conta de água"
             />
           </div>
@@ -327,7 +360,7 @@ export default function Dashboard() {
               type="date"
               value={reminderForm.due_date}
               onChange={(event) => setReminderForm({ ...reminderForm, due_date: event.target.value })}
-              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
 
