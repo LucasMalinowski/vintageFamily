@@ -14,6 +14,11 @@ const isIosDevice = () => {
   return /iphone|ipad|ipod/i.test(navigator.userAgent)
 }
 
+const isMobileDevice = () => {
+  if (typeof navigator === 'undefined') return false
+  return /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent)
+}
+
 const isStandaloneMode = () => {
   if (typeof window === 'undefined') return false
   return window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true
@@ -27,7 +32,7 @@ export default function PwaInstallPrompt() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     const dismissed = localStorage.getItem(STORAGE_KEY) === 'true'
-    if (dismissed || isStandaloneMode()) return
+    if (dismissed || isStandaloneMode() || !isMobileDevice()) return
 
     if (isIosDevice()) {
       setIosPromptVisible(true)
