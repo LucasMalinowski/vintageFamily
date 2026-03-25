@@ -1,10 +1,10 @@
-# 📖 Livro de Finanças da Família
+# Florim
 
 Aplicativo de gestão financeira familiar com design vintage e alma moderna.
 
 ## 🎨 Características
 
-- ✨ Design "Fintech Vintage" - estética clássica com UX moderna
+- ✨ Identidade Florim com estética clássica e UX moderna
 - 📱 PWA (Progressive Web App) - instalável em dispositivos móveis
 - 🔐 Autenticação multi-usuário por família
 - 📊 Controle completo de receitas, despesas e sonhos
@@ -28,7 +28,7 @@ Aplicativo de gestão financeira familiar com design vintage e alma moderna.
 
 ```bash
 git clone <seu-repo>
-cd fintech-vintage
+cd florim
 ```
 
 ### 2. Instale as dependências

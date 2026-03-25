@@ -8,7 +8,7 @@ if (!stripeSecretKey) {
 
 export const stripe = new Stripe(stripeSecretKey, {
   appInfo: {
-    name: 'fintech-vintage',
+    name: 'florim',
   },
 })
 
