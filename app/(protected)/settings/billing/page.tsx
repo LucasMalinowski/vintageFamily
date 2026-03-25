@@ -54,6 +54,17 @@ type PaymentFlow =
     }
   | null
 
+const STATUS_LABELS: Record<string, string> = {
+  active: 'Ativa',
+  trialing: 'Em teste',
+  canceled: 'Cancelada',
+  incomplete: 'Incompleta',
+  incomplete_expired: 'Expirada',
+  past_due: 'Em atraso',
+  unpaid: 'Não paga',
+  paused: 'Pausada',
+}
+
 function formatPlanName(planCode: PlanCode | null | undefined) {
   if (!planCode) return 'Sem assinatura'
   return PLAN_NAME[planCode] ?? planCode
@@ -502,12 +513,14 @@ export default function BillingSettingsPage() {
           <div className="rounded-lg border border-border bg-paper p-4">
             <h2 className="mb-2 text-sm uppercase tracking-wide text-ink/50">Assinatura atual</h2>
             <p className="text-lg font-semibold text-coffee">{formatPlanName(currentPlan)}</p>
-            <p className="mt-1 text-xs text-ink/60">Status: {data?.subscription?.status || 'n/a'}</p>
+            <p className="mt-1 text-xs text-ink/60">
+              Status: {data?.subscription?.status ? STATUS_LABELS[data.subscription.status] || data.subscription.status : 'n/d'}
+            </p>
             <p className="mt-1 text-xs text-ink/60">
               Período atual até:{' '}
               {data?.subscription?.current_period_end
                 ? new Date(data.subscription.current_period_end).toLocaleDateString('pt-BR')
-                : 'n/a'}
+                : 'n/d'}
             </p>
             <p className="mt-1 text-xs text-ink/60">{renewalLabel}</p>
             {scheduledChange?.target_plan && scheduledChange.effective_at ? (
@@ -702,7 +715,7 @@ export default function BillingSettingsPage() {
 
               <BillingPaymentElement
                 clientSecret={paymentFlow.clientSecret}
-                submitLabel={paymentFlow.type === 'payment_method' ? 'Salvar cartão' : 'Confirmar upgrade'}
+                submitLabel={paymentFlow.type === 'payment_method' ? 'Salvar cartão' : 'Confirmar mudança de plano'}
                 onCancel={() => setPaymentFlow(null)}
                 onSuccess={async (result) => {
                   if (paymentFlow.type === 'payment_method') {
@@ -750,7 +763,7 @@ export default function BillingSettingsPage() {
                   <p className="text-xs uppercase tracking-[0.24em] text-coffee/55">Cobrança</p>
                   <h3 className="mt-1 text-2xl font-serif text-coffee">Alterar Plano de Assinatura</h3>
                   <p className="mt-2 text-sm text-ink/65">
-                    Escolha o plano desejado. Upgrades acontecem agora; downgrades ficam agendados para o fim do período.
+                    Escolha o plano desejado. Mudanças para planos superiores acontecem agora; mudanças para planos inferiores ficam agendadas para o fim do período.
                   </p>
                 </div>
                 <button

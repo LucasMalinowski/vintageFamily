@@ -63,7 +63,7 @@ export default function Topbar({
         return
       }
 
-      const response = await fetch('/api/families/me', {
+      const response = await fetch('/api/billing/me', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -71,12 +71,20 @@ export default function Topbar({
 
       const payload = await response.json().catch(() => null)
 
-      if (!response.ok || !payload?.trialExpiresAt) {
+      const access = payload?.access
+
+      if (
+        !response.ok ||
+        !access?.trialExpiresAt ||
+        !access?.hasActiveTrial ||
+        access?.hasValidSubscription ||
+        access?.hasLifetimeAccess
+      ) {
         setTrialDaysLeft(null)
         return
       }
 
-      const expiresAt = new Date(payload.trialExpiresAt)
+      const expiresAt = new Date(access.trialExpiresAt)
       const diffMs = expiresAt.getTime() - Date.now()
       const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
 

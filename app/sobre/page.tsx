@@ -4,7 +4,7 @@ import AppLayout from '@/components/layout/AppLayout'
 import Topbar from '@/components/layout/Topbar'
 
 const fullWidthTop = [
-  "O nome <strong>Florim</strong> carrega raízes profundas na história econômica da Europa. Ele nasce do fiorino d'oro, moeda de ouro cunhada em Florença no século XIII e reconhecida por sua pureza, estabilidade e ampla aceitação no comércio internacional.",
+  "O nome <strong>Florim</strong> carrega raízes profundas na história econômica da Europa. Ele nasce do <span class='italic'>fiorino d'oro</span>, moeda de ouro cunhada em Florença no século XIII e reconhecida por sua pureza, estabilidade e ampla aceitação no comércio internacional.",
   'Ao longo dos séculos, o florim tornou-se símbolo de valor real e confiança. A flor estampada na moeda, o Giglio, emblema de Florença, associava esse valor à beleza, à autenticidade e ao reconhecimento duradouro.',
 ]
 
