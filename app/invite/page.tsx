@@ -25,7 +25,7 @@ function InvitePageContent() {
 
   useEffect(() => {
     if (user) {
-      router.push('/')
+      router.push('/inicio')
     }
   }, [user, router])
 
@@ -81,22 +81,27 @@ function InvitePageContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-serif text-coffee mb-2">Aceitar convite</h1>
-          <p className="text-ink/60 italic font-body">
-            Entre para a sua nova família financeira.
+    <div className="min-h-screen bg-sidebar text-paper flex items-center justify-center px-6 py-10 relative">
+      <img
+        src="/logo-florim.png"
+        alt="Florim"
+        className="w-32 h-32 object-contain absolute left-8 top-8"
+      />
+      <div className="w-full max-w-6xl flex flex-col gap-10 md:flex-row md:items-center md:justify-between">
+        <div className="text-center md:text-left">
+          <p className="text-2xl md:text-2xl font-serif italic text-gold leading-relaxed max-w-sm mx-auto md:mx-0">
+            Aceite o convite e compartilhe o cuidado financeiro do seu lar.
           </p>
         </div>
 
-        <div className="bg-paper-2 rounded-vintage border border-border shadow-vintage p-8">
+        <div className="bg-paper backdrop-blur-sm rounded-[28px] border border-border/70 shadow-vintage p-12 w-full md:max-w-xl md:-translate-y-6">
+          <h2 className="text-2xl font-serif text-coffee mb-6">Aceitar convite</h2>
           {loading ? (
             <p className="text-sm text-ink/60 font-body">Carregando convite...</p>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="bg-terracotta/10 border border-terracotta/30 text-terracotta px-4 py-3 rounded-lg text-sm">
+                <div className="bg-gold/10 border border-gold/30 text-gold px-4 py-3 rounded-lg text-sm">
                   {error}
                 </div>
               )}
@@ -113,7 +118,7 @@ function InvitePageContent() {
                   type="email"
                   value={inviteInfo?.email ?? ''}
                   disabled
-                  className="w-full px-4 py-3 bg-paper border border-border rounded-lg text-ink/60"
+                  className="w-full px-4 py-3 bg-white/70 border border-border rounded-full text-ink/60"
                 />
               </div>
 
@@ -123,7 +128,7 @@ function InvitePageContent() {
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   required
-                  className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 transition-vintage"
+                  className="w-full px-4 py-3 bg-white/70 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
                   placeholder="Nome completo"
                 />
               </div>
@@ -136,7 +141,7 @@ function InvitePageContent() {
                   onChange={(event) => setPassword(event.target.value)}
                   required
                   minLength={6}
-                  className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 transition-vintage"
+                  className="w-full px-4 py-3 bg-white/70 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
                   placeholder="••••••••"
                 />
               </div>
@@ -149,7 +154,7 @@ function InvitePageContent() {
                   onChange={(event) => setConfirmPassword(event.target.value)}
                   required
                   minLength={6}
-                  className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 transition-vintage"
+                  className="w-full px-4 py-3 bg-white/70 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
                   placeholder="••••••••"
                 />
               </div>
@@ -157,7 +162,7 @@ function InvitePageContent() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-coffee text-paper py-3 rounded-lg font-body hover:bg-coffee/90 transition-vintage disabled:opacity-50"
+                className="w-full bg-sidebar text-paper py-3 rounded-full font-semibold hover:opacity-90 transition-vintage disabled:opacity-50"
               >
                 {submitting ? 'Criando...' : 'Aceitar convite'}
               </button>

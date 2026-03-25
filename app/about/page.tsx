@@ -1,0 +1,65 @@
+'use client'
+
+import Link from 'next/link'
+import PublicNavbar from '@/components/layout/PublicNavbar'
+
+export default function AboutPage() {
+  return (
+    <div className="relative h-screen overflow-hidden bg-paper">
+      <PublicNavbar color="paper" showWordmark={false} />
+      <div className="grid h-full lg:grid-cols-[2fr,1fr]">
+        <section
+          className="bg-sidebar px-6 pb-8 pt-24 sm:px-8 lg:px-10 lg:pb-12 lg:pt-24 text-paper"
+        >
+          <div className="px-48 pt-14">
+            <h1 className="text-[28px] sm:text-[28px] lg:text-[34px] leading-[1.15] font-normal font-serif text-paper mb-6">
+              Sistema de controle <br/> financeiro familiar
+            </h1>
+
+            <p className="text-[#C2A45D] italic mb-6 text-[20px] font-light font-serif leading-relaxed">
+              O Florim é um sistema de organização financeira familiar criado para trazer clareza, diálogo e
+              tranquilidade ao cotidiano da casa.
+            </p>
+
+            <div className="space-y-3 text-[#C2A45D] italic leading-relaxed text-[20px] font-light font-serif">
+              <p>
+                Ele vai além da gestão de números.
+                <br />
+                O Florim cuida da vida real. Pois não nasceu em uma sala de reunião, mas dentro de casa.              </p>
+              <p>
+                Aqui, entendemos que dinheiro envolve emoções, decisões e relações humanas.
+                <br />
+                Por isso, o sistema foi desenhado para ser simples, intuítivo e acolhedor.
+              </p>
+              <p>
+                No Florim, a tecnologia está a serviço do cuidado e
+                <br />
+                nunca do controle excessivo.
+              </p>
+            </div>
+
+            <div className="mt-10 flex justify-center">
+              <Link
+                href="/plans"
+                className="inline-flex w-full items-center justify-center rounded-full bg-paper py-3 text-sm font-medium text-coffee shadow-soft hover:opacity-90 transition-vintage"
+              >
+                Planos
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        <section className="relative h-full">
+          <video
+            className="h-full w-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+            src="/about-video.mp4"
+          />
+        </section>
+      </div>
+    </div>
+  )
+}

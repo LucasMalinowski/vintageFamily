@@ -1,19 +1,29 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import Topbar from '@/components/layout/Topbar'
-import VintageCard from '@/components/ui/VintageCard'
-import StatCard from '@/components/ui/StatCard'
+import FilterSidebar from '@/components/layout/FilterSidebar'
+import FilterSearchBar from '@/components/layout/FilterSearchBar'
 import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
 import { formatBRL } from '@/lib/money'
 import { formatDate, getCurrentMonth, getCurrentYear, MONTHS, getYearOptions, getMonthRange } from '@/lib/dates'
 import { buildInstallmentDates, splitAmountCents } from '@/lib/installments'
-import { ChevronDown, Pencil, Receipt, Trash2 } from 'lucide-react'
+import { Receipt } from 'lucide-react'
 import { format } from 'date-fns'
+import ActionMenu from '@/components/ui/ActionMenu'
+import { mergeAttachment, parseAttachment } from '@/lib/attachments'
+import CategorySettingsModal from '@/components/categories/CategorySettingsModal'
+import {
+  buildCategoryLabelMap,
+  buildCategoryOptions,
+  CategoryRecord,
+  findCategoryIdByStoredName,
+} from '@/lib/categories'
+import { matchesSearch } from '@/lib/filterSearch'
 
 type PaymentMethod = 'PIX' | 'Credito' | 'Debito'
 
@@ -27,6 +37,7 @@ const normalizePaymentMethod = (method: string | null): PaymentMethod | null => 
 interface Expense {
   id: string
   description: string
+  category_id: string | null
   category_name: string
   amount_cents: number
   date: string
@@ -39,10 +50,6 @@ interface Expense {
   installment_index: number | null
 }
 
-interface Category {
-  name: string
-}
-
 const formatPaymentLabel = (method: PaymentMethod | null, installments: number | null) => {
   if (method === 'Credito') {
     const count = installments && installments > 1 ? `${installments}x` : ''
@@ -52,41 +59,35 @@ const formatPaymentLabel = (method: PaymentMethod | null, installments: number |
   return 'PIX'
 }
 
-const buildInstallmentIndexes = (rows: Expense[]) => {
-  const indexMap = new Map<string, number>()
-  rows.forEach((row) => {
-    if (row.installment_index) {
-      indexMap.set(row.id, row.installment_index)
-    }
-  })
-  return indexMap
-}
-
 export default function Payables() {
   const { familyId } = useAuth()
   const [expenses, setExpenses] = useState<Expense[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
+  const [categories, setCategories] = useState<CategoryRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [updatingIds, setUpdatingIds] = useState<string[]>([])
-  
+
   // Filtros
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
   const [selectedYear, setSelectedYear] = useState(getCurrentYear())
-  const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedCategoryId, setSelectedCategoryId] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
   const [onlyInstallments, setOnlyInstallments] = useState(false)
-  const [groupByPurchase, setGroupByPurchase] = useState(false)
-  const [filtersOpen, setFiltersOpen] = useState(false)
-  
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filtersOpen, setFiltersOpen] = useState(true)
+
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isCategorySettingsOpen, setIsCategorySettingsOpen] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
-  
+  const [detailExpense, setDetailExpense] = useState<Expense | null>(null)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [currentAttachmentUrl, setCurrentAttachmentUrl] = useState<string | null>(null)
+
   // Form
   const [formData, setFormData] = useState({
     description: '',
-    category: '',
+    categoryId: '',
     amount: '',
     date: format(new Date(), 'yyyy-MM-dd'),
     status: 'open' as 'open' | 'paid',
@@ -98,29 +99,63 @@ export default function Payables() {
   useEffect(() => {
     if (familyId) {
       loadCategories()
+    }
+  }, [familyId])
+
+  useEffect(() => {
+    if (familyId) {
       loadExpenses()
     }
   }, [
     familyId,
     selectedMonth,
     selectedYear,
-    selectedCategory,
+    selectedCategoryId,
     selectedStatus,
     selectedPaymentMethod,
     onlyInstallments,
   ])
 
+  const categoryById = useMemo(
+    () => new Map<string, CategoryRecord>(categories.map((category) => [category.id, category])),
+    [categories]
+  )
+  const categoryLabelMap = useMemo(() => buildCategoryLabelMap(categories), [categories])
+  const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories])
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem('app-filters-open')
+    if (stored === '0') setFiltersOpen(false)
+    if (stored === '1') setFiltersOpen(true)
+  }, [])
+
+  useEffect(() => {
+    window.localStorage.setItem('app-filters-open', filtersOpen ? '1' : '0')
+  }, [filtersOpen])
+
+  useEffect(() => {
+    if (!selectedCategoryId) return
+    if (!categoryById.has(selectedCategoryId)) {
+      setSelectedCategoryId('')
+    }
+  }, [selectedCategoryId, categoryById])
+
+  const getCategoryLabel = (categoryId: string | null, fallbackName: string) => {
+    if (categoryId) {
+      return categoryLabelMap.get(categoryId) || fallbackName
+    }
+    return fallbackName
+  }
+
   const loadCategories = async () => {
     const { data } = await supabase
       .from('categories')
-      .select('name')
+      .select('id,name,kind,parent_id,is_system')
       .eq('family_id', familyId!)
       .eq('kind', 'expense')
       .order('name')
 
-    if (data) {
-      setCategories(data)
-    }
+    setCategories((data || []) as CategoryRecord[])
   }
 
   const loadExpenses = async () => {
@@ -137,8 +172,8 @@ export default function Payables() {
       .lte('date', format(end, 'yyyy-MM-dd'))
       .order('date', { ascending: false })
 
-    if (selectedCategory) {
-      query = query.eq('category_name', selectedCategory)
+    if (selectedCategoryId) {
+      query = query.eq('category_id', selectedCategoryId)
     }
 
     if (selectedStatus) {
@@ -159,6 +194,7 @@ export default function Payables() {
       const normalized: Expense[] = data.map((row) => ({
         id: row.id,
         description: row.description,
+        category_id: row.category_id,
         category_name: row.category_name,
         amount_cents: row.amount_cents,
         date: row.date,
@@ -177,20 +213,28 @@ export default function Payables() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const amountCents = Math.round(parseFloat(formData.amount) * 100)
     const paymentMethod = formData.paymentMethod
     const installments = paymentMethod === 'Credito' ? Math.max(1, formData.installments) : 1
+    const category = categoryById.get(formData.categoryId)
+    const categoryLabel = category ? (categoryLabelMap.get(category.id) || category.name) : null
+
+    if (!category || !categoryLabel) {
+      alert('Selecione uma categoria válida.')
+      return
+    }
 
     const expenseData = {
       family_id: familyId!,
       description: formData.description,
-      category_name: formData.category,
+      category_id: category.id,
+      category_name: categoryLabel,
       amount_cents: amountCents,
       date: formData.date,
       status: formData.status,
       paid_at: formData.status === 'paid' ? new Date().toISOString() : null,
-      notes: formData.notes || null,
+      notes: mergeAttachment(formData.notes || null, currentAttachmentUrl),
       payment_method: paymentMethod,
       installments,
       installment_group_id: editingExpense?.installment_group_id || null,
@@ -293,24 +337,58 @@ export default function Payables() {
     loadExpenses()
   }
 
+  const openDetails = (expense: Expense) => {
+    setDetailExpense(expense)
+    setIsDetailOpen(true)
+  }
+
+  const handleAttachExpense = async (expense: Expense, file: File) => {
+    if (!familyId) return
+    const safeName = file.name.replace(/\s+/g, '-')
+    const filePath = `${familyId}/${expense.id}/${Date.now()}-${safeName}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('attachments')
+      .upload(filePath, file, { upsert: true })
+
+    if (uploadError) {
+      alert('Erro ao enviar arquivo.')
+      return
+    }
+
+    const { data: publicUrlData } = supabase.storage.from('attachments').getPublicUrl(filePath)
+    const { cleanNotes } = parseAttachment(expense.notes)
+    const mergedNotes = mergeAttachment(cleanNotes || null, publicUrlData.publicUrl)
+
+    await supabase
+      .from('expenses')
+      .update({ notes: mergedNotes, updated_at: new Date().toISOString() })
+      .eq('id', expense.id)
+
+    loadExpenses()
+  }
+
   const openModal = (expense?: Expense) => {
     if (expense) {
+      const { attachmentUrl, cleanNotes } = parseAttachment(expense.notes)
       setEditingExpense(expense)
+      setCurrentAttachmentUrl(attachmentUrl)
       setFormData({
         description: expense.description,
-        category: expense.category_name,
+        categoryId: expense.category_id || findCategoryIdByStoredName(categories, expense.category_name) || '',
         amount: (expense.amount_cents / 100).toFixed(2),
         date: expense.date,
         status: expense.status,
-        notes: expense.notes || '',
+        notes: cleanNotes || '',
         paymentMethod: expense.payment_method || 'PIX',
         installments: expense.installments || 1,
       })
     } else {
       setEditingExpense(null)
+      setCurrentAttachmentUrl(null)
       setFormData({
         description: '',
-        category: '',
+        categoryId: '',
         amount: '',
         date: format(new Date(), 'yyyy-MM-dd'),
         status: 'open',
@@ -325,109 +403,158 @@ export default function Payables() {
   const closeModal = () => {
     setIsModalOpen(false)
     setEditingExpense(null)
+    setCurrentAttachmentUrl(null)
   }
 
   // Cálculos
-  const total = expenses.reduce((sum, exp) => sum + exp.amount_cents, 0)
-  const paid = expenses.filter(e => e.status === 'paid').reduce((sum, e) => sum + e.amount_cents, 0)
+  const filteredExpenses = expenses.filter((expense) =>
+    matchesSearch(
+      searchTerm,
+      expense.description,
+      getCategoryLabel(expense.category_id, expense.category_name)
+    )
+  )
+  const total = filteredExpenses.reduce((sum, exp) => sum + exp.amount_cents, 0)
+  const paid = filteredExpenses
+    .filter(e => e.status === 'paid')
+    .reduce((sum, e) => sum + e.amount_cents, 0)
   const open = total - paid
-  const installmentIndexes = buildInstallmentIndexes(expenses)
-  const groupedExpenses = expenses.reduce((acc, expense) => {
-    const groupId = expense.installment_group_id || expense.id
-    const group = acc.get(groupId) || {
-      id: groupId,
-      description: expense.description,
-      category_name: expense.category_name,
-      payment_method: expense.payment_method,
-      installments: expense.installments || 1,
-      total_cents: 0,
-      items: [] as Expense[],
-    }
-    group.total_cents += expense.amount_cents
-    group.items.push(expense)
-    acc.set(groupId, group)
-    return acc
-  }, new Map<string, {
-    id: string
-    description: string
-    category_name: string
-    payment_method: PaymentMethod | null
-    installments: number
-    total_cents: number
-    items: Expense[]
-  }>())
+  const sortedExpenses = filteredExpenses.slice().sort((a, b) => b.date.localeCompare(a.date))
+  const activeFiltersCount = [
+    selectedMonth !== getCurrentMonth(),
+    selectedYear !== getCurrentYear(),
+    selectedCategoryId !== '',
+    selectedStatus !== '',
+    selectedPaymentMethod !== '',
+    onlyInstallments,
+  ].filter(Boolean).length
 
-  const groupedList = Array.from(groupedExpenses.values()).sort((a, b) => {
-    const aDate = a.items[0]?.date || ''
-    const bDate = b.items[0]?.date || ''
-    return bDate.localeCompare(aDate)
-  })
-  const openExpenses = expenses
-    .filter((expense) => expense.status !== 'paid')
-    .sort((a, b) => b.date.localeCompare(a.date))
-  const paidExpenses = expenses
-    .filter((expense) => expense.status === 'paid')
-    .sort((a, b) => b.date.localeCompare(a.date))
+  const clearFilters = () => {
+    setSelectedMonth(getCurrentMonth())
+    setSelectedYear(getCurrentYear())
+    setSelectedCategoryId('')
+    setSelectedStatus('')
+    setSelectedPaymentMethod('')
+    setOnlyInstallments(false)
+  }
+  const activeFilterChips = [
+    {
+      key: 'month',
+      label: MONTHS.find((month) => month.value === selectedMonth)?.label ?? String(selectedMonth),
+      onRemove: () => setSelectedMonth(getCurrentMonth()),
+      disabled: selectedMonth === getCurrentMonth(),
+    },
+    {
+      key: 'year',
+      label: String(selectedYear),
+      onRemove: () => setSelectedYear(getCurrentYear()),
+      disabled: selectedYear === getCurrentYear(),
+    },
+    ...(selectedCategoryId
+      ? [{
+          key: 'category',
+          label: getCategoryLabel(selectedCategoryId, 'Categoria'),
+          onRemove: () => setSelectedCategoryId(''),
+        }]
+      : []),
+    ...(selectedStatus
+      ? [{
+          key: 'status',
+          label: selectedStatus === 'paid' ? 'Pago' : 'Em aberto',
+          onRemove: () => setSelectedStatus(''),
+        }]
+      : []),
+    ...(selectedPaymentMethod
+      ? [{
+          key: 'method',
+          label: selectedPaymentMethod,
+          onRemove: () => setSelectedPaymentMethod(''),
+        }]
+      : []),
+    ...(onlyInstallments
+      ? [{
+          key: 'installments',
+          label: 'Somente parceladas',
+          onRemove: () => setOnlyInstallments(false),
+        }]
+      : []),
+  ]
 
   return (
-    <>
-      <Topbar 
-        title="Contas a Pagar" 
+    <div className="min-h-screen flex flex-col">
+      <Topbar
+        title="Contas a Pagar"
         subtitle="Compromissos honrados constroem segurança."
-        actions={
-          <button
-            onClick={() => openModal()}
-            className="px-4 py-2 bg-fab-green text-white rounded-lg hover:bg-fab-green/90 transition-vintage text-sm"
-          >
-            + Nova despesa
-          </button>
-        }
+        variant="textured"
       />
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Filtros */}
-        <VintageCard className="mb-6">
-          <div className="flex items-center justify-between md:hidden mb-3">
-            <span className="text-xs uppercase tracking-wide text-ink/50">Filtros</span>
-            <button
-              type="button"
-              onClick={() => setFiltersOpen((prev) => !prev)}
-              className="text-petrol hover:text-petrol/80 transition-vintage"
-              aria-label="Alternar filtros"
-            >
-              <ChevronDown className={`w-4 h-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
-            </button>
-          </div>
-          <div className={`${filtersOpen ? 'block' : 'hidden'} md:block`}>
-            <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+      <div className="flex-1 flex flex-col">
+        <div className="px-6 py-4">
+          <FilterSearchBar
+            value={searchTerm}
+            onChange={setSearchTerm}
+            onToggleFilters={() => setFiltersOpen((prev) => !prev)}
+            filtersOpen={filtersOpen}
+            placeholder="Buscar por nome ou categoria"
+            filterChips={activeFilterChips}
+            rightSlot={
+              <>
+                <button
+                  onClick={() => setIsCategorySettingsOpen(true)}
+                  className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
+                >
+                  Categorias
+                </button>
+                <button
+                  onClick={() => openModal()}
+                  className="px-5 py-2 bg-petrol text-white rounded-md hover:bg-petrol/90 transition-vintage text-sm"
+                >
+                  Nova Despesa
+                </button>
+              </>
+            }
+          />
+        </div>
+
+        <div className={`px-6 pb-4 w-full flex ${filtersOpen ? 'gap-4' : 'gap-0'} flex-1 items-stretch`}>
+          <FilterSidebar
+            open={filtersOpen}
+            onOpenChange={setFiltersOpen}
+            showToggle={false}
+            collapsedWidthClass="w-0"
+            activeFiltersCount={activeFiltersCount}
+            onClearFilters={clearFilters}
+          >
             <Select
+              variant="filter"
               label="Mês"
               value={selectedMonth.toString()}
               onChange={(v) =>
                 setSelectedMonth(v ? parseInt(v, 10) : getCurrentMonth())
               }
               options={MONTHS.map(m => ({ value: m.value.toString(), label: m.label }))}
-              placeholder="Atual"
             />
             <Select
+              variant="filter"
               label="Ano"
               value={selectedYear.toString()}
               onChange={(v) =>
                 setSelectedYear(v ? parseInt(v, 10) : getCurrentYear())
               }
               options={getYearOptions()}
-              placeholder="Atual"
             />
             <Select
+              variant="filter"
               label="Categoria"
-              value={selectedCategory}
-              onChange={setSelectedCategory}
+              value={selectedCategoryId}
+              onChange={setSelectedCategoryId}
               options={[
                 { value: '', label: 'Todas' },
-                ...categories.map(c => ({ value: c.name, label: c.name }))
+                ...categoryOptions,
               ]}
             />
             <Select
+              variant="filter"
               label="Status"
               value={selectedStatus}
               onChange={setSelectedStatus}
@@ -438,6 +565,7 @@ export default function Payables() {
               ]}
             />
             <Select
+              variant="filter"
               label="Metodo"
               value={selectedPaymentMethod}
               onChange={setSelectedPaymentMethod}
@@ -448,329 +576,128 @@ export default function Payables() {
                 { value: 'Debito', label: 'Debito' },
               ]}
             />
-            <label className="flex items-end gap-2 text-sm text-ink/70 pb-1">
+            <label className="flex items-center gap-2 text-sm text-petrol pt-2">
               <input
                 type="checkbox"
                 checked={onlyInstallments}
                 onChange={(event) => setOnlyInstallments(event.target.checked)}
-                className="w-4 h-4 rounded border-border"
+                className="w-4 h-4 rounded border-gold/60 accent-gold"
               />
               Somente parceladas
             </label>
-            <div className="flex items-end">
-              <button
-                onClick={() => {
-                  setSelectedCategory('')
-                  setSelectedStatus('')
-                  setSelectedPaymentMethod('')
-                  setOnlyInstallments(false)
-                }}
-                className="w-full px-4 py-3 border border-border rounded-lg hover:bg-paper-2 transition-vintage text-sm"
-              >
-                Limpar filtros
-              </button>
-            </div>
-            </div>
-          </div>
-        </VintageCard>
+          </FilterSidebar>
 
-        {/* Resumo */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <StatCard label="Total do período" value={total} color="terracotta" />
-          <StatCard label="Pago" value={paid} color="olive" />
-          <StatCard label="Em aberto" value={open} color="default" />
-        </div>
-
-        {/* Lista */}
-        <VintageCard>
-          <h3 className="text-lg font-serif text-coffee mb-4">
-            Total do período | {MONTHS[selectedMonth - 1]?.label} - {selectedYear}
-          </h3>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <p className="text-sm text-ink/60 italic">
-              Cada conta paga é um gesto de cuidado com o amanhã da família.
-            </p>
-            <label className="flex items-center gap-2 text-sm text-ink/70">
-              <input
-                type="checkbox"
-                checked={groupByPurchase}
-                onChange={(event) => setGroupByPurchase(event.target.checked)}
-                className="w-4 h-4 rounded border-border"
-              />
-              Agrupar por compra
-            </label>
-          </div>
+          <div className="flex-1 min-w-0 flex flex-col">
 
           {loading ? (
             <div className="text-center py-12 text-ink/60">Carregando...</div>
-          ) : expenses.length === 0 ? (
+          ) : filteredExpenses.length === 0 ? (
             <EmptyState
               icon={<Receipt className="w-16 h-16" />}
               message="Ainda não há despesas aqui — um bom começo."
               submessage="Use o botão + para adicionar uma despesa."
             />
-          ) : groupByPurchase ? (
-            <div className="space-y-4">
-              {groupedList.map((group) => {
-                const sortedItems = group.items.slice().sort((a, b) => a.date.localeCompare(b.date))
-                const isInstallmentGroup =
-                  group.payment_method === 'Credito' && group.installments > 1
-                const paidCount = group.items.filter((item) => item.status === 'paid').length
-                const openCount = group.items.length - paidCount
-                return (
-                  <div
-                    key={group.id}
-                    className="p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="inline-flex items-center gap-2 text-xs uppercase tracking-wide text-ink/60">
-                            {isInstallmentGroup ? 'Parcelado' : 'Compra'}
-                          </span>
-                          <h4 className="font-body font-medium">{group.description}</h4>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 text-sm text-ink/60">
-                          <span>{group.category_name}</span>
-                          <span>•</span>
-                          <span>{formatPaymentLabel(group.payment_method, group.installments)}</span>
-                          {isInstallmentGroup ? (
-                            <>
-                              <span>•</span>
-                              <span>{group.installments}x</span>
-                            </>
-                          ) : null}
-                          <span>•</span>
-                          <span>{paidCount} pagas</span>
-                          <span>•</span>
-                          <span>{openCount} em aberto</span>
-                        </div>
-                      </div>
-                      <div className="text-left sm:text-right">
-                        <div className="text-xs text-ink/60">Total</div>
-                        <div className="font-numbers text-lg font-semibold">
-                          {formatBRL(group.total_cents)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-4 space-y-2">
-                      {sortedItems.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-ink/70"
-                        >
-                          <div className="flex flex-wrap items-center gap-2">
-                            {isInstallmentGroup ? (
-                              <span className="text-ink/50">
-                                Parcela {item.installment_index || 1}/{item.installments || 1}
-                              </span>
-                            ) : null}
-                            <span>{formatDate(item.date)}</span>
-                            <span className={item.status === 'paid' ? 'text-olive' : 'text-terracotta'}>
-                              {item.status === 'paid' ? 'Pago' : 'Em aberto'}
-                            </span>
-                          </div>
-                          <span className="font-numbers">{formatBRL(item.amount_cents)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
           ) : (
             <div className="space-y-3">
-              {openExpenses.map((expense) => {
+              {sortedExpenses.map((expense) => {
                 const isUpdating = updatingIds.includes(expense.id)
                 return (
                   <div
                     id={`expense-${expense.id}`}
                     key={expense.id}
-                    className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage ${
+                    className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage ${
                       isUpdating ? 'opacity-60' : ''
                     }`}
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className={`w-2 h-2 rounded-full ${
-                          expense.status === 'paid' ? 'bg-olive' : 'bg-terracotta'
-                        }`} />
-                        <h4
-                          className={`font-body font-medium ${
-                            expense.status === 'paid' ? 'line-through italic text-ink/60' : ''
-                          }`}
-                        >
-                          {expense.description}
-                        </h4>
-                        {expense.payment_method === 'Credito' && (expense.installments || 1) > 1 ? (
-                          <span className="text-[10px] uppercase tracking-wide text-ink/60 border border-border px-2 py-0.5 rounded-full">
-                            Parcelado
-                          </span>
-                        ) : null}
+                      <h4 className="text-xl font-medium text-sidebar font-serif">
+                        {expense.description}
+                      </h4>
+                      <p className="text-sm text-ink/50">
+                        {getCategoryLabel(expense.category_id, expense.category_name)}
+                      </p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 text-sm text-ink/60">
-                      <span>{expense.category_name}</span>
-                      <span>•</span>
-                      <span>{formatDate(expense.date)}</span>
-                      <span>•</span>
-                      <span>{formatPaymentLabel(expense.payment_method, expense.installments)}</span>
-                      {expense.payment_method === 'Credito' && (expense.installments || 1) > 1 ? (
-                        <>
-                          <span>•</span>
-                          <span>
-                            Parcela {installmentIndexes.get(expense.id) || 1}/{expense.installments}
-                          </span>
-                        </>
-                      ) : null}
-                      <span>•</span>
-                      <span className={expense.status === 'paid' ? 'text-olive' : 'text-terracotta'}>
-                        {expense.status === 'paid' ? 'Pago' : 'Em aberto'}
-                      </span>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center justify-between sm:justify-start gap-4 w-full sm:w-auto">
-                    <label className="flex items-center gap-2 text-sm text-ink/70 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={expense.status === 'paid'}
+                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePaid(expense)}
                         disabled={isUpdating}
-                        onChange={() => handleTogglePaid(expense)}
-                        className="w-5 h-5 rounded border-border disabled:opacity-60"
+                        className="flex items-center gap-1 text-xs uppercase tracking-wide text-ink/60 disabled:opacity-60"
                         aria-label={`Marcar ${expense.description} como ${expense.status === 'paid' ? 'em aberto' : 'pago'}`}
-                      />
-                      <span className="hidden sm:inline">Pago</span>
-                    </label>
-                    <span className="font-numbers text-lg font-semibold">
-                      {formatBRL(expense.amount_cents)}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openModal(expense)}
-                        disabled={isUpdating}
-                        className="relative group text-ink/50 hover:text-ink transition-vintage disabled:opacity-50"
-                        aria-label={`Editar ${expense.description}`}
                       >
-                        <Pencil className="w-5 h-5" />
-                        <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-coffee text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
-                          Editar {expense.description}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(expense.id)}
-                        disabled={isUpdating}
-                        className="relative group text-terracotta/70 hover:text-terracotta transition-vintage disabled:opacity-50"
-                        aria-label={`Deletar ${expense.description}`}
-                      >
-                        <Trash2 className="w-5 h-5" />
-                        <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-terracotta text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
-                          Deletar {expense.description}
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-                  </div>
-                )
-              })}
-              {paidExpenses.length > 0 && (
-                <div className="flex items-center gap-3 pt-2 text-ink/50 italic text-sm">
-                  <div className="flex-1 h-px bg-border" />
-                  <span>Pagos</span>
-                  <div className="flex-1 h-px bg-border" />
-                </div>
-              )}
-              {paidExpenses.map((expense) => {
-                const isUpdating = updatingIds.includes(expense.id)
-                return (
-                  <div
-                    id={`expense-${expense.id}`}
-                    key={expense.id}
-                    className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-paper rounded-lg border border-border hover:shadow-soft transition-vintage ${
-                      isUpdating ? 'opacity-60' : ''
-                    }`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="w-2 h-2 rounded-full bg-olive" />
-                        <h4 className="font-body font-medium line-through italic text-ink/60">
-                          {expense.description}
-                        </h4>
-                        {expense.payment_method === 'Credito' && (expense.installments || 1) > 1 ? (
-                          <span className="text-[10px] uppercase tracking-wide text-ink/60 border border-border px-2 py-0.5 rounded-full">
-                            Parcelado
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-ink/60">
-                        <span>{expense.category_name}</span>
-                        <span>•</span>
-                        <span>{formatDate(expense.date)}</span>
-                        <span>•</span>
-                        <span>{formatPaymentLabel(expense.payment_method, expense.installments)}</span>
-                        {expense.payment_method === 'Credito' && (expense.installments || 1) > 1 ? (
-                          <>
-                            <span>•</span>
-                            <span>
-                              Parcela {installmentIndexes.get(expense.id) || 1}/{expense.installments}
-                            </span>
-                          </>
-                        ) : null}
-                        <span>•</span>
-                        <span className="text-olive">Pago</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between sm:justify-start gap-4 w-full sm:w-auto">
-                      <label className="flex items-center gap-2 text-sm text-ink/70 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked
-                          disabled={isUpdating}
-                          onChange={() => handleTogglePaid(expense)}
-                          className="w-5 h-5 rounded border-border disabled:opacity-60"
-                          aria-label={`Marcar ${expense.description} como em aberto`}
+                        <span
+                          className={`w-4 h-4 rounded-sm border ${
+                            expense.status === 'paid' ? 'bg-olive border-gold' : 'bg-terracotta border-ink/40'
+                          }`}
                         />
-                        <span className="hidden sm:inline">Pago</span>
-                      </label>
-                      <span className="font-numbers text-lg font-semibold">
+                        {expense.status === 'paid' ? 'Pago' : 'Em aberto'}
+                      </button>
+                      <span
+                        className={`font-numbers text-lg font-semibold ${
+                          expense.status === 'paid' ? 'text-sidebar/80' : 'text-terracotta'
+                        }`}
+                      >
                         {formatBRL(expense.amount_cents)}
                       </span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openModal(expense)}
-                          disabled={isUpdating}
-                          className="relative group text-ink/50 hover:text-ink transition-vintage disabled:opacity-50"
-                          aria-label={`Editar ${expense.description}`}
-                        >
-                          <Pencil className="w-5 h-5" />
-                          <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-coffee text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
-                            Editar {expense.description}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(expense.id)}
-                          disabled={isUpdating}
-                          className="relative group text-terracotta/70 hover:text-terracotta transition-vintage disabled:opacity-50"
-                          aria-label={`Deletar ${expense.description}`}
-                        >
-                          <Trash2 className="w-5 h-5" />
-                          <span className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded-md bg-terracotta text-paper text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-vintage">
-                            Deletar {expense.description}
-                          </span>
-                        </button>
-                      </div>
+                      <ActionMenu
+                        onView={() => openDetails(expense)}
+                        onEdit={() => openModal(expense)}
+                        onDelete={() => handleDelete(expense.id)}
+                        onAttach={(file) => handleAttachExpense(expense, file)}
+                        disabled={isUpdating}
+                      />
                     </div>
                   </div>
                 )
               })}
             </div>
           )}
-        </VintageCard>
 
+          </div>
+        </div>
+
+        <footer className="mt-auto w-full">
+          <div className="px-6 mb-4">
+
+            <div className="flex flex-col sm:flex-row items-end justify-center gap-4 sm:gap-8">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <div className="rounded-[16px] px-10 py-5 bg-petrol text-white text-center shadow-soft min-w-[200px]">
+                  <div className="text-sm uppercase tracking-wide text-white/80 mb-2">Em aberto</div>
+                  <div className="font-numbers text-xl font-medium">{formatBRL(open)}</div>
+                </div>
+                <div className="rounded-[16px] px-10 py-5 bg-olive text-white text-center shadow-soft min-w-[200px]">
+                  <div className="text-sm uppercase tracking-wide text-white/80 mb-2">Pago</div>
+                  <div className="font-numbers text-xl font-medium">{formatBRL(paid)}</div>
+                </div>
+              </div>
+              <div className="text-center sm:text-left">
+                <div className="text-sm uppercase tracking-wide text-ink/50">Total</div>
+                <div className="font-numbers text-xl font-medium text-petrol">{formatBRL(total)}</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
+              >
+                Gerar CSV
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
+              >
+                Gerar PDF
+              </button>
+            </div>
+          </div>
+          <div className="h-[56px] bg-paper flex items-center justify-center px-6">
+            <p className="text-center text-[13px] text-gold italic">
+              Cada conta paga é um gesto de cuidado com o amanhã da família.
+            </p>
+          </div>
+        </footer>
       </div>
 
       {/* Modal */}
@@ -781,7 +708,7 @@ export default function Payables() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-body text-ink mb-2">
+            <label className="block font-body text-ink mb-2 font-serif">
               Descrição <span className="text-terracotta">*</span>
             </label>
             <input
@@ -789,17 +716,18 @@ export default function Payables() {
               required
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+              className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder="Ex: Conta de luz"
             />
           </div>
 
           <Select
             label="Categoria"
-            value={formData.category}
-            onChange={(v) => setFormData({ ...formData, category: v })}
-            options={categories.map(c => ({ value: c.name, label: c.name }))}
+            value={formData.categoryId}
+            onChange={(v) => setFormData({ ...formData, categoryId: v })}
+            options={categoryOptions}
             required
+            variant="modal"
           />
 
           <Select
@@ -818,6 +746,7 @@ export default function Payables() {
               { value: 'Debito', label: 'Debito' },
             ]}
             required
+            variant="modal"
           />
 
           {formData.paymentMethod === 'Credito' ? (
@@ -830,11 +759,12 @@ export default function Payables() {
                 return { value: String(count), label: `${count}x` }
               })}
               required
+              variant="modal"
             />
           ) : null}
 
           <div>
-            <label className="block text-sm font-body text-ink mb-2">
+            <label className="block font-serif font-body text-ink mb-2">
               Valor (R$) <span className="text-terracotta">*</span>
             </label>
             <input
@@ -843,13 +773,13 @@ export default function Payables() {
               required
               value={formData.amount}
               onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+              className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder="0.00"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-body text-ink mb-2">
+            <label className="block font-serif font-body text-ink mb-2">
               Data <span className="text-terracotta">*</span>
             </label>
             <input
@@ -857,7 +787,7 @@ export default function Payables() {
               required
               value={formData.date}
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50"
+              className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
 
@@ -874,13 +804,13 @@ export default function Payables() {
           </div>
 
           <div>
-            <label className="block text-sm font-body text-ink mb-2">
+            <label className="block font-serif font-body text-ink mb-2">
               Observação
             </label>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-petrol/50 resize-none"
+              className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 resize-none"
               rows={3}
               placeholder="Notas adicionais..."
             />
@@ -903,6 +833,72 @@ export default function Payables() {
           </div>
         </form>
       </Modal>
-    </>
+
+      <Modal
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        title="Detalhes da despesa"
+      >
+        {detailExpense && (() => {
+          const { attachmentUrl, cleanNotes } = parseAttachment(detailExpense.notes)
+          return (
+            <div className="space-y-3 text-sm text-ink/70">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-ink/50">Descrição</p>
+                <p className="text-base text-ink">{detailExpense.description}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">Categoria</p>
+                  <p>{getCategoryLabel(detailExpense.category_id, detailExpense.category_name)}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">Data</p>
+                  <p>{formatDate(detailExpense.date)}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">Status</p>
+                  <p>{detailExpense.status === 'paid' ? 'Pago' : 'Em aberto'}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">Método</p>
+                  <p>{formatPaymentLabel(detailExpense.payment_method, detailExpense.installments)}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-ink/50">Observação</p>
+                <p>{cleanNotes || '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-ink/50">Arquivo</p>
+                {attachmentUrl ? (
+                  <a
+                    href={attachmentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-petrol hover:opacity-80 transition-vintage"
+                  >
+                    Visualizar anexo
+                  </a>
+                ) : (
+                  <p>Sem arquivo anexado</p>
+                )}
+              </div>
+            </div>
+          )
+        })()}
+      </Modal>
+
+      <CategorySettingsModal
+        isOpen={isCategorySettingsOpen}
+        onClose={() => setIsCategorySettingsOpen(false)}
+        familyId={familyId}
+        kind="expense"
+        onChanged={() => {
+          loadCategories()
+          loadExpenses()
+        }}
+      />
+    </div>
   )
 }
