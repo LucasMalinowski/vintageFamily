@@ -39,5 +39,6 @@ export async function hasBillingAccess(args: { familyId: string }) {
     hasValidSubscription,
     hasActiveTrial,
     hasAccess: hasLifetimeAccess || hasValidSubscription || hasActiveTrial,
+    trialExpiresAt,
   }
 }

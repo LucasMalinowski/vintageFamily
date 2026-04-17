@@ -165,11 +165,21 @@ export type Database = {
           description: string
           family_id: string
           id: string
+          import_batch_id: string | null
+          import_hash: string | null
+          imported_at: string | null
+          low_confidence: boolean
           notes: string | null
           payment_method: string | null
           installment_group_id: string | null
           installment_index: number | null
           paid_at: string | null
+          raw_description: string | null
+          raw_line: string | null
+          raw_payload: Json | null
+          source: string | null
+          source_bank: string | null
+          source_type: string | null
           status: string
           installments: number | null
           updated_at: string
@@ -183,11 +193,21 @@ export type Database = {
           description: string
           family_id: string
           id?: string
+          import_batch_id?: string | null
+          import_hash?: string | null
+          imported_at?: string | null
+          low_confidence?: boolean
           notes?: string | null
           payment_method?: string | null
           installment_group_id?: string | null
           installment_index?: number | null
           paid_at?: string | null
+          raw_description?: string | null
+          raw_line?: string | null
+          raw_payload?: Json | null
+          source?: string | null
+          source_bank?: string | null
+          source_type?: string | null
           status?: string
           installments?: number | null
           updated_at?: string
@@ -201,16 +221,33 @@ export type Database = {
           description?: string
           family_id?: string
           id?: string
+          import_batch_id?: string | null
+          import_hash?: string | null
+          imported_at?: string | null
+          low_confidence?: boolean
           notes?: string | null
           payment_method?: string | null
           installment_group_id?: string | null
           installment_index?: number | null
           paid_at?: string | null
+          raw_description?: string | null
+          raw_line?: string | null
+          raw_payload?: Json | null
+          source?: string | null
+          source_bank?: string | null
+          source_type?: string | null
           status?: string
           installments?: number | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "expenses_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "bank_statement_import_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "expenses_category_id_fkey"
             columns: ["category_id"]
@@ -254,6 +291,66 @@ export type Database = {
         }
         Relationships: []
       }
+      bank_statement_import_batches: {
+        Row: {
+          created_at: string
+          family_id: string
+          file_hash: string
+          file_name: string | null
+          id: string
+          page_count: number
+          source_bank: string
+          source_type: string
+          status: string
+          summary: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          family_id: string
+          file_hash: string
+          file_name?: string | null
+          id?: string
+          page_count?: number
+          source_bank: string
+          source_type?: string
+          status?: string
+          summary?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          family_id?: string
+          file_hash?: string
+          file_name?: string | null
+          id?: string
+          page_count?: number
+          source_bank?: string
+          source_type?: string
+          status?: string
+          summary?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_statement_import_batches_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_statement_import_batches_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incomes: {
         Row: {
           amount_cents: number
@@ -264,7 +361,17 @@ export type Database = {
           description: string
           family_id: string
           id: string
+          import_batch_id: string | null
+          import_hash: string | null
+          imported_at: string | null
+          low_confidence: boolean
           notes: string | null
+          raw_description: string | null
+          raw_line: string | null
+          raw_payload: Json | null
+          source: string | null
+          source_bank: string | null
+          source_type: string | null
           updated_at: string
         }
         Insert: {
@@ -276,7 +383,17 @@ export type Database = {
           description: string
           family_id: string
           id?: string
+          import_batch_id?: string | null
+          import_hash?: string | null
+          imported_at?: string | null
+          low_confidence?: boolean
           notes?: string | null
+          raw_description?: string | null
+          raw_line?: string | null
+          raw_payload?: Json | null
+          source?: string | null
+          source_bank?: string | null
+          source_type?: string | null
           updated_at?: string
         }
         Update: {
@@ -288,10 +405,27 @@ export type Database = {
           description?: string
           family_id?: string
           id?: string
+          import_batch_id?: string | null
+          import_hash?: string | null
+          imported_at?: string | null
+          low_confidence?: boolean
           notes?: string | null
+          raw_description?: string | null
+          raw_line?: string | null
+          raw_payload?: Json | null
+          source?: string | null
+          source_bank?: string | null
+          source_type?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "incomes_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "bank_statement_import_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "incomes_category_id_fkey"
             columns: ["category_id"]
