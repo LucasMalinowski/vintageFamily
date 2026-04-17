@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fintech-vintage-v1';
+const CACHE_NAME = 'florim-v1';
 const urlsToCache = [
   '/',
 ];

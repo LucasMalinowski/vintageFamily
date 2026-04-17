@@ -17,6 +17,7 @@ import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
 import { mergeAttachment, parseAttachment } from '@/lib/attachments'
 import CategorySettingsModal from '@/components/categories/CategorySettingsModal'
+import BankStatementImportModal from '@/components/bank-statements/BankStatementImportModal'
 import {
   buildCategoryLabelMap,
   buildCategoryOptions,
@@ -79,6 +80,7 @@ export default function Payables() {
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCategorySettingsOpen, setIsCategorySettingsOpen] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [detailExpense, setDetailExpense] = useState<Expense | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
@@ -98,12 +100,14 @@ export default function Payables() {
 
   useEffect(() => {
     if (familyId) {
+      // eslint-disable-next-line react-hooks/immutability
       loadCategories()
     }
   }, [familyId])
 
   useEffect(() => {
     if (familyId) {
+      // eslint-disable-next-line react-hooks/immutability
       loadExpenses()
     }
   }, [
@@ -147,7 +151,7 @@ export default function Payables() {
     return fallbackName
   }
 
-  const loadCategories = async () => {
+  async function loadCategories() {
     const { data } = await supabase
       .from('categories')
       .select('id,name,kind,parent_id,is_system')
@@ -158,7 +162,7 @@ export default function Payables() {
     setCategories((data || []) as CategoryRecord[])
   }
 
-  const loadExpenses = async () => {
+  async function loadExpenses() {
     setLoading(true)
     const resolvedMonth = Number.isFinite(selectedMonth) ? selectedMonth : getCurrentMonth()
     const resolvedYear = Number.isFinite(selectedYear) ? selectedYear : getCurrentYear()
@@ -497,8 +501,14 @@ export default function Payables() {
             filtersOpen={filtersOpen}
             placeholder="Buscar por nome ou categoria"
             filterChips={activeFilterChips}
-            rightSlot={
+              rightSlot={
               <>
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
+                >
+                  Importar extrato bancário
+                </button>
                 <button
                   onClick={() => setIsCategorySettingsOpen(true)}
                   className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
@@ -765,7 +775,10 @@ export default function Payables() {
 
           <div>
             <label className="block font-serif font-body text-ink mb-2">
-              Valor (R$) <span className="text-terracotta">*</span>
+              {formData.paymentMethod === 'Credito' && formData.installments > 1
+                ? 'Valor total (R$)'
+                : 'Valor (R$)'}{' '}
+              <span className="text-terracotta">*</span>
             </label>
             <input
               type="number"
@@ -777,6 +790,40 @@ export default function Payables() {
               placeholder="0.00"
             />
           </div>
+
+          {formData.paymentMethod === 'Credito' && formData.installments > 1 && formData.amount && !isNaN(parseFloat(formData.amount)) && parseFloat(formData.amount) > 0 ? (() => {
+            const totalCents = Math.round(parseFloat(formData.amount) * 100)
+            const splits = splitAmountCents(totalCents, formData.installments)
+            const firstCents = splits[0]
+            const lastCents = splits[splits.length - 1]
+            const uniform = firstCents === lastCents
+            return (
+              <div className="rounded-lg bg-paper border border-border px-4 py-3 text-sm space-y-1">
+                <p className="font-serif font-medium text-ink">Resumo do parcelamento</p>
+                {uniform ? (
+                  <p className="text-ink/70">
+                    {formData.installments}x de{' '}
+                    <span className="font-numbers font-semibold text-petrol">{formatBRL(firstCents)}</span>
+                  </p>
+                ) : (
+                  <p className="text-ink/70">
+                    {formData.installments - 1}x de{' '}
+                    <span className="font-numbers font-semibold text-petrol">{formatBRL(lastCents)}</span>
+                    {' '}+ 1x de{' '}
+                    <span className="font-numbers font-semibold text-petrol">{formatBRL(firstCents)}</span>
+                    <span className="text-xs text-ink/40 ml-1">(arredondamento)</span>
+                  </p>
+                )}
+                {editingExpense && (
+                  <p className="text-xs text-ink/50 pt-1 border-t border-border mt-1">
+                    {editingExpense.installment_group_id
+                      ? 'O grupo de parcelas existente será substituído por novas parcelas.'
+                      : 'Esta despesa será convertida em um grupo de parcelas mensais.'}
+                  </p>
+                )}
+              </div>
+            )
+          })() : null}
 
           <div>
             <label className="block font-serif font-body text-ink mb-2">
@@ -898,6 +945,11 @@ export default function Payables() {
           loadCategories()
           loadExpenses()
         }}
+      />
+      <BankStatementImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImported={loadExpenses}
       />
     </div>
   )

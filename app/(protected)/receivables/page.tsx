@@ -17,6 +17,7 @@ import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
 import { mergeAttachment, parseAttachment } from '@/lib/attachments'
 import CategorySettingsModal from '@/components/categories/CategorySettingsModal'
+import BankStatementImportModal from '@/components/bank-statements/BankStatementImportModal'
 import {
   buildCategoryLabelMap,
   buildCategoryOptions,
@@ -35,6 +36,12 @@ interface Income {
   notes: string | null
 }
 
+const buildAttachmentPath = (familyId: string, incomeId: string, fileName: string) => {
+  const safeName = fileName.replace(/\s+/g, '-')
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+  return `${familyId}/${incomeId}/${timestamp}-${safeName}`
+}
+
 export default function ReceivablesPage() {
   const { familyId } = useAuth()
   const [incomes, setIncomes] = useState<Income[]>([])
@@ -44,14 +51,12 @@ export default function ReceivablesPage() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
   const [selectedYear, setSelectedYear] = useState(getCurrentYear())
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState('')
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
-  const [onlyInstallments, setOnlyInstallments] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(true)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCategorySettingsOpen, setIsCategorySettingsOpen] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [editingIncome, setEditingIncome] = useState<Income | null>(null)
   const [detailIncome, setDetailIncome] = useState<Income | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
@@ -67,12 +72,14 @@ export default function ReceivablesPage() {
 
   useEffect(() => {
     if (familyId) {
+      // eslint-disable-next-line react-hooks/immutability
       loadCategories()
     }
   }, [familyId])
 
   useEffect(() => {
     if (familyId) {
+      // eslint-disable-next-line react-hooks/immutability
       loadIncomes()
     }
   }, [familyId, selectedMonth, selectedYear, selectedCategoryId])
@@ -108,7 +115,7 @@ export default function ReceivablesPage() {
     return fallbackName
   }
 
-  const loadCategories = async () => {
+  async function loadCategories() {
     const { data } = await supabase
       .from('categories')
       .select('id,name,kind,parent_id,is_system')
@@ -119,7 +126,7 @@ export default function ReceivablesPage() {
     setCategories((data || []) as CategoryRecord[])
   }
 
-  const loadIncomes = async () => {
+  async function loadIncomes() {
     setLoading(true)
     const { start, end } = getMonthRange(selectedMonth, selectedYear)
 
@@ -192,8 +199,7 @@ export default function ReceivablesPage() {
 
   const handleAttachIncome = async (income: Income, file: File) => {
     if (!familyId) return
-    const safeName = file.name.replace(/\s+/g, '-')
-    const filePath = `${familyId}/${income.id}/${Date.now()}-${safeName}`
+    const filePath = buildAttachmentPath(familyId, income.id, file.name)
 
     const { error: uploadError } = await supabase.storage
       .from('attachments')
@@ -260,18 +266,12 @@ export default function ReceivablesPage() {
     selectedMonth !== getCurrentMonth(),
     selectedYear !== getCurrentYear(),
     selectedCategoryId !== '',
-    selectedStatus !== '',
-    selectedPaymentMethod !== '',
-    onlyInstallments,
   ].filter(Boolean).length
 
   const clearFilters = () => {
     setSelectedMonth(getCurrentMonth())
     setSelectedYear(getCurrentYear())
     setSelectedCategoryId('')
-    setSelectedStatus('')
-    setSelectedPaymentMethod('')
-    setOnlyInstallments(false)
   }
   const activeFilterChips = [
     {
@@ -291,27 +291,6 @@ export default function ReceivablesPage() {
           key: 'category',
           label: getCategoryLabel(selectedCategoryId, 'Categoria'),
           onRemove: () => setSelectedCategoryId(''),
-        }]
-      : []),
-    ...(selectedStatus
-      ? [{
-          key: 'status',
-          label: selectedStatus === 'paid' ? 'Pago' : 'Em aberto',
-          onRemove: () => setSelectedStatus(''),
-        }]
-      : []),
-    ...(selectedPaymentMethod
-      ? [{
-          key: 'method',
-          label: selectedPaymentMethod,
-          onRemove: () => setSelectedPaymentMethod(''),
-        }]
-      : []),
-    ...(onlyInstallments
-      ? [{
-          key: 'installments',
-          label: 'Somente parceladas',
-          onRemove: () => setOnlyInstallments(false),
         }]
       : []),
   ]
@@ -336,6 +315,12 @@ export default function ReceivablesPage() {
               filterChips={activeFilterChips}
               rightSlot={
                 <>
+                  <button
+                    onClick={() => setIsImportModalOpen(true)}
+                    className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
+                  >
+                    Importar extrato bancário
+                  </button>
                   <button
                     onClick={() => setIsCategorySettingsOpen(true)}
                     className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
@@ -386,38 +371,6 @@ export default function ReceivablesPage() {
                   ...categoryOptions,
                 ]}
               />
-              <Select
-                variant="filter"
-                label="Status"
-                value={selectedStatus}
-                onChange={setSelectedStatus}
-                options={[
-                  { value: '', label: 'Todos' },
-                  { value: 'paid', label: 'Pago' },
-                  { value: 'open', label: 'Em aberto' },
-                ]}
-              />
-              <Select
-                variant="filter"
-                label="Metodo"
-                value={selectedPaymentMethod}
-                onChange={setSelectedPaymentMethod}
-                options={[
-                  { value: '', label: 'Todos' },
-                  { value: 'PIX', label: 'PIX' },
-                  { value: 'Credito', label: 'Credito' },
-                  { value: 'Debito', label: 'Debito' },
-                ]}
-              />
-              <label className="flex items-center gap-2 text-sm text-petrol pt-2">
-                <input
-                  type="checkbox"
-                  checked={onlyInstallments}
-                  onChange={(event) => setOnlyInstallments(event.target.checked)}
-                  className="w-4 h-4 rounded border-gold/60 accent-gold"
-                />
-                Somente parceladas
-              </label>
             </FilterSidebar>
 
             <div className="flex-1 min-w-0 flex flex-col">
@@ -651,6 +604,11 @@ export default function ReceivablesPage() {
           loadCategories()
           loadIncomes()
         }}
+      />
+      <BankStatementImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImported={loadIncomes}
       />
     </AppLayout>
   )
