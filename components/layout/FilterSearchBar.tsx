@@ -55,9 +55,9 @@ export default function FilterSearchBar({
                 type="button"
                 onClick={chip.onRemove}
                 disabled={chip.disabled}
-                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs transition-vintage ${
+                className={`inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium transition-vintage ${
                   chip.disabled
-                    ? 'border-border bg-paper text-ink/50 cursor-default'
+                    ? 'border-coffee/40 bg-coffee/[0.06] text-coffee cursor-default'
                     : 'border-border bg-gold/30 text-ink hover:bg-paper'
                 }`}
               >

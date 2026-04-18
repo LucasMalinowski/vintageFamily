@@ -201,10 +201,11 @@ export default function Dashboard() {
       />
       <div className="bg-paper">
         <div className="max-w-7xl mx-auto px-6 py-10">
-          <div className="bg-[url('/texture-green.png')] bg-cover bg-center border border-border/70 rounded-lg p-10 shadow-soft text-center text-paper">
-            <h1 className="text-3xl md:text-4xl font-serif font-thin text-paper">
-              Livro de Finanças da<br/> Família {familyName || '—'}
+          <div className="bg-[url('/texture-green.png')] bg-cover bg-center border border-border/70 rounded-xl p-12 shadow-soft text-center text-paper">
+            <h1 className="text-3xl md:text-4xl font-serif font-thin text-paper leading-snug">
+              Livro de Finanças<br/>da Família {familyName || '—'}
             </h1>
+            <div className="w-10 h-px bg-gold/60 mx-auto mt-5" />
           </div>
           <div className="mt-6 justify-self-center">
             <div className="max-w-md bg-paper px-6 py-4 shadow-soft text-ink/70 font-ptSerif italic">
