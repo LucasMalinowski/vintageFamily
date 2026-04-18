@@ -615,7 +615,7 @@ export default function Payables() {
                   <div
                     id={`expense-${expense.id}`}
                     key={expense.id}
-                    className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage ${
+                    className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-3 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage ${
                       isUpdating ? 'opacity-60' : ''
                     }`}
                   >
@@ -633,15 +633,16 @@ export default function Payables() {
                         type="button"
                         onClick={() => handleTogglePaid(expense)}
                         disabled={isUpdating}
-                        className="flex items-center gap-1 text-xs uppercase tracking-wide text-ink/60 disabled:opacity-60"
+                        className="disabled:opacity-60"
                         aria-label={`Marcar ${expense.description} como ${expense.status === 'paid' ? 'em aberto' : 'pago'}`}
                       >
-                        <span
-                          className={`w-4 h-4 rounded-sm border ${
-                            expense.status === 'paid' ? 'bg-olive border-gold' : 'bg-terracotta border-ink/40'
-                          }`}
-                        />
-                        {expense.status === 'paid' ? 'Pago' : 'Em aberto'}
+                        <span className={`text-xs px-2.5 py-1 rounded-md font-semibold transition-vintage ${
+                          expense.status === 'paid'
+                            ? 'bg-olive/20 text-olive'
+                            : 'bg-gold/20 text-gold'
+                        }`}>
+                          {expense.status === 'paid' ? 'Pago' : 'Em aberto'}
+                        </span>
                       </button>
                       <span
                         className={`font-numbers text-lg font-semibold ${

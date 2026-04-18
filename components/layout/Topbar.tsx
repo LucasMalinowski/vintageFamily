@@ -1,11 +1,20 @@
 'use client'
 
-import { Bell, ChevronDown, Search, Settings, User } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { Bell, BanknoteArrowDown, BanknoteArrowUp, ChartColumnBig, ChevronDown, Home, Info, PiggyBank, Search, Settings, User } from 'lucide-react'
+import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { useEffect, useState } from 'react'
 import { getAuthBearerToken } from '@/lib/billing/client'
+
+const PAGE_ICONS: Record<string, React.ElementType> = {
+  '/inicio': Home,
+  '/payables': BanknoteArrowUp,
+  '/receivables': BanknoteArrowDown,
+  '/dreams': PiggyBank,
+  '/comparatives': ChartColumnBig,
+  '/sobre': Info,
+}
 
 interface TopbarProps {
   title: string
@@ -27,7 +36,9 @@ export default function Topbar({
   subtitleClassName = '',
 }: TopbarProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, familyId } = useAuth()
+  const PageIcon = PAGE_ICONS[pathname] ?? null
   const [userName, setUserName] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null)
@@ -99,11 +110,18 @@ export default function Topbar({
       <div className={`${filters ? 'flex flex-col gap-2' : ''}`}>
         <div className="min-h-[103px] flex items-center">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between w-full">
-            <div className="min-w-0">
-              <h1 className={`text-3xl font-serif text-coffee mb-1 ${titleClassName}`}>{title}</h1>
-              {subtitle && (
-                <p className={`text-sm text-ink/70 font-body ${subtitleClassName}`}>{subtitle}</p>
+            <div className="flex items-center gap-3 min-w-0">
+              {PageIcon && (
+                <div className="w-[34px] h-[34px] rounded-[9px] bg-coffee/[0.09] flex items-center justify-center text-coffee shrink-0">
+                  <PageIcon className="w-[17px] h-[17px]" />
+                </div>
               )}
+              <div className="min-w-0">
+                <h1 className={`text-3xl font-serif text-coffee mb-1 ${titleClassName}`}>{title}</h1>
+                {subtitle && (
+                  <p className={`text-sm text-ink/70 font-body ${subtitleClassName}`}>{subtitle}</p>
+                )}
+              </div>
             </div>
 
             <div className="flex items-start gap-3 sm:gap-4 md:self-start md:-mt-1">

@@ -228,7 +228,10 @@ export default function Sidebar() {
             const Icon = item.icon
             const isActive = pathname === item.href
             return (
-              <li key={item.href}>
+              <li key={item.href} className="relative">
+                {isActive && !isCollapsed && (
+                  <span className="absolute left-0 top-2 bottom-2 w-[2.5px] bg-gold rounded-r" />
+                )}
                 <Link
                   href={item.href}
                   onClick={() => setIsOpen(false)}
@@ -236,9 +239,9 @@ export default function Sidebar() {
                   className={`
                     group flex items-center rounded-lg transition-vintage
                     ${isCollapsed ? 'justify-center px-2 py-3' : 'gap-3 px-4 py-3'}
-                    ${isActive 
-                      ? 'bg-white/15 text-white shadow-soft' 
-                      : 'text-white/80 hover:bg-white/10 hover:text-white'
+                    ${isActive
+                      ? 'bg-white/10 text-white'
+                      : 'text-white/80 hover:bg-white/[0.06] hover:text-white'
                     }
                   `}
                 >

@@ -25,7 +25,7 @@ export default function Select({
   variant = 'default',
 }: SelectProps) {
   const labelClassName = variant === 'filter'
-    ? 'block font-serif text-petrol mb-2 text-left font-semibold'
+    ? 'block text-[11px] font-semibold tracking-[0.07em] uppercase text-ink/50 mb-1 text-left'
     : 'block font-serif text-ink mb-2'
   const selectClassName = variant === 'filter'
     ? 'w-full px-4 py-2.5 bg-paper rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-paper-2/40 transition-vintage appearance-none cursor-pointer text-petrol text-left'

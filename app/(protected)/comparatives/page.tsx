@@ -473,34 +473,40 @@ export default function ComparativesPage() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Link
                   href="/receivables"
-                  className="rounded-[12px] text-white px-6 py-3 shadow-soft hover:opacity-95 transition-vintage"
-                  style={{ backgroundColor: METRIC_COLORS.income }}
+                  className="rounded-[12px] bg-offWhite border border-border px-6 py-4 shadow-soft hover:shadow-vintage transition-vintage"
                 >
-                  <div className="text-xl font-semibold font-serif mb-1">Recebido</div>
-                  <div className="font-numbers text-2xl font-semibold">{formatBRL(monthlyTotals.income)}</div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: METRIC_COLORS.income }} />
+                    <span className="text-[10.5px] font-semibold tracking-[0.09em] uppercase text-ink/55">Recebido</span>
+                  </div>
+                  <div className="font-numbers tabular-nums text-2xl font-bold text-ink">{formatBRL(monthlyTotals.income)}</div>
                 </Link>
                 <Link
                   href="/payables"
-                  className="rounded-[12px] text-white px-6 py-3 shadow-soft hover:opacity-95 transition-vintage"
-                  style={{ backgroundColor: METRIC_COLORS.paid }}
+                  className="rounded-[12px] bg-offWhite border border-border px-6 py-4 shadow-soft hover:shadow-vintage transition-vintage"
                 >
-                  <div className="text-xl font-semibold font-serif mb-1">Pago</div>
-                  <div className="font-numbers text-2xl font-semibold">{formatBRL(monthlyTotals.paid)}</div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: METRIC_COLORS.paid }} />
+                    <span className="text-[10.5px] font-semibold tracking-[0.09em] uppercase text-ink/55">Pago</span>
+                  </div>
+                  <div className="font-numbers tabular-nums text-2xl font-bold text-ink">{formatBRL(monthlyTotals.paid)}</div>
                 </Link>
                 <Link
                   href="/dreams"
-                  className="rounded-[12px] text-white px-6 py-3 shadow-soft hover:opacity-95 transition-vintage"
-                  style={{ backgroundColor: METRIC_COLORS.saved }}
+                  className="rounded-[12px] bg-offWhite border border-border px-6 py-4 shadow-soft hover:shadow-vintage transition-vintage"
                 >
-                  <div className="text-xl font-semibold font-serif mb-1">Poupado</div>
-                  <div className="font-numbers text-2xl font-semibold">{formatBRL(monthlyTotals.saved)}</div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: METRIC_COLORS.saved }} />
+                    <span className="text-[10.5px] font-semibold tracking-[0.09em] uppercase text-ink/55">Poupado</span>
+                  </div>
+                  <div className="font-numbers tabular-nums text-2xl font-bold text-ink">{formatBRL(monthlyTotals.saved)}</div>
                 </Link>
-                <div
-                  className="rounded-[12px] text-white px-6 py-3 shadow-soft"
-                  style={{ backgroundColor: METRIC_COLORS.balance }}
-                >
-                  <div className="text-xl font-semibold font-serif mb-1">Saldo</div>
-                  <div className="font-numbers text-2xl font-semibold">{formatBRL(monthlyTotals.balance)}</div>
+                <div className="rounded-[12px] bg-offWhite border border-border px-6 py-4 shadow-soft">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: METRIC_COLORS.balance }} />
+                    <span className="text-[10.5px] font-semibold tracking-[0.09em] uppercase text-ink/55">Saldo</span>
+                  </div>
+                  <div className="font-numbers tabular-nums text-2xl font-bold text-ink">{formatBRL(monthlyTotals.balance)}</div>
                 </div>
               </div>
 
