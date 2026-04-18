@@ -36,7 +36,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
+          <div className="flex min-h-full items-start justify-center p-4 sm:items-center">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -46,8 +46,8 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className={`w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden bg-paper rounded-vintage border border-border shadow-vintage p-6`}>
-                <div className="flex items-center justify-between mb-4">
+              <Dialog.Panel className={`flex max-h-[calc(100vh-2rem)] w-full ${sizeClasses[size]} flex-col overflow-hidden bg-paper rounded-vintage border border-border shadow-vintage p-6`}>
+                <div className="flex items-center justify-between mb-4 shrink-0">
                   <Dialog.Title className="text-2xl font-serif text-coffee">
                     {title}
                   </Dialog.Title>
@@ -59,7 +59,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
                   </button>
                 </div>
 
-                <div className="max-h-[calc(90vh-5rem)] overflow-hidden">
+                <div className="min-h-0 flex-1 overflow-y-auto pr-1">
                   {children}
                 </div>
               </Dialog.Panel>
