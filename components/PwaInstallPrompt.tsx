@@ -41,6 +41,7 @@ export default function PwaInstallPrompt() {
 
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault()
+      ;(window as any).__pwaInstallPrompt = event as BeforeInstallPromptEvent
       setInstallEvent(event as BeforeInstallPromptEvent)
       setAndroidPromptVisible(true)
     }

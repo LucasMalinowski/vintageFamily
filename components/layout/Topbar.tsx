@@ -1,11 +1,13 @@
 'use client'
 
-import { Bell, BanknoteArrowDown, BanknoteArrowUp, ChartColumnBig, ChevronDown, Home, Info, PiggyBank, Search, Settings } from 'lucide-react'
+import { Bell, BanknoteArrowDown, BanknoteArrowUp, ChartColumnBig, ChevronDown, ChevronLeft, Home, Info, PiggyBank, Search, Settings } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { useEffect, useRef, useState } from 'react'
 import { getAuthBearerToken } from '@/lib/billing/client'
+import ProfileSheet from '@/components/layout/ProfileSheet'
+import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
 
 const PAGE_ICONS: Record<string, React.ElementType> = {
   '/inicio': Home,
@@ -24,6 +26,7 @@ interface TopbarProps {
   variant?: 'default' | 'textured'
   titleClassName?: string
   subtitleClassName?: string
+  showBackButton?: boolean
 }
 
 export default function Topbar({
@@ -34,16 +37,19 @@ export default function Topbar({
   variant = 'default',
   titleClassName = '',
   subtitleClassName = '',
+  showBackButton = false,
 }: TopbarProps) {
   const router = useRouter()
   const pathname = usePathname()
   const { user, familyId } = useAuth()
-  const PageIcon = PAGE_ICONS[pathname] ?? null
+  const PageIcon = showBackButton ? null : (PAGE_ICONS[pathname] ?? null)
   const [userName, setUserName] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
+  const [familyName, setFamilyName] = useState('')
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [profileSheetOpen, setProfileSheetOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -75,6 +81,71 @@ export default function Topbar({
 
     loadHeaderData()
   }, [user])
+
+  useEffect(() => {
+    const loadFamilyName = async () => {
+      if (typeof window === 'undefined') return
+
+      const cachedFamilyName = window.localStorage.getItem(LOCAL_STORAGE_KEYS.familyName)
+      if (cachedFamilyName) {
+        setFamilyName(cachedFamilyName)
+        return
+      }
+
+      let effectiveFamilyId = familyId
+
+      if (!effectiveFamilyId && user?.id) {
+        const { data: profileRow } = await supabase
+          .from('users')
+          .select('family_id')
+          .eq('id', user.id)
+          .maybeSingle()
+
+        if (profileRow?.family_id) {
+          effectiveFamilyId = profileRow.family_id
+        }
+      }
+
+      if (!effectiveFamilyId) {
+        setFamilyName('')
+        window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
+        return
+      }
+
+      const { data: familyRow } = await supabase
+        .from('families')
+        .select('name')
+        .eq('id', effectiveFamilyId)
+        .maybeSingle()
+
+      let resolvedFamilyName = familyRow?.name ?? ''
+
+      if (!resolvedFamilyName) {
+        const token = await getAuthBearerToken()
+        if (token) {
+          const response = await fetch('/api/families/me', {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+
+          if (response.ok) {
+            const payload = await response.json().catch(() => ({}))
+            resolvedFamilyName = payload?.familyName || ''
+          }
+        }
+      }
+
+      setFamilyName(resolvedFamilyName)
+      if (resolvedFamilyName) {
+        window.localStorage.setItem(LOCAL_STORAGE_KEYS.familyName, resolvedFamilyName)
+      } else {
+        window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
+      }
+    }
+
+    loadFamilyName()
+  }, [familyId, user?.id])
 
   useEffect(() => {
     const loadTrialStatus = async () => {
@@ -118,28 +189,36 @@ export default function Topbar({
   }, [familyId])
 
   return (
-    <div className={`${variant === 'textured' ? 'bg-paper' : 'bg-bg'} px-6 py-5.5 pl-16 md:pl-6`}>
+    <div className={`${variant === 'textured' ? 'bg-paper' : 'bg-bg'} px-4 py-3 md:px-6 md:py-5.5`}>
       <div className={`${filters ? 'flex flex-col gap-2' : ''}`}>
-        <div className="min-h-[103px] flex items-center">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between w-full">
-            <div className="flex items-center gap-3 min-w-0">
-              {PageIcon && (
+        <div className="md:min-h-[103px] flex items-center">
+          <div className="flex flex-row items-center justify-between w-full gap-3">
+            <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+              {showBackButton ? (
+                <button
+                  onClick={() => router.back()}
+                  className="w-[34px] h-[34px] rounded-[9px] bg-coffee/[0.09] flex items-center justify-center text-coffee shrink-0 hover:bg-coffee/[0.15] transition-vintage"
+                  aria-label="Voltar"
+                >
+                  <ChevronLeft className="w-[20px] h-[20px]" />
+                </button>
+              ) : PageIcon ? (
                 <div className="w-[34px] h-[34px] rounded-[9px] bg-coffee/[0.09] flex items-center justify-center text-coffee shrink-0">
                   <PageIcon className="w-[17px] h-[17px]" />
                 </div>
-              )}
+              ) : null}
               <div className="min-w-0">
-                <h1 className={`text-3xl font-serif text-coffee mb-1 ${titleClassName}`}>{title}</h1>
+                <h1 className={`text-xl md:text-3xl font-serif text-coffee leading-tight mb-0.5 md:mb-1 ${titleClassName}`}>{title}</h1>
                 {subtitle && (
-                  <p className={`text-sm text-ink/70 font-body ${subtitleClassName}`}>{subtitle}</p>
+                  <p className={`text-xs md:text-sm text-ink/70 font-body ${subtitleClassName}`}>{subtitle}</p>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center gap-3 sm:gap-4 md:self-start md:-mt-1">
-              {actions && <div className="w-full md:w-auto">{actions}</div>}
+            <div className="flex items-center gap-2 md:gap-4 shrink-0 md:self-start md:-mt-1">
+              {actions && <div>{actions}</div>}
               {trialDaysLeft !== null && trialDaysLeft > 0 && (
-                <div className="rounded-full border border-coffee/20 bg-paper px-3 py-1 text-xs font-semibold text-coffee">
+                <div className="hidden md:flex rounded-full border border-coffee/20 bg-paper px-3 py-1 text-xs font-semibold text-coffee">
                   {trialDaysLeft} dias de teste restantes
                 </div>
               )}
@@ -149,6 +228,23 @@ export default function Topbar({
                 aria-label="Abrir lembretes"
               >
                 <Bell className="w-6 h-6" />
+              </button>
+
+              {/* Mobile avatar — opens ProfileSheet */}
+              <button
+                onClick={() => setProfileSheetOpen(true)}
+                className="flex md:hidden w-8 h-8 rounded-full bg-[#B05C3A] items-center justify-center shrink-0"
+                aria-label="Abrir perfil"
+              >
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  <span className="text-[11px] font-bold text-white leading-none">
+                    {userName
+                      ? userName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('')
+                      : 'U'}
+                  </span>
+                )}
               </button>
               <button className="hidden sm:inline-flex text-coffee hover:text-coffee/80 transition-vintage" aria-label="Buscar">
                 <Search className="w-6 h-6" />
@@ -232,6 +328,13 @@ export default function Topbar({
           </div>
         )}
       </div>
+
+      <ProfileSheet
+        open={profileSheetOpen}
+        onClose={() => setProfileSheetOpen(false)}
+        userName={userName}
+        familyName={familyName}
+      />
     </div>
   )
 }

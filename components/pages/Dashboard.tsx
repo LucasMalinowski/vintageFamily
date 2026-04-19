@@ -196,24 +196,37 @@ export default function Dashboard() {
     <>
       <Topbar
         title="Início"
-        subtitle="Bem-vindo ao seu espaço financeiro familiar"
+        subtitle="Espaço financeiro familiar"
         variant="textured"
       />
       <div className="bg-paper">
-        <div className="max-w-7xl mx-auto px-6 py-10">
-          <div className="bg-[url('/texture-green.png')] bg-cover bg-center border border-border/70 rounded-xl p-12 shadow-soft text-center text-paper">
-            <h1 className="text-3xl md:text-4xl font-serif font-thin text-paper leading-snug">
+        {/* Mobile hero — full-width, no rounded corners */}
+        <div className="md:hidden bg-[url('/texture-green.png')] bg-cover bg-center py-8 text-center text-paper">
+          <p className="text-[10px] tracking-[0.22em] uppercase text-paper/60 mb-3 font-medium">
+            Família {familyName || '—'}
+          </p>
+          <h1 className="text-3xl font-serif font-thin text-paper leading-snug px-6">
+            Livro de Finanças<br/>da Família {familyName || '—'}
+          </h1>
+          <div className="w-10 h-px bg-gold/60 mx-auto mt-5" />
+        </div>
+
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          {/* Desktop hero — inside container with rounded corners */}
+          <div className="hidden md:block rounded-[20px] overflow-hidden mb-8 bg-[url('/texture-green.png')] bg-cover bg-center py-12 text-center text-paper">
+            <h1 className="text-4xl font-serif font-thin text-paper leading-snug px-6">
               Livro de Finanças<br/>da Família {familyName || '—'}
             </h1>
             <div className="w-10 h-px bg-gold/60 mx-auto mt-5" />
           </div>
-          <div className="mt-6 justify-self-center">
+
+          <div className="mb-6">
             <div className="max-w-md bg-paper px-6 py-4 shadow-soft text-ink/70 font-ptSerif italic">
               Organizar o dinheiro é cuidar do tempo que ainda vamos viver.
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-14">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <VintageCard className="!bg-paper">
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div>
@@ -254,9 +267,9 @@ export default function Dashboard() {
               <div className="pt-3">
                 <Link
                   href="/payables"
-                  className="text-xs  text-ink/40 hover:text-ink/60 transition-vintage"
+                  className="text-xs text-ink/40 hover:text-ink/60 transition-vintage"
                 >
-                  Ver todos
+                  Ver todos →
                 </Link>
               </div>
             </VintageCard>
@@ -265,7 +278,7 @@ export default function Dashboard() {
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div className="min-w-0">
                   <h3 className="text-lg font-body font-thin text-sidebar">Lembretes da casa</h3>
-                  <p className="text-sm text-ink/40 ">Notas de cuidado com aquilo que valorizamos.</p>
+                  <p className="text-sm text-ink/40">Notas de cuidado.</p>
                 </div>
                 <button
                   onClick={() => setIsReminderModalOpen(true)}
@@ -325,9 +338,9 @@ export default function Dashboard() {
               <div className="pt-3">
                 <Link
                   href="/reminders"
-                  className="text-xs  text-ink/40 hover:text-ink/60 transition-vintage"
+                  className="text-xs text-ink/40 hover:text-ink/60 transition-vintage"
                 >
-                  Ver todos
+                  Ver todos →
                 </Link>
               </div>
             </VintageCard>
