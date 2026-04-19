@@ -1,10 +1,10 @@
 'use client'
 
-import { Bell, BanknoteArrowDown, BanknoteArrowUp, ChartColumnBig, ChevronDown, Home, Info, PiggyBank, Search, Settings, User } from 'lucide-react'
+import { Bell, BanknoteArrowDown, BanknoteArrowUp, ChartColumnBig, ChevronDown, Home, Info, PiggyBank, Search, Settings } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getAuthBearerToken } from '@/lib/billing/client'
 
 const PAGE_ICONS: Record<string, React.ElementType> = {
@@ -43,6 +43,18 @@ export default function Topbar({
   const [avatarUrl, setAvatarUrl] = useState('')
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const profileRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
   const totalTrialDays = 15
 
   useEffect(() => {
@@ -124,7 +136,7 @@ export default function Topbar({
               </div>
             </div>
 
-            <div className="flex items-start gap-3 sm:gap-4 md:self-start md:-mt-1">
+            <div className="flex items-center gap-3 sm:gap-4 md:self-start md:-mt-1">
               {actions && <div className="w-full md:w-auto">{actions}</div>}
               {trialDaysLeft !== null && trialDaysLeft > 0 && (
                 <div className="rounded-full border border-coffee/20 bg-paper px-3 py-1 text-xs font-semibold text-coffee">
@@ -148,21 +160,54 @@ export default function Topbar({
               >
                 <Settings className="w-6 h-6" />
               </button>
-              <div className="flex items-center gap-2 text-sm bg-sidebar text-paper pl-4 pr-6 py-4 -mr-6 -mt-5 -mb-4 rounded-none">
-                <div className="w-8 h-8 rounded-full bg-paper text-paper flex items-center justify-center overflow-hidden">
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt="Avatar"
-                      className="w-full h-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <User className="w-4 h-4 text-paper" />
-                  )}
-                </div>
-                <span className="hidden md:inline text-paper font-ptSerif">
-                  {userName ? `${userName}` : ''}
-                </span>
+              {/* Divider */}
+              <span className="hidden sm:block w-px h-6 bg-border" />
+
+              {/* Avatar pill + dropdown */}
+              <div ref={profileRef} className="hidden sm:block relative">
+                <button
+                  onClick={() => setProfileOpen(prev => !prev)}
+                  className="flex items-center gap-2 border border-border rounded-full py-1 pl-1 pr-3 hover:bg-paper transition-vintage"
+                  aria-label="Abrir perfil"
+                >
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden shrink-0 bg-[#B05C3A]">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt="Avatar"
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-[11px] font-bold text-white leading-none">
+                        {userName
+                          ? userName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('')
+                          : 'U'}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[13px] text-ink hidden md:inline">
+                    {userName ? userName.split(' ')[0] : ''}
+                  </span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-ink/50 transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {profileOpen && (
+                  <div className="absolute right-0 mt-2 w-44 rounded-xl border border-border bg-paper shadow-lg z-50 py-1 overflow-hidden">
+                    {[
+                      { label: 'Perfil', href: '/settings/profile' },
+                      { label: 'Família', href: '/settings/family' },
+                      { label: 'Assinatura', href: '/settings/billing' },
+                    ].map(({ label, href }) => (
+                      <button
+                        key={href}
+                        onClick={() => { setProfileOpen(false); router.push(href) }}
+                        className="w-full text-left px-4 py-2.5 text-[13px] text-ink hover:bg-bg transition-vintage"
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>        
