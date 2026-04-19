@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import Sidebar from '@/components/layout/Sidebar'
+import BottomNav from '@/components/layout/BottomNav'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -33,7 +34,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-paper">
       <Sidebar />
-      <main className="app-main flex-1 overflow-auto bg-paper">{children}</main>
+      <main className="app-main flex-1 overflow-auto bg-paper pb-[80px] md:pb-0">{children}</main>
+      <BottomNav />
     </div>
   )
 }

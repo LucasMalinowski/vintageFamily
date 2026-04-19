@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import Link from 'next/link'
-import { ChartColumnBig, ChartPie, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChartColumnBig, ChartPie, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
+import FilterSheet from '@/components/layout/FilterSheet'
 import AppLayout from '@/components/layout/AppLayout'
 import Topbar from '@/components/layout/Topbar'
 import FilterSidebar from '@/components/layout/FilterSidebar'
@@ -82,6 +83,7 @@ export default function ComparativesPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(true)
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
   const [selectedYear, setSelectedYear] = useState(getCurrentYear())
   const [chartMode, setChartMode] = useState<ChartMode>('bars')
@@ -361,14 +363,28 @@ export default function ComparativesPage() {
 
   return (
     <AppLayout>
+      <div className="flex flex-col h-full md:min-h-screen">
       <Topbar
         title="Comparativos"
         subtitle="Entender o passado nos ajuda a construir o futuro."
         variant="textured"
       />
 
-      <div className="flex-1 flex flex-col">
-        <div className="px-6 py-4">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden md:overflow-visible">
+        {/* Mobile filter bar */}
+        <div className="md:hidden border-b border-border bg-offWhite px-[18px] py-[10px] flex gap-[9px] items-center shrink-0">
+          <button
+            type="button"
+            onClick={() => setFilterSheetOpen(true)}
+            className="flex items-center gap-1.5 h-[38px] px-3 rounded-[10px] border border-border bg-bg text-ink text-sm font-medium shrink-0"
+          >
+            <SlidersHorizontal className="w-4 h-4 text-petrol" />
+            <span>{MONTHS.find(m => m.value === selectedMonth)?.label.slice(0, 3)} {selectedYear}</span>
+          </button>
+        </div>
+
+        {/* Desktop filter search bar */}
+        <div className="hidden md:block px-6 py-4">
           <FilterSearchBar
             value={searchTerm}
             onChange={setSearchTerm}
@@ -440,7 +456,9 @@ export default function ComparativesPage() {
           />
         </div>
 
-        <div className={`px-6 pb-4 w-full flex ${filtersOpen ? 'gap-4' : 'gap-0'} flex-1 items-stretch`}>
+        {/* Scrollable content area — mobile only internal scroll */}
+        <div className={`flex-1 min-h-0 overflow-y-auto md:overflow-visible w-full flex flex-col md:flex-row md:px-6 md:pb-4 ${filtersOpen ? 'md:gap-4' : 'md:gap-0'} md:items-stretch`}>
+          <div className="hidden md:contents">
           <FilterSidebar
             open={filtersOpen}
             onOpenChange={setFiltersOpen}
@@ -464,49 +482,50 @@ export default function ComparativesPage() {
               options={getYearOptions()}
             />
           </FilterSidebar>
+          </div>
 
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 px-[18px] pt-3 pb-4 md:px-0 md:pt-0 md:pb-0">
             {loading ? (
               <div className="text-center py-12 text-ink/60">Carregando...</div>
             ) : (
               <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <Link
                   href="/receivables"
-                  className="rounded-[12px] bg-offWhite border border-border px-6 py-4 shadow-soft hover:shadow-vintage transition-vintage"
+                  className="rounded-[12px] bg-offWhite border border-border px-4 py-3 shadow-soft hover:shadow-vintage transition-vintage"
                 >
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-1.5 mb-2">
                     <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: METRIC_COLORS.income }} />
-                    <span className="text-[10.5px] font-semibold tracking-[0.09em] uppercase text-ink/55">Recebido</span>
+                    <span className="text-[10px] font-semibold tracking-[0.09em] uppercase text-ink/55">Recebido</span>
                   </div>
-                  <div className="font-numbers tabular-nums text-2xl font-bold text-ink">{formatBRL(monthlyTotals.income)}</div>
+                  <div className="font-numbers tabular-nums text-lg font-bold text-ink">{formatBRL(monthlyTotals.income)}</div>
                 </Link>
                 <Link
                   href="/payables"
-                  className="rounded-[12px] bg-offWhite border border-border px-6 py-4 shadow-soft hover:shadow-vintage transition-vintage"
+                  className="rounded-[12px] bg-offWhite border border-border px-4 py-3 shadow-soft hover:shadow-vintage transition-vintage"
                 >
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-1.5 mb-2">
                     <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: METRIC_COLORS.paid }} />
-                    <span className="text-[10.5px] font-semibold tracking-[0.09em] uppercase text-ink/55">Pago</span>
+                    <span className="text-[10px] font-semibold tracking-[0.09em] uppercase text-ink/55">Pago</span>
                   </div>
-                  <div className="font-numbers tabular-nums text-2xl font-bold text-ink">{formatBRL(monthlyTotals.paid)}</div>
+                  <div className="font-numbers tabular-nums text-lg font-bold text-ink">{formatBRL(monthlyTotals.paid)}</div>
                 </Link>
                 <Link
                   href="/dreams"
-                  className="rounded-[12px] bg-offWhite border border-border px-6 py-4 shadow-soft hover:shadow-vintage transition-vintage"
+                  className="rounded-[12px] bg-offWhite border border-border px-4 py-3 shadow-soft hover:shadow-vintage transition-vintage"
                 >
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-1.5 mb-2">
                     <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: METRIC_COLORS.saved }} />
-                    <span className="text-[10.5px] font-semibold tracking-[0.09em] uppercase text-ink/55">Poupado</span>
+                    <span className="text-[10px] font-semibold tracking-[0.09em] uppercase text-ink/55">Poupado</span>
                   </div>
-                  <div className="font-numbers tabular-nums text-2xl font-bold text-ink">{formatBRL(monthlyTotals.saved)}</div>
+                  <div className="font-numbers tabular-nums text-lg font-bold text-ink">{formatBRL(monthlyTotals.saved)}</div>
                 </Link>
-                <div className="rounded-[12px] bg-offWhite border border-border px-6 py-4 shadow-soft">
-                  <div className="flex items-center gap-2 mb-2">
+                <div className="rounded-[12px] bg-offWhite border border-border px-4 py-3 shadow-soft">
+                  <div className="flex items-center gap-1.5 mb-2">
                     <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: METRIC_COLORS.balance }} />
-                    <span className="text-[10.5px] font-semibold tracking-[0.09em] uppercase text-ink/55">Saldo</span>
+                    <span className="text-[10px] font-semibold tracking-[0.09em] uppercase text-ink/55">Saldo</span>
                   </div>
-                  <div className="font-numbers tabular-nums text-2xl font-bold text-ink">{formatBRL(monthlyTotals.balance)}</div>
+                  <div className="font-numbers tabular-nums text-lg font-bold text-ink">{formatBRL(monthlyTotals.balance)}</div>
                 </div>
               </div>
 
@@ -521,40 +540,41 @@ export default function ComparativesPage() {
                     ))}
                   </div>
 
-                <div className="h-[300px] grid grid-cols-4 gap-3 items-end">
-                  {monthlyItems.map((item) => {
-                    const isNegativeSaldo = item.label === 'Saldo' && item.value < 0
-                    const positiveValue = Math.max(0, item.value)
+                  <div className="h-[300px] grid grid-cols-4 gap-3 items-end">
+                    {monthlyItems.map((item) => {
+                      const isNegativeSaldo = item.label === 'Saldo' && item.value < 0
+                      const positiveValue = Math.max(0, item.value)
                       const height = Math.round((positiveValue / maxBar) * 100)
                       const barHeight = isNegativeSaldo
                         ? '0%'
                         : positiveValue > 0
                           ? `${Math.max(12, height)}%`
                           : '8%'
+
                       return (
-                      <div
-                        key={item.label}
-                        className="h-full flex flex-col"
-                        onMouseEnter={() => setHoveredBar(item.key)}
-                        onMouseLeave={() => setHoveredBar(null)}
-                      >
-                        <div className="h-full flex items-end">
-                          <div
-                            className="w-full rounded-md"
+                        <div
+                          key={item.label}
+                          className="h-full flex flex-col"
+                          onMouseEnter={() => setHoveredBar(item.key)}
+                          onMouseLeave={() => setHoveredBar(null)}
+                        >
+                          <div className="h-full flex items-end">
+                            <div
+                              className="w-full rounded-md"
                               style={{
                                 height: barHeight,
                                 backgroundColor: item.color,
                               }}
                             />
                           </div>
-                          <div className="text-center text-sm text-ink/80 font-semibold mt-2">{item.label}</div>
-                          <div className="text-center text-xs text-ink/45 font-numbers font-light mt-1">
+                          <div className="mt-2 text-center text-sm font-semibold text-ink/80">{item.label}</div>
+                          <div className="mt-1 text-center text-xs font-light font-numbers text-ink/45">
                             {formatBRL(item.value)}
                           </div>
                         </div>
-                    )
-                  })}
-                </div>
+                      )
+                    })}
+                  </div>
 
                 {hoveredBar && (
                   <div className="absolute right-4 top-4 w-[340px] max-w-[calc(100%-2rem)] rounded-lg border border-border bg-paper p-3 shadow-soft z-20">
@@ -665,9 +685,17 @@ export default function ComparativesPage() {
           </div>
         </div>
 
-        <footer className="mt-auto w-full">
+        {/* Mobile footer — sticky outside scroll */}
+        <div className="md:hidden shrink-0 h-[44px] border-t border-border bg-offWhite flex items-center justify-center px-6">
+          <p className="text-center text-[13px] text-gold italic">
+            O equilíbrio financeiro nasce quando cada número encontra seu lugar.
+          </p>
+        </div>
+
+        {/* Desktop footer */}
+        <footer className="hidden md:block mt-auto w-full">
           <div className="px-6 mb-4">
-            <div className="flex flex-col sm:flex-row justify-end gap-3">
+            <div className="flex flex-row justify-end gap-3">
               <button className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm">
                 Gerar CSV
               </button>
@@ -682,6 +710,18 @@ export default function ComparativesPage() {
             </p>
           </div>
         </footer>
+      </div>
+
+      <FilterSheet
+        open={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+        month={selectedMonth}
+        year={selectedYear}
+        onApply={(m, y) => {
+          setSelectedMonth(m)
+          setSelectedYear(y)
+        }}
+      />
       </div>
     </AppLayout>
   )

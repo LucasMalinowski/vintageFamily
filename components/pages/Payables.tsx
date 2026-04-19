@@ -12,9 +12,10 @@ import EmptyState from '@/components/ui/EmptyState'
 import { formatBRL } from '@/lib/money'
 import { formatDate, getCurrentMonth, getCurrentYear, MONTHS, getYearOptions, getMonthRange } from '@/lib/dates'
 import { buildInstallmentDates, splitAmountCents } from '@/lib/installments'
-import { Receipt } from 'lucide-react'
+import { Edit2, Download, Receipt, SlidersHorizontal, Search, Plus } from 'lucide-react'
 import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
+import FilterSheet from '@/components/layout/FilterSheet'
 import { mergeAttachment, parseAttachment } from '@/lib/attachments'
 import CategorySettingsModal from '@/components/categories/CategorySettingsModal'
 import BankStatementImportModal from '@/components/bank-statements/BankStatementImportModal'
@@ -27,6 +28,12 @@ import {
 import { matchesSearch } from '@/lib/filterSearch'
 
 type PaymentMethod = 'PIX' | 'Credito' | 'Debito'
+
+const buildAttachmentPath = (familyId: string, expenseId: string, fileName: string) => {
+  const safeName = fileName.replace(/\s+/g, '-')
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+  return `${familyId}/${expenseId}/${timestamp}-${safeName}`
+}
 
 const normalizePaymentMethod = (method: string | null): PaymentMethod | null => {
   if (method === 'PIX' || method === 'Credito' || method === 'Debito') {
@@ -76,6 +83,10 @@ export default function Payables() {
   const [onlyInstallments, setOnlyInstallments] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(true)
+
+  // Mobile UI state
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
+  const [addMenuOpen, setAddMenuOpen] = useState(false)
 
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -348,8 +359,7 @@ export default function Payables() {
 
   const handleAttachExpense = async (expense: Expense, file: File) => {
     if (!familyId) return
-    const safeName = file.name.replace(/\s+/g, '-')
-    const filePath = `${familyId}/${expense.id}/${Date.now()}-${safeName}`
+    const filePath = buildAttachmentPath(familyId, expense.id, file.name)
 
     const { error: uploadError } = await supabase.storage
       .from('attachments')
@@ -485,231 +495,308 @@ export default function Payables() {
   ]
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex flex-col h-full md:min-h-screen">
       <Topbar
         title="Contas a Pagar"
         subtitle="Compromissos honrados constroem segurança."
         variant="textured"
       />
 
-      <div className="flex-1 flex flex-col">
-        <div className="px-6 py-4">
-          <FilterSearchBar
+      {/* Mobile filter bar */}
+      <div className="md:hidden relative border-b border-border bg-offWhite px-[18px] py-[10px] flex gap-[9px] items-center shrink-0">
+        <button
+          type="button"
+          onClick={() => setFilterSheetOpen(true)}
+          className="flex items-center gap-1.5 h-[38px] px-3 rounded-[10px] border border-border bg-bg text-ink text-sm font-medium shrink-0"
+        >
+          <SlidersHorizontal className="w-4 h-4 text-petrol" />
+          <span>{MONTHS.find(m => m.value === selectedMonth)?.label.slice(0, 3)} {selectedYear}</span>
+        </button>
+        <div className="flex-1 flex items-center relative">
+          <Search className="pointer-events-none absolute left-3 z-10 h-4 w-4 text-petrol" />
+          <input
+            type="text"
             value={searchTerm}
-            onChange={setSearchTerm}
-            onToggleFilters={() => setFiltersOpen((prev) => !prev)}
-            filtersOpen={filtersOpen}
-            placeholder="Buscar por nome ou categoria"
-            filterChips={activeFilterChips}
-              rightSlot={
-              <>
-                <button
-                  onClick={() => setIsImportModalOpen(true)}
-                  className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
-                >
-                  Importar extrato bancário
-                </button>
-                <button
-                  onClick={() => setIsCategorySettingsOpen(true)}
-                  className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
-                >
-                  Categorias
-                </button>
-                <button
-                  onClick={() => openModal()}
-                  className="px-5 py-2 bg-petrol text-white rounded-md hover:bg-petrol/90 transition-vintage text-sm"
-                >
-                  Nova Despesa
-                </button>
-              </>
-            }
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar..."
+            className="h-[38px] w-full rounded-[10px] border border-border bg-bg pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-paper-2/30"
           />
         </div>
-
-        <div className={`px-6 pb-4 w-full flex ${filtersOpen ? 'gap-4' : 'gap-0'} flex-1 items-stretch`}>
-          <FilterSidebar
-            open={filtersOpen}
-            onOpenChange={setFiltersOpen}
-            showToggle={false}
-            collapsedWidthClass="w-0"
-            activeFiltersCount={activeFiltersCount}
-            onClearFilters={clearFilters}
-          >
-            <Select
-              variant="filter"
-              label="Mês"
-              value={selectedMonth.toString()}
-              onChange={(v) =>
-                setSelectedMonth(v ? parseInt(v, 10) : getCurrentMonth())
-              }
-              options={MONTHS.map(m => ({ value: m.value.toString(), label: m.label }))}
-            />
-            <Select
-              variant="filter"
-              label="Ano"
-              value={selectedYear.toString()}
-              onChange={(v) =>
-                setSelectedYear(v ? parseInt(v, 10) : getCurrentYear())
-              }
-              options={getYearOptions()}
-            />
-            <Select
-              variant="filter"
-              label="Categoria"
-              value={selectedCategoryId}
-              onChange={setSelectedCategoryId}
-              options={[
-                { value: '', label: 'Todas' },
-                ...categoryOptions,
-              ]}
-            />
-            <Select
-              variant="filter"
-              label="Status"
-              value={selectedStatus}
-              onChange={setSelectedStatus}
-              options={[
-                { value: '', label: 'Todos' },
-                { value: 'paid', label: 'Pago' },
-                { value: 'open', label: 'Em aberto' },
-              ]}
-            />
-            <Select
-              variant="filter"
-              label="Metodo"
-              value={selectedPaymentMethod}
-              onChange={setSelectedPaymentMethod}
-              options={[
-                { value: '', label: 'Todos' },
-                { value: 'PIX', label: 'PIX' },
-                { value: 'Credito', label: 'Credito' },
-                { value: 'Debito', label: 'Debito' },
-              ]}
-            />
-            <label className="flex items-center gap-2 text-sm text-petrol pt-2">
-              <input
-                type="checkbox"
-                checked={onlyInstallments}
-                onChange={(event) => setOnlyInstallments(event.target.checked)}
-                className="w-4 h-4 rounded border-gold/60 accent-gold"
-              />
-              Somente parceladas
-            </label>
-          </FilterSidebar>
-
-          <div className="flex-1 min-w-0 flex flex-col">
-
-          {loading ? (
-            <div className="text-center py-12 text-ink/60">Carregando...</div>
-          ) : filteredExpenses.length === 0 ? (
-            <EmptyState
-              icon={<Receipt className="w-16 h-16" />}
-              message="Ainda não há despesas aqui — um bom começo."
-              submessage="Use o botão + para adicionar uma despesa."
-            />
-          ) : (
-            <div className="space-y-3">
-              {sortedExpenses.map((expense) => {
-                const isUpdating = updatingIds.includes(expense.id)
-                return (
-                  <div
-                    id={`expense-${expense.id}`}
-                    key={expense.id}
-                    className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-3 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage ${
-                      isUpdating ? 'opacity-60' : ''
-                    }`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-xl font-medium text-sidebar font-serif">
-                        {expense.description}
-                      </h4>
-                      <p className="text-sm text-ink/50">
-                        {getCategoryLabel(expense.category_id, expense.category_name)}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
-                      <button
-                        type="button"
-                        onClick={() => handleTogglePaid(expense)}
-                        disabled={isUpdating}
-                        className="disabled:opacity-60"
-                        aria-label={`Marcar ${expense.description} como ${expense.status === 'paid' ? 'em aberto' : 'pago'}`}
-                      >
-                        <span className={`text-xs px-2.5 py-1 rounded-md font-semibold transition-vintage ${
-                          expense.status === 'paid'
-                            ? 'bg-olive/20 text-olive'
-                            : 'bg-gold/20 text-gold'
-                        }`}>
-                          {expense.status === 'paid' ? 'Pago' : 'Em aberto'}
-                        </span>
-                      </button>
-                      <span
-                        className={`font-numbers text-lg font-semibold ${
-                          expense.status === 'paid' ? 'text-sidebar/80' : 'text-terracotta'
-                        }`}
-                      >
-                        {formatBRL(expense.amount_cents)}
-                      </span>
-                      <ActionMenu
-                        onView={() => openDetails(expense)}
-                        onEdit={() => openModal(expense)}
-                        onDelete={() => handleDelete(expense.id)}
-                        onAttach={(file) => handleAttachExpense(expense, file)}
-                        disabled={isUpdating}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
+        <button
+          type="button"
+          onClick={() => setAddMenuOpen((prev) => !prev)}
+          className="w-[38px] h-[38px] rounded-[10px] bg-coffee text-paper flex items-center justify-center shrink-0"
+          aria-label="Adicionar"
+        >
+          <Plus className="w-5 h-5" />
+        </button>
+        {addMenuOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setAddMenuOpen(false)} />
+            <div className="absolute right-0 top-full mt-1 z-50 bg-offWhite rounded-[14px] border border-border shadow-lg w-64 overflow-hidden animate-popup-in">
+              <button
+                onClick={() => { openModal(); setAddMenuOpen(false) }}
+                className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
+              >
+                <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                  <Edit2 className="w-4 h-4 text-ink/60" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-ink">Adicionar manualmente</p>
+                  <p className="text-xs text-ink/45">Preencher um formulário</p>
+                </div>
+              </button>
+              <button
+                onClick={() => { setIsImportModalOpen(true); setAddMenuOpen(false) }}
+                className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage flex items-center gap-3"
+              >
+                <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                  <Download className="w-4 h-4 text-ink/60" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-ink">Importar extrato</p>
+                  <p className="text-xs text-ink/45">OFX, CSV de banco</p>
+                </div>
+              </button>
             </div>
-          )}
+          </>
+        )}
+      </div>
 
+      {/* Desktop filter search bar */}
+      <div className="hidden md:block px-6 py-4">
+        <FilterSearchBar
+          value={searchTerm}
+          onChange={setSearchTerm}
+          onToggleFilters={() => setFiltersOpen((prev) => !prev)}
+          filtersOpen={filtersOpen}
+          placeholder="Buscar por nome ou categoria"
+          filterChips={activeFilterChips}
+          rightSlot={
+            <>
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
+              >
+                Importar extrato bancário
+              </button>
+              <button
+                onClick={() => setIsCategorySettingsOpen(true)}
+                className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
+              >
+                Categorias
+              </button>
+              <button
+                onClick={() => openModal()}
+                className="px-5 py-2 bg-petrol text-white rounded-md hover:bg-petrol/90 transition-vintage text-sm"
+              >
+                Nova Despesa
+              </button>
+            </>
+          }
+        />
+      </div>
+
+      {/* Scrollable cards area — mobile only internal scroll */}
+      <div className="flex-1 min-h-0 overflow-y-auto md:overflow-visible">
+        <div className={`w-full flex flex-col md:flex-row md:px-6 md:pb-4 ${filtersOpen ? 'md:gap-4' : 'md:gap-0'} md:items-stretch`}>
+          <div className="hidden md:contents">
+            <FilterSidebar
+              open={filtersOpen}
+              onOpenChange={setFiltersOpen}
+              showToggle={false}
+              collapsedWidthClass="w-0"
+              activeFiltersCount={activeFiltersCount}
+              onClearFilters={clearFilters}
+            >
+              <Select
+                variant="filter"
+                label="Mês"
+                value={selectedMonth.toString()}
+                onChange={(v) =>
+                  setSelectedMonth(v ? parseInt(v, 10) : getCurrentMonth())
+                }
+                options={MONTHS.map(m => ({ value: m.value.toString(), label: m.label }))}
+              />
+              <Select
+                variant="filter"
+                label="Ano"
+                value={selectedYear.toString()}
+                onChange={(v) =>
+                  setSelectedYear(v ? parseInt(v, 10) : getCurrentYear())
+                }
+                options={getYearOptions()}
+              />
+              <Select
+                variant="filter"
+                label="Categoria"
+                value={selectedCategoryId}
+                onChange={setSelectedCategoryId}
+                options={[
+                  { value: '', label: 'Todas' },
+                  ...categoryOptions,
+                ]}
+              />
+              <Select
+                variant="filter"
+                label="Status"
+                value={selectedStatus}
+                onChange={setSelectedStatus}
+                options={[
+                  { value: '', label: 'Todos' },
+                  { value: 'paid', label: 'Pago' },
+                  { value: 'open', label: 'Em aberto' },
+                ]}
+              />
+              <Select
+                variant="filter"
+                label="Metodo"
+                value={selectedPaymentMethod}
+                onChange={setSelectedPaymentMethod}
+                options={[
+                  { value: '', label: 'Todos' },
+                  { value: 'PIX', label: 'PIX' },
+                  { value: 'Credito', label: 'Credito' },
+                  { value: 'Debito', label: 'Debito' },
+                ]}
+              />
+              <label className="flex items-center gap-2 text-sm text-petrol pt-2">
+                <input
+                  type="checkbox"
+                  checked={onlyInstallments}
+                  onChange={(event) => setOnlyInstallments(event.target.checked)}
+                  className="w-4 h-4 rounded border-gold/60 accent-gold"
+                />
+                Somente parceladas
+              </label>
+            </FilterSidebar>
+          </div>
+
+          <div className="flex-1 min-w-0 flex flex-col px-[18px] pt-3 pb-4 md:px-0 md:pt-0 md:pb-0">
+            {loading ? (
+              <div className="text-center py-12 text-ink/60">Carregando...</div>
+            ) : filteredExpenses.length === 0 ? (
+              <EmptyState
+                icon={<Receipt className="w-16 h-16" />}
+                message="Ainda não há despesas aqui — um bom começo."
+                submessage="Use o botão + para adicionar uma despesa."
+              />
+            ) : (
+              <div className="space-y-3">
+                {sortedExpenses.map((expense) => {
+                  const isUpdating = updatingIds.includes(expense.id)
+                  return (
+                    <div
+                      id={`expense-${expense.id}`}
+                      key={expense.id}
+                      className={`flex items-start justify-between gap-3 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage ${
+                        isUpdating ? 'opacity-60' : ''
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-base font-medium text-sidebar font-serif">
+                          {expense.description}
+                        </h4>
+                        <p className="text-sm text-ink/50">
+                          {getCategoryLabel(expense.category_id, expense.category_name)}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePaid(expense)}
+                          disabled={isUpdating}
+                          className="disabled:opacity-60"
+                          aria-label={`Marcar ${expense.description} como ${expense.status === 'paid' ? 'em aberto' : 'pago'}`}
+                        >
+                          <span className={`text-xs px-2.5 py-1 rounded-md font-semibold transition-vintage ${
+                            expense.status === 'paid'
+                              ? 'bg-olive/20 text-olive'
+                              : 'bg-gold/20 text-gold'
+                          }`}>
+                            {expense.status === 'paid' ? 'Pago' : 'Em aberto'}
+                          </span>
+                        </button>
+                        <span
+                          className={`font-numbers text-base font-semibold ${
+                            expense.status === 'paid' ? 'text-sidebar/80' : 'text-sidebar'
+                          }`}
+                        >
+                          {formatBRL(expense.amount_cents)}
+                        </span>
+                      </div>
+                      <div className="shrink-0">
+                        <ActionMenu
+                          onView={() => openDetails(expense)}
+                          onEdit={() => openModal(expense)}
+                          onDelete={() => handleDelete(expense.id)}
+                          onAttach={(file) => handleAttachExpense(expense, file)}
+                          disabled={isUpdating}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
-
-        <footer className="mt-auto w-full">
-          <div className="px-6 mb-4">
-
-            <div className="flex flex-col sm:flex-row items-end justify-center gap-4 sm:gap-8">
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <div className="rounded-[16px] px-10 py-5 bg-petrol text-white text-center shadow-soft min-w-[200px]">
-                  <div className="text-sm uppercase tracking-wide text-white/80 mb-2">Em aberto</div>
-                  <div className="font-numbers text-xl font-medium">{formatBRL(open)}</div>
-                </div>
-                <div className="rounded-[16px] px-10 py-5 bg-olive text-white text-center shadow-soft min-w-[200px]">
-                  <div className="text-sm uppercase tracking-wide text-white/80 mb-2">Pago</div>
-                  <div className="font-numbers text-xl font-medium">{formatBRL(paid)}</div>
-                </div>
-              </div>
-              <div className="text-center sm:text-left">
-                <div className="text-sm uppercase tracking-wide text-ink/50">Total</div>
-                <div className="font-numbers text-xl font-medium text-petrol">{formatBRL(total)}</div>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
-              <button
-                type="button"
-                className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
-              >
-                Gerar CSV
-              </button>
-              <button
-                type="button"
-                className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
-              >
-                Gerar PDF
-              </button>
-            </div>
-          </div>
-          <div className="h-[56px] bg-paper flex items-center justify-center px-6">
-            <p className="text-center text-[13px] text-gold italic">
-              Cada conta paga é um gesto de cuidado com o amanhã da família.
-            </p>
-          </div>
-        </footer>
       </div>
+
+      {/* Mobile footer — sticky outside scroll */}
+      <div className="md:hidden shrink-0 px-[18px] pt-3 pb-2 border-t border-border bg-offWhite">
+        <div className="flex flex-row gap-3">
+          <div className="flex-1 rounded-[16px] px-4 py-4 bg-petrol text-white text-center shadow-soft">
+            <div className="text-xs uppercase tracking-wide text-white/80 mb-1">Em aberto</div>
+            <div className="font-numbers text-xl font-medium">{formatBRL(open)}</div>
+          </div>
+          <div className="flex-1 rounded-[16px] px-4 py-4 bg-olive text-white text-center shadow-soft">
+            <div className="text-xs uppercase tracking-wide text-white/80 mb-1">Pago</div>
+            <div className="font-numbers text-xl font-medium">{formatBRL(paid)}</div>
+          </div>
+        </div>
+        <div className="h-[44px] flex items-center justify-center">
+          <p className="text-center text-[13px] text-gold italic">
+            Cada conta paga é um gesto de cuidado com o amanhã da família.
+          </p>
+        </div>
+      </div>
+
+      {/* Desktop footer */}
+      <footer className="hidden md:block mt-auto w-full">
+        <div className="px-6 mb-4">
+          <div className="flex flex-row gap-4 justify-center items-center">
+            <div className="flex-1 rounded-[16px] px-6 py-5 bg-petrol text-white text-center shadow-soft">
+              <div className="text-xs uppercase tracking-wide text-white/80 mb-1">Em aberto</div>
+              <div className="font-numbers text-xl font-medium">{formatBRL(open)}</div>
+            </div>
+            <div className="flex-1 rounded-[16px] px-6 py-5 bg-olive text-white text-center shadow-soft">
+              <div className="text-xs uppercase tracking-wide text-white/80 mb-1">Pago</div>
+              <div className="font-numbers text-xl font-medium">{formatBRL(paid)}</div>
+            </div>
+          </div>
+          <div className="flex flex-row justify-end gap-3 mt-6">
+            <button
+              type="button"
+              className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
+            >
+              Gerar CSV
+            </button>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
+            >
+              Gerar PDF
+            </button>
+          </div>
+        </div>
+        <div className="h-[56px] bg-paper flex items-center justify-center px-6">
+          <p className="text-center text-[13px] text-gold italic">
+            Cada conta paga é um gesto de cuidado com o amanhã da família.
+          </p>
+        </div>
+      </footer>
 
       {/* Modal */}
       <Modal
@@ -719,7 +806,7 @@ export default function Payables() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block font-body text-ink mb-2 font-serif">
+            <label className="block font-body text-ink mb-2">
               Descrição <span className="text-terracotta">*</span>
             </label>
             <input
@@ -732,6 +819,34 @@ export default function Payables() {
             />
           </div>
 
+          <div>
+            <label className="block font-body text-ink mb-2">
+              Valor (R$) <span className="text-terracotta">*</span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              required
+              value={formData.amount}
+              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
+              placeholder="0,00"
+            />
+          </div>
+
+          <div>
+            <label className="block font-body text-ink mb-2">
+              Data <span className="text-terracotta">*</span>
+            </label>
+            <input
+              type="date"
+              required
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
+            />
+          </div>
+
           <Select
             label="Categoria"
             value={formData.categoryId}
@@ -741,24 +856,25 @@ export default function Payables() {
             variant="modal"
           />
 
-          <Select
-            label="Método de pagamento"
-            value={formData.paymentMethod}
-            onChange={(value) =>
-              setFormData({
-                ...formData,
-                paymentMethod: value as PaymentMethod,
-                installments: value === 'Credito' ? formData.installments : 1,
-              })
-            }
-            options={[
-              { value: 'PIX', label: 'PIX' },
-              { value: 'Credito', label: 'Credito' },
-              { value: 'Debito', label: 'Debito' },
-            ]}
-            required
-            variant="modal"
-          />
+          <div>
+            <label className="block font-body text-ink mb-2">Método</label>
+            <div className="flex gap-2">
+              {(['PIX', 'Credito', 'Debito'] as PaymentMethod[]).map((method) => (
+                <button
+                  key={method}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, paymentMethod: method, installments: method === 'Credito' ? formData.installments : 1 })}
+                  className={`flex-1 py-2.5 rounded-lg border text-sm font-medium transition-vintage ${
+                    formData.paymentMethod === method
+                      ? 'border-sidebar bg-sidebar text-paper'
+                      : 'border-border bg-bg text-ink hover:bg-paper'
+                  }`}
+                >
+                  {method === 'Credito' ? 'Crédito' : method === 'Debito' ? 'Débito' : method}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {formData.paymentMethod === 'Credito' ? (
             <Select
@@ -773,24 +889,6 @@ export default function Payables() {
               variant="modal"
             />
           ) : null}
-
-          <div>
-            <label className="block font-serif font-body text-ink mb-2">
-              {formData.paymentMethod === 'Credito' && formData.installments > 1
-                ? 'Valor total (R$)'
-                : 'Valor (R$)'}{' '}
-              <span className="text-terracotta">*</span>
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              required
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-              placeholder="0.00"
-            />
-          </div>
 
           {formData.paymentMethod === 'Credito' && formData.installments > 1 && formData.amount && !isNaN(parseFloat(formData.amount)) && parseFloat(formData.amount) > 0 ? (() => {
             const totalCents = Math.round(parseFloat(formData.amount) * 100)
@@ -815,29 +913,9 @@ export default function Payables() {
                     <span className="text-xs text-ink/40 ml-1">(arredondamento)</span>
                   </p>
                 )}
-                {editingExpense && (
-                  <p className="text-xs text-ink/50 pt-1 border-t border-border mt-1">
-                    {editingExpense.installment_group_id
-                      ? 'O grupo de parcelas existente será substituído por novas parcelas.'
-                      : 'Esta despesa será convertida em um grupo de parcelas mensais.'}
-                  </p>
-                )}
               </div>
             )
           })() : null}
-
-          <div>
-            <label className="block font-serif font-body text-ink mb-2">
-              Data <span className="text-terracotta">*</span>
-            </label>
-            <input
-              type="date"
-              required
-              value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-            />
-          </div>
 
           <div>
             <label className="flex items-center gap-2 cursor-pointer">
@@ -851,20 +929,7 @@ export default function Payables() {
             </label>
           </div>
 
-          <div>
-            <label className="block font-serif font-body text-ink mb-2">
-              Observação
-            </label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 resize-none"
-              rows={3}
-              placeholder="Notas adicionais..."
-            />
-          </div>
-
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={closeModal}
@@ -874,7 +939,7 @@ export default function Payables() {
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg hover:bg-coffee/90 transition-vintage"
+              className="flex-1 px-4 py-3 bg-sidebar text-paper rounded-lg hover:bg-sidebar/90 transition-vintage"
             >
               Salvar
             </button>
@@ -951,6 +1016,23 @@ export default function Payables() {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImported={loadExpenses}
+      />
+
+      <FilterSheet
+        open={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+        month={selectedMonth}
+        year={selectedYear}
+        status={selectedStatus}
+        method={selectedPaymentMethod}
+        showStatus
+        showMethod
+        onApply={(m, y, s, met) => {
+          setSelectedMonth(m)
+          setSelectedYear(y)
+          if (s !== undefined) setSelectedStatus(s)
+          if (met !== undefined) setSelectedPaymentMethod(met)
+        }}
       />
     </div>
   )

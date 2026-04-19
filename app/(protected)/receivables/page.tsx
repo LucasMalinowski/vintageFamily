@@ -12,9 +12,10 @@ import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
 import { formatBRL } from '@/lib/money'
 import { formatDate, getCurrentMonth, getCurrentYear, MONTHS, getYearOptions, getMonthRange } from '@/lib/dates'
-import { DollarSign } from 'lucide-react'
+import { ArrowDown, DollarSign, Download, Edit2, SlidersHorizontal, Search, Plus } from 'lucide-react'
 import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
+import FilterSheet from '@/components/layout/FilterSheet'
 import { mergeAttachment, parseAttachment } from '@/lib/attachments'
 import CategorySettingsModal from '@/components/categories/CategorySettingsModal'
 import BankStatementImportModal from '@/components/bank-statements/BankStatementImportModal'
@@ -53,6 +54,9 @@ export default function ReceivablesPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(true)
+
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
+  const [addMenuOpen, setAddMenuOpen] = useState(false)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCategorySettingsOpen, setIsCategorySettingsOpen] = useState(false)
@@ -297,163 +301,238 @@ export default function ReceivablesPage() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen flex flex-col">
+      <div className="flex flex-col h-full md:min-h-screen">
         <Topbar
           title="Contas a Receber"
           subtitle="O fruto do trabalho em forma de números."
           variant="textured"
         />
 
-        <div className="flex-1 flex flex-col">
-          <div className="px-6 py-4">
-            <FilterSearchBar
+        {/* Mobile filter bar */}
+        <div className="md:hidden relative border-b border-border bg-offWhite px-[18px] py-[10px] flex gap-[9px] items-center shrink-0">
+          <button
+            type="button"
+            onClick={() => setFilterSheetOpen(true)}
+            className="flex items-center gap-1.5 h-[38px] px-3 rounded-[10px] border border-border bg-bg text-ink text-sm font-medium shrink-0"
+          >
+            <SlidersHorizontal className="w-4 h-4 text-petrol" />
+            <span>{MONTHS.find(m => m.value === selectedMonth)?.label.slice(0, 3)} {selectedYear}</span>
+          </button>
+          <div className="flex-1 flex items-center relative">
+            <Search className="pointer-events-none absolute left-3 z-10 h-4 w-4 text-petrol" />
+            <input
+              type="text"
               value={searchTerm}
-              onChange={setSearchTerm}
-              onToggleFilters={() => setFiltersOpen((prev) => !prev)}
-              filtersOpen={filtersOpen}
-              placeholder="Buscar por nome ou categoria"
-              filterChips={activeFilterChips}
-              rightSlot={
-                <>
-                  <button
-                    onClick={() => setIsImportModalOpen(true)}
-                    className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
-                  >
-                    Importar extrato bancário
-                  </button>
-                  <button
-                    onClick={() => setIsCategorySettingsOpen(true)}
-                    className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
-                  >
-                    Categorias
-                  </button>
-                  <button
-                    onClick={() => openModal()}
-                    className="px-5 py-2 bg-petrol text-white rounded-md hover:bg-petrol/90 transition-vintage text-sm"
-                  >
-                    Nova Receita
-                  </button>
-                </>
-              }
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar..."
+              className="h-[38px] w-full rounded-[10px] border border-border bg-bg pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-paper-2/30"
             />
           </div>
-
-          <div className={`px-6 pb-4 w-full flex ${filtersOpen ? 'gap-4' : 'gap-0'} flex-1 items-stretch`}>
-            <FilterSidebar
-              open={filtersOpen}
-              onOpenChange={setFiltersOpen}
-              showToggle={false}
-              collapsedWidthClass="w-0"
-              activeFiltersCount={activeFiltersCount}
-              onClearFilters={clearFilters}
-            >
-              <Select
-                variant="filter"
-                label="Mês"
-                value={selectedMonth.toString()}
-                onChange={(v) => setSelectedMonth(parseInt(v))}
-                options={MONTHS.map(m => ({ value: m.value.toString(), label: m.label }))}
-              />
-              <Select
-                variant="filter"
-                label="Ano"
-                value={selectedYear.toString()}
-                onChange={(v) => setSelectedYear(parseInt(v))}
-                options={getYearOptions()}
-              />
-              <Select
-                variant="filter"
-                label="Categoria"
-                value={selectedCategoryId}
-                onChange={setSelectedCategoryId}
-                options={[
-                  { value: '', label: 'Todas' },
-                  ...categoryOptions,
-                ]}
-              />
-            </FilterSidebar>
-
-            <div className="flex-1 min-w-0 flex flex-col">
-
-            {loading ? (
-              <div className="text-center py-12 text-ink/60">Carregando...</div>
-            ) : filteredIncomes.length === 0 ? (
-              <EmptyState
-                icon={<DollarSign className="w-16 h-16" />}
-                message="Ainda não há receitas registradas."
-                submessage="Use o botão + para adicionar uma receita."
-              />
-            ) : (
-              <div className="space-y-3">
-                {filteredIncomes.map((income) => (
-                  <div
-                    key={income.id}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-xl font-medium text-sidebar font-serif">
-                        {income.description}
-                      </h4>
-                      <p className="text-sm text-ink/50">
-                        {getCategoryLabel(income.category_id, income.category_name)} • {formatDate(income.date)}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
-                      <span className="font-numbers text-lg font-semibold text-sidebar">
-                        {formatBRL(income.amount_cents)}
-                      </span>
-                      <ActionMenu
-                        onView={() => openDetails(income)}
-                        onEdit={() => openModal(income)}
-                        onDelete={() => handleDelete(income.id)}
-                        onAttach={(file) => handleAttachIncome(income, file)}
-                      />
-                    </div>
+          <button
+            type="button"
+            onClick={() => setAddMenuOpen((prev) => !prev)}
+            className="w-[38px] h-[38px] rounded-[10px] bg-coffee text-paper flex items-center justify-center shrink-0"
+            aria-label="Adicionar"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+          {addMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setAddMenuOpen(false)} />
+              <div className="absolute right-0 top-full mt-1 z-50 bg-offWhite rounded-[14px] border border-border shadow-lg w-64 overflow-hidden animate-popup-in">
+                <button
+                  onClick={() => { openModal(); setAddMenuOpen(false) }}
+                  className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
+                >
+                  <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                    <Edit2 className="w-4 h-4 text-ink/60" />
                   </div>
-                ))}
+                  <div>
+                    <p className="text-sm font-medium text-ink">Adicionar manualmente</p>
+                    <p className="text-xs text-ink/45">Preencher um formulário</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { setIsImportModalOpen(true); setAddMenuOpen(false) }}
+                  className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage flex items-center gap-3"
+                >
+                  <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                    <Download className="w-4 h-4 text-ink/60" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-ink">Importar extrato</p>
+                    <p className="text-xs text-ink/45">OFX, CSV de banco</p>
+                  </div>
+                </button>
               </div>
-            )}
+            </>
+          )}
+        </div>
+
+        {/* Desktop filter search bar */}
+        <div className="hidden md:block px-6 py-4">
+          <FilterSearchBar
+            value={searchTerm}
+            onChange={setSearchTerm}
+            onToggleFilters={() => setFiltersOpen((prev) => !prev)}
+            filtersOpen={filtersOpen}
+            placeholder="Buscar por nome ou categoria"
+            filterChips={activeFilterChips}
+            rightSlot={
+              <>
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
+                >
+                  Importar extrato bancário
+                </button>
+                <button
+                  onClick={() => setIsCategorySettingsOpen(true)}
+                  className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
+                >
+                  Categorias
+                </button>
+                <button
+                  onClick={() => openModal()}
+                  className="px-5 py-2 bg-petrol text-white rounded-md hover:bg-petrol/90 transition-vintage text-sm"
+                >
+                  Nova Receita
+                </button>
+              </>
+            }
+          />
+        </div>
+
+        {/* Scrollable cards area — mobile only internal scroll */}
+        <div className="flex-1 min-h-0 overflow-y-auto md:overflow-visible">
+          <div className={`w-full flex flex-col md:flex-row md:px-6 md:pb-4 ${filtersOpen ? 'md:gap-4' : 'md:gap-0'} md:items-stretch`}>
+            <div className="hidden md:contents">
+              <FilterSidebar
+                open={filtersOpen}
+                onOpenChange={setFiltersOpen}
+                showToggle={false}
+                collapsedWidthClass="w-0"
+                activeFiltersCount={activeFiltersCount}
+                onClearFilters={clearFilters}
+              >
+                <Select
+                  variant="filter"
+                  label="Mês"
+                  value={selectedMonth.toString()}
+                  onChange={(v) => setSelectedMonth(parseInt(v))}
+                  options={MONTHS.map(m => ({ value: m.value.toString(), label: m.label }))}
+                />
+                <Select
+                  variant="filter"
+                  label="Ano"
+                  value={selectedYear.toString()}
+                  onChange={(v) => setSelectedYear(parseInt(v))}
+                  options={getYearOptions()}
+                />
+                <Select
+                  variant="filter"
+                  label="Categoria"
+                  value={selectedCategoryId}
+                  onChange={setSelectedCategoryId}
+                  options={[
+                    { value: '', label: 'Todas' },
+                    ...categoryOptions,
+                  ]}
+                />
+              </FilterSidebar>
+            </div>
+
+            <div className="flex-1 min-w-0 flex flex-col px-[18px] pt-3 pb-4 md:px-0 md:pt-0 md:pb-0">
+              {loading ? (
+                <div className="text-center py-12 text-ink/60">Carregando...</div>
+              ) : filteredIncomes.length === 0 ? (
+                <EmptyState
+                  icon={<DollarSign className="w-16 h-16" />}
+                  message="Ainda não há receitas registradas."
+                  submessage="Use o botão + para adicionar uma receita."
+                />
+              ) : (
+                <div className="space-y-3">
+                  {filteredIncomes.map((income) => (
+                    <div
+                      key={income.id}
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xl font-medium text-sidebar font-serif">
+                          {income.description}
+                        </h4>
+                        <p className="text-sm text-ink/50">
+                          {getCategoryLabel(income.category_id, income.category_name)} · {formatDate(income.date)}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                        <span className="font-numbers text-lg font-semibold text-sidebar">
+                          {formatBRL(income.amount_cents)}
+                        </span>
+                        <ActionMenu
+                          onView={() => openDetails(income)}
+                          onEdit={() => openModal(income)}
+                          onDelete={() => handleDelete(income.id)}
+                          onAttach={(file) => handleAttachIncome(income, file)}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-
-          <footer className="mt-auto w-full">
-            <div className="px-6 mb-4">
-              <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
-                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                  <div className="rounded-[16px] px-10 py-5 bg-olive text-white text-center shadow-soft min-w-[200px]">
-                    <div className="text-sm uppercase tracking-wide text-white/80 mb-2">Recebido</div>
-                    <div className="font-numbers text-xl font-semibold">{formatBRL(total)}</div>
-                  </div>
-                </div>
-                <div className="text-center sm:text-left">
-                  <div className="text-sm uppercase tracking-wide text-ink/50">Total</div>
-                  <div className="font-numbers text-xl font-semibold text-petrol">{filteredIncomes.length}</div>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
-                <button
-                  type="button"
-                  className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
-                >
-                  Gerar CSV
-                </button>
-                <button
-                  type="button"
-                  className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
-                >
-                  Gerar PDF
-                </button>
-              </div>
-            </div>
-            <div className="h-[56px] bg-paper flex items-center justify-center px-6">
-              <p className="text-center text-[13px] text-gold italic">
-                Acompanhe o que entra para decidir para onde a vida vai.
-              </p>
-            </div>
-          </footer>
         </div>
+
+        {/* Mobile footer — sticky outside scroll */}
+        <div className="md:hidden shrink-0 px-[18px] pt-3 pb-2 border-t border-border bg-offWhite">
+          <div className="rounded-[16px] px-6 py-4 bg-petrol text-white shadow-soft flex items-center justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-white/80 mb-1">Total Recebido</div>
+              <div className="font-numbers text-xl font-semibold">{formatBRL(total)}</div>
+            </div>
+            <ArrowDown className="w-6 h-6 text-white/60" />
+          </div>
+          <div className="h-[44px] flex items-center justify-center">
+            <p className="text-center text-[13px] text-gold italic">
+              O fruto do trabalho honrado alimenta os sonhos da família.
+            </p>
+          </div>
+        </div>
+
+        {/* Desktop footer */}
+        <footer className="hidden md:block mt-auto w-full">
+          <div className="px-6 mb-4">
+            <div className="rounded-[16px] px-6 py-5 bg-petrol text-white shadow-soft flex items-center justify-between">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-white/80 mb-1">Total Recebido</div>
+                <div className="font-numbers text-xl font-semibold">{formatBRL(total)}</div>
+              </div>
+              <ArrowDown className="w-6 h-6 text-white/60" />
+            </div>
+            <div className="flex flex-row justify-end gap-3 mt-4">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
+              >
+                Gerar CSV
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
+              >
+                Gerar PDF
+              </button>
+            </div>
+          </div>
+          <div className="h-[56px] bg-paper flex items-center justify-center px-6">
+            <p className="text-center text-[13px] text-gold italic">
+              O fruto do trabalho honrado alimenta os sonhos da família.
+            </p>
+          </div>
+        </footer>
       </div>
 
       <Modal
@@ -609,6 +688,17 @@ export default function ReceivablesPage() {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImported={loadIncomes}
+      />
+
+      <FilterSheet
+        open={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+        month={selectedMonth}
+        year={selectedYear}
+        onApply={(m, y) => {
+          setSelectedMonth(m)
+          setSelectedYear(y)
+        }}
       />
     </AppLayout>
   )

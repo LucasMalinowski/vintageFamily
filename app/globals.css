@@ -100,6 +100,15 @@ input[type='date'] {
   .transition-vintage {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
+
+  .animate-popup-in {
+    animation: popup-in 0.15s ease-out forwards;
+  }
+}
+
+@keyframes popup-in {
+  from { opacity: 0; transform: scale(0.88) translateY(-8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 

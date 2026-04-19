@@ -103,22 +103,25 @@ export default function RemindersPage() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen flex flex-col">
+      <div className="flex flex-col h-full md:min-h-screen">
         <Topbar
           title="Lembretes"
           subtitle="Pequenas lembranças para um mês mais leve."
           variant="textured"
           actions={
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="min-w-[160px] px-5 py-2 bg-sidebar text-white rounded-md hover:bg-olive/90 transition-vintage text-sm font-semibold"
-            >
-              + Novo lembrete
-            </button>
+            <div className="hidden md:flex">
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="min-w-[160px] px-5 py-2 bg-sidebar text-white rounded-md hover:bg-olive/90 transition-vintage text-sm font-semibold"
+              >
+                + Novo lembrete
+              </button>
+            </div>
           }
         />
 
-        <div className="flex-1 px-6 pb-4">
+        {/* Scrollable cards area — mobile only internal scroll */}
+        <div className="flex-1 min-h-0 overflow-y-auto md:overflow-visible px-[18px] pt-3 pb-4 md:px-6 md:pt-0">
           {loading ? (
             <div className="py-12 text-center text-ink/60">Carregando...</div>
           ) : reminders.length === 0 ? (
@@ -134,11 +137,11 @@ export default function RemindersPage() {
               {reminders.map((reminder) => (
                 <div
                   key={reminder.id}
-                  className={`rounded-[12px] border border-border bg-offWhite p-5 shadow-soft transition-vintage ${
+                  className={`rounded-[12px] border border-border bg-offWhite p-4 shadow-soft transition-vintage ${
                     reminder.is_done ? 'opacity-65' : 'hover:shadow-vintage'
                   }`}
                 >
-                  <div className="flex items-start gap-4">
+                  <div className="flex items-start gap-3">
                     <button
                       onClick={() => toggleDone(reminder.id, reminder.is_done)}
                       className={`mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md border transition-vintage ${
@@ -152,26 +155,26 @@ export default function RemindersPage() {
                     </button>
 
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div>
-                          <p className={`font-body text-base text-sidebar ${reminder.is_done ? 'line-through' : ''}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className={`font-body text-base font-semibold text-sidebar ${reminder.is_done ? 'line-through' : ''}`}>
                             {reminder.title}
                           </p>
-                          <p className="mt-1 text-sm text-ink/45">
+                          <p className="mt-0.5 text-sm text-ink/45">
                             {reminder.is_done
-                              ? 'Concluído.'
+                              ? 'Concluído'
                               : reminder.due_date
-                                ? `Vence em ${formatDate(reminder.due_date)}.`
-                                : 'Sem data definida.'}
+                                ? `Vence em ${formatDate(reminder.due_date, 'dd/MM')}`
+                                : 'Sem data definida'}
                           </p>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2">
-                          {reminder.due_date ? (
-                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getReminderBadgeColor(reminder)}`}>
-                              {formatDate(reminder.due_date, 'dd/MM')}
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          {!reminder.is_done && isDueDateOverdue(reminder.due_date, reminder.is_done) && (
+                            <span className="rounded-full px-3 py-1 text-xs font-semibold bg-terracotta/15 text-terracotta">
+                              Vencido
                             </span>
-                          ) : null}
+                          )}
                           <span
                             className={`rounded-full px-3 py-1 text-xs font-semibold ${
                               getCategoryColors[reminder.category] || getCategoryColors['Outros']
@@ -189,10 +192,26 @@ export default function RemindersPage() {
           )}
         </div>
 
-        <footer className="mt-auto w-full">
+        {/* Mobile footer — sticky outside scroll */}
+        <div className="md:hidden shrink-0 px-[18px] pt-2 pb-2 border-t border-border bg-offWhite">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="w-full bg-coffee text-paper rounded-[12px] py-[13px] text-sm font-semibold transition-vintage hover:bg-coffee/90"
+          >
+            + Novo lembrete
+          </button>
+          <div className="h-[40px] flex items-center justify-center">
+            <p className="text-center text-[13px] text-gold italic">
+              Lembrar com calma também é uma forma de cuidar da casa.
+            </p>
+          </div>
+        </div>
+
+        {/* Desktop footer */}
+        <footer className="hidden md:block mt-auto w-full">
           <div className="h-[56px] bg-paper flex items-center justify-center px-6">
             <p className="text-center text-[13px] text-gold italic">
-              Lembrar com calma tambem e uma forma de cuidar da casa.
+              Lembrar com calma também é uma forma de cuidar da casa.
             </p>
           </div>
         </footer>

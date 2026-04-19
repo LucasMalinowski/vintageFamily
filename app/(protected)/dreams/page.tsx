@@ -15,8 +15,9 @@ import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { formatBRL } from '@/lib/money'
 import { formatDate, getCurrentMonth, getCurrentYear, getMonthRange, getYearOptions, MONTHS } from '@/lib/dates'
-import { PiggyBank } from 'lucide-react'
+import { PiggyBank, SlidersHorizontal, Search, Plus } from 'lucide-react'
 import { matchesSearch } from '@/lib/filterSearch'
+import FilterSheet from '@/components/layout/FilterSheet'
 
 interface Dream {
   id: string
@@ -93,6 +94,9 @@ export default function DreamsPage() {
   const [selectedDreamId, setSelectedDreamId] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(true)
+
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
+  const [addMenuOpen, setAddMenuOpen] = useState(false)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isDreamSettingsOpen, setIsDreamSettingsOpen] = useState(false)
@@ -256,166 +260,241 @@ export default function DreamsPage() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen flex flex-col">
+      <div className="flex flex-col h-full md:min-h-screen">
         <Topbar
           title="Poupança"
           subtitle="Todo grande sonho começa com pequenos passos."
           variant="textured"
         />
 
-        <div className="flex-1 flex flex-col">
-          <div className="px-6 py-4">
-            <FilterSearchBar
+        {/* Mobile filter bar */}
+        <div className="md:hidden relative border-b border-border bg-offWhite px-[18px] py-[10px] flex gap-[9px] items-center shrink-0">
+          <button
+            type="button"
+            onClick={() => setFilterSheetOpen(true)}
+            className="flex items-center gap-1.5 h-[38px] px-3 rounded-[10px] border border-border bg-bg text-ink text-sm font-medium shrink-0"
+          >
+            <SlidersHorizontal className="w-4 h-4 text-petrol" />
+            <span>{MONTHS.find(m => m.value === selectedMonth)?.label.slice(0, 3)} {selectedYear}</span>
+          </button>
+          <div className="flex-1 flex items-center relative">
+            <Search className="pointer-events-none absolute left-3 z-10 h-4 w-4 text-petrol" />
+            <input
+              type="text"
               value={searchTerm}
-              onChange={setSearchTerm}
-              onToggleFilters={() => setFiltersOpen((prev) => !prev)}
-              filtersOpen={filtersOpen}
-              placeholder="Buscar por nome ou categoria"
-              filterChips={activeFilterChips}
-              rightSlot={
-                <>
-                  <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="min-w-[140px] px-5 py-2 bg-sidebar text-white rounded-md hover:bg-olive/90 transition-vintage text-sm font-semibold"
-                  >
-                    Guardar
-                  </button>
-                  <button
-                    onClick={() => setIsDreamSettingsOpen(true)}
-                    className="px-5 py-2 bg-petrol text-white rounded-md hover:bg-petrol/90 transition-vintage text-sm font-semibold"
-                  >
-                    Categorias
-                  </button>
-                  <button
-                    type="button"
-                    className="px-5 py-2 bg-petrol text-white rounded-md hover:bg-petrol/90 transition-vintage text-sm font-semibold"
-                  >
-                    Resgatar
-                  </button>
-                </>
-              }
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar..."
+              className="h-[38px] w-full rounded-[10px] border border-border bg-bg pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-paper-2/30"
             />
           </div>
-
-          <div className={`px-6 pb-4 w-full flex ${filtersOpen ? 'gap-4' : 'gap-0'} flex-1 items-stretch`}>
-            <FilterSidebar
-              open={filtersOpen}
-              onOpenChange={setFiltersOpen}
-              showToggle={false}
-              collapsedWidthClass="w-0"
-              activeFiltersCount={activeFiltersCount}
-              onClearFilters={clearFilters}
-            >
-              <Select
-                variant="filter"
-                label="Mês"
-                value={selectedMonth.toString()}
-                onChange={(value) => setSelectedMonth(parseInt(value))}
-                options={MONTHS.map((month) => ({ value: month.value.toString(), label: month.label }))}
-              />
-              <Select
-                variant="filter"
-                label="Ano"
-                value={selectedYear.toString()}
-                onChange={(value) => setSelectedYear(parseInt(value))}
-                options={getYearOptions()}
-              />
-              <Select
-                variant="filter"
-                label="Categoria"
-                value={selectedDreamId}
-                onChange={setSelectedDreamId}
-                options={[
-                  { value: '', label: 'Todas' },
-                  ...dreamOptions,
-                ]}
-              />
-            </FilterSidebar>
-
-            <div className="flex-1 min-w-0 flex flex-col">
-
-            {loading ? (
-              <div className="text-center py-12 text-ink/60">Carregando...</div>
-            ) : visibleDreams.length === 0 ? (
-              <EmptyState
-                icon={<PiggyBank className="w-16 h-16" />}
-                message="Ainda não há sonhos cadastrados."
-                submessage="Use o botão + para adicionar um sonho e registrar um valor poupado."
-              />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {visibleDreams.map((dream) => {
-                  const totals = dreamTotals.get(dream.id)
-                  const total = totals?.total ?? 0
-                  const lastDate = totals?.lastDate
-
-                  return (
-                    <div
-                      key={dream.id}
-                      className="p-4 bg-offWhite rounded-[12px] border border-border hover:shadow-soft transition-vintage"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex flex-row gap-2 items-end">
-                          <h4 className="text-xl font-medium text-sidebar font-serif">{getDreamLabel(dream.id)}</h4>
-                          {dream.is_system ? (
-                            <span className="flex text-center text-[11px] h-5 px-2 py-0.5 my-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>
-                          ) : null}
-                        </div>
-                        <ActionMenu
-                          onView={() => setSelectedDreamId(dream.id)}
-                        />
-                      </div>
-                      <p className="text-sm text-ink/25 mb-2">
-                        Última atualização {lastDate ? formatDate(lastDate) : '—'}
-                      </p>
-                      <div className="text-center">
-                        <div className="font-numbers text-3xl font-semibold text-sidebar leading-tight">
-                          {formatBRL(total)}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
+          <button
+            type="button"
+            onClick={() => setAddMenuOpen((prev) => !prev)}
+            className="w-[38px] h-[38px] rounded-[10px] bg-coffee text-paper flex items-center justify-center shrink-0"
+            aria-label="Adicionar"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+          {addMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setAddMenuOpen(false)} />
+              <div className="absolute right-0 top-full mt-1 z-50 bg-offWhite rounded-[14px] border border-border shadow-lg w-52 overflow-hidden animate-popup-in">
+                <button
+                  onClick={() => { setIsModalOpen(true); setAddMenuOpen(false) }}
+                  className="w-full text-left px-4 py-3.5 text-sm text-ink hover:bg-paper transition-vintage"
+                >
+                  Guardar em sonho
+                </button>
               </div>
-            )}
+            </>
+          )}
+        </div>
+
+        {/* Desktop filter search bar */}
+        <div className="hidden md:block px-6 py-4">
+          <FilterSearchBar
+            value={searchTerm}
+            onChange={setSearchTerm}
+            onToggleFilters={() => setFiltersOpen((prev) => !prev)}
+            filtersOpen={filtersOpen}
+            placeholder="Buscar por nome ou categoria"
+            filterChips={activeFilterChips}
+            rightSlot={
+              <>
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="min-w-[140px] px-5 py-2 bg-sidebar text-white rounded-md hover:bg-olive/90 transition-vintage text-sm font-semibold"
+                >
+                  Guardar
+                </button>
+                <button
+                  onClick={() => setIsDreamSettingsOpen(true)}
+                  className="px-5 py-2 bg-petrol text-white rounded-md hover:bg-petrol/90 transition-vintage text-sm font-semibold"
+                >
+                  Categorias
+                </button>
+                <button
+                  type="button"
+                  className="px-5 py-2 bg-petrol text-white rounded-md hover:bg-petrol/90 transition-vintage text-sm font-semibold"
+                >
+                  Resgatar
+                </button>
+              </>
+            }
+          />
+        </div>
+
+        {/* Scrollable cards area — mobile only internal scroll */}
+        <div className="flex-1 min-h-0 overflow-y-auto md:overflow-visible">
+          <div className={`w-full flex flex-col md:flex-row md:px-6 md:pb-4 ${filtersOpen ? 'md:gap-4' : 'md:gap-0'} md:items-stretch`}>
+            <div className="hidden md:contents">
+              <FilterSidebar
+                open={filtersOpen}
+                onOpenChange={setFiltersOpen}
+                showToggle={false}
+                collapsedWidthClass="w-0"
+                activeFiltersCount={activeFiltersCount}
+                onClearFilters={clearFilters}
+              >
+                <Select
+                  variant="filter"
+                  label="Mês"
+                  value={selectedMonth.toString()}
+                  onChange={(value) => setSelectedMonth(parseInt(value))}
+                  options={MONTHS.map((month) => ({ value: month.value.toString(), label: month.label }))}
+                />
+                <Select
+                  variant="filter"
+                  label="Ano"
+                  value={selectedYear.toString()}
+                  onChange={(value) => setSelectedYear(parseInt(value))}
+                  options={getYearOptions()}
+                />
+                <Select
+                  variant="filter"
+                  label="Categoria"
+                  value={selectedDreamId}
+                  onChange={setSelectedDreamId}
+                  options={[
+                    { value: '', label: 'Todas' },
+                    ...dreamOptions,
+                  ]}
+                />
+              </FilterSidebar>
+            </div>
+
+            <div className="flex-1 min-w-0 flex flex-col px-[18px] pt-3 pb-4 md:px-0 md:pt-0 md:pb-0">
+              {loading ? (
+                <div className="text-center py-12 text-ink/60">Carregando...</div>
+              ) : visibleDreams.length === 0 ? (
+                <EmptyState
+                  icon={<PiggyBank className="w-16 h-16" />}
+                  message="Ainda não há sonhos cadastrados."
+                  submessage="Use o botão + para adicionar um sonho e registrar um valor poupado."
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {visibleDreams.map((dream) => {
+                    const totals = dreamTotals.get(dream.id)
+                    const total = totals?.total ?? 0
+                    const lastDate = totals?.lastDate
+
+                    return (
+                      <div
+                        key={dream.id}
+                        className="p-4 bg-offWhite rounded-[12px] border border-border hover:shadow-soft transition-vintage"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex flex-row gap-2 items-end">
+                            <h4 className="text-xl font-medium text-sidebar font-serif">{getDreamLabel(dream.id)}</h4>
+                            {dream.is_system ? (
+                              <span className="flex text-center text-[11px] h-5 px-2 py-0.5 my-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>
+                            ) : null}
+                          </div>
+                          <ActionMenu
+                            onView={() => setSelectedDreamId(dream.id)}
+                          />
+                        </div>
+                        <p className="text-sm text-ink/25 mb-2">
+                          Última atualização {lastDate ? formatDate(lastDate) : '—'}
+                        </p>
+                        <div className="text-center">
+                          <div className="font-numbers text-3xl font-semibold text-sidebar leading-tight">
+                            {formatBRL(total)}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
-
-          <footer className="mt-auto w-full">
-            <div className="px-6 mb-4">
-              <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <div className="rounded-[16px] px-10 py-5 bg-petrol text-white text-center shadow-soft min-w-[200px]">
-                  <div className="text-sm uppercase tracking-wide text-white/80 mb-2">Resgatado</div>
-                  <div className="font-numbers text-xl font-semibold">{formatBRL(totalRedeemed)}</div>
-                </div>
-                <div className="rounded-[16px] px-10 py-5 bg-olive text-white text-center shadow-soft min-w-[200px]">
-                  <div className="text-sm uppercase tracking-wide text-white/80 mb-2">Poupado</div>
-                  <div className="font-numbers text-xl font-semibold">{formatBRL(totalSaved)}</div>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
-                <button
-                  type="button"
-                  className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
-                >
-                  Gerar CSV
-                </button>
-                <button
-                  type="button"
-                  className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
-                >
-                  Gerar PDF
-                </button>
-              </div>
-            </div>
-            <div className="h-[56px] bg-paper flex items-center justify-center px-6">
-              <p className="text-center text-[13px] text-gold italic">
-                Guardar hoje para viver amanhã: cada contribuição carrega um desejo em silêncio.
-              </p>
-            </div>
-          </footer>
         </div>
+
+        {/* Mobile footer — sticky outside scroll */}
+        <div className="md:hidden shrink-0 px-[18px] pt-3 pb-2 border-t border-border bg-offWhite">
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              className="flex-1 py-4 bg-olive text-white rounded-[16px] font-semibold text-base hover:bg-olive/90 transition-vintage shadow-soft"
+            >
+              Guardar
+            </button>
+            <button
+              type="button"
+              className="flex-1 py-4 bg-paper text-ink border border-border rounded-[16px] font-semibold text-base hover:bg-bg transition-vintage shadow-soft"
+            >
+              Resgatar
+            </button>
+          </div>
+          <div className="h-[44px] flex items-center justify-center">
+            <p className="text-center text-[13px] text-gold italic">
+              Poupança é um abraço longo no amanhã.
+            </p>
+          </div>
+        </div>
+
+        {/* Desktop footer */}
+        <footer className="hidden md:block mt-auto w-full">
+          <div className="px-6 mb-4">
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(true)}
+                className="flex-1 py-4 bg-olive text-white rounded-[16px] font-semibold text-base hover:bg-olive/90 transition-vintage shadow-soft"
+              >
+                Guardar
+              </button>
+              <button
+                type="button"
+                className="flex-1 py-4 bg-paper text-ink border border-border rounded-[16px] font-semibold text-base hover:bg-bg transition-vintage shadow-soft"
+              >
+                Resgatar
+              </button>
+            </div>
+            <div className="flex flex-row justify-end gap-3 mt-4">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
+              >
+                Gerar CSV
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
+              >
+                Gerar PDF
+              </button>
+            </div>
+          </div>
+          <div className="h-[56px] bg-paper flex items-center justify-center px-6">
+            <p className="text-center text-[13px] text-gold italic">
+              Poupança é um abraço longo no amanhã.
+            </p>
+          </div>
+        </footer>
       </div>
 
       <Modal
@@ -500,6 +579,17 @@ export default function DreamsPage() {
         onChanged={() => {
           loadDreams()
           loadContributions()
+        }}
+      />
+
+      <FilterSheet
+        open={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+        month={selectedMonth}
+        year={selectedYear}
+        onApply={(m, y) => {
+          setSelectedMonth(m)
+          setSelectedYear(y)
         }}
       />
     </AppLayout>

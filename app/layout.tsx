@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: 'Gestão financeira familiar com alma vintage',
   manifest: '/manifest.json',
   themeColor: '#3E5F4B',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
+  viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
