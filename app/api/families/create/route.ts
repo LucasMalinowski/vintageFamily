@@ -65,6 +65,7 @@ export async function POST(request: Request) {
       { family_id: family.id, kind: 'expense', name: 'Saúde', is_system: true },
       { family_id: family.id, kind: 'expense', name: 'Educação', is_system: true },
       { family_id: family.id, kind: 'expense', name: 'Hobbie', is_system: true },
+      { family_id: family.id, kind: 'expense', name: 'Outros', is_system: true },
       // Incomes
       { family_id: family.id, kind: 'income', name: 'Renda Familiar', is_system: true },
       { family_id: family.id, kind: 'income', name: 'Outras Receitas', is_system: true },

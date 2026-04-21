@@ -552,6 +552,10 @@ export type Database = {
           id: string
           name: string
           password_hash: string
+          phone_number: string | null
+          phone_number_pending: string | null
+          phone_verification_code: string | null
+          phone_verification_expires_at: string | null
           role: string
           super_admin: boolean
         }
@@ -563,6 +567,10 @@ export type Database = {
           id?: string
           name: string
           password_hash: string
+          phone_number?: string | null
+          phone_number_pending?: string | null
+          phone_verification_code?: string | null
+          phone_verification_expires_at?: string | null
           role?: string
           super_admin?: boolean
         }
@@ -574,6 +582,10 @@ export type Database = {
           id?: string
           name?: string
           password_hash?: string
+          phone_number?: string | null
+          phone_number_pending?: string | null
+          phone_verification_code?: string | null
+          phone_verification_expires_at?: string | null
           role?: string
           super_admin?: boolean
         }
