@@ -56,8 +56,8 @@ export const FAMILY_CATEGORY_SEEDS: CategorySeed[] = [
     is_system: true,
     children: [
       { name: 'Combustível' },
-      { name: 'Uber / Táxi' },
-      { name: 'Ônibus / Metrô' },
+      { name: 'Uber / Ônibus / Metrô' },
+      { name: 'Manutenção' },
     ],
   },
   {
