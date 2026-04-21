@@ -64,7 +64,8 @@ const formatPaymentLabel = (method: PaymentMethod | null, installments: number |
     return count ? `Credito ${count}` : 'Credito'
   }
   if (method === 'Debito') return 'Debito'
-  return 'PIX'
+  if (method === 'PIX') return 'PIX'
+  return 'Não definido'
 }
 
 export default function Payables() {
@@ -216,7 +217,7 @@ export default function Payables() {
         status: row.status === 'paid' ? 'paid' : 'open',
         paid_at: row.paid_at,
         notes: row.notes,
-        payment_method: normalizePaymentMethod(row.payment_method) ?? 'PIX',
+        payment_method: normalizePaymentMethod(row.payment_method),
         installments: row.installments || 1,
         installment_group_id: row.installment_group_id,
         installment_index: row.installment_index,
@@ -725,6 +726,14 @@ export default function Payables() {
                         >
                           {formatBRL(expense.amount_cents)}
                         </span>
+                        {expense.payment_method === null && (
+                          <span
+                            title="Método de pagamento não definido. Edite para definir."
+                            className="text-xs text-amber-600 border border-amber-400/40 rounded px-1.5 py-0.5 cursor-help"
+                          >
+                            ⚠ Sem método
+                          </span>
+                        )}
                       </div>
                       <div className="shrink-0">
                         <ActionMenu
