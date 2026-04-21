@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { FAMILY_CATEGORY_SEEDS } from '@/lib/families/categorySeeds'
 
 type CreateFamilyBody = {
   familyName: string
@@ -54,26 +55,44 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: userError.message }, { status: 500 })
     }
 
-    const categories = [
-      // Expenses
-      { family_id: family.id, kind: 'expense', name: 'Aluguel', is_system: true },
-      { family_id: family.id, kind: 'expense', name: 'Energia', is_system: true },
-      { family_id: family.id, kind: 'expense', name: 'Água', is_system: true },
-      { family_id: family.id, kind: 'expense', name: 'Mercado', is_system: true },
-      { family_id: family.id, kind: 'expense', name: 'Lazer', is_system: true },
-      { family_id: family.id, kind: 'expense', name: 'Investimentos para casa', is_system: true },
-      { family_id: family.id, kind: 'expense', name: 'Saúde', is_system: true },
-      { family_id: family.id, kind: 'expense', name: 'Educação', is_system: true },
-      { family_id: family.id, kind: 'expense', name: 'Hobbie', is_system: true },
-      { family_id: family.id, kind: 'expense', name: 'Outros', is_system: true },
-      // Incomes
-      { family_id: family.id, kind: 'income', name: 'Renda Familiar', is_system: true },
-      { family_id: family.id, kind: 'income', name: 'Outras Receitas', is_system: true },
-    ]
+    const parentCategories = FAMILY_CATEGORY_SEEDS.map(({ children, ...category }) => ({
+      family_id: family.id,
+      ...category,
+    }))
 
-    const { error: categoriesError } = await supabaseAdmin.from('categories').insert(categories)
+    const { data: createdParents, error: categoriesError } = await supabaseAdmin
+      .from('categories')
+      .insert(parentCategories)
+      .select('id,name,kind')
+
     if (categoriesError) {
       return NextResponse.json({ error: categoriesError.message }, { status: 500 })
+    }
+
+    const parentByKey = new Map(
+      (createdParents || []).map((category) => [`${category.kind}:${category.name}`, category.id])
+    )
+
+    const childCategories = FAMILY_CATEGORY_SEEDS.flatMap((category) => {
+      const parentId = parentByKey.get(`${category.kind}:${category.name}`)
+      if (!parentId || !category.children?.length) {
+        return []
+      }
+
+      return category.children.map((child) => ({
+        family_id: family.id,
+        kind: category.kind,
+        name: child.name,
+        parent_id: parentId,
+        is_system: true,
+      }))
+    })
+
+    if (childCategories.length > 0) {
+      const { error: childCategoriesError } = await supabaseAdmin.from('categories').insert(childCategories)
+      if (childCategoriesError) {
+        return NextResponse.json({ error: childCategoriesError.message }, { status: 500 })
+      }
     }
 
     const dreams = [
