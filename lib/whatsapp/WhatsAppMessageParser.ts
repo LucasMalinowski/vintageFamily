@@ -1,3 +1,4 @@
+import { addMonths, format, parseISO } from 'date-fns'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { buildCategoryLabelMap, findCategoryIdByStoredName, CategoryRecord } from '@/lib/categories'
 import { nvidiaAIService, AIExtractedRecord, IntentClassification } from '@/lib/ai/NvidiaAIService'
@@ -8,10 +9,12 @@ import { formatBRL } from '@/lib/money'
 const USAGE_HINT = `Olá! 👋 Para registrar suas finanças, envie mensagens como:
 
 💸 *Despesa:* "Gastei 50 reais no mercado no pix"
+💸 *Parcelado:* "Comprei um tênis de 150 em 3x"
 💰 *Receita:* "Recebi 1500 de salário"
 ⭐ *Sonho:* "Guardei 200 para a viagem"
+📝 *Lembrete:* "Me lembre de pagar o aluguel"
 
-Você também pode combinar: "Recebi 150 e gastei 30 no almoço"`
+Você também pode combinar: "Gastei 30 na farmácia e 55 de gasolina"`
 
 type SaveResult =
   | { ok: true; line: string }
@@ -124,7 +127,7 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
   const results: SaveResult[] = []
 
   for (const record of records) {
-    const result = await saveRecord(record, familyId, categoryList, labelMap)
+    const result = await saveRecord(record, familyId, categoryList, labelMap, todayISO)
     results.push(result)
   }
 
@@ -148,8 +151,33 @@ async function saveRecord(
   record: AIExtractedRecord,
   familyId: string,
   categoryList: CategoryRecord[],
-  labelMap: Map<string, string>
+  labelMap: Map<string, string>,
+  todayISO: string
 ): Promise<SaveResult> {
+
+  // ── Reminder ────────────────────────────────────────────────────────────────
+  if (record.type === 'reminder') {
+    const { error } = await supabaseAdmin
+      .from('reminders')
+      .insert({
+        family_id: familyId,
+        title: record.description,
+        due_date: record.date,
+        is_done: false,
+        note: 'Criado via WhatsApp',
+      })
+    const dueDateStr = record.date === todayISO
+      ? 'hoje'
+      : record.date.split('-').reverse().join('/')
+    const line = `📝 ${record.description} _(lembrete para ${dueDateStr})_`
+    if (error) {
+      console.error('[WA] reminder insert error:', error.message)
+      return { ok: false, line }
+    }
+    return { ok: true, line }
+  }
+
+  // ── Category resolution (expense, income, dream) ────────────────────────────
   const kind = record.type === 'income' ? 'income' : 'expense'
 
   let categoryId = record.category_name
@@ -167,7 +195,42 @@ async function saveRecord(
 
   const resolvedLabel = categoryId ? (labelMap.get(categoryId) ?? categoryName) : categoryName
 
+  // ── Expense ─────────────────────────────────────────────────────────────────
   if (record.type === 'expense') {
+    const status = record.status ?? 'paid'
+    const installmentCount = Math.max(1, record.installments ?? 1)
+
+    if (installmentCount > 1) {
+      const groupId = crypto.randomUUID()
+      const perInstallment = Math.floor(record.amount_cents / installmentCount)
+      const rows = Array.from({ length: installmentCount }, (_, i) => ({
+        family_id: familyId,
+        description: record.description,
+        amount_cents: i === installmentCount - 1
+          ? record.amount_cents - perInstallment * (installmentCount - 1)
+          : perInstallment,
+        date: format(addMonths(parseISO(record.date), i), 'yyyy-MM-dd'),
+        category_id: categoryId,
+        category_name: categoryName ?? 'Outros',
+        payment_method: record.payment_method ?? 'Credito',
+        status: i === 0 ? 'paid' : 'open',
+        notes: 'Criado via WhatsApp',
+        low_confidence: false,
+        installments: installmentCount,
+        installment_index: i + 1,
+        installment_group_id: groupId,
+      }))
+
+      const { error } = await supabaseAdmin.from('expenses').insert(rows)
+      const catStr = resolvedLabel ? ` (${resolvedLabel})` : ''
+      const line = `💸 ${formatBRL(record.amount_cents)} — ${record.description}${catStr} _(${formatBRL(perInstallment)} × ${installmentCount} — 1ª parcela paga)_`
+      if (error) {
+        console.error('[WA] installment insert error:', error.message)
+        return { ok: false, line }
+      }
+      return { ok: true, line }
+    }
+
     const { data, error } = await supabaseAdmin
       .from('expenses')
       .insert({
@@ -178,7 +241,7 @@ async function saveRecord(
         category_id: categoryId,
         category_name: categoryName ?? 'Outros',
         payment_method: record.payment_method,
-        status: 'open',
+        status,
         notes: 'Criado via WhatsApp',
         low_confidence: false,
         installments: 1,
@@ -186,14 +249,18 @@ async function saveRecord(
       .select('id')
       .single()
 
-    const line = `💸 ${formatBRL(record.amount_cents)} — ${record.description}${resolvedLabel ? ` (${resolvedLabel})` : ''}`
+    const statusLabel = status === 'paid' ? '_(pago)_' : '_(pendente)_'
+    const catStr = resolvedLabel ? ` (${resolvedLabel})` : ''
+    const line = `💸 ${formatBRL(record.amount_cents)} — ${record.description}${catStr} ${statusLabel}`
     if (error || !data?.id) {
       console.error('[WA] expense insert error:', error?.message)
       return { ok: false, line }
     }
     return { ok: true, line }
+  }
 
-  } else if (record.type === 'income') {
+  // ── Income ──────────────────────────────────────────────────────────────────
+  if (record.type === 'income') {
     const { data, error } = await supabaseAdmin
       .from('incomes')
       .insert({
@@ -209,45 +276,46 @@ async function saveRecord(
       .select('id')
       .single()
 
-    const line = `💰 ${formatBRL(record.amount_cents)} — ${record.description}${resolvedLabel ? ` (${resolvedLabel})` : ''}`
+    const catStr = resolvedLabel ? ` (${resolvedLabel})` : ''
+    const line = `💰 ${formatBRL(record.amount_cents)} — ${record.description}${catStr} _(recebido)_`
     if (error || !data?.id) {
       console.error('[WA] income insert error:', error?.message)
       return { ok: false, line }
     }
     return { ok: true, line }
-
-  } else {
-    const dreamName = record.dream_name ?? record.description
-    const { data: dream } = await supabaseAdmin
-      .from('dreams')
-      .select('id,name')
-      .eq('family_id', familyId)
-      .ilike('name', `%${dreamName}%`)
-      .maybeSingle()
-
-    if (!dream) {
-      return { ok: false, line: `⭐ ${formatBRL(record.amount_cents)} — Sonho "${dreamName}" não encontrado no Florim` }
-    }
-
-    const { data, error } = await supabaseAdmin
-      .from('dream_contributions')
-      .insert({
-        family_id: familyId,
-        dream_id: dream.id,
-        amount_cents: record.amount_cents,
-        date: record.date,
-        notes: 'Criado via WhatsApp',
-      })
-      .select('id')
-      .single()
-
-    const line = `⭐ ${formatBRL(record.amount_cents)} — ${dream.name} (Sonho)`
-    if (error || !data?.id) {
-      console.error('[WA] dream insert error:', error?.message)
-      return { ok: false, line }
-    }
-    return { ok: true, line }
   }
+
+  // ── Dream contribution ───────────────────────────────────────────────────────
+  const dreamName = record.dream_name ?? record.description
+  const { data: dream } = await supabaseAdmin
+    .from('dreams')
+    .select('id,name')
+    .eq('family_id', familyId)
+    .ilike('name', `%${dreamName}%`)
+    .maybeSingle()
+
+  if (!dream) {
+    return { ok: false, line: `⭐ ${formatBRL(record.amount_cents)} — Sonho "${dreamName}" não encontrado no Florim` }
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('dream_contributions')
+    .insert({
+      family_id: familyId,
+      dream_id: dream.id,
+      amount_cents: record.amount_cents,
+      date: record.date,
+      notes: 'Criado via WhatsApp',
+    })
+    .select('id')
+    .single()
+
+  const line = `⭐ ${formatBRL(record.amount_cents)} — ${dream.name} (Sonho)`
+  if (error || !data?.id) {
+    console.error('[WA] dream insert error:', error?.message)
+    return { ok: false, line }
+  }
+  return { ok: true, line }
 }
 
 function findCategoryIdByLabel(
