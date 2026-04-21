@@ -1,5 +1,21 @@
-import { format, parse, startOfMonth, endOfMonth, addMonths, addWeeks, isBefore, isAfter, isToday, parseISO } from 'date-fns'
+import {
+  format,
+  parse,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
+  addMonths,
+  addWeeks,
+  isBefore,
+  isAfter,
+  isToday,
+  parseISO,
+} from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+
+export const ALL_MONTHS_VALUE = 0
+export const ALL_YEARS_VALUE = 0
 
 export function formatDate(date: string | Date, pattern: string = 'dd/MM/yyyy'): string {
   const parsedDate = typeof date === 'string' ? parseISO(date) : date
@@ -11,12 +27,63 @@ export function formatMonth(month: number): string {
   return format(date, 'MMMM', { locale: ptBR })
 }
 
+export function formatMonthYear(date: string | Date): string {
+  const parsedDate = typeof date === 'string' ? parseISO(date) : date
+  const formatted = format(parsedDate, "MMMM 'de' yyyy", { locale: ptBR })
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1)
+}
+
 export function getMonthRange(month: number, year: number) {
   const date = new Date(year, month - 1, 1)
   return {
     start: startOfMonth(date),
     end: endOfMonth(date),
   }
+}
+
+export function getYearRange(year: number) {
+  const date = new Date(year, 0, 1)
+  return {
+    start: startOfYear(date),
+    end: endOfYear(date),
+  }
+}
+
+export function isDateWithinFilters(date: string, month: number, year: number): boolean {
+  const parsedDate = parseISO(date)
+  if (year !== ALL_YEARS_VALUE && parsedDate.getFullYear() !== year) {
+    return false
+  }
+  if (month !== ALL_MONTHS_VALUE && parsedDate.getMonth() + 1 !== month) {
+    return false
+  }
+  return true
+}
+
+export function getMonthLabel(month: number): string {
+  if (month === ALL_MONTHS_VALUE) return 'Todos os meses'
+  return MONTHS.find((item) => item.value === month)?.label ?? String(month)
+}
+
+export function getYearLabel(year: number): string {
+  if (year === ALL_YEARS_VALUE) return 'Todos os anos'
+  return String(year)
+}
+
+export function getPeriodLabel(month: number, year: number): string {
+  if (month === ALL_MONTHS_VALUE && year === ALL_YEARS_VALUE) {
+    return 'Todos os registros'
+  }
+
+  if (month === ALL_MONTHS_VALUE) {
+    return `Todos os meses de ${getYearLabel(year)}`
+  }
+
+  if (year === ALL_YEARS_VALUE) {
+    return `${getMonthLabel(month)} de todos os anos`
+  }
+
+  return `${getMonthLabel(month)} ${year}`
 }
 
 export function isDueDateToday(date: string | null): boolean {
@@ -52,6 +119,13 @@ export const MONTHS = [
   { value: 12, label: 'Dezembro' },
 ]
 
+export function getMonthOptions(includeAll: boolean = false): { value: string; label: string }[] {
+  return [
+    ...(includeAll ? [{ value: ALL_MONTHS_VALUE.toString(), label: 'Todos os meses' }] : []),
+    ...MONTHS.map((month) => ({ value: month.value.toString(), label: month.label })),
+  ]
+}
+
 export function getCurrentYear(): number {
   return new Date().getFullYear()
 }
@@ -60,13 +134,17 @@ export function getCurrentMonth(): number {
   return new Date().getMonth() + 1
 }
 
-export function getYearOptions(startYear: number = 2020): { value: string; label: string }[] {
+export function getYearOptions(startYear: number = 2020, includeAll: boolean = false): { value: string; label: string }[] {
   const currentYear = getCurrentYear()
   const years: { value: string; label: string }[] = []
-  
+
+  if (includeAll) {
+    years.push({ value: ALL_YEARS_VALUE.toString(), label: 'Todos os anos' })
+  }
+
   for (let year = currentYear; year >= startYear; year--) {
     years.push({ value: year.toString(), label: year.toString() })
   }
-  
+
   return years
 }

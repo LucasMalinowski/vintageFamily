@@ -14,7 +14,19 @@ import CategorySettingsModal from '@/components/categories/CategorySettingsModal
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { formatBRL } from '@/lib/money'
-import { formatDate, getCurrentMonth, getCurrentYear, getMonthRange, getYearOptions, MONTHS } from '@/lib/dates'
+import {
+  formatDate,
+  getCurrentMonth,
+  getCurrentYear,
+  getMonthLabel,
+  getMonthOptions,
+  getYearLabel,
+  getYearOptions,
+  getYearRange,
+  isDateWithinFilters,
+  ALL_MONTHS_VALUE,
+  ALL_YEARS_VALUE,
+} from '@/lib/dates'
 import { PiggyBank, SlidersHorizontal, Search, Plus } from 'lucide-react'
 import { matchesSearch } from '@/lib/filterSearch'
 import FilterSheet from '@/components/layout/FilterSheet'
@@ -117,13 +129,6 @@ export default function DreamsPage() {
     window.localStorage.setItem('app-filters-open', filtersOpen ? '1' : '0')
   }, [filtersOpen])
 
-  useEffect(() => {
-    if (familyId) {
-      loadDreams()
-      loadContributions()
-    }
-  }, [familyId, selectedMonth, selectedYear, selectedDreamId])
-
   const dreamLabelMap = useMemo(() => buildDreamLabelMap(dreams), [dreams])
   const dreamOptions = useMemo(() => buildDreamOptions(dreams), [dreams])
 
@@ -139,7 +144,7 @@ export default function DreamsPage() {
     return dreamLabelMap.get(dreamId) || dreams.find((dream) => dream.id === dreamId)?.name || 'Categoria'
   }
 
-  const loadDreams = async () => {
+  async function loadDreams() {
     const { data } = await supabase
       .from('dreams')
       .select('id,name,target_cents,parent_id,is_system')
@@ -149,16 +154,21 @@ export default function DreamsPage() {
     setDreams((data || []) as Dream[])
   }
 
-  const loadContributions = async () => {
+  async function loadContributions() {
     setLoading(true)
-    const { start, end } = getMonthRange(selectedMonth, selectedYear)
     let query = supabase
       .from('dream_contributions')
       .select('*')
       .eq('family_id', familyId!)
-      .gte('date', format(start, 'yyyy-MM-dd'))
-      .lte('date', format(end, 'yyyy-MM-dd'))
-      .order('date', { ascending: false })
+
+    if (selectedYear !== ALL_YEARS_VALUE) {
+      const { start, end } = getYearRange(selectedYear)
+      query = query
+        .gte('date', format(start, 'yyyy-MM-dd'))
+        .lte('date', format(end, 'yyyy-MM-dd'))
+    }
+
+    query = query.order('date', { ascending: false })
 
     if (selectedDreamId) {
       query = query.eq('dream_id', selectedDreamId)
@@ -166,9 +176,18 @@ export default function DreamsPage() {
 
     const { data } = await query
 
-    setContributions(data || [])
+    setContributions((data || []).filter((contribution) => isDateWithinFilters(contribution.date, selectedMonth, selectedYear)))
     setLoading(false)
   }
+
+  useEffect(() => {
+    if (familyId) {
+      loadDreams()
+      loadContributions()
+    }
+    // The loaders are intentionally not stable references; the effect is driven by the filter state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [familyId, selectedMonth, selectedYear, selectedDreamId])
 
   const closeModal = () => {
     setIsModalOpen(false)
@@ -239,13 +258,13 @@ export default function DreamsPage() {
   const activeFilterChips = [
     {
       key: 'month',
-      label: MONTHS.find((month) => month.value === selectedMonth)?.label ?? String(selectedMonth),
+      label: getMonthLabel(selectedMonth),
       onRemove: () => setSelectedMonth(getCurrentMonth()),
       disabled: selectedMonth === getCurrentMonth(),
     },
     {
       key: 'year',
-      label: String(selectedYear),
+      label: getYearLabel(selectedYear),
       onRemove: () => setSelectedYear(getCurrentYear()),
       disabled: selectedYear === getCurrentYear(),
     },
@@ -275,7 +294,11 @@ export default function DreamsPage() {
             className="flex items-center gap-1.5 h-[38px] px-3 rounded-[10px] border border-border bg-bg text-ink text-sm font-medium shrink-0"
           >
             <SlidersHorizontal className="w-4 h-4 text-petrol" />
-            <span>{MONTHS.find(m => m.value === selectedMonth)?.label.slice(0, 3)} {selectedYear}</span>
+            <span className="leading-tight text-left">
+              {selectedMonth === ALL_MONTHS_VALUE
+                ? (selectedYear === ALL_YEARS_VALUE ? 'Todos' : 'Todos os meses')
+                : `${getMonthLabel(selectedMonth).slice(0, 3)}${selectedYear === ALL_YEARS_VALUE ? ' • Todos os anos' : ` ${selectedYear}`}`}
+            </span>
           </button>
           <div className="flex-1 flex items-center relative">
             <Search className="pointer-events-none absolute left-3 z-10 h-4 w-4 text-petrol" />
@@ -361,14 +384,14 @@ export default function DreamsPage() {
                   label="Mês"
                   value={selectedMonth.toString()}
                   onChange={(value) => setSelectedMonth(parseInt(value))}
-                  options={MONTHS.map((month) => ({ value: month.value.toString(), label: month.label }))}
+                  options={getMonthOptions(true)}
                 />
                 <Select
                   variant="filter"
                   label="Ano"
                   value={selectedYear.toString()}
                   onChange={(value) => setSelectedYear(parseInt(value))}
-                  options={getYearOptions()}
+                  options={getYearOptions(2020, true)}
                 />
                 <Select
                   variant="filter"

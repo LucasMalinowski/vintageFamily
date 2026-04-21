@@ -13,7 +13,19 @@ import VintageCard from '@/components/ui/VintageCard'
 import Select from '@/components/ui/Select'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
-import { formatDate, getCurrentMonth, getCurrentYear, getMonthRange, getYearOptions, MONTHS } from '@/lib/dates'
+import {
+  formatDate,
+  getCurrentMonth,
+  getCurrentYear,
+  getMonthLabel,
+  getMonthOptions,
+  getYearLabel,
+  getYearOptions,
+  getYearRange,
+  isDateWithinFilters,
+  ALL_MONTHS_VALUE,
+  ALL_YEARS_VALUE,
+} from '@/lib/dates'
 import { matchesSearch } from '@/lib/filterSearch'
 import { formatBRL } from '@/lib/money'
 
@@ -197,33 +209,36 @@ export default function ComparativesPage() {
     )
   }
 
-  useEffect(() => {
-    if (familyId) {
-      loadComparatives()
-    }
-  }, [familyId, selectedMonth, selectedYear, searchTerm])
+  const loadCategorySlices = async () => {
+    let incomeQuery = supabase
+      .from('incomes')
+      .select('description,category_name,amount_cents,date')
+      .eq('family_id', familyId!)
 
-  const loadCategorySlices = async (startDate: string, endDate: string) => {
+    let paidQuery = supabase
+      .from('expenses')
+      .select('description,category_name,amount_cents,date')
+      .eq('family_id', familyId!)
+      .eq('status', 'paid')
+
+    let dreamQuery = supabase
+      .from('dream_contributions')
+      .select('dream_id,amount_cents,date')
+      .eq('family_id', familyId!)
+
+    if (selectedYear !== ALL_YEARS_VALUE) {
+      const { start, end } = getYearRange(selectedYear)
+      const startDate = format(start, 'yyyy-MM-dd')
+      const endDate = format(end, 'yyyy-MM-dd')
+      incomeQuery = incomeQuery.gte('date', startDate).lte('date', endDate)
+      paidQuery = paidQuery.gte('date', startDate).lte('date', endDate)
+      dreamQuery = dreamQuery.gte('date', startDate).lte('date', endDate)
+    }
+
     const [incomeRows, paidRows, dreamRows, dreamsRows] = await Promise.all([
-      supabase
-        .from('incomes')
-        .select('description,category_name,amount_cents,date')
-        .eq('family_id', familyId!)
-        .gte('date', startDate)
-        .lte('date', endDate),
-      supabase
-        .from('expenses')
-        .select('description,category_name,amount_cents,date')
-        .eq('family_id', familyId!)
-        .eq('status', 'paid')
-        .gte('date', startDate)
-        .lte('date', endDate),
-      supabase
-        .from('dream_contributions')
-        .select('dream_id,amount_cents,date')
-        .eq('family_id', familyId!)
-        .gte('date', startDate)
-        .lte('date', endDate),
+      incomeQuery,
+      paidQuery,
+      dreamQuery,
       supabase
         .from('dreams')
         .select('id,name')
@@ -242,6 +257,7 @@ export default function ComparativesPage() {
         category: row.category_name || 'Sem categoria',
         value: row.amount_cents,
       }))
+      .filter((row) => isDateWithinFilters(row.date, selectedMonth, selectedYear))
       .filter((row) => matchesSearch(searchTerm, row.name, row.category))
       .sort((a, b) => b.date.localeCompare(a.date))
 
@@ -252,6 +268,7 @@ export default function ComparativesPage() {
         category: row.category_name || 'Sem categoria',
         value: row.amount_cents,
       }))
+      .filter((row) => isDateWithinFilters(row.date, selectedMonth, selectedYear))
       .filter((row) => matchesSearch(searchTerm, row.name, row.category))
       .sort((a, b) => b.date.localeCompare(a.date))
 
@@ -265,6 +282,7 @@ export default function ComparativesPage() {
           value: row.amount_cents,
         }
       })
+      .filter((row) => isDateWithinFilters(row.date, selectedMonth, selectedYear))
       .filter((row) => matchesSearch(searchTerm, row.name, row.category))
       .sort((a, b) => b.date.localeCompare(a.date))
 
@@ -312,15 +330,19 @@ export default function ComparativesPage() {
     })
   }
 
-  const loadComparatives = async () => {
+  async function loadComparatives() {
     setLoading(true)
-    const { start, end } = getMonthRange(selectedMonth, selectedYear)
-    const startDate = format(start, 'yyyy-MM-dd')
-    const endDate = format(end, 'yyyy-MM-dd')
-
-    await loadCategorySlices(startDate, endDate)
+    await loadCategorySlices()
     setLoading(false)
   }
+
+  useEffect(() => {
+    if (familyId) {
+      loadComparatives()
+    }
+    // The loaders are intentionally not stable references; the effect is driven by filters and search.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [familyId, selectedMonth, selectedYear, searchTerm])
 
   const progress = monthlyTotals.income > 0
     ? Math.min(100, Math.round(((monthlyTotals.paid + monthlyTotals.saved) / monthlyTotals.income) * 100))
@@ -349,13 +371,13 @@ export default function ComparativesPage() {
   const activeFilterChips = [
     {
       key: 'month',
-      label: MONTHS.find((month) => month.value === selectedMonth)?.label ?? String(selectedMonth),
+      label: getMonthLabel(selectedMonth),
       onRemove: () => setSelectedMonth(getCurrentMonth()),
       disabled: selectedMonth === getCurrentMonth(),
     },
     {
       key: 'year',
-      label: String(selectedYear),
+      label: getYearLabel(selectedYear),
       onRemove: () => setSelectedYear(getCurrentYear()),
       disabled: selectedYear === getCurrentYear(),
     },
@@ -379,7 +401,11 @@ export default function ComparativesPage() {
             className="flex items-center gap-1.5 h-[38px] px-3 rounded-[10px] border border-border bg-bg text-ink text-sm font-medium shrink-0"
           >
             <SlidersHorizontal className="w-4 h-4 text-petrol" />
-            <span>{MONTHS.find(m => m.value === selectedMonth)?.label.slice(0, 3)} {selectedYear}</span>
+            <span className="leading-tight text-left">
+              {selectedMonth === ALL_MONTHS_VALUE
+                ? (selectedYear === ALL_YEARS_VALUE ? 'Todos' : 'Todos os meses')
+                : `${getMonthLabel(selectedMonth).slice(0, 3)}${selectedYear === ALL_YEARS_VALUE ? ' • Todos os anos' : ` ${selectedYear}`}`}
+            </span>
           </button>
         </div>
 
@@ -472,14 +498,14 @@ export default function ComparativesPage() {
               label="Mês"
               value={selectedMonth.toString()}
               onChange={(value) => setSelectedMonth(parseInt(value))}
-              options={MONTHS.map((month) => ({ value: month.value.toString(), label: month.label }))}
+              options={getMonthOptions(true)}
             />
             <Select
               variant="filter"
               label="Ano"
               value={selectedYear.toString()}
               onChange={(value) => setSelectedYear(parseInt(value))}
-              options={getYearOptions()}
+              options={getYearOptions(2020, true)}
             />
           </FilterSidebar>
           </div>
