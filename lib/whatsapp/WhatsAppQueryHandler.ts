@@ -50,6 +50,7 @@ function periodLabel(timeRange: IntentClassification['time_range'], dateRange: D
     case 'last_month':    return `em ${format(parseISO(dateRange.from), 'MMMM', { locale: ptBR })}`
     case 'current_year':  return `em ${format(parseISO(dateRange.from), 'yyyy')}`
     case 'last_7_days':   return 'nos últimos 7 dias'
+    case 'next_7_days':   return 'nos próximos 7 dias'
     default:              return ''
   }
 }
@@ -84,7 +85,7 @@ export class WhatsAppQueryHandler {
         category: r.category,
       }))
 
-      const result = await nvidiaAIService.classifyQueryData(question, items)
+      const result = await nvidiaAIService.classifyQueryData(question, items, intent.focus)
       const msg = WhatsAppQueryHandler.buildRowMessage(result, rowData, period, intent.data_needed)
       if (msg) parts.push(msg)
     }
@@ -125,20 +126,27 @@ export class WhatsAppQueryHandler {
     const focusLabel = result.focus_label ?? (dataTables.includes('expenses') ? 'gastos' : 'receitas')
     const routePath = dataTables.includes('expenses') ? '/expenses' : '/incomes'
 
+    let msg: string
     if (result.query_type === 'sum') {
-      return WhatsAppQueryHandler.buildSumMessage(selected, focusLabel, period, routePath)
+      msg = WhatsAppQueryHandler.buildSumMessage(selected, focusLabel, period, routePath)
+    } else if (result.query_type === 'max') {
+      msg = WhatsAppQueryHandler.buildMaxMessage(selected, period)
+    } else if (result.query_type === 'count') {
+      msg = WhatsAppQueryHandler.buildCountMessage(selected, focusLabel, period)
+    } else {
+      msg = WhatsAppQueryHandler.buildListMessage(selected, focusLabel, period, routePath)
     }
 
-    if (result.query_type === 'max') {
-      return WhatsAppQueryHandler.buildMaxMessage(selected, period)
+    if (result.context_selected?.length && result.context_label) {
+      const ctxSet = new Set(result.context_selected)
+      const ctxRows = allRows.filter(r => ctxSet.has(r.idx))
+      if (ctxRows.length) {
+        const ctxTotal = ctxRows.reduce((s, r) => s + r.amount_cents, 0)
+        msg += `\n\n_Relacionado — ${result.context_label}: *${formatBRL(ctxTotal)}*_`
+      }
     }
 
-    if (result.query_type === 'count') {
-      return WhatsAppQueryHandler.buildCountMessage(selected, focusLabel, period)
-    }
-
-    // list (default)
-    return WhatsAppQueryHandler.buildListMessage(selected, focusLabel, period, routePath)
+    return msg
   }
 
   private static buildSumMessage(
@@ -299,6 +307,8 @@ export class WhatsAppQueryHandler {
         return { from: fmt(startOfYear(today)), to: fmt(endOfYear(today)) }
       case 'last_7_days':
         return { from: fmt(subDays(today, 7)), to: todayISO }
+      case 'next_7_days':
+        return { from: todayISO, to: fmt(subDays(today, -7)) }
       case 'all':
         return { from: '2000-01-01', to: todayISO }
       case 'current_month':
