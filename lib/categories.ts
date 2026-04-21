@@ -66,12 +66,12 @@ export const findCategoryIdByStoredName = (
 
 export const buildCategoryOptions = (categories: CategoryRecord[]) => {
   const tree = buildCategoryTree(categories)
-  const options: Array<{ value: string; label: string }> = []
+  const options: Array<{ value: string; label: string; meta?: { parentLabel?: string; depth?: number } }> = []
 
   for (const main of tree) {
-    options.push({ value: main.id, label: main.name })
+    options.push({ value: main.id, label: main.name, meta: { depth: 0 } })
     for (const child of main.children) {
-      options.push({ value: child.id, label: `-- ${main.name} / ${child.name}` })
+      options.push({ value: child.id, label: child.name, meta: { parentLabel: main.name, depth: 1 } })
     }
   }
 

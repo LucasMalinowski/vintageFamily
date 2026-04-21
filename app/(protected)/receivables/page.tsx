@@ -10,8 +10,22 @@ import FilterSearchBar from '@/components/layout/FilterSearchBar'
 import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
+import CategoryPathStack from '@/components/ui/CategoryPathStack'
 import { formatBRL } from '@/lib/money'
-import { formatDate, getCurrentMonth, getCurrentYear, MONTHS, getYearOptions, getMonthRange } from '@/lib/dates'
+import {
+  formatDate,
+  formatMonthYear,
+  getCurrentMonth,
+  getCurrentYear,
+  getMonthLabel,
+  getMonthOptions,
+  getYearLabel,
+  getYearOptions,
+  getYearRange,
+  isDateWithinFilters,
+  ALL_MONTHS_VALUE,
+  ALL_YEARS_VALUE,
+} from '@/lib/dates'
 import { ArrowDown, DollarSign, Download, Edit2, SlidersHorizontal, Search, Plus } from 'lucide-react'
 import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
@@ -132,15 +146,19 @@ export default function ReceivablesPage() {
 
   async function loadIncomes() {
     setLoading(true)
-    const { start, end } = getMonthRange(selectedMonth, selectedYear)
-
     let query = supabase
       .from('incomes')
       .select('*')
       .eq('family_id', familyId!)
-      .gte('date', format(start, 'yyyy-MM-dd'))
-      .lte('date', format(end, 'yyyy-MM-dd'))
-      .order('date', { ascending: false })
+
+    if (selectedYear !== ALL_YEARS_VALUE) {
+      const { start, end } = getYearRange(selectedYear)
+      query = query
+        .gte('date', format(start, 'yyyy-MM-dd'))
+        .lte('date', format(end, 'yyyy-MM-dd'))
+    }
+
+    query = query.order('date', { ascending: false })
 
     if (selectedCategoryId) {
       query = query.eq('category_id', selectedCategoryId)
@@ -149,7 +167,7 @@ export default function ReceivablesPage() {
     const { data } = await query
 
     if (data) {
-      setIncomes(data)
+      setIncomes(data.filter((income) => isDateWithinFilters(income.date, selectedMonth, selectedYear)))
     }
     setLoading(false)
   }
@@ -265,6 +283,19 @@ export default function ReceivablesPage() {
       getCategoryLabel(income.category_id, income.category_name)
     )
   )
+  const groupedIncomes = filteredIncomes
+    .slice()
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .reduce<Array<{ label: string; items: Income[] }>>((groups, income) => {
+      const label = formatMonthYear(income.date)
+      const lastGroup = groups[groups.length - 1]
+      if (lastGroup && lastGroup.label === label) {
+        lastGroup.items.push(income)
+        return groups
+      }
+      groups.push({ label, items: [income] })
+      return groups
+    }, [])
   const total = filteredIncomes.reduce((sum, inc) => sum + inc.amount_cents, 0)
   const activeFiltersCount = [
     selectedMonth !== getCurrentMonth(),
@@ -280,13 +311,13 @@ export default function ReceivablesPage() {
   const activeFilterChips = [
     {
       key: 'month',
-      label: MONTHS.find((month) => month.value === selectedMonth)?.label ?? String(selectedMonth),
+      label: getMonthLabel(selectedMonth),
       onRemove: () => setSelectedMonth(getCurrentMonth()),
       disabled: selectedMonth === getCurrentMonth(),
     },
     {
       key: 'year',
-      label: String(selectedYear),
+      label: getYearLabel(selectedYear),
       onRemove: () => setSelectedYear(getCurrentYear()),
       disabled: selectedYear === getCurrentYear(),
     },
@@ -316,7 +347,11 @@ export default function ReceivablesPage() {
             className="flex items-center gap-1.5 h-[38px] px-3 rounded-[10px] border border-border bg-bg text-ink text-sm font-medium shrink-0"
           >
             <SlidersHorizontal className="w-4 h-4 text-petrol" />
-            <span>{MONTHS.find(m => m.value === selectedMonth)?.label.slice(0, 3)} {selectedYear}</span>
+            <span className="leading-tight text-left">
+              {selectedMonth === ALL_MONTHS_VALUE
+                ? (selectedYear === ALL_YEARS_VALUE ? 'Todos' : 'Todos os meses')
+                : `${getMonthLabel(selectedMonth).slice(0, 3)}${selectedYear === ALL_YEARS_VALUE ? ' • Todos os anos' : ` ${selectedYear}`}`}
+            </span>
           </button>
           <div className="flex-1 flex items-center relative">
             <Search className="pointer-events-none absolute left-3 z-10 h-4 w-4 text-petrol" />
@@ -415,20 +450,20 @@ export default function ReceivablesPage() {
                 activeFiltersCount={activeFiltersCount}
                 onClearFilters={clearFilters}
               >
-                <Select
-                  variant="filter"
-                  label="Mês"
-                  value={selectedMonth.toString()}
-                  onChange={(v) => setSelectedMonth(parseInt(v))}
-                  options={MONTHS.map(m => ({ value: m.value.toString(), label: m.label }))}
-                />
-                <Select
-                  variant="filter"
-                  label="Ano"
-                  value={selectedYear.toString()}
-                  onChange={(v) => setSelectedYear(parseInt(v))}
-                  options={getYearOptions()}
-                />
+              <Select
+                variant="filter"
+                label="Mês"
+                value={selectedMonth.toString()}
+                onChange={(v) => setSelectedMonth(parseInt(v))}
+                options={getMonthOptions(true)}
+              />
+              <Select
+                variant="filter"
+                label="Ano"
+                value={selectedYear.toString()}
+                onChange={(v) => setSelectedYear(parseInt(v))}
+                options={getYearOptions(2020, true)}
+              />
                 <Select
                   variant="filter"
                   label="Categoria"
@@ -445,45 +480,66 @@ export default function ReceivablesPage() {
             <div className="flex-1 min-w-0 flex flex-col px-[18px] pt-3 pb-4 md:px-0 md:pt-0 md:pb-0">
               {loading ? (
                 <div className="text-center py-12 text-ink/60">Carregando...</div>
-              ) : filteredIncomes.length === 0 ? (
-                <EmptyState
-                  icon={<DollarSign className="w-16 h-16" />}
-                  message="Ainda não há receitas registradas."
-                  submessage="Use o botão + para adicionar uma receita."
-                />
-              ) : (
-                <div className="space-y-3">
-                  {filteredIncomes.map((income) => (
-                    <div
-                      key={income.id}
-                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-xl font-medium text-sidebar font-serif">
-                          {income.description}
-                        </h4>
-                        <p className="text-sm text-ink/50">
-                          {getCategoryLabel(income.category_id, income.category_name)} · {formatDate(income.date)}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
-                        <span className="font-numbers text-lg font-semibold text-sidebar">
-                          {formatBRL(income.amount_cents)}
+            ) : filteredIncomes.length === 0 ? (
+              <EmptyState
+                icon={<DollarSign className="w-16 h-16" />}
+                message="Ainda não há receitas registradas."
+                submessage="Use o botão + para adicionar uma receita."
+              />
+            ) : (
+              <div className="space-y-5">
+                {groupedIncomes.map((group) => (
+                  <div key={group.label} className="space-y-3">
+                    {groupedIncomes.length > 1 && (
+                      <div className="flex items-center gap-3">
+                        <div className="h-px flex-1 bg-border/70" />
+                        <span className="rounded-full border border-border bg-paper px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.11em] text-ink/65 shadow-sm">
+                          {group.label}
                         </span>
-                        <ActionMenu
-                          onView={() => openDetails(income)}
-                          onEdit={() => openModal(income)}
-                          onDelete={() => handleDelete(income.id)}
-                          onAttach={(file) => handleAttachIncome(income, file)}
-                        />
+                        <div className="h-px flex-1 bg-border/70" />
                       </div>
+                    )}
+                    <div className="space-y-3">
+                      {group.items.map((income) => (
+                        <div
+                          key={income.id}
+                          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <h4 className="text-xl font-medium text-sidebar font-serif leading-tight">
+                                {income.description}
+                              </h4>
+                              <span className="rounded-full bg-ink/5 px-2.5 py-0.5 text-[11px] font-medium text-ink/60">
+                                {formatDate(income.date)}
+                              </span>
+                            </div>
+                            <CategoryPathStack
+                              label={getCategoryLabel(income.category_id, income.category_name)}
+                              className="mt-1"
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                            <span className="font-numbers text-lg font-semibold text-sidebar">
+                              {formatBRL(income.amount_cents)}
+                            </span>
+                            <ActionMenu
+                              onView={() => openDetails(income)}
+                              onEdit={() => openModal(income)}
+                              onDelete={() => handleDelete(income.id)}
+                              onAttach={(file) => handleAttachIncome(income, file)}
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+        </div>
         </div>
 
         {/* Mobile footer — sticky outside scroll */}
@@ -639,7 +695,10 @@ export default function ReceivablesPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-ink/50">Categoria</p>
-                  <p>{getCategoryLabel(detailIncome.category_id, detailIncome.category_name)}</p>
+                  <CategoryPathStack
+                    label={getCategoryLabel(detailIncome.category_id, detailIncome.category_name)}
+                    className="mt-1"
+                  />
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-ink/50">Data</p>
