@@ -1,8 +1,10 @@
 'use client'
 
+/* eslint-disable react-hooks/set-state-in-effect */
+
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
-import { MONTHS } from '@/lib/dates'
+import { getMonthOptions, getYearOptions } from '@/lib/dates'
 
 interface FilterSheetProps {
   open: boolean
@@ -15,8 +17,6 @@ interface FilterSheetProps {
   showStatus?: boolean
   showMethod?: boolean
 }
-
-const YEARS = [2024, 2025, 2026, 2027]
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Todos' },
@@ -48,6 +48,8 @@ export default function FilterSheet({
   const [localYear, setLocalYear] = useState(year)
   const [localStatus, setLocalStatus] = useState(status)
   const [localMethod, setLocalMethod] = useState(method)
+  const monthOptions = getMonthOptions(true)
+  const yearOptions = getYearOptions(2020, true)
 
   useEffect(() => {
     if (open) {
@@ -122,14 +124,25 @@ export default function FilterSheet({
           {/* Mês */}
           <div>
             <p className="text-xs uppercase tracking-wide text-ink/50 mb-3 font-medium">Mês</p>
-            <div className="grid grid-cols-4 gap-2">
-              {MONTHS.map((m) => (
+            <button
+              type="button"
+              onClick={() => setLocalMonth(0)}
+              className={`w-full px-3 py-2.5 rounded-[12px] border text-sm font-medium transition-vintage mb-2 ${
+                localMonth === 0
+                  ? 'bg-coffee text-paper border-coffee'
+                  : 'bg-transparent text-ink border-border'
+              }`}
+            >
+              Todos os meses
+            </button>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {monthOptions.filter((option) => option.value !== '0').map((m) => (
                 <button
                   key={m.value}
                   type="button"
-                  onClick={() => setLocalMonth(m.value)}
+                  onClick={() => setLocalMonth(parseInt(m.value, 10))}
                   className={`px-2 py-2 rounded-[10px] border text-sm font-medium transition-vintage ${
-                    localMonth === m.value
+                    localMonth === parseInt(m.value, 10)
                       ? 'bg-coffee text-paper border-coffee'
                       : 'bg-transparent text-ink border-border'
                   }`}
@@ -138,25 +151,36 @@ export default function FilterSheet({
                 </button>
               ))}
             </div>
-            <p className="text-xs text-ink/40 mt-2">Apenas um mês por vez — os dados são mensais.</p>
+            <p className="text-xs text-ink/40 mt-2">Escolha um mês ou veja todos os meses de um ano.</p>
           </div>
 
           {/* Ano */}
           <div>
             <p className="text-xs uppercase tracking-wide text-ink/50 mb-3 font-medium">Ano</p>
+            <button
+              type="button"
+              onClick={() => setLocalYear(0)}
+              className={`w-full px-3 py-2.5 rounded-[12px] border text-sm font-medium transition-vintage mb-2 ${
+                localYear === 0
+                  ? 'bg-coffee text-paper border-coffee'
+                  : 'bg-transparent text-ink border-border'
+              }`}
+            >
+              Todos os anos
+            </button>
             <div className="flex gap-2 flex-wrap">
-              {YEARS.map((y) => (
+              {yearOptions.filter((option) => option.value !== '0').map((y) => (
                 <button
-                  key={y}
+                  key={y.value}
                   type="button"
-                  onClick={() => setLocalYear(y)}
+                  onClick={() => setLocalYear(parseInt(y.value, 10))}
                   className={`px-4 py-2 rounded-[10px] border text-sm font-medium transition-vintage ${
-                    localYear === y
+                    localYear === parseInt(y.value, 10)
                       ? 'bg-coffee text-paper border-coffee'
                       : 'bg-transparent text-ink border-border'
                   }`}
                 >
-                  {y}
+                  {y.label}
                 </button>
               ))}
             </div>
