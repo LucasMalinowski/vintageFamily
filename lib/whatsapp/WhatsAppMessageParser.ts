@@ -1,7 +1,8 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { buildCategoryLabelMap, findCategoryIdByStoredName, CategoryRecord } from '@/lib/categories'
-import { nvidiaAIService, AIExtractedRecord } from '@/lib/ai/NvidiaAIService'
+import { nvidiaAIService, AIExtractedRecord, IntentClassification } from '@/lib/ai/NvidiaAIService'
 import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
+import { whatsAppQueryHandler } from '@/lib/whatsapp/WhatsAppQueryHandler'
 import { formatBRL } from '@/lib/money'
 
 const USAGE_HINT = `Olá! 👋 Para registrar suas finanças, envie mensagens como:
@@ -59,6 +60,25 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
 
   const { family_id: familyId } = userRow
 
+  const todayISO = new Date().toISOString().slice(0, 10)
+
+  let intent: IntentClassification
+  try {
+    intent = await nvidiaAIService.classifyIntent(messageText, todayISO)
+  } catch {
+    intent = { type: 'record', data_needed: [], time_range: 'current_month', focus: null }
+  }
+
+  if (intent.type === 'query') {
+    try {
+      const reply = await whatsAppQueryHandler.handle(messageText, intent, familyId, todayISO)
+      await whatsAppService.sendTextMessage(fromPhone, reply)
+    } catch {
+      await whatsAppService.sendTextMessage(fromPhone, 'Não consegui buscar seus dados agora. Tente novamente em instantes. 🔄')
+    }
+    return
+  }
+
   const { data: categories } = await supabaseAdmin
     .from('categories')
     .select('id,name,kind,parent_id,is_system')
@@ -67,7 +87,6 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
   const categoryList = (categories ?? []) as CategoryRecord[]
   const labelMap = buildCategoryLabelMap(categoryList)
 
-  const todayISO = new Date().toISOString().slice(0, 10)
   let records: Awaited<ReturnType<typeof nvidiaAIService.extractFinancialRecords>>
   try {
     records = await nvidiaAIService.extractFinancialRecords(messageText, labelMap, todayISO)
@@ -79,6 +98,21 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
         ? 'O Florim está sobrecarregado no momento. Tente novamente em instantes. ⏳'
         : 'Erro ao processar sua mensagem. Tente novamente. 🔄'
     )
+    return
+  }
+
+  const QUERY_KEYWORDS = /\b(quanto|qual|quantas|quantos|me mostra|resumo|total|meus gastos|minhas receitas)\b/i
+  if (!records.length && QUERY_KEYWORDS.test(messageText)) {
+    const fallbackIntent: IntentClassification = {
+      type: 'query', data_needed: ['expenses', 'incomes'],
+      time_range: 'current_month', focus: null,
+    }
+    try {
+      const reply = await whatsAppQueryHandler.handle(messageText, fallbackIntent, familyId, todayISO)
+      await whatsAppService.sendTextMessage(fromPhone, reply)
+    } catch {
+      await whatsAppService.sendTextMessage(fromPhone, USAGE_HINT)
+    }
     return
   }
 
