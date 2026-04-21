@@ -9,8 +9,22 @@ import FilterSearchBar from '@/components/layout/FilterSearchBar'
 import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
+import CategoryPathStack from '@/components/ui/CategoryPathStack'
 import { formatBRL } from '@/lib/money'
-import { formatDate, getCurrentMonth, getCurrentYear, MONTHS, getYearOptions, getMonthRange } from '@/lib/dates'
+import {
+  formatDate,
+  formatMonthYear,
+  getCurrentMonth,
+  getCurrentYear,
+  getMonthOptions,
+  getMonthLabel,
+  getYearLabel,
+  getYearOptions,
+  getYearRange,
+  isDateWithinFilters,
+  ALL_MONTHS_VALUE,
+  ALL_YEARS_VALUE,
+} from '@/lib/dates'
 import { buildInstallmentDates, splitAmountCents } from '@/lib/installments'
 import { Edit2, Download, Receipt, SlidersHorizontal, Search, Plus } from 'lucide-react'
 import { format } from 'date-fns'
@@ -176,17 +190,19 @@ export default function Payables() {
 
   async function loadExpenses() {
     setLoading(true)
-    const resolvedMonth = Number.isFinite(selectedMonth) ? selectedMonth : getCurrentMonth()
-    const resolvedYear = Number.isFinite(selectedYear) ? selectedYear : getCurrentYear()
-    const { start, end } = getMonthRange(resolvedMonth, resolvedYear)
-
     let query = supabase
       .from('expenses')
       .select('*')
       .eq('family_id', familyId!)
-      .gte('date', format(start, 'yyyy-MM-dd'))
-      .lte('date', format(end, 'yyyy-MM-dd'))
-      .order('date', { ascending: false })
+
+    if (selectedYear !== ALL_YEARS_VALUE) {
+      const { start, end } = getYearRange(selectedYear)
+      query = query
+        .gte('date', format(start, 'yyyy-MM-dd'))
+        .lte('date', format(end, 'yyyy-MM-dd'))
+    }
+
+    query = query.order('date', { ascending: false })
 
     if (selectedCategoryId) {
       query = query.eq('category_id', selectedCategoryId)
@@ -222,7 +238,7 @@ export default function Payables() {
         installment_group_id: row.installment_group_id,
         installment_index: row.installment_index,
       }))
-      setExpenses(normalized)
+      setExpenses(normalized.filter((expense) => isDateWithinFilters(expense.date, selectedMonth, selectedYear)))
     }
     setLoading(false)
   }
@@ -435,6 +451,16 @@ export default function Payables() {
     .reduce((sum, e) => sum + e.amount_cents, 0)
   const open = total - paid
   const sortedExpenses = filteredExpenses.slice().sort((a, b) => b.date.localeCompare(a.date))
+  const groupedExpenses = sortedExpenses.reduce<Array<{ label: string; items: Expense[] }>>((groups, expense) => {
+    const label = formatMonthYear(expense.date)
+    const lastGroup = groups[groups.length - 1]
+    if (lastGroup && lastGroup.label === label) {
+      lastGroup.items.push(expense)
+      return groups
+    }
+    groups.push({ label, items: [expense] })
+    return groups
+  }, [])
   const activeFiltersCount = [
     selectedMonth !== getCurrentMonth(),
     selectedYear !== getCurrentYear(),
@@ -455,13 +481,13 @@ export default function Payables() {
   const activeFilterChips = [
     {
       key: 'month',
-      label: MONTHS.find((month) => month.value === selectedMonth)?.label ?? String(selectedMonth),
+      label: getMonthLabel(selectedMonth),
       onRemove: () => setSelectedMonth(getCurrentMonth()),
       disabled: selectedMonth === getCurrentMonth(),
     },
     {
       key: 'year',
-      label: String(selectedYear),
+      label: getYearLabel(selectedYear),
       onRemove: () => setSelectedYear(getCurrentYear()),
       disabled: selectedYear === getCurrentYear(),
     },
@@ -504,15 +530,19 @@ export default function Payables() {
       />
 
       {/* Mobile filter bar */}
-      <div className="md:hidden relative border-b border-border bg-offWhite px-[18px] py-[10px] flex gap-[9px] items-center shrink-0">
-        <button
-          type="button"
-          onClick={() => setFilterSheetOpen(true)}
-          className="flex items-center gap-1.5 h-[38px] px-3 rounded-[10px] border border-border bg-bg text-ink text-sm font-medium shrink-0"
-        >
-          <SlidersHorizontal className="w-4 h-4 text-petrol" />
-          <span>{MONTHS.find(m => m.value === selectedMonth)?.label.slice(0, 3)} {selectedYear}</span>
-        </button>
+        <div className="md:hidden relative border-b border-border bg-offWhite px-[18px] py-[10px] flex gap-[9px] items-center shrink-0">
+          <button
+            type="button"
+            onClick={() => setFilterSheetOpen(true)}
+            className="flex items-center gap-1.5 h-[38px] px-3 rounded-[10px] border border-border bg-bg text-ink text-sm font-medium shrink-0"
+          >
+            <SlidersHorizontal className="w-4 h-4 text-petrol" />
+            <span className="leading-tight text-left">
+              {selectedMonth === ALL_MONTHS_VALUE
+                ? (selectedYear === ALL_YEARS_VALUE ? 'Todos' : `Todos os meses`)
+                : `${getMonthLabel(selectedMonth).slice(0, 3)}${selectedYear === ALL_YEARS_VALUE ? ' • Todos os anos' : ` ${selectedYear}`}`}
+            </span>
+          </button>
         <div className="flex-1 flex items-center relative">
           <Search className="pointer-events-none absolute left-3 z-10 h-4 w-4 text-petrol" />
           <input
@@ -617,7 +647,7 @@ export default function Payables() {
                 onChange={(v) =>
                   setSelectedMonth(v ? parseInt(v, 10) : getCurrentMonth())
                 }
-                options={MONTHS.map(m => ({ value: m.value.toString(), label: m.label }))}
+                options={getMonthOptions(true)}
               />
               <Select
                 variant="filter"
@@ -626,7 +656,7 @@ export default function Payables() {
                 onChange={(v) =>
                   setSelectedYear(v ? parseInt(v, 10) : getCurrentYear())
                 }
-                options={getYearOptions()}
+                options={getYearOptions(2020, true)}
               />
               <Select
                 variant="filter"
@@ -683,70 +713,91 @@ export default function Payables() {
                 submessage="Use o botão + para adicionar uma despesa."
               />
             ) : (
-              <div className="space-y-3">
-                {sortedExpenses.map((expense) => {
-                  const isUpdating = updatingIds.includes(expense.id)
-                  return (
-                    <div
-                      id={`expense-${expense.id}`}
-                      key={expense.id}
-                      className={`flex items-start justify-between gap-3 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage ${
-                        isUpdating ? 'opacity-60' : ''
-                      }`}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-base font-medium text-sidebar font-serif">
-                          {expense.description}
-                        </h4>
-                        <p className="text-sm text-ink/50">
-                          {getCategoryLabel(expense.category_id, expense.category_name)}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleTogglePaid(expense)}
-                          disabled={isUpdating}
-                          className="disabled:opacity-60"
-                          aria-label={`Marcar ${expense.description} como ${expense.status === 'paid' ? 'em aberto' : 'pago'}`}
-                        >
-                          <span className={`text-xs px-2.5 py-1 rounded-md font-semibold transition-vintage ${
-                            expense.status === 'paid'
-                              ? 'bg-olive/20 text-olive'
-                              : 'bg-gold/20 text-gold'
-                          }`}>
-                            {expense.status === 'paid' ? 'Pago' : 'Em aberto'}
-                          </span>
-                        </button>
-                        <span
-                          className={`font-numbers text-base font-semibold ${
-                            expense.status === 'paid' ? 'text-sidebar/80' : 'text-sidebar'
-                          }`}
-                        >
-                          {formatBRL(expense.amount_cents)}
+              <div className="space-y-5">
+                {groupedExpenses.map((group) => (
+                  <div key={group.label} className="space-y-3">
+                    {groupedExpenses.length > 1 && (
+                      <div className="flex items-center gap-3">
+                        <div className="h-px flex-1 bg-border/70" />
+                        <span className="rounded-full border border-border bg-paper px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.11em] text-ink/65 shadow-sm">
+                          {group.label}
                         </span>
-                        {expense.payment_method === null && (
-                          <span
-                            title="Método de pagamento não definido. Edite para definir."
-                            className="text-xs text-amber-600 border border-amber-400/40 rounded px-1.5 py-0.5 cursor-help"
+                        <div className="h-px flex-1 bg-border/70" />
+                      </div>
+                    )}
+                    <div className="space-y-3">
+                      {group.items.map((expense) => {
+                        const isUpdating = updatingIds.includes(expense.id)
+                        return (
+                          <div
+                            id={`expense-${expense.id}`}
+                            key={expense.id}
+                            className={`flex items-start justify-between gap-3 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage ${
+                              isUpdating ? 'opacity-60' : ''
+                            }`}
                           >
-                            ⚠ Sem método
-                          </span>
-                        )}
-                      </div>
-                      <div className="shrink-0">
-                        <ActionMenu
-                          onView={() => openDetails(expense)}
-                          onEdit={() => openModal(expense)}
-                          onDelete={() => handleDelete(expense.id)}
-                          onAttach={(file) => handleAttachExpense(expense, file)}
-                          disabled={isUpdating}
-                        />
-                      </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <h4 className="text-base font-medium text-sidebar font-serif leading-tight">
+                                  {expense.description}
+                                </h4>
+                                <span className="rounded-full bg-ink/5 px-2.5 py-0.5 text-[11px] font-medium text-ink/60">
+                                  {formatDate(expense.date)}
+                                </span>
+                              </div>
+                              <CategoryPathStack
+                                label={getCategoryLabel(expense.category_id, expense.category_name)}
+                                className="mt-1"
+                              />
+                            </div>
+
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleTogglePaid(expense)}
+                                disabled={isUpdating}
+                                className="disabled:opacity-60"
+                                aria-label={`Marcar ${expense.description} como ${expense.status === 'paid' ? 'em aberto' : 'pago'}`}
+                              >
+                                <span className={`text-xs px-2.5 py-1 rounded-md font-semibold transition-vintage ${
+                                  expense.status === 'paid'
+                                    ? 'bg-olive/20 text-olive'
+                                    : 'bg-gold/20 text-gold'
+                                }`}>
+                                  {expense.status === 'paid' ? 'Pago' : 'Em aberto'}
+                                </span>
+                              </button>
+                              <span
+                                className={`font-numbers text-base font-semibold ${
+                                  expense.status === 'paid' ? 'text-sidebar/80' : 'text-sidebar'
+                                }`}
+                              >
+                                {formatBRL(expense.amount_cents)}
+                              </span>
+                              {expense.payment_method === null && (
+                                <span
+                                  title="Método de pagamento não definido. Edite para definir."
+                                  className="text-xs text-amber-600 border border-amber-400/40 rounded px-1.5 py-0.5 cursor-help"
+                                >
+                                  ⚠ Sem método
+                                </span>
+                              )}
+                            </div>
+                            <div className="shrink-0">
+                              <ActionMenu
+                                onView={() => openDetails(expense)}
+                                onEdit={() => openModal(expense)}
+                                onDelete={() => handleDelete(expense.id)}
+                                onAttach={(file) => handleAttachExpense(expense, file)}
+                                disabled={isUpdating}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
-                  )
-                })}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -972,7 +1023,10 @@ export default function Payables() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-ink/50">Categoria</p>
-                  <p>{getCategoryLabel(detailExpense.category_id, detailExpense.category_name)}</p>
+                  <CategoryPathStack
+                    label={getCategoryLabel(detailExpense.category_id, detailExpense.category_name)}
+                    className="mt-1"
+                  />
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-ink/50">Data</p>
