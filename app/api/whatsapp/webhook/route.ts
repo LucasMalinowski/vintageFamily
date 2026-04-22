@@ -3,13 +3,17 @@ export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { processWhatsAppMessage } from '@/lib/whatsapp/WhatsAppMessageParser'
+import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
 
 function verifyMetaSignature(rawBody: string, signatureHeader: string | null): boolean {
   const secret = process.env.WHATSAPP_APP_SECRET
   if (!secret) return true // skip verification if secret not set (dev only)
   if (!signatureHeader?.startsWith('sha256=')) return false
   const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex')
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signatureHeader))
+  const expectedBuf = Buffer.from(expected)
+  const actualBuf = Buffer.from(signatureHeader)
+  if (expectedBuf.length !== actualBuf.length) return false
+  return crypto.timingSafeEqual(expectedBuf, actualBuf)
 }
 
 export async function GET(request: NextRequest) {
@@ -45,15 +49,17 @@ export async function POST(request: NextRequest) {
     }
 
     const message = value.messages[0]
+    const from: string = message.from
 
     if (message?.type !== 'text') {
+      await whatsAppService.sendTextMessage(from, 'Só consigo processar mensagens de texto. Descreva sua despesa, receita ou lembrete em texto. 😊')
       return NextResponse.json({ status: 'ok' }, { status: 200 })
     }
 
-    const from: string = message.from
+    const messageId: string = message.id
     const text: string = message.text?.body ?? ''
 
-    await processWhatsAppMessage(from, text)
+    await processWhatsAppMessage(from, text, messageId)
   } catch {
     // Always return 200 to prevent Meta from retrying
   }

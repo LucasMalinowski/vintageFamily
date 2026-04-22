@@ -14,6 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
+      bank_statement_import_batches: {
+        Row: {
+          created_at: string
+          family_id: string
+          file_hash: string
+          file_name: string | null
+          id: string
+          page_count: number
+          source_bank: string
+          source_type: string
+          status: string
+          summary: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          family_id: string
+          file_hash: string
+          file_name?: string | null
+          id?: string
+          page_count?: number
+          source_bank: string
+          source_type?: string
+          status?: string
+          summary?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          family_id?: string
+          file_hash?: string
+          file_name?: string | null
+          id?: string
+          page_count?: number
+          source_bank?: string
+          source_type?: string
+          status?: string
+          summary?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_statement_import_batches_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_statement_import_batches_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_events: {
+        Row: {
+          id: string
+          processed_at: string
+          stripe_event_id: string
+          type: string | null
+        }
+        Insert: {
+          id?: string
+          processed_at?: string
+          stripe_event_id: string
+          type?: string | null
+        }
+        Update: {
+          id?: string
+          processed_at?: string
+          stripe_event_id?: string
+          type?: string | null
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -47,20 +128,47 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "categories_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "categories"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "categories_family_id_fkey"
             columns: ["family_id"]
             isOneToOne: false
             referencedRelation: "families"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      coupon_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          stripe_coupon_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          stripe_coupon_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          stripe_coupon_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       dream_contributions: {
         Row: {
@@ -140,17 +248,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "dreams_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "dreams"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "dreams_family_id_fkey"
             columns: ["family_id"]
             isOneToOne: false
             referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dreams_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "dreams"
             referencedColumns: ["id"]
           },
         ]
@@ -168,12 +276,13 @@ export type Database = {
           import_batch_id: string | null
           import_hash: string | null
           imported_at: string | null
-          low_confidence: boolean
-          notes: string | null
-          payment_method: string | null
           installment_group_id: string | null
           installment_index: number | null
+          installments: number
+          low_confidence: boolean
+          notes: string | null
           paid_at: string | null
+          payment_method: string | null
           raw_description: string | null
           raw_line: string | null
           raw_payload: Json | null
@@ -181,7 +290,6 @@ export type Database = {
           source_bank: string | null
           source_type: string | null
           status: string
-          installments: number | null
           updated_at: string
         }
         Insert: {
@@ -196,12 +304,13 @@ export type Database = {
           import_batch_id?: string | null
           import_hash?: string | null
           imported_at?: string | null
-          low_confidence?: boolean
-          notes?: string | null
-          payment_method?: string | null
           installment_group_id?: string | null
           installment_index?: number | null
+          installments?: number
+          low_confidence?: boolean
+          notes?: string | null
           paid_at?: string | null
+          payment_method?: string | null
           raw_description?: string | null
           raw_line?: string | null
           raw_payload?: Json | null
@@ -209,7 +318,6 @@ export type Database = {
           source_bank?: string | null
           source_type?: string | null
           status?: string
-          installments?: number | null
           updated_at?: string
         }
         Update: {
@@ -224,12 +332,13 @@ export type Database = {
           import_batch_id?: string | null
           import_hash?: string | null
           imported_at?: string | null
-          low_confidence?: boolean
-          notes?: string | null
-          payment_method?: string | null
           installment_group_id?: string | null
           installment_index?: number | null
+          installments?: number
+          low_confidence?: boolean
+          notes?: string | null
           paid_at?: string | null
+          payment_method?: string | null
           raw_description?: string | null
           raw_line?: string | null
           raw_payload?: Json | null
@@ -237,17 +346,9 @@ export type Database = {
           source_bank?: string | null
           source_type?: string | null
           status?: string
-          installments?: number | null
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "expenses_import_batch_id_fkey"
-            columns: ["import_batch_id"]
-            isOneToOne: false
-            referencedRelation: "bank_statement_import_batches"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "expenses_category_id_fkey"
             columns: ["category_id"]
@@ -262,11 +363,19 @@ export type Database = {
             referencedRelation: "families"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "expenses_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "bank_statement_import_batches"
+            referencedColumns: ["id"]
+          },
         ]
       }
       families: {
         Row: {
           created_at: string
+          created_by: string | null
           founders_enabled: boolean
           id: string
           lifetime_access: boolean
@@ -275,6 +384,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           founders_enabled?: boolean
           id?: string
           lifetime_access?: boolean
@@ -283,6 +393,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           founders_enabled?: boolean
           id?: string
           lifetime_access?: boolean
@@ -291,65 +402,23 @@ export type Database = {
         }
         Relationships: []
       }
-      bank_statement_import_batches: {
+      founders_allowlist: {
         Row: {
           created_at: string
-          family_id: string
-          file_hash: string
-          file_name: string | null
+          email: string
           id: string
-          page_count: number
-          source_bank: string
-          source_type: string
-          status: string
-          summary: Json
-          updated_at: string
-          user_id: string
         }
         Insert: {
           created_at?: string
-          family_id: string
-          file_hash: string
-          file_name?: string | null
+          email: string
           id?: string
-          page_count?: number
-          source_bank: string
-          source_type?: string
-          status?: string
-          summary?: Json
-          updated_at?: string
-          user_id: string
         }
         Update: {
           created_at?: string
-          family_id?: string
-          file_hash?: string
-          file_name?: string | null
+          email?: string
           id?: string
-          page_count?: number
-          source_bank?: string
-          source_type?: string
-          status?: string
-          summary?: Json
-          updated_at?: string
-          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "bank_statement_import_batches_family_id_fkey"
-            columns: ["family_id"]
-            isOneToOne: false
-            referencedRelation: "families"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bank_statement_import_batches_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       incomes: {
         Row: {
@@ -420,13 +489,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "incomes_import_batch_id_fkey"
-            columns: ["import_batch_id"]
-            isOneToOne: false
-            referencedRelation: "bank_statement_import_batches"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "incomes_category_id_fkey"
             columns: ["category_id"]
             isOneToOne: false
@@ -438,6 +500,13 @@ export type Database = {
             columns: ["family_id"]
             isOneToOne: false
             referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incomes_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "bank_statement_import_batches"
             referencedColumns: ["id"]
           },
         ]
@@ -490,6 +559,33 @@ export type Database = {
           },
         ]
       }
+      plan_settings: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          is_visible: boolean
+          plan_code: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_visible?: boolean
+          plan_code: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_visible?: boolean
+          plan_code?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reminders: {
         Row: {
           category: string
@@ -536,6 +632,88 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "reminders_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stripe_customers: {
+        Row: {
+          created_at: string
+          family_id: string
+          stripe_customer_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          family_id: string
+          stripe_customer_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          family_id?: string
+          stripe_customer_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stripe_customers_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean | null
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          family_id: string
+          id: string
+          plan_code: string | null
+          price_id: string | null
+          status: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          family_id: string
+          id?: string
+          plan_code?: string | null
+          price_id?: string | null
+          status?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          family_id?: string
+          id?: string
+          plan_code?: string | null
+          price_id?: string | null
+          status?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_family_id_fkey"
             columns: ["family_id"]
             isOneToOne: false
             referencedRelation: "families"
@@ -599,12 +777,28 @@ export type Database = {
           },
         ]
       }
+      whatsapp_message_log: {
+        Row: {
+          created_at: string | null
+          message_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          message_id: string
+        }
+        Update: {
+          created_at?: string | null
+          message_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_family_id: { Args: never; Returns: string }
+      is_super_admin: { Args: { check_user?: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
