@@ -1,12 +1,12 @@
 'use client'
 
 import AppLayout from '@/components/layout/AppLayout'
-import Payables from '@/components/pages/Payables'
+import Expenses from '@/components/pages/Expenses'
 
-export default function PayablesPage() {
+export default function ExpensesPage() {
   return (
     <AppLayout>
-      <Payables />
+      <Expenses />
     </AppLayout>
   )
 }

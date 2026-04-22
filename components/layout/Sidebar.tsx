@@ -13,9 +13,9 @@ import { useEffect, useMemo, useState } from 'react'
 
 const menuItems = [
   { icon: Home, label: 'Início', href: '/inicio' },
-  { icon: BanknoteArrowUp, label: 'Contas a Pagar', href: '/payables' },
-  { icon: BanknoteArrowDown, label: 'Contas a Receber', href: '/receivables' },
-  { icon: PiggyBank, label: 'Poupança', href: '/dreams' },
+  { icon: BanknoteArrowUp, label: 'Contas a Pagar', href: '/expenses' },
+  { icon: BanknoteArrowDown, label: 'Contas a Receber', href: '/incomes' },
+  { icon: PiggyBank, label: 'Poupança', href: '/savings' },
   { icon: ChartColumnBig, label: 'Comparativos', href: '/comparatives' },
   { icon: Info, label: 'Sobre', href: '/sobre' },
 ]

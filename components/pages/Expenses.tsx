@@ -82,7 +82,7 @@ const formatPaymentLabel = (method: PaymentMethod | null, installments: number |
   return 'Não definido'
 }
 
-export default function Payables() {
+export default function Expenses() {
   const { familyId } = useAuth()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [categories, setCategories] = useState<CategoryRecord[]>([])

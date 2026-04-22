@@ -1,12 +1,12 @@
 'use client'
 
 import AppLayout from '@/components/layout/AppLayout'
-import Profile from '@/components/pages/Profile'
+import Savings from '@/components/pages/Savings'
 
-export default function ProfilePage() {
+export default function SavingsPage() {
   return (
     <AppLayout>
-      <Profile />
+      <Savings />
     </AppLayout>
   )
 }

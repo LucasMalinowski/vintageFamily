@@ -6,9 +6,9 @@ import { Home, BanknoteArrowUp, BanknoteArrowDown, PiggyBank, ChartColumnBig } f
 
 const tabs = [
   { icon: Home, label: 'Início', href: '/inicio' },
-  { icon: BanknoteArrowUp, label: 'A Pagar', href: '/payables' },
-  { icon: BanknoteArrowDown, label: 'A Receber', href: '/receivables' },
-  { icon: PiggyBank, label: 'Poupança', href: '/dreams' },
+  { icon: BanknoteArrowUp, label: 'A Pagar', href: '/expenses' },
+  { icon: BanknoteArrowDown, label: 'A Receber', href: '/incomes' },
+  { icon: PiggyBank, label: 'Poupança', href: '/savings' },
   { icon: ChartColumnBig, label: 'Comparativos', href: '/comparatives' },
 ]
 

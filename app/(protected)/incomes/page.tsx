@@ -1,12 +1,12 @@
 'use client'
 
 import AppLayout from '@/components/layout/AppLayout'
-import Profile from '@/components/pages/Profile'
+import Incomes from '@/components/pages/Incomes'
 
-export default function ProfilePage() {
+export default function IncomesPage() {
   return (
     <AppLayout>
-      <Profile />
+      <Incomes />
     </AppLayout>
   )
 }
