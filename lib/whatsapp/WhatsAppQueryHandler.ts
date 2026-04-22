@@ -68,7 +68,10 @@ export class WhatsAppQueryHandler {
 
     const dateRange = WhatsAppQueryHandler.buildDateRange(intent.time_range, todayISO)
     const payload = await this.fetchData(intent, familyId, dateRange)
-    const period = periodLabel(intent.time_range, dateRange)
+    const rawPeriod = periodLabel(intent.time_range, dateRange)
+    const period = intent.status_filter === 'open'
+      ? (rawPeriod ? `pendentes ${rawPeriod}` : 'pendentes')
+      : rawPeriod
 
     const parts: string[] = []
 
@@ -328,7 +331,7 @@ export class WhatsAppQueryHandler {
     if (intent.data_needed.includes('expenses')) {
       fetchers.push(
         (async () => {
-          const { data } = await supabaseAdmin
+          let query = supabaseAdmin
             .from('expenses')
             .select('date, description, category_name, amount_cents')
             .eq('family_id', familyId)
@@ -336,6 +339,8 @@ export class WhatsAppQueryHandler {
             .lte('date', dateRange.to)
             .order('date', { ascending: false })
             .limit(50)
+          if (intent.status_filter === 'open') query = query.eq('status', 'open')
+          const { data } = await query
           payload.expenses = (data ?? []).map((r, i) => ({
             idx: i,
             date: r.date,

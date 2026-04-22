@@ -11,7 +11,7 @@ const USAGE_HINT = `Olá! 👋 Para registrar suas finanças, envie mensagens co
 💸 *Despesa:* "Gastei 50 reais no mercado no pix"
 💸 *Parcelado:* "Comprei um tênis de 150 em 3x"
 💰 *Receita:* "Recebi 1500 de salário"
-⭐ *Sonho:* "Guardei 200 para a viagem"
+⭐ *Poupança:* "Guardei 200 para a viagem"
 📝 *Lembrete:* "Me lembre de pagar o aluguel"
 
 Você também pode combinar: "Gastei 30 na farmácia e 55 de gasolina"`
@@ -43,7 +43,20 @@ function getFallbackCategory(
   return found ?? null
 }
 
-export async function processWhatsAppMessage(fromPhone: string, messageText: string): Promise<void> {
+const MAX_MESSAGE_LENGTH = 1000
+
+export async function processWhatsAppMessage(fromPhone: string, messageText: string, messageId?: string): Promise<void> {
+  if (messageId) {
+    const { error } = await supabaseAdmin
+      .from('whatsapp_message_log')
+      .insert({ message_id: messageId })
+    if (error) return // duplicate key → already processed
+  }
+
+  const text = messageText.length > MAX_MESSAGE_LENGTH
+    ? messageText.slice(0, MAX_MESSAGE_LENGTH)
+    : messageText
+
   const candidates = buildPhoneCandidates(fromPhone)
 
   let userRow: { id: string; family_id: string } | null = null
@@ -67,14 +80,14 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
 
   let intent: IntentClassification
   try {
-    intent = await nvidiaAIService.classifyIntent(messageText, todayISO)
+    intent = await nvidiaAIService.classifyIntent(text, todayISO)
   } catch {
-    intent = { type: 'record', data_needed: [], time_range: 'current_month', focus: null }
+    intent = { type: 'record', data_needed: [], time_range: 'current_month', focus: null, status_filter: null }
   }
 
   if (intent.type === 'query') {
     try {
-      const reply = await whatsAppQueryHandler.handle(messageText, intent, familyId, todayISO)
+      const reply = await whatsAppQueryHandler.handle(text, intent, familyId, todayISO)
       await whatsAppService.sendTextMessage(fromPhone, reply)
     } catch {
       await whatsAppService.sendTextMessage(fromPhone, 'Não consegui buscar seus dados agora. Tente novamente em instantes. 🔄')
@@ -92,7 +105,7 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
 
   let records: Awaited<ReturnType<typeof nvidiaAIService.extractFinancialRecords>>
   try {
-    records = await nvidiaAIService.extractFinancialRecords(messageText, labelMap, todayISO)
+    records = await nvidiaAIService.extractFinancialRecords(text, labelMap, todayISO)
   } catch (err: any) {
     const isRateLimit = err?.message?.includes('rate limit')
     await whatsAppService.sendTextMessage(
@@ -105,13 +118,13 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
   }
 
   const QUERY_KEYWORDS = /\b(quanto|qual|quantas|quantos|me mostra|resumo|total|meus gastos|minhas receitas)\b/i
-  if (!records.length && QUERY_KEYWORDS.test(messageText)) {
+  if (!records.length && QUERY_KEYWORDS.test(text)) {
     const fallbackIntent: IntentClassification = {
       type: 'query', data_needed: ['expenses', 'incomes'],
-      time_range: 'current_month', focus: null,
+      time_range: 'current_month', focus: null, status_filter: null,
     }
     try {
-      const reply = await whatsAppQueryHandler.handle(messageText, fallbackIntent, familyId, todayISO)
+      const reply = await whatsAppQueryHandler.handle(text, fallbackIntent, familyId, todayISO)
       await whatsAppService.sendTextMessage(fromPhone, reply)
     } catch {
       await whatsAppService.sendTextMessage(fromPhone, USAGE_HINT)
@@ -147,6 +160,9 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
   await whatsAppService.sendTextMessage(fromPhone, parts.join('\n\n'))
 }
 
+const MAX_AMOUNT_CENTS = 100_000_000_00  // R$100 million
+const MAX_INSTALLMENTS = 120
+
 async function saveRecord(
   record: AIExtractedRecord,
   familyId: string,
@@ -177,6 +193,11 @@ async function saveRecord(
     return { ok: true, line }
   }
 
+  // ── Amount validation (expense, income, dream_contribution) ─────────────────
+  if (!Number.isInteger(record.amount_cents) || record.amount_cents <= 0 || record.amount_cents > MAX_AMOUNT_CENTS) {
+    return { ok: false, line: `❌ Valor inválido: ${record.description}` }
+  }
+
   // ── Category resolution (expense, income, dream) ────────────────────────────
   const kind = record.type === 'income' ? 'income' : 'expense'
 
@@ -198,7 +219,7 @@ async function saveRecord(
   // ── Expense ─────────────────────────────────────────────────────────────────
   if (record.type === 'expense') {
     const status = record.status ?? 'paid'
-    const installmentCount = Math.max(1, record.installments ?? 1)
+    const installmentCount = Math.min(Math.max(1, record.installments ?? 1), MAX_INSTALLMENTS)
 
     if (installmentCount > 1) {
       const groupId = crypto.randomUUID()
@@ -287,15 +308,26 @@ async function saveRecord(
 
   // ── Dream contribution ───────────────────────────────────────────────────────
   const dreamName = record.dream_name ?? record.description
-  const { data: dream } = await supabaseAdmin
+
+  // Prefer exact match; fall back to partial. Using .limit(1) avoids maybeSingle() error on multiple matches.
+  const { data: exactMatches } = await supabaseAdmin
+    .from('dreams')
+    .select('id,name')
+    .eq('family_id', familyId)
+    .ilike('name', dreamName)
+    .limit(1)
+
+  const { data: partialMatches } = exactMatches?.length ? { data: [] } : await supabaseAdmin
     .from('dreams')
     .select('id,name')
     .eq('family_id', familyId)
     .ilike('name', `%${dreamName}%`)
-    .maybeSingle()
+    .limit(1)
+
+  const dream = exactMatches?.[0] ?? partialMatches?.[0] ?? null
 
   if (!dream) {
-    return { ok: false, line: `⭐ ${formatBRL(record.amount_cents)} — Sonho "${dreamName}" não encontrado no Florim` }
+    return { ok: false, line: `⭐ ${formatBRL(record.amount_cents)} — Poupança "${dreamName}" não encontrada no Florim` }
   }
 
   const { data, error } = await supabaseAdmin
@@ -310,7 +342,7 @@ async function saveRecord(
     .select('id')
     .single()
 
-  const line = `⭐ ${formatBRL(record.amount_cents)} — ${dream.name} (Sonho)`
+  const line = `⭐ ${formatBRL(record.amount_cents)} — ${dream.name} (Poupança)`
   if (error || !data?.id) {
     console.error('[WA] dream insert error:', error?.message)
     return { ok: false, line }
