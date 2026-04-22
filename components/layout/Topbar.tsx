@@ -11,9 +11,9 @@ import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
 
 const PAGE_ICONS: Record<string, React.ElementType> = {
   '/inicio': Home,
-  '/payables': BanknoteArrowUp,
-  '/receivables': BanknoteArrowDown,
-  '/dreams': PiggyBank,
+  '/expenses': BanknoteArrowUp,
+  '/incomes': BanknoteArrowDown,
+  '/savings': PiggyBank,
   '/comparatives': ChartColumnBig,
   '/sobre': Info,
 }

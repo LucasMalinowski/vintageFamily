@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
-import AppLayout from '@/components/layout/AppLayout'
 import Topbar from '@/components/layout/Topbar'
 import FilterSidebar from '@/components/layout/FilterSidebar'
 import FilterSearchBar from '@/components/layout/FilterSearchBar'
@@ -95,7 +94,7 @@ const buildDreamOptions = (dreams: Dream[]) => {
   return options
 }
 
-export default function DreamsPage() {
+export default function Savings() {
   const { familyId } = useAuth()
   const [dreams, setDreams] = useState<Dream[]>([])
   const [contributions, setContributions] = useState<Contribution[]>([])
@@ -278,7 +277,7 @@ export default function DreamsPage() {
   ]
 
   return (
-    <AppLayout>
+    <>
       <div className="flex flex-col h-full md:min-h-screen">
         <Topbar
           title="Poupança"
@@ -615,6 +614,6 @@ export default function DreamsPage() {
           setSelectedYear(y)
         }}
       />
-    </AppLayout>
+    </>
   )
 }

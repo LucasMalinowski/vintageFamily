@@ -266,7 +266,7 @@ export class WhatsAppQueryHandler {
       lines.push(`- ${d.name}${target}${contributed}`)
     })
 
-    lines.push(`\nVer todos: ${appUrl}/dreams`)
+    lines.push(`\nVer todos: ${appUrl}/savings`)
     return lines.join('\n')
   }
 

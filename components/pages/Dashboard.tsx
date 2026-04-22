@@ -246,7 +246,7 @@ export default function Dashboard() {
                   {pendingPayables.map((payable) => (
                     <Link
                       key={payable.id}
-                      href={`/payables#expense-${payable.id}`}
+                      href={`/expenses#expense-${payable.id}`}
                       className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-paper transition-vintage"
                     >
                       <div className="min-w-0">
@@ -266,7 +266,7 @@ export default function Dashboard() {
               )}
               <div className="pt-3">
                 <Link
-                  href="/payables"
+                  href="/expenses"
                   className="text-xs text-ink/40 hover:text-ink/60 transition-vintage"
                 >
                   Ver todos →

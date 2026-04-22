@@ -1,6 +1,5 @@
 'use client'
 
-import AppLayout from '@/components/layout/AppLayout'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
@@ -57,7 +56,7 @@ const buildAttachmentPath = (familyId: string, incomeId: string, fileName: strin
   return `${familyId}/${incomeId}/${timestamp}-${safeName}`
 }
 
-export default function ReceivablesPage() {
+export default function Incomes() {
   const { familyId } = useAuth()
   const [incomes, setIncomes] = useState<Income[]>([])
   const [categories, setCategories] = useState<CategoryRecord[]>([])
@@ -331,7 +330,7 @@ export default function ReceivablesPage() {
   ]
 
   return (
-    <AppLayout>
+    <>
       <div className="flex flex-col h-full md:min-h-screen">
         <Topbar
           title="Contas a Receber"
@@ -759,6 +758,6 @@ export default function ReceivablesPage() {
           setSelectedYear(y)
         }}
       />
-    </AppLayout>
+    </>
   )
 }
