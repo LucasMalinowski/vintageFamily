@@ -2,9 +2,11 @@
 
 import Link from 'next/link'
 import PublicNavbar from '@/components/layout/PublicNavbar'
+import PublicFooter from '@/components/layout/PublicFooter'
 
 export default function AboutPage() {
   return (
+    <div className="flex flex-col">
     <div className="relative h-screen overflow-hidden bg-paper">
       <PublicNavbar color="paper" showWordmark={false} />
       <div className="grid h-full lg:grid-cols-[2fr,1fr]">
@@ -60,6 +62,8 @@ export default function AboutPage() {
           />
         </section>
       </div>
+    </div>
+    <PublicFooter />
     </div>
   )
 }
