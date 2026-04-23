@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
     .eq('id', user.id)
 
   await whatsAppService.sendAuthOtp(normalized, code)
+  whatsAppService.sendPrivacyNotice(normalized).catch(() => {})
 
   return NextResponse.json({ success: true })
 }

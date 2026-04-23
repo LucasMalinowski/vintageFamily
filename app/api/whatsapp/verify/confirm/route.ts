@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import crypto from 'crypto'
 import { getAccessTokenFromCookieStore, requireUserByAccessToken } from '@/lib/billing/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
 
 function hashOtp(code: string): string {
   return crypto.createHash('sha256').update(code).digest('hex')
@@ -43,15 +44,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Código inválido ou expirado.' }, { status: 400 })
   }
 
+  const verifiedPhone = userRow.phone_number_pending!
+
   await supabaseAdmin
     .from('users')
     .update({
-      phone_number: userRow.phone_number_pending,
+      phone_number: verifiedPhone,
       phone_number_pending: null,
       phone_verification_code: null,
       phone_verification_expires_at: null,
     })
     .eq('id', user.id)
+
+  whatsAppService.sendWelcomeTips(verifiedPhone).catch(() => {})
 
   return NextResponse.json({ success: true })
 }

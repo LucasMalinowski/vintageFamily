@@ -194,7 +194,8 @@ async function saveRecord(
   }
 
   // ── Amount validation (expense, income, dream_contribution) ─────────────────
-  if (!Number.isInteger(record.amount_cents) || record.amount_cents <= 0 || record.amount_cents > MAX_AMOUNT_CENTS) {
+  const amount_cents = Math.round((record.amount ?? 0) * 100)
+  if (!Number.isFinite(amount_cents) || amount_cents <= 0 || amount_cents > MAX_AMOUNT_CENTS) {
     return { ok: false, line: `❌ Valor inválido: ${record.description}` }
   }
 
@@ -223,12 +224,12 @@ async function saveRecord(
 
     if (installmentCount > 1) {
       const groupId = crypto.randomUUID()
-      const perInstallment = Math.floor(record.amount_cents / installmentCount)
+      const perInstallment = Math.floor(amount_cents / installmentCount)
       const rows = Array.from({ length: installmentCount }, (_, i) => ({
         family_id: familyId,
         description: record.description,
         amount_cents: i === installmentCount - 1
-          ? record.amount_cents - perInstallment * (installmentCount - 1)
+          ? amount_cents - perInstallment * (installmentCount - 1)
           : perInstallment,
         date: format(addMonths(parseISO(record.date), i), 'yyyy-MM-dd'),
         category_id: categoryId,
@@ -244,7 +245,7 @@ async function saveRecord(
 
       const { error } = await supabaseAdmin.from('expenses').insert(rows)
       const catStr = resolvedLabel ? ` (${resolvedLabel})` : ''
-      const line = `💸 ${formatBRL(record.amount_cents)} — ${record.description}${catStr} _(${formatBRL(perInstallment)} × ${installmentCount} — 1ª parcela paga)_`
+      const line = `💸 ${formatBRL(amount_cents)} — ${record.description}${catStr} _(${formatBRL(perInstallment)} × ${installmentCount} — 1ª parcela paga)_`
       if (error) {
         console.error('[WA] installment insert error:', error.message)
         return { ok: false, line }
@@ -257,7 +258,7 @@ async function saveRecord(
       .insert({
         family_id: familyId,
         description: record.description,
-        amount_cents: record.amount_cents,
+        amount_cents: amount_cents,
         date: record.date,
         category_id: categoryId,
         category_name: categoryName ?? 'Outros',
@@ -272,7 +273,7 @@ async function saveRecord(
 
     const statusLabel = status === 'paid' ? '_(pago)_' : '_(pendente)_'
     const catStr = resolvedLabel ? ` (${resolvedLabel})` : ''
-    const line = `💸 ${formatBRL(record.amount_cents)} — ${record.description}${catStr} ${statusLabel}`
+    const line = `💸 ${formatBRL(amount_cents)} — ${record.description}${catStr} ${statusLabel}`
     if (error || !data?.id) {
       console.error('[WA] expense insert error:', error?.message)
       return { ok: false, line }
@@ -287,7 +288,7 @@ async function saveRecord(
       .insert({
         family_id: familyId,
         description: record.description,
-        amount_cents: record.amount_cents,
+        amount_cents: amount_cents,
         date: record.date,
         category_id: categoryId,
         category_name: categoryName ?? 'Outras Receitas',
@@ -298,7 +299,7 @@ async function saveRecord(
       .single()
 
     const catStr = resolvedLabel ? ` (${resolvedLabel})` : ''
-    const line = `💰 ${formatBRL(record.amount_cents)} — ${record.description}${catStr} _(recebido)_`
+    const line = `💰 ${formatBRL(amount_cents)} — ${record.description}${catStr} _(recebido)_`
     if (error || !data?.id) {
       console.error('[WA] income insert error:', error?.message)
       return { ok: false, line }
@@ -327,7 +328,7 @@ async function saveRecord(
   const dream = exactMatches?.[0] ?? partialMatches?.[0] ?? null
 
   if (!dream) {
-    return { ok: false, line: `⭐ ${formatBRL(record.amount_cents)} — Poupança "${dreamName}" não encontrada no Florim` }
+    return { ok: false, line: `⭐ ${formatBRL(amount_cents)} — Poupança "${dreamName}" não encontrada no Florim` }
   }
 
   const { data, error } = await supabaseAdmin
@@ -335,14 +336,14 @@ async function saveRecord(
     .insert({
       family_id: familyId,
       dream_id: dream.id,
-      amount_cents: record.amount_cents,
+      amount_cents: amount_cents,
       date: record.date,
       notes: 'Criado via WhatsApp',
     })
     .select('id')
     .single()
 
-  const line = `⭐ ${formatBRL(record.amount_cents)} — ${dream.name} (Poupança)`
+  const line = `⭐ ${formatBRL(amount_cents)} — ${dream.name} (Poupança)`
   if (error || !data?.id) {
     console.error('[WA] dream insert error:', error?.message)
     return { ok: false, line }

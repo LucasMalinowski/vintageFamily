@@ -28,6 +28,29 @@ export class WhatsAppService {
     }
   }
 
+  async sendPrivacyNotice(to: string): Promise<void> {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://florim.app'
+    await this.sendTextMessage(
+      to,
+      `Em conformidade com a LGPD, seus dados são tratados com total segurança pela Florim. Nenhuma informação é compartilhada com terceiros.\n\nConsulte nossos Termos e Política de Privacidade em:\n${appUrl}/termos-e-servicos`
+    )
+  }
+
+  async sendWelcomeTips(to: string): Promise<void> {
+    await this.sendTextMessage(
+      to,
+      `✅ *Número verificado! Bem-vindo ao Florim.*\n\n` +
+      `Aqui vão algumas dicas rápidas:\n\n` +
+      `📌 *Fixe esta conversa* — Toque e segure este chat e selecione "Fixar" para ter acesso fácil sempre que precisar registrar algo.\n\n` +
+      `💬 *O que você pode fazer:*\n` +
+      `• "Gastei 50 no mercado" → registra despesa\n` +
+      `• "Recebi 3000 de salário" → registra receita\n` +
+      `• "Quanto gastei esse mês?" → consulta de gastos\n` +
+      `• "Mostre despesas de alimentação" → filtra por categoria\n\n` +
+      `É só mandar uma mensagem como se fosse falar com um amigo! 😊`
+    )
+  }
+
   async sendAuthOtp(to: string, code: string): Promise<void> {
     const response = await fetch(this.apiUrl, {
       method: 'POST',
