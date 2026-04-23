@@ -62,44 +62,47 @@ export type Database = {
           },
         ]
       }
-      dream_contributions: {
+      savings_contributions: {
         Row: {
           amount_cents: number
           created_at: string
           date: string
-          dream_id: string
           family_id: string
           id: string
           notes: string | null
+          saving_id: string
+          type: string
         }
         Insert: {
           amount_cents: number
           created_at?: string
           date: string
-          dream_id: string
           family_id: string
           id?: string
           notes?: string | null
+          saving_id: string
+          type?: string
         }
         Update: {
           amount_cents?: number
           created_at?: string
           date?: string
-          dream_id?: string
           family_id?: string
           id?: string
           notes?: string | null
+          saving_id?: string
+          type?: string
         }
         Relationships: [
           {
-            foreignKeyName: "dream_contributions_dream_id_fkey"
-            columns: ["dream_id"]
+            foreignKeyName: "savings_contributions_saving_id_fkey"
+            columns: ["saving_id"]
             isOneToOne: false
-            referencedRelation: "dreams"
+            referencedRelation: "savings"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "dream_contributions_family_id_fkey"
+            foreignKeyName: "savings_contributions_family_id_fkey"
             columns: ["family_id"]
             isOneToOne: false
             referencedRelation: "families"
@@ -107,7 +110,7 @@ export type Database = {
           },
         ]
       }
-      dreams: {
+      savings: {
         Row: {
           created_at: string
           family_id: string
@@ -140,14 +143,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "dreams_parent_id_fkey"
+            foreignKeyName: "savings_parent_id_fkey"
             columns: ["parent_id"]
             isOneToOne: false
-            referencedRelation: "dreams"
+            referencedRelation: "savings"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "dreams_family_id_fkey"
+            foreignKeyName: "savings_family_id_fkey"
             columns: ["family_id"]
             isOneToOne: false
             referencedRelation: "families"

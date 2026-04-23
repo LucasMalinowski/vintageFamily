@@ -18,7 +18,7 @@ interface InternalRow {
   kind: 'expense' | 'income'
 }
 
-interface InternalDream {
+interface InternalSaving {
   name: string
   target_cents: number | null
   contributed_cents: number
@@ -34,7 +34,7 @@ interface InternalReminder {
 interface InternalPayload {
   expenses?: InternalRow[]
   incomes?: InternalRow[]
-  dreams?: InternalDream[]
+  savings?: InternalSaving[]
   reminders?: InternalReminder[]
 }
 
@@ -94,8 +94,8 @@ export class WhatsAppQueryHandler {
     }
 
     // Dreams — no classification needed, just list
-    if (payload.dreams?.length) {
-      parts.push(WhatsAppQueryHandler.buildDreamsMessage(payload.dreams, period))
+    if (payload.savings?.length) {
+      parts.push(WhatsAppQueryHandler.buildSavingsMessage(payload.savings, period))
     }
 
     // Reminders — no classification needed, just list
@@ -257,11 +257,11 @@ export class WhatsAppQueryHandler {
     return lines.join('\n')
   }
 
-  private static buildDreamsMessage(dreams: InternalDream[], period: string): string {
-    const lines = ['Seus sonhos/metas:\n']
+  private static buildSavingsMessage(savings: InternalSaving[], period: string): string {
+    const lines = ['Suas poupanças:\n']
 
     const periodStr = period ? ` ${period}` : ''
-    dreams.forEach(d => {
+    savings.forEach(d => {
       const target = d.target_cents != null ? ` | Meta: *${formatBRL(d.target_cents)}*` : ''
       const contributed = d.contributed_cents > 0
         ? ` | Guardado${periodStr}: *${formatBRL(d.contributed_cents)}*`
@@ -376,29 +376,30 @@ export class WhatsAppQueryHandler {
       )
     }
 
-    if (intent.data_needed.includes('dreams')) {
+    if (intent.data_needed.includes('savings')) {
       fetchers.push(
         (async () => {
-          const [{ data: dreams }, { data: contribs }] = await Promise.all([
+          const [{ data: savingsList }, { data: contribs }] = await Promise.all([
             supabaseAdmin
-              .from('dreams')
+              .from('savings')
               .select('id, name, target_cents')
               .eq('family_id', familyId),
             supabaseAdmin
-              .from('dream_contributions')
-              .select('dream_id, amount_cents')
+              .from('savings_contributions')
+              .select('saving_id, amount_cents, type')
               .eq('family_id', familyId)
               .gte('date', dateRange.from)
               .lte('date', dateRange.to),
           ])
-          const sumByDream = new Map<string, number>()
+          const sumBySaving = new Map<string, number>()
           for (const c of contribs ?? []) {
-            sumByDream.set(c.dream_id, (sumByDream.get(c.dream_id) ?? 0) + c.amount_cents)
+            const delta = c.type === 'withdrawal' ? -(c.amount_cents) : c.amount_cents
+            sumBySaving.set(c.saving_id, (sumBySaving.get(c.saving_id) ?? 0) + delta)
           }
-          payload.dreams = (dreams ?? []).map(d => ({
+          payload.savings = (savingsList ?? []).map(d => ({
             name: d.name,
             target_cents: d.target_cents,
-            contributed_cents: sumByDream.get(d.id) ?? 0,
+            contributed_cents: sumBySaving.get(d.id) ?? 0,
           }))
         })()
       )

@@ -193,13 +193,13 @@ async function saveRecord(
     return { ok: true, line }
   }
 
-  // ── Amount validation (expense, income, dream_contribution) ─────────────────
+  // ── Amount validation (expense, income, savings_contribution) ───────────────
   const amount_cents = Math.round((record.amount ?? 0) * 100)
   if (!Number.isFinite(amount_cents) || amount_cents <= 0 || amount_cents > MAX_AMOUNT_CENTS) {
     return { ok: false, line: `❌ Valor inválido: ${record.description}` }
   }
 
-  // ── Category resolution (expense, income, dream) ────────────────────────────
+  // ── Category resolution (expense, income) ───────────────────────────────────
   const kind = record.type === 'income' ? 'income' : 'expense'
 
   let categoryId = record.category_name
@@ -307,45 +307,50 @@ async function saveRecord(
     return { ok: true, line }
   }
 
-  // ── Dream contribution ───────────────────────────────────────────────────────
-  const dreamName = record.dream_name ?? record.description
+  // ── Savings contribution ─────────────────────────────────────────────────────
+  if (record.type !== 'savings_contribution') {
+    return { ok: false, line: `❌ Tipo desconhecido: ${record.description}` }
+  }
+
+  const savingName = record.saving_name ?? record.description
 
   // Prefer exact match; fall back to partial. Using .limit(1) avoids maybeSingle() error on multiple matches.
   const { data: exactMatches } = await supabaseAdmin
-    .from('dreams')
+    .from('savings')
     .select('id,name')
     .eq('family_id', familyId)
-    .ilike('name', dreamName)
+    .ilike('name', savingName)
     .limit(1)
 
   const { data: partialMatches } = exactMatches?.length ? { data: [] } : await supabaseAdmin
-    .from('dreams')
+    .from('savings')
     .select('id,name')
     .eq('family_id', familyId)
-    .ilike('name', `%${dreamName}%`)
+    .ilike('name', `%${savingName}%`)
     .limit(1)
 
-  const dream = exactMatches?.[0] ?? partialMatches?.[0] ?? null
+  const saving = exactMatches?.[0] ?? partialMatches?.[0] ?? null
 
-  if (!dream) {
-    return { ok: false, line: `⭐ ${formatBRL(amount_cents)} — Poupança "${dreamName}" não encontrada no Florim` }
+  if (!saving) {
+    return { ok: false, line: `⭐ ${formatBRL(amount_cents)} — Poupança "${savingName}" não encontrada no Florim` }
   }
 
   const { data, error } = await supabaseAdmin
-    .from('dream_contributions')
+    .from('savings_contributions')
     .insert({
       family_id: familyId,
-      dream_id: dream.id,
+      saving_id: saving.id,
       amount_cents: amount_cents,
       date: record.date,
       notes: 'Criado via WhatsApp',
+      type: 'deposit',
     })
     .select('id')
     .single()
 
-  const line = `⭐ ${formatBRL(amount_cents)} — ${dream.name} (Poupança)`
+  const line = `⭐ ${formatBRL(amount_cents)} — ${saving.name} (Poupança)`
   if (error || !data?.id) {
-    console.error('[WA] dream insert error:', error?.message)
+    console.error('[WA] savings insert error:', error?.message)
     return { ok: false, line }
   }
   return { ok: true, line }

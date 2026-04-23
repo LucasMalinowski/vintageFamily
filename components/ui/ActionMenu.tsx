@@ -1,17 +1,19 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { MoreVertical, Eye, Pencil, Trash2, Paperclip } from 'lucide-react'
+import { MoreVertical, Eye, Pencil, Trash2, Paperclip, TrendingUp, TrendingDown } from 'lucide-react'
 
 interface ActionMenuProps {
   onEdit?: () => void
   onDelete?: () => void
   onView?: () => void
   onAttach?: (file: File) => void
+  onDeposit?: () => void
+  onWithdrawal?: () => void
   disabled?: boolean
 }
 
-export default function ActionMenu({ onEdit, onDelete, onView, onAttach, disabled }: ActionMenuProps) {
+export default function ActionMenu({ onEdit, onDelete, onView, onAttach, onDeposit, onWithdrawal, disabled }: ActionMenuProps) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -47,6 +49,24 @@ export default function ActionMenu({ onEdit, onDelete, onView, onAttach, disable
 
       {open && (
         <div className="absolute right-0 mt-2 w-44 rounded-lg border border-border bg-bg shadow-vintage z-20">
+          {onDeposit && (
+            <button
+              type="button"
+              onClick={() => { onDeposit(); setOpen(false) }}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-ink/70 hover:bg-paper transition-vintage"
+            >
+              <TrendingUp className="w-4 h-4 text-olive" /> Guardar
+            </button>
+          )}
+          {onWithdrawal && (
+            <button
+              type="button"
+              onClick={() => { onWithdrawal(); setOpen(false) }}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-ink/70 hover:bg-paper transition-vintage"
+            >
+              <TrendingDown className="w-4 h-4 text-terracotta" /> Resgatar
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
