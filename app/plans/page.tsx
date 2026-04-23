@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import PublicNavbar from '@/components/layout/PublicNavbar'
+import PublicFooter from '@/components/layout/PublicFooter'
 import { ArrowLeft } from 'lucide-react'
 
 export default function PlansPage() {
@@ -193,6 +194,7 @@ export default function PlansPage() {
               O Florim está aqui para ajudar nisso.
             </div>
           </div>
+          <PublicFooter />
         </section>
       </div>
     </div>

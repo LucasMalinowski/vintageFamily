@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import PublicNavbar from '@/components/layout/PublicNavbar'
+import PublicFooter from '@/components/layout/PublicFooter'
 
 export const metadata: Metadata = {
   title: 'Termos de Uso e Aviso de Privacidade | Florim',
@@ -271,6 +272,7 @@ export default function TermsAndServicesPage() {
           </section>
         </div>
       </main>
+      <PublicFooter />
     </div>
   )
 }
