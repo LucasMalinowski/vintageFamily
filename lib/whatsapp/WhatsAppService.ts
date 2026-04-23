@@ -29,10 +29,10 @@ export class WhatsAppService {
   }
 
   async sendPrivacyNotice(to: string): Promise<void> {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://florim.app'
+    const appUrl = 'https://florim.app'
     await this.sendTextMessage(
       to,
-      `Em conformidade com a LGPD, seus dados são tratados com total segurança pela Florim. Nenhuma informação é compartilhada com terceiros.\n\nConsulte nossos Termos e Política de Privacidade em:\n${appUrl}/termos-e-servicos`
+      `Em conformidade com a LGPD, seus dados são tratados com total segurança pelo Florim. Nenhuma informação é compartilhada com terceiros.\n\nConsulte nossos Termos e Política de Privacidade em:\n${appUrl}/termos-e-servicos`
     )
   }
 
