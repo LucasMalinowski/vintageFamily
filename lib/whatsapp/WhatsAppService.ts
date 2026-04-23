@@ -32,7 +32,14 @@ export class WhatsAppService {
     const appUrl = 'https://florim.app'
     await this.sendTextMessage(
       to,
-      `Em conformidade com a LGPD, seus dados são tratados com total segurança pelo Florim. Nenhuma informação é compartilhada com terceiros.\n\nConsulte nossos Termos e Política de Privacidade em:\n${appUrl}/termos-e-servicos`
+      `🔒 *Privacidade e Segurança dos seus dados*\n\n
+
+      Em conformidade com a *LGPD*, seus dados são tratados com total segurança pelo *Florim*.\n
+      Nenhuma informação é compartilhada com terceiros.\n\n
+
+      📄 *Consulte nossos Termos e Política de Privacidade:*\n
+      > ${appUrl}/termos-e-servicos
+      `
     )
   }
 
@@ -40,14 +47,18 @@ export class WhatsAppService {
     await this.sendTextMessage(
       to,
       `✅ *Número verificado! Bem-vindo ao Florim.*\n\n` +
-      `Aqui vão algumas dicas rápidas:\n\n` +
-      `📌 *Fixe esta conversa* — Toque e segure este chat e selecione "Fixar" para ter acesso fácil sempre que precisar registrar algo.\n\n` +
-      `💬 *O que você pode fazer:*\n` +
-      `• "Gastei 50 no mercado" → registra despesa\n` +
-      `• "Recebi 3000 de salário" → registra receita\n` +
-      `• "Quanto gastei esse mês?" → consulta de gastos\n` +
-      `• "Mostre despesas de alimentação" → filtra por categoria\n\n` +
-      `É só mandar uma mensagem como se fosse falar com um amigo! 😊`
+      `Aqui vão algumas dicas rápidas pra você começar:\n\n` +
+      `> 📌 *Fixe esta conversa*\n` +
+      `> Toque e segure este chat e selecione _"Fixar"_ para ter acesso fácil sempre que precisar registrar algo.\n\n` +
+      `---\n\n` +
+      `💡 *O que você pode fazer:*\n\n` +
+      "```" +
+      `\n"Gastei 50 no mercado"        → registra despesa\n` +
+      `"Recebi 3000 de salário"     → registra receita\n` +
+      `"Quanto gastei esse mês?"    → consulta de gastos\n` +
+      `"Mostre despesas de alimentação" → filtra por categoria\n` +
+      "```" +
+      `\n\n✨ É só mandar uma mensagem como se estivesse falando com um amigo!`
     )
   }
 
