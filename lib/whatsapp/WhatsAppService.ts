@@ -32,11 +32,8 @@ export class WhatsAppService {
     const appUrl = 'https://florim.app'
     await this.sendTextMessage(
       to,
-      `🔒 *Privacidade e Segurança dos seus dados*\n\n` +
-      `Em conformidade com a *LGPD*, seus dados são tratados com total segurança pelo *Florim*.\n` +
-      `Nenhuma informação é compartilhada com terceiros.\n\n` +
-      `📄 *Termos e Política de Privacidade:*\n` +
-      `> ${appUrl}/termos-e-servicos`
+      `> 🔒 Em conformidade com a *LGPD*, seus dados são tratados com total segurança pelo *Florim*. Nenhuma informação é compartilhada com terceiros.\n` +
+      `> 📄 Termos e Política de Privacidade: ${appUrl}/termos-e-servicos`
     )
   }
 
