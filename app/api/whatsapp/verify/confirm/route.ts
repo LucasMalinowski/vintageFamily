@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     })
     .eq('id', user.id)
 
-  whatsAppService.sendWelcomeTips(verifiedPhone).catch(() => {})
+  try { await whatsAppService.sendWelcomeTips(verifiedPhone) } catch {}
 
   return NextResponse.json({ success: true })
 }
