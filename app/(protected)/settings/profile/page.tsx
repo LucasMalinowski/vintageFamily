@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Check, ChevronDown, Search } from 'lucide-react'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
+import Modal from '@/components/ui/Modal'
+import { useRouter } from 'next/navigation'
 
 type PhoneState = 'none' | 'pending' | 'verified'
 
@@ -49,8 +51,14 @@ function countryLabel(country: CountryOption) {
   return `${country.flag} ${country.name}`
 }
 
+type DeletionInfo = {
+  role: 'admin' | 'member'
+  otherMembers: Array<{ id: string; name: string; email: string }>
+}
+
 export default function ProfileSettingsPage() {
-  const { user, familyId } = useAuth()
+  const { user, familyId, signOut } = useAuth()
+  const router = useRouter()
   const [profileName, setProfileName] = useState('')
   const [profileEmail, setProfileEmail] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
@@ -74,6 +82,14 @@ export default function ProfileSettingsPage() {
   const [phoneSuccess, setPhoneSuccess] = useState<string | null>(null)
   const [countrySearch, setCountrySearch] = useState('')
   const [countryMenuOpen, setCountryMenuOpen] = useState(false)
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deletionInfo, setDeletionInfo] = useState<DeletionInfo | null>(null)
+  const [deletionInfoLoading, setDeletionInfoLoading] = useState(false)
+  const [selectedNewAdminId, setSelectedNewAdminId] = useState('')
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const selectedCountry = useMemo(
     () => findCountryBySlug(selectedCountrySlug),
@@ -266,6 +282,82 @@ export default function ProfileSettingsPage() {
     setAvatarFile(file)
     const previewUrl = URL.createObjectURL(file)
     setAvatarPreview(previewUrl)
+  }
+
+  const handleOpenDeleteModal = async () => {
+    setDeleteModalOpen(true)
+    setDeleteError(null)
+    setDeleteConfirmText('')
+    setSelectedNewAdminId('')
+    setDeletionInfo(null)
+    setDeletionInfoLoading(true)
+
+    const session = await supabase.auth.getSession()
+    const token = session.data.session?.access_token
+    if (!token) {
+      setDeleteError('Sessão expirada. Faça login novamente.')
+      setDeletionInfoLoading(false)
+      return
+    }
+
+    try {
+      const res = await fetch('/api/account/deletion-info', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setDeleteError(data.error ?? 'Erro ao carregar informações.')
+      } else {
+        setDeletionInfo(data)
+        if (data.otherMembers?.length > 0) {
+          setSelectedNewAdminId(data.otherMembers[0].id)
+        }
+      }
+    } catch {
+      setDeleteError('Erro de conexão.')
+    }
+
+    setDeletionInfoLoading(false)
+  }
+
+  const handleDeleteAccount = async () => {
+    if (!deletionInfo) return
+    setDeleting(true)
+    setDeleteError(null)
+
+    const session = await supabase.auth.getSession()
+    const token = session.data.session?.access_token
+    if (!token) {
+      setDeleteError('Sessão expirada. Faça login novamente.')
+      setDeleting(false)
+      return
+    }
+
+    try {
+      const body: Record<string, string> = {}
+      if (deletionInfo.role === 'admin' && deletionInfo.otherMembers.length > 0) {
+        body.newAdminId = selectedNewAdminId
+      }
+
+      const res = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setDeleteError(data.error ?? 'Erro ao excluir conta.')
+        setDeleting(false)
+        return
+      }
+
+      await signOut()
+      router.push('/login')
+    } catch {
+      setDeleteError('Erro de conexão.')
+      setDeleting(false)
+    }
   }
 
   return (
@@ -519,8 +611,111 @@ export default function ProfileSettingsPage() {
               </button>
             </form>
           </div>
+
+          <div className="bg-bg border border-terracotta/30 rounded-vintage shadow-vintage p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-serif text-terracotta">Zona de perigo</h2>
+              <p className="text-sm text-ink/60 font-body mt-1">
+                Ações irreversíveis. Proceda com cuidado.
+              </p>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-body text-ink">Excluir minha conta</p>
+                <p className="text-xs text-ink/50 mt-0.5">Remove sua conta permanentemente.</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenDeleteModal}
+                className="px-4 py-2 rounded-lg border border-terracotta text-terracotta text-sm font-body hover:bg-terracotta/10 transition-vintage"
+              >
+                Excluir conta
+              </button>
+            </div>
+          </div>
         </>
       )}
+
+      <Modal isOpen={deleteModalOpen} onClose={() => !deleting && setDeleteModalOpen(false)} title="Excluir conta" size="sm">
+        <div className="space-y-4">
+          {deletionInfoLoading ? (
+            <p className="text-sm text-ink/60">Carregando informações...</p>
+          ) : (
+            <>
+              {deleteError && (
+                <div className="bg-terracotta/10 border border-terracotta/30 text-terracotta px-3 py-2 rounded-lg text-sm">
+                  {deleteError}
+                </div>
+              )}
+
+              {deletionInfo?.role === 'admin' && deletionInfo.otherMembers.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-sm text-ink/80">
+                    Você é administrador da família. Escolha quem assumirá a administração:
+                  </p>
+                  <select
+                    value={selectedNewAdminId}
+                    onChange={(e) => setSelectedNewAdminId(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
+                  >
+                    {deletionInfo.otherMembers.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name || member.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {deletionInfo?.role === 'admin' && deletionInfo.otherMembers.length === 0 && (
+                <div className="bg-terracotta/8 border border-terracotta/20 rounded-lg px-3 py-2.5">
+                  <p className="text-sm text-ink/80">
+                    Você é o único membro desta família. Ao excluir sua conta, a família será
+                    desativada permanentemente.
+                  </p>
+                </div>
+              )}
+
+              {deletionInfo?.role === 'member' && (
+                <p className="text-sm text-ink/80">
+                  Sua conta e seus dados pessoais serão removidos permanentemente.
+                </p>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="block text-sm font-body text-ink">
+                  Digite <strong>EXCLUIR</strong> para confirmar
+                </label>
+                <input
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="EXCLUIR"
+                  className="w-full px-3 py-2.5 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/30 transition-vintage"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={deleting || deleteConfirmText !== 'EXCLUIR' || !deletionInfo}
+                  className="flex-1 bg-terracotta text-paper px-4 py-2 rounded-lg text-sm font-body hover:bg-terracotta/90 transition-vintage disabled:opacity-50"
+                >
+                  {deleting ? 'Excluindo...' : 'Excluir minha conta'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteModalOpen(false)}
+                  disabled={deleting}
+                  className="px-4 py-2 rounded-lg border border-border text-ink/70 text-sm font-body hover:bg-paper-2/30 transition-vintage disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
     </div>
   )
 }
