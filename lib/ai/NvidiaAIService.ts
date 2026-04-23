@@ -1,7 +1,7 @@
 export interface AIExtractedRecord {
   type: 'expense' | 'income' | 'dream_contribution' | 'reminder'
   description: string
-  amount_cents: number
+  amount: number  // in reais (e.g. 100 → 100, 10.50 → 10.5); converted to cents in saveRecord
   date: string
   category_name: string | null
   payment_method: 'PIX' | 'Credito' | 'Debito' | null
@@ -114,48 +114,52 @@ Regras gerais:
 Tipos de registro:
 
 "expense" — gastos, compras, pagamentos ("gastei", "paguei", "comprei"):
-  - amount_cents: valor em centavos (R$10,50 → 1050)
+  - amount: valor em reais exatamente como mencionado pelo usuário (ex: "50" → 50, "10,50" → 10.5, "1500" → 1500). NUNCA converta para centavos.
   - payment_method: "PIX" | "Credito" | "Debito" | null. Use "Credito" para parcelado.
   - status: "paid" (padrão — já pagou/comprou) | "open" (ainda precisa pagar: "tenho que pagar", "vou pagar")
   - installments: número de parcelas. Padrão 1. "2x"→2, "3x"→3.
-    IMPORTANTE: amount_cents é o valor TOTAL (ex: R$150 em 3x → amount_cents:15000, installments:3)
+    IMPORTANTE: amount é o valor TOTAL em reais (ex: "150 em 3x" → amount:150, installments:3)
 
 "income" — recebimentos ("recebi", "entrou", "salário"):
-  - amount_cents, payment_method: null
+  - amount: valor em reais exatamente como mencionado (ex: "100" → 100, "1500" → 1500)
+  - payment_method: null
 
 "dream_contribution" — poupança para objetivo ("guardei para", "pousei para"):
   - dream_name: nome do sonho mencionado
-  - amount_cents
+  - amount: valor em reais
 
 "reminder" — lembretes e tarefas ("me lembra de", "não esquecer de", "lembrete para", "preciso lembrar de"):
   - description: título do lembrete
   - date: data do lembrete (calcule datas futuras como "na sexta", "semana que vem")
-  - amount_cents: 0, category_name: null, payment_method: null
+  - amount: 0, category_name: null, payment_method: null
 
 Exemplos (datas ilustrativas — use as datas reais do contexto fornecido):
 "gastei 50 reais no mercado no pix"
-→ {"records":[{"type":"expense","description":"Mercado","amount_cents":5000,"date":"2025-06-10","category_name":"Mercado","payment_method":"PIX","status":"paid","installments":1}]}
+→ {"records":[{"type":"expense","description":"Mercado","amount":50,"date":"2025-06-10","category_name":"Mercado","payment_method":"PIX","status":"paid","installments":1}]}
 
 "comprei um tênis de 150 em 3x"
-→ {"records":[{"type":"expense","description":"Tênis","amount_cents":15000,"date":"2025-06-10","category_name":"Roupas e Calçados","payment_method":"Credito","status":"paid","installments":3}]}
+→ {"records":[{"type":"expense","description":"Tênis","amount":150,"date":"2025-06-10","category_name":"Roupas e Calçados","payment_method":"Credito","status":"paid","installments":3}]}
 
 "gastei 55 de gasolina"
-→ {"records":[{"type":"expense","description":"Gasolina","amount_cents":5500,"date":"2025-06-10","category_name":"Transporte / Combustível","payment_method":null,"status":"paid","installments":1}]}
+→ {"records":[{"type":"expense","description":"Gasolina","amount":55,"date":"2025-06-10","category_name":"Transporte / Combustível","payment_method":null,"status":"paid","installments":1}]}
 
 "tenho que pagar o aluguel 800 reais semana que vem"
-→ {"records":[{"type":"expense","description":"Aluguel","amount_cents":80000,"date":"2025-06-16","category_name":"Moradia","payment_method":null,"status":"open","installments":1}]}
+→ {"records":[{"type":"expense","description":"Aluguel","amount":800,"date":"2025-06-16","category_name":"Moradia","payment_method":null,"status":"open","installments":1}]}
 
 "recebi 1500 de salário"
-→ {"records":[{"type":"income","description":"Salário","amount_cents":150000,"date":"2025-06-10","category_name":"Renda Familiar","payment_method":null}]}
+→ {"records":[{"type":"income","description":"Salário","amount":1500,"date":"2025-06-10","category_name":"Renda Familiar","payment_method":null}]}
+
+"recebi 100 de uma formatação"
+→ {"records":[{"type":"income","description":"Formatação","amount":100,"date":"2025-06-10","category_name":"Outras Receitas","payment_method":null}]}
 
 "guardei 200 para a viagem e gastei 30 no almoço"
-→ {"records":[{"type":"dream_contribution","description":"Poupança viagem","amount_cents":20000,"date":"2025-06-10","category_name":null,"payment_method":null,"dream_name":"viagem"},{"type":"expense","description":"Almoço","amount_cents":3000,"date":"2025-06-10","category_name":"Alimentação","payment_method":null,"status":"paid","installments":1}]}
+→ {"records":[{"type":"dream_contribution","description":"Poupança viagem","amount":200,"date":"2025-06-10","category_name":null,"payment_method":null,"dream_name":"viagem"},{"type":"expense","description":"Almoço","amount":30,"date":"2025-06-10","category_name":"Alimentação","payment_method":null,"status":"paid","installments":1}]}
 
 "me lembre de comprar ovo"
-→ {"records":[{"type":"reminder","description":"Comprar ovo","amount_cents":0,"date":"2025-06-10","category_name":null,"payment_method":null}]}
+→ {"records":[{"type":"reminder","description":"Comprar ovo","amount":0,"date":"2025-06-10","category_name":null,"payment_method":null}]}
 
 "me lembra de pagar o IPVA na sexta"
-→ {"records":[{"type":"reminder","description":"Pagar IPVA","amount_cents":0,"date":"2025-06-13","category_name":null,"payment_method":null}]}
+→ {"records":[{"type":"reminder","description":"Pagar IPVA","amount":0,"date":"2025-06-13","category_name":null,"payment_method":null}]}
 
 "oi tudo bem?"
 → {"records":[]}`
