@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import Script from 'next/script'
 import Providers from '@/components/Providers'
 import PwaInstallPrompt from '@/components/PwaInstallPrompt'
+import CookieBanner from '@/components/CookieBanner'
 
 export const metadata: Metadata = {
   title: 'Florim',
@@ -43,7 +44,7 @@ export default function RootLayout({
               legalName: 'LUCAS BRAZAU MALINOWSKI DESENVOLVIMENTO DE SOFTWARE LTDA',
               url: 'https://florim.app',
               logo: 'https://florim.app/logo.png',
-              email: 'financasflorim@gmail.com',
+              email: 'contato@florim.app',
               address: {
                 '@type': 'PostalAddress',
                 streetAddress: 'Avenida Paulista, 1106, Sala 01, Andar 16',
@@ -58,6 +59,7 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
+        <CookieBanner />
         <PwaInstallPrompt />
         {process.env.NODE_ENV === 'production' && (
           <Script id="sw-register" strategy="afterInteractive">
