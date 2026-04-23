@@ -13,6 +13,7 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [agreed, setAgreed] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -144,9 +145,29 @@ export default function SignUpPage() {
               />
             </div>
 
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-1 accent-coffee"
+                required
+              />
+              <span className="text-sm font-body text-ink/70 leading-relaxed">
+                Li e concordo com os{' '}
+                <Link href="/terms" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
+                  Termos de Uso
+                </Link>{' '}
+                e a{' '}
+                <Link href="/privacy" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
+                  Política de Privacidade
+                </Link>
+              </span>
+            </label>
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !agreed}
               className="w-full bg-coffee text-paper py-3 rounded-lg font-body hover:bg-coffee/90 transition-vintage disabled:opacity-50"
             >
               {loading ? 'Criando...' : 'Criar família'}
