@@ -32,10 +32,10 @@ export class WhatsAppService {
     const appUrl = 'https://florim.app'
     await this.sendTextMessage(
       to,
-      `🔒 *Privacidade e Segurança dos seus dados*\n\n,`+
-      `Em conformidade com a *LGPD*, seus dados são tratados com total segurança pelo *Florim*.\n`+
-      `Nenhuma informação é compartilhada com terceiros.\n\n`+
-      `📄 *Consulte nossos Termos e Política de Privacidade:*\n` +
+      `🔒 *Privacidade e Segurança dos seus dados*\n\n` +
+      `Em conformidade com a *LGPD*, seus dados são tratados com total segurança pelo *Florim*.\n` +
+      `Nenhuma informação é compartilhada com terceiros.\n\n` +
+      `📄 *Termos e Política de Privacidade:*\n` +
       `> ${appUrl}/termos-e-servicos`
     )
   }
@@ -45,7 +45,7 @@ export class WhatsAppService {
       to,
       `✅ *Número verificado! Bem-vindo ao Florim.*\n\n` +
       `Aqui vão algumas dicas rápidas:\n\n` +
-      `📌 *Fixe esta conversa* \n > Toque e segure este chat e selecione "Fixar" para ter acesso fácil sempre que precisar registrar algo.\n\n` +
+      `📌 *Fixe esta conversa* — Toque e segure este chat e selecione "Fixar" para ter acesso fácil sempre que precisar registrar algo.\n\n` +
       `💬 *O que você pode fazer:*\n` +
       `• "Gastei 50 no mercado" → registra despesa\n` +
       `• "Recebi 3000 de salário" → registra receita\n` +
