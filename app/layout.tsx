@@ -22,11 +22,6 @@ export const metadata: Metadata = {
     url: 'https://florim.app',
     type: 'website',
   },
-  twitter: {
-    card: 'summary',
-    title: 'Florim — Gestão financeira familiar',
-    description: 'Gestão financeira familiar com alma vintage',
-  },
 }
 
 export default function RootLayout({
