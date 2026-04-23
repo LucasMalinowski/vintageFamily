@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { FAMILY_CATEGORY_SEEDS } from '@/lib/families/categorySeeds'
+import { sendWelcomeEmail } from '@/lib/mailer'
 
 type CreateFamilyBody = {
   familyName: string
@@ -106,6 +107,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: savingsError.message }, { status: 500 })
     }
 
+    void sendWelcomeEmail({ to: email, name, familyName })
     return NextResponse.json({ familyId: family.id })
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Erro inesperado.' }, { status: 500 })
