@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Check, ChevronDown, Search } from 'lucide-react'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 
@@ -27,7 +28,26 @@ const COUNTRY_CODES = [
   { code: '91',  flag: '🇮🇳', name: 'Índia',           slug: 'IN' },
   { code: '61',  flag: '🇦🇺', name: 'Austrália',       slug: 'AU' },
   { code: '1',   flag: '🇨🇦', name: 'Canadá',          slug: 'CA' },
-]
+] as const
+
+type CountryOption = (typeof COUNTRY_CODES)[number]
+
+function findCountryBySlug(slug: string) {
+  return COUNTRY_CODES.find((country) => country.slug === slug) ?? COUNTRY_CODES[0]
+}
+
+function findCountryByPhone(phone: string) {
+  const digits = phone.replace(/\D/g, '')
+  const match = [...COUNTRY_CODES]
+    .sort((left, right) => right.code.length - left.code.length)
+    .find((country) => digits.startsWith(country.code))
+
+  return match ?? COUNTRY_CODES[0]
+}
+
+function countryLabel(country: CountryOption) {
+  return `${country.flag} ${country.name}`
+}
 
 export default function ProfileSettingsPage() {
   const { user, familyId } = useAuth()
@@ -42,14 +62,44 @@ export default function ProfileSettingsPage() {
 
   // Phone OTP state
   const [phoneState, setPhoneState] = useState<PhoneState>('none')
-  const [countryCode, setCountryCode] = useState('55')
+  const [selectedCountrySlug, setSelectedCountrySlug] = useState('BR')
   const [phoneInput, setPhoneInput] = useState('')
   const [pendingPhone, setPendingPhone] = useState('')
+  const [pendingCountrySlug, setPendingCountrySlug] = useState('')
   const [verifiedPhone, setVerifiedPhone] = useState('')
+  const [verifiedCountrySlug, setVerifiedCountrySlug] = useState('')
   const [otpInput, setOtpInput] = useState('')
   const [phoneLoading, setPhoneLoading] = useState(false)
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [phoneSuccess, setPhoneSuccess] = useState<string | null>(null)
+  const [countrySearch, setCountrySearch] = useState('')
+  const [countryMenuOpen, setCountryMenuOpen] = useState(false)
+
+  const selectedCountry = useMemo(
+    () => findCountryBySlug(selectedCountrySlug),
+    [selectedCountrySlug]
+  )
+  const pendingCountry = useMemo(
+    () => (pendingCountrySlug ? findCountryBySlug(pendingCountrySlug) : findCountryByPhone(pendingPhone)),
+    [pendingCountrySlug, pendingPhone]
+  )
+  const verifiedCountry = useMemo(
+    () => (verifiedCountrySlug ? findCountryBySlug(verifiedCountrySlug) : findCountryByPhone(verifiedPhone)),
+    [verifiedCountrySlug, verifiedPhone]
+  )
+  const filteredCountries = useMemo(() => {
+    const query = countrySearch.trim().toLowerCase()
+    if (!query) return COUNTRY_CODES
+
+    return COUNTRY_CODES.filter((country) => {
+      return (
+        country.name.toLowerCase().includes(query) ||
+        country.slug.toLowerCase().includes(query) ||
+        country.code.includes(query) ||
+        country.flag.includes(query)
+      )
+    })
+  }, [countrySearch])
 
   useEffect(() => {
     const loadData = async () => {
@@ -73,10 +123,16 @@ export default function ProfileSettingsPage() {
         setAvatarUrl(userRow.avatar_url ?? '')
         setAvatarPreview(userRow.avatar_url ?? '')
         if (userRow.phone_number) {
+          const resolvedCountry = findCountryByPhone(userRow.phone_number)
           setVerifiedPhone(userRow.phone_number)
+          setVerifiedCountrySlug(resolvedCountry.slug)
+          setSelectedCountrySlug(resolvedCountry.slug)
           setPhoneState('verified')
         } else if (userRow.phone_number_pending) {
+          const resolvedCountry = findCountryByPhone(userRow.phone_number_pending)
           setPendingPhone(userRow.phone_number_pending)
+          setPendingCountrySlug(resolvedCountry.slug)
+          setSelectedCountrySlug(resolvedCountry.slug)
           setPhoneState('pending')
         }
       } else if (user?.email) {
@@ -93,7 +149,7 @@ export default function ProfileSettingsPage() {
     setPhoneError(null)
     setPhoneSuccess(null)
     const localDigits = phoneInput.replace(/\D/g, '')
-    const fullPhone = `+${countryCode}${localDigits}`
+    const fullPhone = `+${selectedCountry.code}${localDigits}`
     try {
       const res = await fetch('/api/whatsapp/verify/send', {
         method: 'POST',
@@ -105,8 +161,11 @@ export default function ProfileSettingsPage() {
         setPhoneError(data.error ?? 'Erro ao enviar código.')
       } else {
         setPendingPhone(fullPhone)
+        setPendingCountrySlug(selectedCountry.slug)
         setPhoneState('pending')
         setPhoneSuccess('Código enviado! Verifique seu WhatsApp.')
+        setCountryMenuOpen(false)
+        setCountrySearch('')
       }
     } catch {
       setPhoneError('Erro de conexão.')
@@ -129,6 +188,7 @@ export default function ProfileSettingsPage() {
         setPhoneError(data.error ?? 'Código inválido.')
       } else {
         setVerifiedPhone(pendingPhone)
+        setVerifiedCountrySlug(pendingCountrySlug || findCountryByPhone(pendingPhone).slug)
         setPhoneState('verified')
         setOtpInput('')
         setPhoneSuccess('Número verificado com sucesso!')
@@ -150,6 +210,8 @@ export default function ProfileSettingsPage() {
       .eq('id', user.id)
     setVerifiedPhone('')
     setPendingPhone('')
+    setVerifiedCountrySlug('')
+    setPendingCountrySlug('')
     setPhoneInput('')
     setPhoneState('none')
     setPhoneLoading(false)
@@ -246,18 +308,92 @@ export default function ProfileSettingsPage() {
 
             {phoneState === 'none' && (
               <div className="space-y-3">
-                <div className="flex gap-2">
-                  <select
-                    value={countryCode}
-                    onChange={(e) => setCountryCode(e.target.value)}
-                    className="px-3 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage text-sm shrink-0"
-                  >
-                    {COUNTRY_CODES.map((c) => (
-                      <option key={`${c.slug}-${c.code}`} value={c.code}>
-                        {c.flag} +{c.code} ({c.slug})
-                      </option>
-                    ))}
-                  </select>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <div className="relative sm:w-[280px]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCountryMenuOpen((current) => !current)
+                        setCountrySearch('')
+                      }}
+                      className="w-full px-3 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage text-sm text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium text-ink">
+                            {countryLabel(selectedCountry)}
+                          </div>
+                          <div className="truncate text-[11px] text-ink/50">
+                            +{selectedCountry.code} {selectedCountry.slug}
+                          </div>
+                        </div>
+                        <ChevronDown className="w-4 h-4 shrink-0 text-ink/40" />
+                      </div>
+                    </button>
+
+                    {countryMenuOpen && (
+                      <>
+                        <button
+                          type="button"
+                          aria-label="Fechar lista de países"
+                          className="fixed inset-0 z-20 cursor-default"
+                          onClick={() => setCountryMenuOpen(false)}
+                        />
+                        <div className="absolute z-30 mt-2 w-full rounded-[16px] border border-border/70 bg-offWhite p-2 shadow-soft">
+                          <div className="mb-2 rounded-[12px] border border-border/70 bg-paper px-3 py-2">
+                            <label className="flex items-center gap-2">
+                              <Search className="h-4 w-4 shrink-0 text-ink/35" aria-hidden="true" />
+                              <input
+                                type="text"
+                                value={countrySearch}
+                                onChange={(event) => setCountrySearch(event.target.value)}
+                                placeholder="Buscar país, código ou sigla"
+                                className="w-full bg-transparent text-sm text-ink placeholder:text-ink/35 focus:outline-none"
+                                autoFocus
+                              />
+                            </label>
+                          </div>
+                          <div className="max-h-72 overflow-auto space-y-1">
+                            {filteredCountries.length === 0 ? (
+                              <div className="px-3 py-4 text-sm text-ink/45">Nenhum resultado.</div>
+                            ) : (
+                              filteredCountries.map((country) => {
+                                const isSelected = country.slug === selectedCountry.slug
+                                return (
+                                  <button
+                                    key={country.slug}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedCountrySlug(country.slug)
+                                      setCountryMenuOpen(false)
+                                      setCountrySearch('')
+                                    }}
+                                    className={`w-full rounded-[12px] px-3 py-2.5 text-left transition-vintage ${
+                                      isSelected ? 'bg-coffee/8' : 'hover:bg-coffee/6'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <div className="min-w-0 flex-1">
+                                        <div className="truncate text-sm font-medium text-sidebar">
+                                          {country.flag} {country.name}
+                                        </div>
+                                        <div className="truncate text-[11px] text-ink/45">
+                                          +{country.code} · {country.slug}
+                                        </div>
+                                      </div>
+                                      {isSelected ? (
+                                        <Check className="h-4 w-4 shrink-0 text-coffee" aria-hidden="true" />
+                                      ) : null}
+                                    </div>
+                                  </button>
+                                )
+                              })
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
                   <input
                     type="tel"
                     value={phoneInput}
@@ -279,7 +415,9 @@ export default function ProfileSettingsPage() {
 
             {phoneState === 'pending' && (
               <div className="space-y-3">
-                <p className="text-sm text-ink/70">Código enviado para <strong>{pendingPhone}</strong></p>
+                <p className="text-sm text-ink/70">
+                  Código enviado para <strong>{countryLabel(pendingCountry)} · {pendingPhone}</strong>
+                </p>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -317,7 +455,9 @@ export default function ProfileSettingsPage() {
 
             {phoneState === 'verified' && (
               <div className="flex items-center gap-3">
-                <span className="text-sm font-body text-olive">✓ {verifiedPhone}</span>
+                <span className="text-sm font-body text-olive">
+                  ✓ {countryLabel(verifiedCountry)} · {verifiedPhone}
+                </span>
                 <button
                   type="button"
                   onClick={handleRemovePhone}
