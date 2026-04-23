@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { sendAccountDeletionEmail } from '@/lib/mailer'
 
 function getAccessToken(request: Request) {
   const header = request.headers.get('authorization')
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
 
   const { data: profile, error: profileError } = await supabaseAdmin
     .from('users')
-    .select('id,family_id,role')
+    .select('id,family_id,role,name,email')
     .eq('id', userId)
     .maybeSingle()
 
@@ -71,6 +72,10 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Erro ao desativar família.' }, { status: 500 })
       }
     }
+  }
+
+  if (profile.email) {
+    void sendAccountDeletionEmail({ to: profile.email, name: profile.name ?? '' })
   }
 
   const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)

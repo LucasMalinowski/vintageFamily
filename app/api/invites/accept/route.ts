@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { sendWelcomeEmail } from '@/lib/mailer'
 
 function getAccessToken(request: Request) {
   const header = request.headers.get('authorization')
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
 
   const { data: invite, error: inviteError } = await supabaseAdmin
     .from('invites')
-    .select('id,family_id,email,accepted,expires_at')
+    .select('id,family_id,email,accepted,expires_at,families(name)')
     .eq('token', token)
     .maybeSingle()
 
@@ -70,5 +71,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Erro ao finalizar convite.' }, { status: 500 })
   }
 
+  const familyName = (invite.families as { name: string } | null)?.name ?? ''
+  void sendWelcomeEmail({ to: email, name, familyName })
   return NextResponse.json({ familyId: invite.family_id })
 }

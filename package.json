@@ -20,16 +20,15 @@
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.563.0",
     "next": "^14.1.0",
-    "nodemailer": "^7.0.12",
-"react": "^18.2.0",
+    "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "recharts": "^2.10.4",
+    "resend": "^6.12.2",
     "stripe": "^18.5.0",
     "supabase": "^2.76.12"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",
-    "@types/nodemailer": "^6.4.17",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "autoprefixer": "^10.4.17",
