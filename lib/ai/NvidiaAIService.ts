@@ -1,5 +1,5 @@
 export interface AIExtractedRecord {
-  type: 'expense' | 'income' | 'dream_contribution' | 'reminder'
+  type: 'expense' | 'income' | 'savings_contribution' | 'reminder'
   description: string
   amount: number  // in reais (e.g. 100 → 100, 10.50 → 10.5); converted to cents in saveRecord
   date: string
@@ -7,12 +7,12 @@ export interface AIExtractedRecord {
   payment_method: 'PIX' | 'Credito' | 'Debito' | null
   status?: 'paid' | 'open'
   installments?: number
-  dream_name?: string
+  saving_name?: string
 }
 
 export interface IntentClassification {
   type: 'query' | 'record'
-  data_needed: Array<'expenses' | 'incomes' | 'dreams' | 'reminders'>
+  data_needed: Array<'expenses' | 'incomes' | 'savings' | 'reminders'>
   time_range: 'current_month' | 'last_month' | 'current_year' | 'last_7_days' | 'next_7_days' | 'all'
   focus: string | null
   status_filter?: 'open' | null
@@ -44,7 +44,7 @@ Formato obrigatório:
 
 Campos:
 - type: "record" se registrando/criando algo. "query" se consultando dados existentes.
-- data_needed: vazio para "record". Para "query": ["expenses"], ["incomes"], ["dreams"], ["reminders"]
+- data_needed: vazio para "record". Para "query": ["expenses"], ["incomes"], ["savings"], ["reminders"]
 - time_range: "current_month" (padrão), "last_month", "current_year", "last_7_days", "next_7_days", "all"
   Use "next_7_days" para lembretes futuros ("essa semana", "próximos dias")
 - focus: palavra-chave de filtro ou null
@@ -54,7 +54,7 @@ Exemplos:
 "Quanto gastei em comida esse mês?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":"comida","status_filter":null}
 "Qual meu maior gasto essa semana?" → {"type":"query","data_needed":["expenses"],"time_range":"last_7_days","focus":null,"status_filter":null}
 "Quanto recebi esse ano?" → {"type":"query","data_needed":["incomes"],"time_range":"current_year","focus":null,"status_filter":null}
-"Me mostra meus sonhos" → {"type":"query","data_needed":["dreams"],"time_range":"all","focus":null,"status_filter":null}
+"Me mostra minha poupança" → {"type":"query","data_needed":["savings"],"time_range":"all","focus":null,"status_filter":null}
 "Quais meus lembretes essa semana?" → {"type":"query","data_needed":["reminders"],"time_range":"next_7_days","focus":null,"status_filter":null}
 "O que tenho pendente pra pagar?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":null,"status_filter":"open"}
 "Quais contas tenho a pagar?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":null,"status_filter":"open"}
@@ -124,8 +124,8 @@ Tipos de registro:
   - amount: valor em reais exatamente como mencionado (ex: "100" → 100, "1500" → 1500)
   - payment_method: null
 
-"dream_contribution" — poupança para objetivo ("guardei para", "pousei para"):
-  - dream_name: nome do sonho mencionado
+"savings_contribution" — poupança para objetivo ("guardei para", "pousei para"):
+  - saving_name: nome da poupança mencionada
   - amount: valor em reais
 
 "reminder" — lembretes e tarefas ("me lembra de", "não esquecer de", "lembrete para", "preciso lembrar de"):
@@ -153,7 +153,7 @@ Exemplos (datas ilustrativas — use as datas reais do contexto fornecido):
 → {"records":[{"type":"income","description":"Formatação","amount":100,"date":"2025-06-10","category_name":"Outras Receitas","payment_method":null}]}
 
 "guardei 200 para a viagem e gastei 30 no almoço"
-→ {"records":[{"type":"dream_contribution","description":"Poupança viagem","amount":200,"date":"2025-06-10","category_name":null,"payment_method":null,"dream_name":"viagem"},{"type":"expense","description":"Almoço","amount":30,"date":"2025-06-10","category_name":"Alimentação","payment_method":null,"status":"paid","installments":1}]}
+→ {"records":[{"type":"savings_contribution","description":"Poupança viagem","amount":200,"date":"2025-06-10","category_name":null,"payment_method":null,"saving_name":"viagem"},{"type":"expense","description":"Almoço","amount":30,"date":"2025-06-10","category_name":"Alimentação","payment_method":null,"status":"paid","installments":1}]}
 
 "me lembre de comprar ovo"
 → {"records":[{"type":"reminder","description":"Comprar ovo","amount":0,"date":"2025-06-10","category_name":null,"payment_method":null}]}

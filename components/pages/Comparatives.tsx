@@ -221,8 +221,8 @@ export default function Comparatives() {
       .eq('status', 'paid')
 
     let dreamQuery = supabase
-      .from('dream_contributions')
-      .select('dream_id,amount_cents,date')
+      .from('savings_contributions')
+      .select('saving_id,amount_cents,date')
       .eq('family_id', familyId!)
 
     if (selectedYear !== ALL_YEARS_VALUE) {
@@ -234,19 +234,19 @@ export default function Comparatives() {
       dreamQuery = dreamQuery.gte('date', startDate).lte('date', endDate)
     }
 
-    const [incomeRows, paidRows, dreamRows, dreamsRows] = await Promise.all([
+    const [incomeRows, paidRows, savingsRows, savingsListRows] = await Promise.all([
       incomeQuery,
       paidQuery,
       dreamQuery,
       supabase
-        .from('dreams')
+        .from('savings')
         .select('id,name')
         .eq('family_id', familyId!),
     ])
 
-    const dreamNameById = new Map<string, string>()
-    for (const dream of dreamsRows.data || []) {
-      dreamNameById.set(dream.id, dream.name)
+    const savingNameById = new Map<string, string>()
+    for (const saving of savingsListRows.data || []) {
+      savingNameById.set(saving.id, saving.name)
     }
 
     const incomeDetails: BarDetailRow[] = (incomeRows.data || [])
@@ -271,13 +271,13 @@ export default function Comparatives() {
       .filter((row) => matchesSearch(searchTerm, row.name, row.category))
       .sort((a, b) => b.date.localeCompare(a.date))
 
-    const savedDetails: BarDetailRow[] = (dreamRows.data || [])
+    const savedDetails: BarDetailRow[] = (savingsRows.data || [])
       .map((row) => {
-        const dreamName = dreamNameById.get(row.dream_id) || 'Sem categoria'
+        const savingName = savingNameById.get(row.saving_id) || 'Sem categoria'
         return {
           date: row.date,
-          name: dreamName,
-          category: dreamName,
+          name: savingName,
+          category: savingName,
           value: row.amount_cents,
         }
       })

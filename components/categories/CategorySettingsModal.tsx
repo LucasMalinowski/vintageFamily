@@ -6,7 +6,7 @@ import Modal from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
 import { CategoryKind, normalizeCategoryName } from '@/lib/categories'
 
-type Scope = 'categories' | 'dreams'
+type Scope = 'categories' | 'savings'
 
 type NodeItem = {
   id: string
@@ -63,9 +63,9 @@ export default function CategorySettingsModal({
 
     setLoading(true)
 
-    if (scope === 'dreams') {
+    if (scope === 'savings') {
       const { data } = await supabase
-        .from('dreams')
+        .from('savings')
         .select('id,name,parent_id,is_system')
         .eq('family_id', familyId)
         .order('name')
@@ -159,10 +159,10 @@ export default function CategorySettingsModal({
     setSaving(true)
     let errorMessage: string | null = null
 
-    if (scope === 'dreams') {
+    if (scope === 'savings') {
       if (editingId) {
         const { error } = await supabase
-          .from('dreams')
+          .from('savings')
           .update({
             name,
             parent_id: draftParentId,
@@ -174,7 +174,7 @@ export default function CategorySettingsModal({
         errorMessage = error?.message || null
       } else {
         const { error } = await supabase
-          .from('dreams')
+          .from('savings')
           .insert({
             family_id: familyId,
             name,
@@ -228,18 +228,18 @@ export default function CategorySettingsModal({
     if (!familyId) return
     if (!confirm(`Excluir a categoria "${item.name}"?`)) return
 
-    if (scope === 'dreams') {
+    if (scope === 'savings') {
       const childIds = items.filter((it) => it.parent_id === item.id).map((it) => it.id)
       const idsToDelete = [item.id, ...childIds]
 
       await supabase
-        .from('dream_contributions')
+        .from('savings_contributions')
         .delete()
         .eq('family_id', familyId)
-        .in('dream_id', idsToDelete)
+        .in('saving_id', idsToDelete)
 
       const { error } = await supabase
-        .from('dreams')
+        .from('savings')
         .delete()
         .eq('family_id', familyId)
         .in('id', idsToDelete)

@@ -95,15 +95,15 @@ export async function POST(request: Request) {
       }
     }
 
-    const dreams = [
+    const defaultSavings = [
       { family_id: family.id, name: 'Casa', is_system: true },
       { family_id: family.id, name: 'Carro', is_system: true },
       { family_id: family.id, name: 'Viagem', is_system: true },
     ]
 
-    const { error: dreamsError } = await supabaseAdmin.from('dreams').insert(dreams)
-    if (dreamsError) {
-      return NextResponse.json({ error: dreamsError.message }, { status: 500 })
+    const { error: savingsError } = await supabaseAdmin.from('savings').insert(defaultSavings)
+    if (savingsError) {
+      return NextResponse.json({ error: savingsError.message }, { status: 500 })
     }
 
     return NextResponse.json({ familyId: family.id })
