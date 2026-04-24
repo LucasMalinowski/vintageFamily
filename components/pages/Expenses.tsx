@@ -709,7 +709,7 @@ export default function Expenses() {
             ) : filteredExpenses.length === 0 ? (
               <EmptyState
                 icon={<Receipt className="w-16 h-16" />}
-                message="Ainda não há despesas aqui — um bom começo."
+                message="Ainda não há despesas aqui, um bom começo."
                 submessage="Use o botão + para adicionar uma despesa."
               />
             ) : (

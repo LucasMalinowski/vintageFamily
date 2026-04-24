@@ -67,8 +67,8 @@ export default function PlansPage() {
         }`}
       >
         <PublicNavbar color="sidebar" showWordmark={false} />
-        <section className="min-h-screen bg-paper px-24 pt-32 sm:px-24 lg:px-48 text-coffee overflow-y-auto">
-          <div className="mx-auto flex w-full max-w-6xl flex-col">
+        <section className="bg-paper text-coffee overflow-y-auto">
+          <div className="mx-auto flex w-full max-w-6xl flex-col px-24 pt-32 sm:px-24 lg:px-48">
             <div className="grid grid-cols-[auto,1fr,auto] items-center">
               <button
                 onClick={() => setStep('intro')}
@@ -176,7 +176,7 @@ export default function PlansPage() {
                   'Menos conflitos, mais alinhamento',
                   'Organização sem pressão',
                   'Tecnologia com sensibilidade',
-                  'Feito para famílias reais',
+                  'Feito para famílias',
                 ].map((item) => (
                   <div
                     key={item}
@@ -194,7 +194,7 @@ export default function PlansPage() {
               O Florim está aqui para ajudar nisso.
             </div>
           </div>
-          <PublicFooter />
+          <PublicFooter color="sidebar" />
         </section>
       </div>
     </div>
