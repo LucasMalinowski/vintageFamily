@@ -272,7 +272,7 @@ export default function TermsAndServicesPage() {
           </section>
         </div>
       </main>
-      <PublicFooter />
+      <PublicFooter color="paper" />
     </div>
   )
 }

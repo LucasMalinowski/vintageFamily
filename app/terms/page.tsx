@@ -25,7 +25,7 @@ export default function TermsPage() {
 
           <Section title="1. Partes">
             <p>
-              Este contrato é celebrado entre <strong>LUCAS BRAZAU MALINOWSKI DESENVOLVIMENTO DE SOFTWARE LTDA</strong> (CNPJ 58.804.959/0001-60), doravante "<strong>Florim</strong>", e o usuário que aceita estes termos ao criar uma conta, doravante "<strong>Usuário</strong>".
+              Este contrato é celebrado entre <strong>LUCAS BRAZAU MALINOWSKI DESENVOLVIMENTO DE SOFTWARE LTDA</strong> (CNPJ 58.804.959/0001-60), doravante <strong>&quot;Florim&quot;</strong>, e o usuário que aceita estes termos ao criar uma conta, doravante <strong>&quot;Usuário&quot;</strong>.
             </p>
           </Section>
 
@@ -130,7 +130,7 @@ export default function TermsPage() {
           </Section>
         </div>
       </main>
-      <PublicFooter />
+      <PublicFooter color="sidebar" />
     </>
   )
 }

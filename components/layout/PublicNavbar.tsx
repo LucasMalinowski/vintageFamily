@@ -68,12 +68,12 @@ export default function PublicNavbar({ color = 'sidebar', showWordmark = true }:
       <div
         className={`w-full px-6 py-5 flex items-center justify-between backdrop-blur-sm ${theme.wrapper}`}
       >
-        <div className="flex items-center">
+        <Link href="/" className="flex items-center">
           <img src="/logo.png" alt="Florim" className="w-16 h-16 object-contain" />
           {showWordmark ? (
             <span className="font-serif text-lg font-thin tracking-wide text-gold">FLORIM</span>
           ) : null}
-        </div>
+        </Link>
         <nav className="hidden md:flex items-center gap-20 text-lg font-body">
           <Link
             href="/about"

@@ -81,7 +81,7 @@ const KEY_BENEFITS = [
   'Menos conflitos, mais alinhamento',
   'Organização sem pressão',
   'Tecnologia com sensibilidade',
-  'Feito para famílias reais',
+  'Feito para famílias',
 ]
 
 export default function PricingExperience({

@@ -30,7 +30,7 @@ export default function InternalAboutPage() {
             </p>
 
             <p>
-              Foi a partir dessa realidade que o Florim nasceu, dentro da família Malinowski — compreendendo
+              Foi a partir dessa realidade que o Florim nasceu, dentro da família Malinowski, compreendendo
               que dinheiro não é apenas número. É <span className="text-gold italic">emoção</span>, escolha, projeto de vida.
             </p>
 

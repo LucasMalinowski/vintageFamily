@@ -99,7 +99,7 @@ export default function CookiesPage() {
           </Section>
         </div>
       </main>
-      <PublicFooter />
+      <PublicFooter color="sidebar" />
     </>
   )
 }

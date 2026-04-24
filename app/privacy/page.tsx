@@ -142,7 +142,7 @@ export default function PrivacyPage() {
           </Section>
         </div>
       </main>
-      <PublicFooter />
+      <PublicFooter color="sidebar" />
     </>
   )
 }

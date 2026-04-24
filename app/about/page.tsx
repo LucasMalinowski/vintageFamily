@@ -63,7 +63,7 @@ export default function AboutPage() {
         </section>
       </div>
     </div>
-    <PublicFooter />
-    </div>
+    <PublicFooter color="paper" />
+  </div>
   )
 }
