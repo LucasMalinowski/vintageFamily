@@ -130,14 +130,14 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="flex text-center max-w-3xl mt-10 mx-auto">
+          <div className="flex flex-col text-center max-w-3xl mt-10 mx-auto">
             <p className="font-ptSerif italic text-[28px] leading-relaxed text-gold font-normal">
               &ldquo;O Florim nasceu dentro de uma família, para famílias, e trata dinheiro como
               escolha, projeto e relação humana.&rdquo;
 
-              <p className="mt-5 text-[13px] tracking-widest uppercase text-paper/80">
-                Lucas &amp; Nathalia, fundadores
-              </p>
+            </p>
+            <p className="mt-5 text-[13px] tracking-widest uppercase text-paper/80">
+              Lucas &amp; Nathalia, fundadores
             </p>
           </div>
         </div>
