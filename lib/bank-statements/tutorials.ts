@@ -71,7 +71,7 @@ export const BANK_TUTORIALS: BankTutorial[] = [
     name: 'Santander',
     shortName: 'Santander',
     accent: '#ec0000',
-    iconUrl: 'https://play-lh.googleusercontent.com/g_QDzrOlw8Belx8qb47fUu0MPL6AVFzDdbOz_NJZYQDNLveHYxwiUoe09Wvkxf-_548q=w240-h480',
+    iconUrl: 'https://play-lh.googleusercontent.com/hgvUAnSp2_To8Zd64zQ6Luk73tsBU1MyDKpXkN-y7f_jKG0K3HMBufan_oBSVDLWidKv=w240-h480',
     iconSourceUrl: 'https://play.google.com/store/apps/details?id=com.santander.app',
     supportedImportFormats: ['ofx', 'csv'],
     preferredImportFormat: 'ofx',

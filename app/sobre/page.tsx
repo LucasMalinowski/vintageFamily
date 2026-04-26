@@ -30,8 +30,8 @@ export default function InternalAboutPage() {
               variant="textured"
           />
 
-          <div className="flex-1 flex flex-col overflow-hidden px-6 pb-3 pt-6">
-            <article className="flex-1 font-body text-[16px] font-light leading-[1.75] text-sidebar/95 text-justify pr-8 w-full tracking-wide overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-6 pb-6 pt-6">
+            <article className="w-full font-body text-[15px] font-light leading-[1.75] tracking-wide text-sidebar/95 lg:pr-8 lg:text-[16px] lg:text-justify">
 
               {/* Top full-width paragraphs */}
               <div className="mb-6">
@@ -43,8 +43,8 @@ export default function InternalAboutPage() {
               {/* Middle section: photo floats right, text wraps left */}
               <div className="overflow-hidden">
                 <div
-                    className="float-right ml-8 overflow-hidden border border-border/50 shadow-soft"
-                    style={{ width: '260px', height: '350px', borderRadius: '50%' }}
+                    className="mx-auto mb-6 block h-[240px] w-[180px] overflow-hidden border border-border/50 shadow-soft lg:float-right lg:mx-0 lg:mb-0 lg:ml-8 lg:h-[350px] lg:w-[260px]"
+                    style={{ borderRadius: '50%' }}
                 >
                   <img
                       src="/founders_photo.png"
@@ -67,8 +67,7 @@ export default function InternalAboutPage() {
 
             </article>
 
-            {/* Footer always visible at bottom */}
-            <div className="text-center py-6">
+            <div className="py-6 text-center">
               <p className="font-ptSerif text-xl font-light italic text-gold/80">Histórias que inspiram</p>
             </div>
           </div>

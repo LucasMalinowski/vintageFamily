@@ -69,12 +69,27 @@ const detectFormatFromFile = (candidate: File | null): StatementFileFormat | nul
 
 function BankBadge({ bankId }: { bankId: BankId }) {
   const tutorial = BANK_TUTORIALS_BY_ID[bankId]
+  const [imageError, setImageError] = useState(false)
+
+  if (imageError) {
+    return (
+      <div
+        className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-white text-xs font-semibold uppercase shadow-soft"
+        style={{ color: tutorial.accent }}
+        aria-label={`Ícone do banco ${tutorial.name}`}
+      >
+        {tutorial.shortName.slice(0, 2)}
+      </div>
+    )
+  }
+
   return (
       <div className="h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-border bg-white shadow-soft">
         <img
             src={tutorial.iconUrl}
             alt={`Ícone oficial do app ${tutorial.name}`}
             className="h-full w-full object-cover"
+            onError={() => setImageError(true)}
         />
       </div>
   )
@@ -529,8 +544,9 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
 
   return (
       <Modal isOpen={isOpen} onClose={resetAndClose} title="Importar extrato bancário" size="xl">
-        <div className="grid h-[72vh] gap-4 overflow-hidden lg:grid-cols-[220px,minmax(0,1fr)]">
-          <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-bg p-4">
+        <div className="flex flex-col gap-4 lg:grid lg:h-[72vh] lg:overflow-hidden lg:grid-cols-[220px,minmax(0,1fr)]">
+          {/* Desktop only: bank list sidebar */}
+          <section className="hidden rounded-2xl border border-border bg-bg p-4 lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden">
             <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-petrol">
               <Landmark className="h-4 w-4" />
               Escolha o banco
@@ -564,8 +580,36 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
             </div>
           </section>
 
-          <section className="flex min-h-0 flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-bg p-4">
-            <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-paper p-4">
+          <section className="flex flex-col gap-3 rounded-2xl border border-border bg-bg p-4 lg:min-h-0 lg:overflow-hidden">
+            {/* Mobile: compact bank select + steps */}
+            <div className="flex flex-col gap-3 lg:hidden">
+              <div className="flex items-center gap-3">
+                <BankBadge bankId={selectedBank} />
+                <select
+                    value={selectedBank}
+                    onChange={(e) => setSelectedBank(e.target.value as BankId)}
+                    className="flex-1 rounded-xl border border-border bg-paper px-3 py-2.5 text-sm font-semibold text-sidebar"
+                >
+                  {BANK_TUTORIALS.map((item) => (
+                      <option key={item.id} value={item.id}>{item.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="rounded-2xl border border-border bg-paper p-4">
+                <p className="mb-3 text-sm text-ink/65">{tutorial.intro}</p>
+                <div className="space-y-2">
+                  {tutorial.steps.map((step, index) => (
+                      <div key={step.title} className="rounded-xl border border-border/80 bg-offWhite px-3 py-2">
+                        <p className="text-sm font-semibold text-sidebar">{index + 1}. {step.title}</p>
+                        <p className="mt-0.5 text-xs text-ink/70">{step.detail}</p>
+                      </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Desktop: full tutorial */}
+            <div className="hidden lg:block min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-paper p-4">
               <div className="mb-3 flex flex-wrap items-start gap-3">
                 <BankBadge bankId={selectedBank} />
                 <div className="min-w-0 flex-1">
@@ -735,9 +779,16 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                         <X className="h-4 w-4" />
                       </button>
                     </div>
-                ) : tutorial.preferredImportFormat === 'ofx'
-                    ? 'Arraste o arquivo OFX para cá ou use o botão de seleção.'
-                    : 'Arraste o arquivo CSV para cá ou use o botão de seleção.'}
+                ) : (
+                    <>
+                      <span className="lg:hidden">Nenhum arquivo selecionado.</span>
+                      <span className="hidden lg:inline">
+                        {tutorial.preferredImportFormat === 'ofx'
+                            ? 'Arraste o arquivo OFX para cá ou use o botão de seleção.'
+                            : 'Arraste o arquivo CSV para cá ou use o botão de seleção.'}
+                      </span>
+                    </>
+                )}
               </div>
 
               {error && (
