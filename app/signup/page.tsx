@@ -41,27 +41,27 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Ornament */}
-        <div className="text-center mb-8">
-          <div className="inline-block">
-            <svg width="80" height="40" viewBox="0 0 80 40" fill="none" className="mx-auto mb-4">
-              <path d="M0 20 Q 20 10, 40 20 T 80 20" stroke="#5A4633" strokeWidth="1" fill="none" />
-              <circle cx="40" cy="20" r="3" fill="#5A4633" />
-            </svg>
-          </div>
-          <h1 className="text-4xl font-serif text-coffee mb-2">
-            Criar Família
-          </h1>
-          <p className="text-ink/60 italic font-body">
-            Uma casa tranquila nasce de pequenas escolhas repetidas.
-          </p>
-        </div>
+    <div className="min-h-screen bg-paper flex flex-col md:items-center md:justify-center md:p-4">
 
-        {/* Card */}
-        <div className="bg-bg rounded-vintage border border-border shadow-vintage p-8">
-          <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Header — logo + title (always visible, adjusts sizing per breakpoint) */}
+      <div className="pt-12 pb-2 px-7 text-center md:mb-8 md:pt-0 shrink-0">
+        <img
+          src="/logo.png"
+          alt="Florim"
+          className="w-[52px] h-[52px] md:w-20 md:h-20 object-contain mx-auto mb-3"
+        />
+        <h1 className="font-serif text-[26px] md:text-4xl text-coffee mb-2">
+          Criar Família
+        </h1>
+        <p className="text-ink/60 italic font-body text-[13px] md:text-base">
+          Uma casa tranquila nasce de pequenas escolhas repetidas.
+        </p>
+      </div>
+
+      {/* Form — flat on mobile, card on desktop */}
+      <div className="flex-1 md:flex-none w-full md:max-w-md md:bg-offWhite md:rounded-vintage md:border md:border-border md:shadow-vintage md:p-8 overflow-y-auto">
+        <div className="px-7 pb-10 md:px-0 md:pb-0">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {error && (
               <div className="bg-terracotta/10 border border-terracotta/30 text-terracotta px-4 py-3 rounded-lg text-sm">
                 {error}
@@ -153,7 +153,7 @@ export default function SignUpPage() {
                 className="mt-1 accent-coffee"
                 required
               />
-              <span className="text-sm font-body text-ink/70 leading-relaxed">
+              <span className="text-[12px] md:text-sm font-body text-ink/70 leading-relaxed">
                 Li e concordo com os{' '}
                 <Link href="/terms" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
                   Termos de Uso
@@ -168,27 +168,20 @@ export default function SignUpPage() {
             <button
               type="submit"
               disabled={loading || !agreed}
-              className="w-full bg-coffee text-paper py-3 rounded-lg font-body hover:bg-coffee/90 transition-vintage disabled:opacity-50"
+              className="w-full bg-coffee text-paper py-[14px] rounded-[10px] font-body font-bold text-[15px] hover:bg-coffee/90 transition-vintage disabled:opacity-50"
             >
               {loading ? 'Criando...' : 'Criar família'}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-5 text-center">
             <Link
               href="/login"
-              className="text-petrol hover:text-petrol/80 transition-vintage text-sm font-body"
+              className="text-petrol hover:text-petrol/80 transition-vintage text-[13px] md:text-sm font-body"
             >
               Já tem uma conta? Entrar
             </Link>
           </div>
-        </div>
-
-        {/* Footer ornament */}
-        <div className="mt-8 text-center">
-          <svg width="60" height="20" viewBox="0 0 60 20" fill="none" className="mx-auto">
-            <path d="M0 10 L 60 10" stroke="#D9CFBF" strokeWidth="1" />
-          </svg>
         </div>
       </div>
     </div>

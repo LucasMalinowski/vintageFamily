@@ -19,7 +19,7 @@ export default function TermsPage() {
     <>
       <PublicNavbar />
       <main className="bg-paper min-h-screen">
-        <div className="max-w-3xl mx-auto px-6 pb-16 pt-36">
+        <div className="max-w-3xl mx-auto px-5 pb-16 pt-24 md:px-6 md:pt-36">
           <h1 className="text-4xl font-serif text-coffee mb-2">Termos de Uso</h1>
           <p className="text-sm text-ink/50 font-body mb-12">Vigente a partir de 23 de abril de 2026</p>
 

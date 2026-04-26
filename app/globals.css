@@ -112,6 +112,18 @@ input[type='date'] {
 }
 
 
+@keyframes florim-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.typewriter-caret {
+  display: inline-block;
+  margin-left: 2px;
+  font-weight: 300;
+  animation: florim-blink 1.1s ease-in-out infinite;
+}
+
 @layer components {
   .bg-texture {
     background-color: var(--paper);

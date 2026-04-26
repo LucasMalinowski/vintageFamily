@@ -197,7 +197,7 @@ export default function TermsAndServicesPage() {
     <div className="min-h-screen bg-paper text-ink">
       <PublicNavbar color="paper" />
 
-      <main className="px-6 pb-16 pt-32 sm:px-8 lg:px-12">
+      <main className="px-5 pb-16 pt-24 sm:px-8 sm:pt-32 lg:px-12">
         <div className="mx-auto max-w-4xl">
           <section className="border-b border-border/80 pb-10">
             <h1 className="mt-5 max-w-4xl font-serif text-4xl font-medium leading-tight sm:text-5xl">
