@@ -35,7 +35,11 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   }, [user])
 
   const visibleItems = isSuperAdmin
-    ? [...settingsItems, { label: 'Superadministrador', href: '/settings/admin' }]
+    ? [
+        ...settingsItems,
+        { label: 'Superadministrador', href: '/settings/admin' },
+        { label: 'Feedbacks', href: '/settings/admin/feedback' },
+      ]
     : settingsItems
 
   return (

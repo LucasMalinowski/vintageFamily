@@ -783,6 +783,35 @@ export type Database = {
           },
         ]
       }
+      whatsapp_context: {
+        Row: {
+          phone: string
+          family_id: string
+          context_items: unknown
+          expires_at: string
+        }
+        Insert: {
+          phone: string
+          family_id: string
+          context_items?: unknown
+          expires_at: string
+        }
+        Update: {
+          phone?: string
+          family_id?: string
+          context_items?: unknown
+          expires_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_context_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_message_log: {
         Row: {
           created_at: string | null
@@ -797,6 +826,50 @@ export type Database = {
           message_id?: string
         }
         Relationships: []
+      }
+      feedback: {
+        Row: {
+          id: string
+          family_id: string | null
+          name: string | null
+          email: string | null
+          phone: string | null
+          type: string
+          location: string | null
+          description: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          family_id?: string | null
+          name?: string | null
+          email?: string | null
+          phone?: string | null
+          type?: string
+          location?: string | null
+          description: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          family_id?: string | null
+          name?: string | null
+          email?: string | null
+          phone?: string | null
+          type?: string
+          location?: string | null
+          description?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

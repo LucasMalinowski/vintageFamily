@@ -6,6 +6,8 @@ import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
 import { whatsAppQueryHandler } from '@/lib/whatsapp/WhatsAppQueryHandler'
 import { formatBRL } from '@/lib/money'
 
+const FEEDBACK_LINE = '\n\n_Algo deu errado? Nos conte: https://florim.app/feedback_'
+
 const USAGE_HINT = `Olá! 👋 Para registrar suas finanças, envie mensagens como:
 
 💸 *Despesa:* "Gastei 50 reais no mercado no pix"
@@ -85,10 +87,16 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
     intent = { type: 'record', data_needed: [], time_range: 'current_month', focus: null, status_filter: null }
   }
 
+  if (intent.type === 'delete' || intent.type === 'edit') {
+    const reply = await handleMutation(fromPhone, familyId, intent)
+    await whatsAppService.sendTextMessage(fromPhone, reply)
+    return
+  }
+
   if (intent.type === 'query') {
     try {
-      const reply = await whatsAppQueryHandler.handle(text, intent, familyId, todayISO)
-      await whatsAppService.sendTextMessage(fromPhone, reply)
+      const reply = await whatsAppQueryHandler.handle(text, intent, familyId, todayISO, fromPhone)
+      await whatsAppService.sendTextMessage(fromPhone, reply + FEEDBACK_LINE)
     } catch {
       await whatsAppService.sendTextMessage(fromPhone, 'Não consegui buscar seus dados agora. Tente novamente em instantes. 🔄')
     }
@@ -124,8 +132,8 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
       time_range: 'current_month', focus: null, status_filter: null,
     }
     try {
-      const reply = await whatsAppQueryHandler.handle(text, fallbackIntent, familyId, todayISO)
-      await whatsAppService.sendTextMessage(fromPhone, reply)
+      const reply = await whatsAppQueryHandler.handle(text, fallbackIntent, familyId, todayISO, fromPhone)
+      await whatsAppService.sendTextMessage(fromPhone, reply + FEEDBACK_LINE)
     } catch {
       await whatsAppService.sendTextMessage(fromPhone, USAGE_HINT)
     }
@@ -157,7 +165,7 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
     parts.push(`⚠️ Não foi possível criar:\n${failed.map((r) => r.line).join('\n')}`)
   }
 
-  await whatsAppService.sendTextMessage(fromPhone, parts.join('\n\n'))
+  await whatsAppService.sendTextMessage(fromPhone, parts.join('\n\n') + FEEDBACK_LINE)
 }
 
 const MAX_AMOUNT_CENTS = 100_000_000_00  // R$100 million
@@ -354,6 +362,88 @@ async function saveRecord(
     return { ok: false, line }
   }
   return { ok: true, line }
+}
+
+type ContextItem = {
+  idx: number
+  record_id: string
+  record_type: 'expense' | 'income' | 'savings_contribution' | 'reminder'
+  description: string
+  amount_cents: number
+}
+
+const RECORD_TYPE_TO_TABLE: Record<string, string> = {
+  expense: 'expenses',
+  income: 'incomes',
+  savings_contribution: 'savings_contributions',
+  reminder: 'reminders',
+}
+
+async function handleMutation(
+  fromPhone: string,
+  familyId: string,
+  intent: IntentClassification
+): Promise<string> {
+  const { data: ctx } = await supabaseAdmin
+    .from('whatsapp_context')
+    .select('context_items, family_id')
+    .eq('phone', fromPhone)
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle()
+
+  if (!ctx || ctx.family_id !== familyId) {
+    return 'Não encontrei uma lista recente. Primeiro me peça uma lista para poder editar ou apagar itens.'
+  }
+
+  const contextItems = ctx.context_items as ContextItem[]
+  const targetItem = contextItems.find(item => item.idx === intent.item_index)
+
+  if (!targetItem) {
+    return `Item ${intent.item_index} não encontrado na última lista.`
+  }
+
+  const table = RECORD_TYPE_TO_TABLE[targetItem.record_type]
+  if (!table) {
+    return `Não foi possível ${intent.type === 'delete' ? 'apagar' : 'editar'} esse tipo de registro.`
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabaseAdmin as any
+
+  if (intent.type === 'delete') {
+    const { error } = await db
+      .from(table)
+      .delete()
+      .eq('id', targetItem.record_id)
+      .eq('family_id', familyId)
+
+    if (error) {
+      console.error('[WA] delete error:', error.message)
+      return 'Não foi possível apagar o item. Tente novamente.'
+    }
+
+    const amountStr = targetItem.amount_cents > 0 ? ` — ${formatBRL(targetItem.amount_cents)}` : ''
+    return `✅ Removido: ${targetItem.description}${amountStr}`
+  }
+
+  // edit
+  const newAmountCents = Math.round((intent.edit_amount ?? 0) * 100)
+  if (!Number.isFinite(newAmountCents) || newAmountCents <= 0) {
+    return `Valor inválido. Tente: "edita o ${intent.item_index} para 60"`
+  }
+
+  const { error } = await db
+    .from(table)
+    .update({ amount_cents: newAmountCents })
+    .eq('id', targetItem.record_id)
+    .eq('family_id', familyId)
+
+  if (error) {
+    console.error('[WA] edit error:', error.message)
+    return 'Não foi possível editar o item. Tente novamente.'
+  }
+
+  return `✅ Atualizado: ${targetItem.description} — ${formatBRL(newAmountCents)}`
 }
 
 function findCategoryIdByLabel(

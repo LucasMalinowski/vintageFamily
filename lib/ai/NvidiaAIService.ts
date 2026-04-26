@@ -11,11 +11,13 @@ export interface AIExtractedRecord {
 }
 
 export interface IntentClassification {
-  type: 'query' | 'record'
+  type: 'query' | 'record' | 'delete' | 'edit'
   data_needed: Array<'expenses' | 'incomes' | 'savings' | 'reminders'>
   time_range: 'current_month' | 'last_month' | 'current_year' | 'last_7_days' | 'next_7_days' | 'all'
   focus: string | null
   status_filter?: 'open' | null
+  item_index?: number | null
+  edit_amount?: number | null
 }
 
 // Used to send items to the classifier — no amounts (AI doesn't need them)
@@ -34,35 +36,42 @@ export interface ClassifyResult {
   context_label?: string | null // e.g. "transporte em geral"
 }
 
-const DEFAULT_INTENT: IntentClassification = { type: 'record', data_needed: [], time_range: 'current_month', focus: null, status_filter: null }
+const DEFAULT_INTENT: IntentClassification = { type: 'record', data_needed: [], time_range: 'current_month', focus: null, status_filter: null, item_index: null, edit_amount: null }
 
 // Static — date is injected into the user message instead so Groq can cache this prefix globally
 const ROUTER_SYSTEM_PROMPT = `Você é um classificador de intenção para um app financeiro. Responda APENAS com JSON válido, sem texto adicional.
 
 Formato obrigatório:
-{"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null}
+{"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
 
 Campos:
-- type: "record" se registrando/criando algo. "query" se consultando dados existentes.
-- data_needed: vazio para "record". Para "query": ["expenses"], ["incomes"], ["savings"], ["reminders"]
+- type: "record" se registrando/criando algo. "query" se consultando dados existentes. "delete" se apagando um item numerado da última lista. "edit" se editando o valor de um item numerado.
+- data_needed: vazio para "record"/"delete"/"edit". Para "query": ["expenses"], ["incomes"], ["savings"], ["reminders"]
 - time_range: "current_month" (padrão), "last_month", "current_year", "last_7_days", "next_7_days", "all"
   Use "next_7_days" para lembretes futuros ("essa semana", "próximos dias")
 - focus: palavra-chave de filtro ou null
 - status_filter: null (padrão). Use "open" quando o usuário perguntar sobre despesas pendentes/a pagar ("pendente pra pagar", "contas a pagar", "o que tenho pra pagar", "tenho que pagar")
+- item_index: número do item (1-based) para "delete" e "edit". null nos demais casos.
+- edit_amount: novo valor em reais para "edit". null nos demais casos.
 
 Exemplos:
-"Quanto gastei em comida esse mês?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":"comida","status_filter":null}
-"Qual meu maior gasto essa semana?" → {"type":"query","data_needed":["expenses"],"time_range":"last_7_days","focus":null,"status_filter":null}
-"Quanto recebi esse ano?" → {"type":"query","data_needed":["incomes"],"time_range":"current_year","focus":null,"status_filter":null}
-"Me mostra minha poupança" → {"type":"query","data_needed":["savings"],"time_range":"all","focus":null,"status_filter":null}
-"Quais meus lembretes essa semana?" → {"type":"query","data_needed":["reminders"],"time_range":"next_7_days","focus":null,"status_filter":null}
-"O que tenho pendente pra pagar?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":null,"status_filter":"open"}
-"Quais contas tenho a pagar?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":null,"status_filter":"open"}
-"Gastei 50 no mercado" → {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null}
-"Comprei um tênis de 150 em 3x" → {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null}
-"Me lembre de comprar ovo" → {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null}
-"Não esquecer de pagar o boleto" → {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null}
-"oi tudo bem?" → {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null}`
+"Quanto gastei em comida esse mês?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":"comida","status_filter":null,"item_index":null,"edit_amount":null}
+"Qual meu maior gasto essa semana?" → {"type":"query","data_needed":["expenses"],"time_range":"last_7_days","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
+"Quanto recebi esse ano?" → {"type":"query","data_needed":["incomes"],"time_range":"current_year","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
+"Me mostra minha poupança" → {"type":"query","data_needed":["savings"],"time_range":"all","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
+"Quais meus lembretes essa semana?" → {"type":"query","data_needed":["reminders"],"time_range":"next_7_days","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
+"O que tenho pendente pra pagar?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":null,"status_filter":"open","item_index":null,"edit_amount":null}
+"Quais contas tenho a pagar?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":null,"status_filter":"open","item_index":null,"edit_amount":null}
+"Gastei 50 no mercado" → {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
+"Comprei um tênis de 150 em 3x" → {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
+"Me lembre de comprar ovo" → {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
+"oi tudo bem?" → {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
+"apaga o 2" → {"type":"delete","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":2,"edit_amount":null}
+"deleta o item 3" → {"type":"delete","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":3,"edit_amount":null}
+"remove o 1" → {"type":"delete","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":1,"edit_amount":null}
+"edita o 2 para 60" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":2,"edit_amount":60}
+"muda o 1 para R$ 30,50" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":1,"edit_amount":30.5}
+"altera o 3 para 25 reais" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":3,"edit_amount":25}`
 
 // Static — focus is injected into the user message instead so Groq can cache this prefix globally
 const CLASSIFIER_SYSTEM_PROMPT = `Você é um classificador de consultas financeiras. Responda APENAS com JSON válido, sem texto adicional.
@@ -236,7 +245,8 @@ export class NvidiaAIService {
       const jsonMatch = content.match(/\{[\s\S]*\}/)
       if (!jsonMatch) return DEFAULT_INTENT
       const parsed = JSON.parse(jsonMatch[0])
-      if (parsed.type !== 'query' && parsed.type !== 'record') return DEFAULT_INTENT
+      const validTypes = ['query', 'record', 'delete', 'edit']
+      if (!validTypes.includes(parsed.type)) return DEFAULT_INTENT
       return parsed as IntentClassification
     } catch {
       return DEFAULT_INTENT

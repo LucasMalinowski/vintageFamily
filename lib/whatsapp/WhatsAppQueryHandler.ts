@@ -11,6 +11,7 @@ type DateRange = { from: string; to: string }
 
 interface InternalRow {
   idx: number
+  id: string
   date: string
   description: string
   category: string
@@ -60,7 +61,8 @@ export class WhatsAppQueryHandler {
     question: string,
     intent: IntentClassification,
     familyId: string,
-    todayISO: string
+    todayISO: string,
+    fromPhone?: string
   ): Promise<string> {
     if (intent.data_needed.length === 0) {
       return `Não entendi o que você quer consultar. Tente perguntar como: "Quanto gastei esse mês?" 😊`
@@ -91,6 +93,25 @@ export class WhatsAppQueryHandler {
       const result = await nvidiaAIService.classifyQueryData(question, items, intent.focus)
       const msg = WhatsAppQueryHandler.buildRowMessage(result, rowData, period, intent.data_needed)
       if (msg) parts.push(msg)
+
+      if (fromPhone && (result.query_type === 'sum' || result.query_type === 'list')) {
+        const idxSet = new Set(result.selected)
+        const shownRows = rowData.filter(r => idxSet.has(r.idx)).slice(0, 10)
+        if (shownRows.length > 0) {
+          await supabaseAdmin.from('whatsapp_context').upsert({
+            phone: fromPhone,
+            family_id: familyId,
+            context_items: shownRows.map((r, i) => ({
+              idx: i + 1,
+              record_id: r.id,
+              record_type: r.kind,
+              description: r.description,
+              amount_cents: r.amount_cents,
+            })),
+            expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          }, { onConflict: 'phone' })
+        }
+      }
     }
 
     // Dreams — no classification needed, just list
@@ -163,13 +184,15 @@ export class WhatsAppQueryHandler {
     const periodStr = period ? ` ${period}` : ''
     const lines = [`Você ${verb} *${formatBRL(total)}* em ${label}${periodStr}:\n`]
 
-    const display = rows.slice(0, 15)
-    display.forEach(r => {
-      lines.push(`- ${dateBR(r.date)}: ${r.description} (${r.category}) — *${formatBRL(r.amount_cents)}*`)
+    const display = rows.slice(0, 10)
+    display.forEach((r, i) => {
+      lines.push(`${i + 1}. ${dateBR(r.date)}: ${r.description} (${r.category}) — *${formatBRL(r.amount_cents)}*`)
     })
 
-    if (rows.length > 15) {
-      lines.push(`\n_...e mais ${rows.length - 15} lançamentos_`)
+    lines.push(`\n_Para editar ou apagar: "edita o 2 para 60" ou "apaga o 1"_`)
+
+    if (rows.length > 10) {
+      lines.push(`_...e mais ${rows.length - 10} lançamentos_`)
       lines.push(`Ver todos: ${appUrl}${routePath}`)
     }
 
@@ -245,12 +268,14 @@ export class WhatsAppQueryHandler {
     const periodStr = period ? ` ${period}` : ''
     const lines = [`Seus ${label}${periodStr}:\n`]
 
-    rows.slice(0, 15).forEach(r => {
-      lines.push(`- ${dateBR(r.date)}: ${r.description} (${r.category}) — *${formatBRL(r.amount_cents)}*`)
+    rows.slice(0, 10).forEach((r, i) => {
+      lines.push(`${i + 1}. ${dateBR(r.date)}: ${r.description} (${r.category}) — *${formatBRL(r.amount_cents)}*`)
     })
 
-    if (rows.length > 15) {
-      lines.push(`\n_...e mais ${rows.length - 15} lançamentos_`)
+    lines.push(`\n_Para editar ou apagar: "edita o 2 para 60" ou "apaga o 1"_`)
+
+    if (rows.length > 10) {
+      lines.push(`_...e mais ${rows.length - 10} lançamentos_`)
       lines.push(`Ver todos: ${appUrl}${routePath}`)
     }
 
@@ -333,7 +358,7 @@ export class WhatsAppQueryHandler {
         (async () => {
           let query = supabaseAdmin
             .from('expenses')
-            .select('date, description, category_name, amount_cents')
+            .select('id, date, description, category_name, amount_cents')
             .eq('family_id', familyId)
             .gte('date', dateRange.from)
             .lte('date', dateRange.to)
@@ -343,6 +368,7 @@ export class WhatsAppQueryHandler {
           const { data } = await query
           payload.expenses = (data ?? []).map((r, i) => ({
             idx: i,
+            id: r.id,
             date: r.date,
             description: r.description,
             category: r.category_name ?? '',
@@ -358,7 +384,7 @@ export class WhatsAppQueryHandler {
         (async () => {
           const { data } = await supabaseAdmin
             .from('incomes')
-            .select('date, description, category_name, amount_cents')
+            .select('id, date, description, category_name, amount_cents')
             .eq('family_id', familyId)
             .gte('date', dateRange.from)
             .lte('date', dateRange.to)
@@ -366,6 +392,7 @@ export class WhatsAppQueryHandler {
             .limit(50)
           payload.incomes = (data ?? []).map((r, i) => ({
             idx: i,  // reassigned in handle() after parallel fetch completes
+            id: r.id,
             date: r.date,
             description: r.description,
             category: r.category_name ?? '',
