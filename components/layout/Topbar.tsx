@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, BanknoteArrowDown, BanknoteArrowUp, ChartColumnBig, ChevronDown, ChevronLeft, Home, Info, PiggyBank, Search, Settings } from 'lucide-react'
+import { Bell, BanknoteArrowDown, BanknoteArrowUp, ChartColumnBig, ChevronDown, ChevronLeft, Home, Info, PiggyBank, Settings } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
@@ -245,9 +245,6 @@ export default function Topbar({
                       : 'U'}
                   </span>
                 )}
-              </button>
-              <button className="hidden sm:inline-flex text-coffee hover:text-coffee/80 transition-vintage" aria-label="Buscar">
-                <Search className="w-6 h-6" />
               </button>
               <button
                 onClick={() => router.push('/settings')}
