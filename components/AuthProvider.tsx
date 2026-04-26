@@ -74,16 +74,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', userId)
         .maybeSingle()
 
-      if (error) {
-        console.error('Error loading family_id:', error)
-        return
-      }
+      if (error) return
 
-      if (data) {
-        setFamilyId(data.family_id)
-      }
+      setFamilyId(data?.family_id ?? null)
     } catch (error) {
-      console.error('Error in loadFamilyId:', error)
+      setFamilyId(null)
     }
   }
 
@@ -157,7 +152,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setFamilyId(createdFamilyId)
       router.push('/inicio')
     } catch (error: any) {
-      console.error('SignUp error:', error)
       throw error
     }
   }
@@ -204,7 +198,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setFamilyId(payload.familyId)
       router.push('/inicio')
     } catch (error: any) {
-      console.error('AcceptInvite error:', error)
       throw error
     }
   }

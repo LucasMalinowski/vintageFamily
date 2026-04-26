@@ -11,6 +11,8 @@ import { supabase } from '@/lib/supabase'
 import { getSidebarCollapsedStorageKey, LOCAL_STORAGE_KEYS } from '@/lib/storage'
 import { useEffect, useMemo, useState } from 'react'
 
+/* eslint-disable react-hooks/set-state-in-effect */
+
 const menuItems = [
   { icon: Home, label: 'Início', href: '/inicio' },
   { icon: BanknoteArrowUp, label: 'Contas a Pagar', href: '/expenses' },
@@ -68,6 +70,7 @@ export default function Sidebar() {
   const [familyName, setFamilyName] = useState('')
   const [familyNameLoading, setFamilyNameLoading] = useState(false)
   const [familyNameError, setFamilyNameError] = useState(false)
+  const sidebarCollapsed = user?.id ? isCollapsed : false
   const dailyPhrase = useMemo(() => {
     const dayIndex = getDayOfYear(new Date()) % dailyPhrases.length
     return dailyPhrases[dayIndex]
@@ -86,15 +89,11 @@ export default function Sidebar() {
       let effectiveFamilyId = familyId
 
       if (!effectiveFamilyId && user?.id) {
-        const { data: profileRow, error: profileError } = await supabase
+        const { data: profileRow } = await supabase
           .from('users')
           .select('family_id')
           .eq('id', user.id)
           .maybeSingle()
-
-        if (profileError) {
-          console.error('Sidebar user profile query failed:', profileError)
-        }
 
         if (profileRow?.family_id) {
           effectiveFamilyId = profileRow.family_id
@@ -106,9 +105,6 @@ export default function Sidebar() {
         window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
         setFamilyNameLoading(false)
         setFamilyNameError(false)
-        if (process.env.NODE_ENV !== 'production') {
-          console.info('Sidebar family name skipped: missing family id')
-        }
         return
       }
 
@@ -122,7 +118,6 @@ export default function Sidebar() {
         .maybeSingle()
 
       if (error) {
-        console.error('Sidebar family name query failed:', error)
         setFamilyNameError(true)
         setFamilyNameLoading(false)
         return
@@ -165,10 +160,6 @@ export default function Sidebar() {
         }
       }
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.info('Sidebar family name loaded:', { familyId: effectiveFamilyId, familyName: resolvedFamilyName || null })
-      }
-
       setFamilyNameLoading(false)
     }
 
@@ -176,11 +167,7 @@ export default function Sidebar() {
   }, [familyId, user?.id])
 
   useEffect(() => {
-    if (!user?.id) {
-      setIsCollapsed(false)
-      setHasLoadedCollapsedState(true)
-      return
-    }
+    if (!user?.id) return
 
     const scopedStorageKey = getSidebarCollapsedStorageKey(user.id)
     const storedState = window.localStorage.getItem(scopedStorageKey)
@@ -206,12 +193,12 @@ export default function Sidebar() {
     window.localStorage.setItem(getSidebarCollapsedStorageKey(user.id), String(isCollapsed))
   }, [hasLoadedCollapsedState, isCollapsed, user?.id])
 
-  const SidebarContent = () => (
+  const sidebarContent = (
     <>
-      <div className={`border-b border-white/10 bg-sidebar ${isCollapsed ? 'p-4' : 'p-6'}`}>
-        <div className={`flex ${isCollapsed ? 'flex-col items-center' : 'items-center gap-3'}`}>
-          <img src="/logo.png" alt="Logo Florim" className={`${isCollapsed ? 'w-12 h-12' : 'w-14 h-14'} object-contain`} />
-          {!isCollapsed && (
+      <div className={`border-b border-white/10 bg-sidebar ${sidebarCollapsed ? 'p-4' : 'p-6'}`}>
+        <div className={`flex ${sidebarCollapsed ? 'flex-col items-center' : 'items-center gap-3'}`}>
+          <img src="/logo.png" alt="Logo Florim" className={`${sidebarCollapsed ? 'w-12 h-12' : 'w-14 h-14'} object-contain`} />
+          {!sidebarCollapsed && (
             <div>
               <h2 className="text-white font-serif text-lg">Família</h2>
               <p className="text-white/70 text-sm">
@@ -222,23 +209,23 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav className={`flex-1 ${isCollapsed ? 'p-2' : 'p-4'}`}>
+      <nav className={`flex-1 ${sidebarCollapsed ? 'p-2' : 'p-4'}`}>
         <ul className="space-y-2">
           {menuItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
             return (
               <li key={item.href} className="relative">
-                {isActive && !isCollapsed && (
+                {isActive && !sidebarCollapsed && (
                   <span className="absolute left-0 top-2 bottom-2 w-[2.5px] bg-gold rounded-r" />
                 )}
                 <Link
                   href={item.href}
                   onClick={() => setIsOpen(false)}
-                  title={isCollapsed ? item.label : undefined}
+                  title={sidebarCollapsed ? item.label : undefined}
                   className={`
                     group flex items-center rounded-lg transition-vintage
-                    ${isCollapsed ? 'justify-center px-2 py-3' : 'gap-3 px-4 py-3'}
+                    ${sidebarCollapsed ? 'justify-center px-2 py-3' : 'gap-3 px-4 py-3'}
                     ${isActive
                       ? 'bg-white/10 text-white'
                       : 'text-white/80 hover:bg-white/[0.06] hover:text-white'
@@ -246,8 +233,8 @@ export default function Sidebar() {
                   `}
                 >
                   <Icon className="w-5 h-5" />
-                  {!isCollapsed && <span className="font-ptSerif| text-sm">{item.label}</span>}
-                  {isCollapsed && (
+                  {!sidebarCollapsed && <span className="font-ptSerif| text-sm">{item.label}</span>}
+                  {sidebarCollapsed && (
                     <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-md bg-paper px-2 py-1 text-xs text-ink shadow-vintage opacity-0 group-hover:opacity-100 transition-vintage z-50">
                       {item.label}
                     </span>
@@ -259,7 +246,7 @@ export default function Sidebar() {
         </ul>
       </nav>
 
-      {!isCollapsed && (
+      {!sidebarCollapsed && (
         <div className="px-8 pb-10">
           <p className="text-[13px] italic text-gold">
             {dailyPhrase}
@@ -267,33 +254,33 @@ export default function Sidebar() {
         </div>
       )}
 
-      <div className={`border-t border-white/10 ${isCollapsed ? 'p-2' : 'p-4'}`}>
+      <div className={`border-t border-white/10 ${sidebarCollapsed ? 'p-2' : 'p-4'}`}>
         <button
           onClick={() => setIsCollapsed((prev) => !prev)}
           className={`
             hidden md:flex items-center rounded-lg transition-vintage text-white/80 hover:bg-white/10 hover:text-white mb-2
-            ${isCollapsed ? 'justify-center w-full px-2 py-3' : 'gap-3 px-4 py-3 w-full'}
+            ${sidebarCollapsed ? 'justify-center w-full px-2 py-3' : 'gap-3 px-4 py-3 w-full'}
           `}
-          title={isCollapsed ? 'Expandir menu' : undefined}
-          aria-label={isCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+          title={sidebarCollapsed ? 'Expandir menu' : undefined}
+          aria-label={sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
         >
-          {isCollapsed ? <ArrowRightToLine className="w-5 h-5" /> : <ArrowLeftToLine className="w-5 h-5" />}
-          {!isCollapsed && <span className="font-body text-sm">Recolher menu</span>}
+          {sidebarCollapsed ? <ArrowRightToLine className="w-5 h-5" /> : <ArrowLeftToLine className="w-5 h-5" />}
+          {!sidebarCollapsed && <span className="font-body text-sm">Recolher menu</span>}
         </button>
         <button
           onClick={() => {
             signOut()
             setIsOpen(false)
           }}
-          title={isCollapsed ? 'Sair' : undefined}
+          title={sidebarCollapsed ? 'Sair' : undefined}
           className={`
             group flex items-center w-full text-white/80 hover:bg-white/10 hover:text-white rounded-lg transition-vintage
-            ${isCollapsed ? 'justify-center px-2 py-3' : 'gap-3 px-4 py-3'}
+            ${sidebarCollapsed ? 'justify-center px-2 py-3' : 'gap-3 px-4 py-3'}
           `}
         >
           <LogOut className="w-5 h-5" />
-          {!isCollapsed && <span className="font-body text-sm">Sair</span>}
-          {isCollapsed && (
+          {!sidebarCollapsed && <span className="font-body text-sm">Sair</span>}
+          {sidebarCollapsed && (
             <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-md bg-paper px-2 py-1 text-xs text-ink shadow-vintage opacity-0 group-hover:opacity-100 transition-vintage z-50">
               Sair
             </span>
@@ -327,9 +314,9 @@ export default function Sidebar() {
         transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         md:translate-x-0
-        ${isCollapsed ? 'md:w-20' : 'md:w-72'} w-72
+        ${sidebarCollapsed ? 'md:w-20' : 'md:w-72'} w-72
       `}>
-        <SidebarContent />
+        {sidebarContent}
       </aside>
     </>
   )

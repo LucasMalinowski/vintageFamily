@@ -1,18 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 
 export default function CookieBanner() {
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    if (!localStorage.getItem('florim_cookie_consent')) setVisible(true)
-  }, [])
+  const [visible, setVisible] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return !localStorage.getItem('florim_cookie_consent')
+  })
 
   function accept() {
     localStorage.setItem('florim_cookie_consent', 'accepted')
-    console.log('[Florim] Analytics cookies accepted.')
     setVisible(false)
   }
 
