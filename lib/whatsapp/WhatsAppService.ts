@@ -48,7 +48,8 @@ export class WhatsAppService {
       `• "Recebi 3000 de salário" → registra receita\n` +
       `• "Quanto gastei esse mês?" → consulta de gastos\n` +
       `• "Mostre despesas de alimentação" → filtra por categoria\n\n` +
-      `É só mandar uma mensagem como se fosse falar com um amigo! 😊`
+      `É só mandar uma mensagem como se fosse falar com um amigo! 😊\n\n` +
+      `_Este serviço utiliza inteligência artificial. Sempre que possível, confira os registros no app e, se algo não estiver certo, nos conte — sua família merece precisão._`
     )
   }
 
