@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
-import { isPlanCode, UPGRADE_PATHS } from '@/lib/billing/constants'
+import { isFoundersPlan, isPlanCode, UPGRADE_PATHS } from '@/lib/billing/constants'
 import { ACTIVE_SUBSCRIPTION_STATUSES } from '@/lib/billing/constants'
 import { getPlanCodeByPriceId, getPriceIdByPlanCode, stripe } from '@/lib/billing/stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'O plano de destino está indisponível.' }, { status: 400 })
     }
 
-    if (targetPlanCode === 'founders_yearly') {
+    if (isFoundersPlan(targetPlanCode)) {
       const { data: family } = await supabaseService
         .from('families')
         .select('founders_enabled')

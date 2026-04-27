@@ -16,6 +16,7 @@ export function getPriceIdByPlanCode(planCode: string) {
   const mapping: Record<string, string | undefined> = {
     standard_monthly: process.env.STRIPE_PRICE_STANDARD_MONTHLY,
     standard_yearly: process.env.STRIPE_PRICE_STANDARD_YEARLY,
+    founders_monthly: process.env.STRIPE_PRICE_FOUNDERS_MONTHLY,
     founders_yearly: process.env.STRIPE_PRICE_FOUNDERS_YEARLY,
   }
 
@@ -33,6 +34,7 @@ export function getPlanCodeByPriceId(priceId: string | null | undefined) {
   const mapping: Record<string, string | undefined> = {
     [process.env.STRIPE_PRICE_STANDARD_MONTHLY ?? '']: 'standard_monthly',
     [process.env.STRIPE_PRICE_STANDARD_YEARLY ?? '']: 'standard_yearly',
+    [process.env.STRIPE_PRICE_FOUNDERS_MONTHLY ?? '']: 'founders_monthly',
     [process.env.STRIPE_PRICE_FOUNDERS_YEARLY ?? '']: 'founders_yearly',
   }
 

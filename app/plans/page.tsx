@@ -38,20 +38,6 @@ const plans = [
     ],
     quote: 'Um pequeno investimento para cuidar do que sustenta a casa.',
   },
-  {
-    name: 'Plano Fundadores',
-    description: 'Exclusivo para os primeiros usuários do Florim.',
-    price: '199,00',
-    period: '/ ano',
-    benefitsTitle: 'Benefícios especiais:',
-    benefits: [
-      'Valor promocional vitalício',
-      'Acesso antecipado a novidades',
-      'Participação na evolução do sistema',
-      'Reconhecimento como usuário fundador',
-    ],
-    quote: 'Quem chega primeiro, constrói junto.',
-  },
 ]
 
 export default function PlansPage() {
@@ -109,7 +95,7 @@ export default function PlansPage() {
             <div className="pt-6">
               <button
                 onClick={() => setStep('plans')}
-                className="w-full rounded-full border border-gold px-6 py-3 text-sm font-semibold text-gold hover:bg-gold hover:text-sidebar transition-vintage"
+                className="w-full md:w-auto rounded-full border border-gold px-6 py-3 text-sm font-semibold text-gold hover:bg-gold hover:text-sidebar transition-vintage"
               >
                 Ver planos
               </button>

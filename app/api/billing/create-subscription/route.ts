@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
-import { isPlanCode } from '@/lib/billing/constants'
+import { isFoundersPlan, isPlanCode } from '@/lib/billing/constants'
 import { BLOCKING_SUBSCRIPTION_STATUSES, getPriceIdByPlanCode, stripe } from '@/lib/billing/stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
 
@@ -80,10 +80,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Este plano está indisponível no momento.' }, { status: 400 })
     }
 
-    if (planCode === 'founders_yearly') {
-      if (!family.founders_enabled) {
-        return NextResponse.json({ error: 'Sua família não está habilitada para o Plano Fundadores.' }, { status: 403 })
-      }
+    if (isFoundersPlan(planCode) && !family.founders_enabled) {
+      return NextResponse.json({ error: 'Sua família não está habilitada para o Plano Fundadores.' }, { status: 403 })
     }
 
     let stripeCustomerId: string | null = null

@@ -8,7 +8,7 @@ import PlanCheckout from '@/components/billing/PlanCheckout'
 import { getAuthBearerToken } from '@/lib/billing/client'
 
 type PlanSetting = {
-  plan_code: 'standard_monthly' | 'standard_yearly' | 'founders_yearly'
+  plan_code: 'standard_monthly' | 'standard_yearly' | 'founders_monthly' | 'founders_yearly'
   is_visible: boolean
   is_active: boolean
 }
@@ -55,9 +55,23 @@ const PLAN_CONTENT: Record<PlanSetting['plan_code'], PlanContent> = {
     ],
     quote: 'Um pequeno investimento para cuidar do que sustenta a casa.',
   },
+  founders_monthly: {
+    name: 'Plano Fundadores Mensal',
+    teaser: 'Exclusivo para famílias selecionadas.',
+    price: '19,90',
+    period: '/ mês',
+    benefitsTitle: 'Benefícios especiais:',
+    benefits: [
+      'Valor promocional vitalício',
+      'Acesso antecipado a novidades',
+      'Participação na evolução do sistema',
+      'Reconhecimento como usuário fundador',
+    ],
+    quote: 'Quem chega primeiro, constrói junto.',
+  },
   founders_yearly: {
-    name: 'Plano Fundadores',
-    teaser: 'Exclusivo para os primeiros usuários do Florim.',
+    name: 'Plano Fundadores Anual',
+    teaser: 'Exclusivo para famílias selecionadas.',
     price: '199,00',
     period: '/ ano',
     benefitsTitle: 'Benefícios especiais:',
@@ -113,8 +127,15 @@ export default function PricingPage() {
         return
       }
 
-      setPlans((payload?.plans || []).filter((plan: PlanSetting) => plan.is_visible))
-      setFoundersEligible(Boolean(payload?.founders_eligible))
+      const foundersOk = Boolean(payload?.founders_eligible)
+      setFoundersEligible(foundersOk)
+      setPlans(
+        (payload?.plans || []).filter((plan: PlanSetting) => {
+          if (!plan.is_visible) return false
+          if (plan.plan_code.startsWith('founders')) return foundersOk
+          return true
+        }),
+      )
       setLoading(false)
     }
 
@@ -199,8 +220,7 @@ export default function PricingPage() {
               <div className="grid gap-5 xl:grid-cols-3">
                 {visiblePlans.map((plan) => {
                   const content = PLAN_CONTENT[plan.plan_code]
-                  const isFounders = plan.plan_code === 'founders_yearly'
-                  const foundersLocked = isFounders && !foundersEligible
+                  const isFounders = plan.plan_code.startsWith('founders')
 
                   return (
                     <div
@@ -209,10 +229,10 @@ export default function PricingPage() {
                     >
                       <div className="flex flex-1 flex-col">
                         <div className="flex items-start justify-between gap-3">
-                        <h3 className="font-serif text-2xl text-sidebar">{content.name}</h3>
-                        {isFounders ? (
-                          <span className="rounded-full border border-gold px-2 py-1 text-xs text-gold">Fundadores</span>
-                        ) : null}
+                          <h3 className="font-serif text-2xl text-sidebar">{content.name}</h3>
+                          {isFounders ? (
+                            <span className="rounded-full border border-gold px-2 py-1 text-xs text-gold">Fundadores</span>
+                          ) : null}
                         </div>
                         <p className="mt-3 min-h-[44px] text-sm text-ink/55">{content.teaser}</p>
                         <div className="mt-6 flex items-end justify-center text-coffee/60">
@@ -221,15 +241,11 @@ export default function PricingPage() {
                           <span className="ml-2 text-base">{content.period}</span>
                         </div>
                         <p className="mt-4 min-h-[28px] text-center text-sm text-ink/60">
-                          {!plan.is_active
-                            ? 'Plano indisponível no momento.'
-                            : foundersLocked
-                              ? 'Disponível apenas para usuários elegíveis.'
-                              : '14 dias grátis. Cancele quando quiser.'}
+                          {plan.is_active ? '14 dias grátis. Cancele quando quiser.' : 'Plano indisponível no momento.'}
                         </p>
                       </div>
                       <button
-                        disabled={!plan.is_active || foundersLocked}
+                        disabled={!plan.is_active}
                         onClick={() => setSelectedPlan(plan.plan_code)}
                         className="mt-6 w-full rounded-full bg-sidebar px-4 py-3 text-sm font-semibold text-white transition-vintage hover:bg-olive/90 disabled:opacity-60"
                       >

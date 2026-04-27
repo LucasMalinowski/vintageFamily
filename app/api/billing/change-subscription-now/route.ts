@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
-import { DOWNGRADE_PATHS, isPlanCode, UPGRADE_PATHS } from '@/lib/billing/constants'
+import { DOWNGRADE_PATHS, isFoundersPlan, isPlanCode, UPGRADE_PATHS } from '@/lib/billing/constants'
 import { getPlanCodeByPriceId, getPriceIdByPlanCode, stripe } from '@/lib/billing/stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
 
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'O plano de destino está indisponível.' }, { status: 400 })
     }
 
-    if (targetPlanCode === 'founders_yearly' && !family?.founders_enabled) {
+    if (isFoundersPlan(targetPlanCode) && !family?.founders_enabled) {
       return NextResponse.json({ error: 'Sua família não está habilitada para o Plano Fundadores.' }, { status: 403 })
     }
 

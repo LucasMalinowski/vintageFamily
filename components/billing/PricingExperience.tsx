@@ -9,7 +9,7 @@ import PublicNavbar from '@/components/layout/PublicNavbar'
 import { getAuthBearerToken } from '@/lib/billing/client'
 
 type PlanSetting = {
-  plan_code: 'standard_monthly' | 'standard_yearly' | 'founders_yearly'
+  plan_code: 'standard_monthly' | 'standard_yearly' | 'founders_monthly' | 'founders_yearly'
   is_visible: boolean
   is_active: boolean
 }
@@ -59,9 +59,24 @@ const PLAN_CONTENT: Record<PlanSetting['plan_code'], PlanContent> = {
     ],
     quote: 'Um pequeno investimento para cuidar do que sustenta a casa.',
   },
+  founders_monthly: {
+    name: 'Plano Fundadores Mensal',
+    teaser: 'Exclusivo para famílias selecionadas.',
+    pricePrefix: 'R$',
+    price: '19,90',
+    period: '/ mês',
+    benefitsTitle: 'Benefícios especiais:',
+    benefits: [
+      'Valor promocional vitalício',
+      'Acesso antecipado a novidades',
+      'Participação na evolução do sistema',
+      'Reconhecimento como usuário fundador',
+    ],
+    quote: 'Quem chega primeiro, constrói junto.',
+  },
   founders_yearly: {
-    name: 'Plano Fundadores',
-    teaser: 'Exclusivo para os primeiros usuários do Florim.',
+    name: 'Plano Fundadores Anual',
+    teaser: 'Exclusivo para famílias selecionadas.',
     pricePrefix: 'R$',
     price: '199,00',
     period: '/ ano',
@@ -94,7 +109,6 @@ export default function PricingExperience({
   const router = useRouter()
   const [step, setStep] = useState<'intro' | 'plans'>(showIntro ? 'intro' : 'plans')
   const [plans, setPlans] = useState<PlanSetting[]>([])
-  const [foundersEligible, setFoundersEligible] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<PlanSetting['plan_code'] | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -150,8 +164,11 @@ export default function PricingExperience({
         return
       }
 
-      setPlans((eligibilityPayload.plans || []).filter((plan: PlanSetting) => plan.is_visible))
-      setFoundersEligible(Boolean(eligibilityPayload.founders_eligible))
+      setPlans(
+        (eligibilityPayload.plans || []).filter(
+          (plan: PlanSetting) => plan.is_visible && !plan.plan_code.startsWith('founders'),
+        ),
+      )
 
       if (!billingResponse) {
         return
@@ -256,8 +273,6 @@ export default function PricingExperience({
           <div className="mt-8 grid gap-5 lg:grid-cols-3">
             {visiblePlans.map((plan) => {
               const content = PLAN_CONTENT[plan.plan_code]
-              const isFounders = plan.plan_code === 'founders_yearly'
-              const foundersLocked = isFounders && !foundersEligible
 
               return (
                 <div
@@ -275,14 +290,10 @@ export default function PricingExperience({
                       <span className="ml-2 text-base text-coffee/60">{content.period}</span>
                     </div>
                     <p className="mt-4 text-center text-sm text-coffee/60">
-                      {!plan.is_active
-                        ? 'Plano indisponível no momento.'
-                        : foundersLocked
-                          ? 'Disponível apenas para usuários elegíveis.'
-                          : '14 dias grátis. Cancele quando quiser.'}
+                      {!plan.is_active ? 'Plano indisponível no momento.' : '14 dias grátis. Cancele quando quiser.'}
                     </p>
                     <button
-                      disabled={!plan.is_active || foundersLocked}
+                      disabled={!plan.is_active}
                       onClick={() => {
                         if (!isAuthenticated) {
                           router.push('/login')

@@ -43,7 +43,7 @@ export default function AboutPage() {
               <div className="mt-8 lg:mt-10">
                 <Link
                   href="/plans"
-                  className="flex w-full items-center justify-center rounded-full bg-paper px-8 py-3 text-sm font-medium text-coffee shadow-soft hover:opacity-90 transition-vintage"
+                  className="flex w-full md:w-auto items-center justify-center rounded-full bg-paper px-8 py-3 text-sm font-medium text-coffee shadow-soft hover:opacity-90 transition-vintage"
                 >
                   Ver planos
                 </Link>

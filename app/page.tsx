@@ -46,14 +46,6 @@ const plans = [
     featured: true,
     bullets: ['Equivalente a R$ 24,90/mês', 'Economia de 2 meses', 'Prioridade em novidades', 'Valor estável no contrato'],
   },
-  {
-    name: 'Plano Fundadores',
-    tag: 'Para os primeiros do Florim.',
-    price: '199,00',
-    per: '/ ano',
-    featured: false,
-    bullets: ['Valor vitalício promocional', 'Acesso antecipado', 'Participação na evolução', 'Reconhecimento fundador'],
-  },
 ]
 
 export default function Home() {
@@ -61,7 +53,7 @@ export default function Home() {
     <div className="flex flex-col">
 
       {/* ── Hero ─────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden bg-paper h-[400px] md:h-screen mb-10">
+      <div className="relative overflow-hidden bg-paper h-[400px] md:h-[85vh]">
         <PublicNavbar color="sidebar" showWordmark={false} />
 
         {/* Mobile hero — texture-green background with text overlay */}
@@ -187,7 +179,7 @@ export default function Home() {
           <p className="text-center text-ink/70 text-[13px] md:text-base font-light mb-6 md:mb-14">
             Sem cartão no teste. Sem pressa para decidir.
           </p>
-          <div className="flex flex-col gap-3 md:grid md:grid-cols-3 md:gap-5">
+          <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-5 md:max-w-2xl md:mx-auto">
             {plans.map((p) => (
               <div
                 key={p.name}
