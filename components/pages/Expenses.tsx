@@ -40,6 +40,7 @@ import {
   findCategoryIdByStoredName,
 } from '@/lib/categories'
 import { matchesSearch } from '@/lib/filterSearch'
+import CurrencyInput from '@/components/ui/CurrencyInput'
 
 type PaymentMethod = 'PIX' | 'Credito' | 'Debito'
 
@@ -881,16 +882,13 @@ export default function Expenses() {
 
           <div>
             <label className="block font-body text-ink mb-2">
-              Valor (R$) <span className="text-terracotta">*</span>
+              Valor <span className="text-terracotta">*</span>
             </label>
-            <input
-              type="number"
-              step="0.01"
+            <CurrencyInput
               required
               value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              onChange={(v) => setFormData({ ...formData, amount: v })}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-              placeholder="0,00"
             />
           </div>
 

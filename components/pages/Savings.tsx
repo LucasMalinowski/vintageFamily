@@ -29,6 +29,7 @@ import {
 import { PiggyBank, SlidersHorizontal, Search, Plus, TrendingDown, TrendingUp } from 'lucide-react'
 import { matchesSearch } from '@/lib/filterSearch'
 import FilterSheet from '@/components/layout/FilterSheet'
+import CurrencyInput from '@/components/ui/CurrencyInput'
 
 interface Saving {
   id: string
@@ -599,15 +600,11 @@ export default function Savings() {
             <label className="block font-serif font-body text-ink mb-2">
               Valor (R$) <span className="text-terracotta">*</span>
             </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0.01"
+            <CurrencyInput
               required
               value={depositForm.amount}
-              onChange={(e) => setDepositForm({ ...depositForm, amount: e.target.value })}
+              onChange={(v) => setDepositForm({ ...depositForm, amount: v })}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-              placeholder="0.00"
             />
           </div>
           <div>
@@ -658,15 +655,11 @@ export default function Savings() {
             <label className="block font-serif font-body text-ink mb-2">
               Valor a resgatar (R$) <span className="text-terracotta">*</span>
             </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0.01"
+            <CurrencyInput
               required
               value={withdrawalForm.amount}
-              onChange={(e) => setWithdrawalForm({ ...withdrawalForm, amount: e.target.value })}
+              onChange={(v) => setWithdrawalForm({ ...withdrawalForm, amount: v })}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-              placeholder="0.00"
             />
           </div>
           <div>
@@ -757,12 +750,9 @@ export default function Savings() {
           </div>
           <div>
             <label className="block font-serif font-body text-ink mb-2">Meta (R$)</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
+            <CurrencyInput
               value={editForm.target}
-              onChange={(e) => setEditForm({ ...editForm, target: e.target.value })}
+              onChange={(v) => setEditForm({ ...editForm, target: v })}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder="Sem meta definida"
             />
