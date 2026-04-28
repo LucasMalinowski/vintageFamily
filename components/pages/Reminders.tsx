@@ -10,6 +10,65 @@ import EmptyState from '@/components/ui/EmptyState'
 import { BellRing, Check } from 'lucide-react'
 import { formatDate, isDueDateToday, isDueDateOverdue } from '@/lib/dates'
 
+function ReminderRow({
+  reminder,
+  onToggle,
+  getCategoryColors,
+}: {
+  reminder: { id: string; title: string; due_date: string | null; category: string; is_done: boolean }
+  onToggle: (id: string, isDone: boolean) => void
+  getCategoryColors: Record<string, string>
+}) {
+  const isOverdue = !reminder.is_done && isDueDateOverdue(reminder.due_date, reminder.is_done)
+  const isToday = !reminder.is_done && isDueDateToday(reminder.due_date)
+
+  const dateBadgeClass = reminder.is_done
+    ? 'bg-olive/20 text-olive'
+    : isOverdue
+      ? 'bg-terracotta/15 text-terracotta'
+      : isToday
+        ? 'bg-olive/20 text-olive'
+        : 'bg-gold/20 text-gold'
+
+  return (
+    <div
+      className={`flex items-start gap-3 px-[14px] py-3 rounded-[10px] border border-border transition-vintage ${
+        reminder.is_done ? 'opacity-55' : 'hover:shadow-soft'
+      }`}
+    >
+      <button
+        onClick={() => onToggle(reminder.id, reminder.is_done)}
+        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-vintage ${
+          reminder.is_done ? 'border-olive bg-olive' : 'border-border bg-transparent hover:border-olive'
+        }`}
+        aria-label={`Marcar ${reminder.title} como ${reminder.is_done ? 'pendente' : 'feito'}`}
+      >
+        {reminder.is_done ? <Check className="h-3 w-3 text-white" /> : null}
+      </button>
+
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm text-ink font-body ${reminder.is_done ? 'line-through' : ''}`}>
+          {reminder.title}
+        </p>
+        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+          {reminder.due_date && (
+            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${dateBadgeClass}`}>
+              {formatDate(reminder.due_date, 'dd/MM')}
+            </span>
+          )}
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+              getCategoryColors[reminder.category] || getCategoryColors['Outros']
+            }`}
+          >
+            {reminder.category}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface Reminder {
   id: string
   title: string
@@ -85,13 +144,6 @@ export default function Reminders() {
     loadReminders()
   }
 
-  const getReminderBadgeColor = (reminder: Reminder) => {
-    if (reminder.is_done) return 'bg-olive/20 text-olive'
-    if (isDueDateOverdue(reminder.due_date, reminder.is_done)) return 'bg-terracotta/20 text-terracotta'
-    if (isDueDateToday(reminder.due_date)) return 'bg-olive/20 text-olive'
-    return 'bg-ink/10 text-ink'
-  }
-
   const getCategoryColors: Record<string, string> = {
     Conta: 'bg-terracotta text-white',
     Casa: 'bg-olive text-white',
@@ -105,8 +157,9 @@ export default function Reminders() {
       <div className="flex flex-col h-full md:min-h-screen">
         <Topbar
           title="Lembretes"
-          subtitle="Pequenas lembranças para um mês mais leve."
+          subtitle="Pequenas notas de cuidado para a casa."
           variant="textured"
+          showBackButton
           actions={
             <div className="hidden md:flex">
               <button
@@ -132,61 +185,40 @@ export default function Reminders() {
               />
             </div>
           ) : (
-            <div className="space-y-4">
-              {reminders.map((reminder) => (
-                <div
-                  key={reminder.id}
-                  className={`rounded-[12px] border border-border bg-offWhite p-4 shadow-soft transition-vintage ${
-                    reminder.is_done ? 'opacity-65' : 'hover:shadow-vintage'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <button
-                      onClick={() => toggleDone(reminder.id, reminder.is_done)}
-                      className={`mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md border transition-vintage ${
-                        reminder.is_done
-                          ? 'border-olive bg-olive'
-                          : 'border-border bg-paper hover:border-olive'
-                      }`}
-                      aria-label={`Marcar ${reminder.title} como ${reminder.is_done ? 'pendente' : 'feito'}`}
-                    >
-                      {reminder.is_done ? <Check className="h-4 w-4 text-white" /> : null}
-                    </button>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className={`font-body text-base font-semibold text-sidebar ${reminder.is_done ? 'line-through' : ''}`}>
-                            {reminder.title}
-                          </p>
-                          <p className="mt-0.5 text-sm text-ink/45">
-                            {reminder.is_done
-                              ? 'Concluído'
-                              : reminder.due_date
-                                ? `Vence em ${formatDate(reminder.due_date, 'dd/MM')}`
-                                : 'Sem data definida'}
-                          </p>
-                        </div>
-
-                        <div className="flex flex-col items-end gap-1 shrink-0">
-                          {!reminder.is_done && isDueDateOverdue(reminder.due_date, reminder.is_done) && (
-                            <span className="rounded-full px-3 py-1 text-xs font-semibold bg-terracotta/15 text-terracotta">
-                              Vencido
-                            </span>
-                          )}
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                              getCategoryColors[reminder.category] || getCategoryColors['Outros']
-                            }`}
-                          >
-                            {reminder.category}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+            <div className="space-y-6">
+              {/* Pendentes */}
+              {reminders.filter(r => !r.is_done).length > 0 && (
+                <div>
+                  <p className="font-serif text-xl text-coffee mb-3">Pendentes</p>
+                  <div className="space-y-2">
+                    {reminders.filter(r => !r.is_done).map((reminder) => (
+                      <ReminderRow
+                        key={reminder.id}
+                        reminder={reminder}
+                        onToggle={toggleDone}
+                        getCategoryColors={getCategoryColors}
+                      />
+                    ))}
                   </div>
                 </div>
-              ))}
+              )}
+
+              {/* Concluídos */}
+              {reminders.filter(r => r.is_done).length > 0 && (
+                <div>
+                  <p className="font-serif text-xl text-coffee mb-3 mt-3">Concluídos</p>
+                  <div className="space-y-2">
+                    {reminders.filter(r => r.is_done).map((reminder) => (
+                      <ReminderRow
+                        key={reminder.id}
+                        reminder={reminder}
+                        onToggle={toggleDone}
+                        getCategoryColors={getCategoryColors}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

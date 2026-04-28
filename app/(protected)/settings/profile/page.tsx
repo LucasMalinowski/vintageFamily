@@ -361,14 +361,7 @@ export default function ProfileSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
-        <h1 className="text-2xl font-serif text-coffee mb-2">Perfil</h1>
-        <p className="text-sm text-ink/60 font-body">
-          Atualize seus dados pessoais e a identidade da família.
-        </p>
-      </div>
-
+    <div className="space-y-6 max-w-[560px]">
       {error && (
         <div className="bg-terracotta/10 border border-terracotta/30 text-terracotta px-4 py-3 rounded-lg text-sm">
           {error}
@@ -376,11 +369,37 @@ export default function ProfileSettingsPage() {
       )}
 
       {loading ? (
-        <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
-          <p className="text-sm text-ink/60 font-body">Carregando...</p>
-        </div>
+        <div className="py-8 text-center text-sm text-ink/60 font-body">Carregando...</div>
       ) : (
         <>
+          {/* Avatar + name + email header */}
+          <div className="flex items-center gap-5 mb-2">
+            <div className="relative shrink-0">
+              <div className="w-[72px] h-[72px] rounded-full bg-[#B05C3A] flex items-center justify-center overflow-hidden">
+                {avatarPreview ? (
+                  <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-white text-2xl font-bold">
+                    {profileName ? profileName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') : 'U'}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="font-serif text-[22px] text-coffee leading-tight">{profileName || 'Seu nome'}</p>
+              <p className="text-sm text-ink/55 mt-1">{profileEmail}</p>
+              <label className="mt-2 inline-block cursor-pointer px-3 py-1.5 rounded-lg border border-border text-sm text-ink hover:bg-paper transition-vintage">
+                Trocar avatar
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </div>
+
           <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6 space-y-4">
             <h2 className="text-lg font-serif text-coffee">WhatsApp</h2>
             <p className="text-sm text-ink/60 font-body">
@@ -564,51 +583,36 @@ export default function ProfileSettingsPage() {
 
           <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
             <form onSubmit={handleSaveProfile} className="space-y-4">
-              <h2 className="text-lg font-serif text-coffee">Seus dados</h2>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-coffee/20 flex items-center justify-center overflow-hidden">
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-coffee text-xl font-serif">
-                      {profileName ? profileName.slice(0, 1).toUpperCase() : 'A'}
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-body text-ink mb-2">Avatar</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarChange}
-                    className="w-full text-sm text-ink/60"
-                  />
-                </div>
-              </div>
               <div>
-                <label className="block text-sm font-body text-ink mb-2">Nome</label>
+                <label className="block text-sm font-body text-ink mb-1.5">
+                  Nome completo <span className="text-terracotta">*</span>
+                </label>
                 <input
                   value={profileName}
                   onChange={(event) => setProfileName(event.target.value)}
                   className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
-                  placeholder="Seu nome"
+                  placeholder="Seu nome completo"
                 />
               </div>
               <div>
-                <label className="block text-sm font-body text-ink mb-2">Email</label>
+                <label className="block text-sm font-body text-ink mb-1.5">
+                  E-mail <span className="text-terracotta">*</span>
+                </label>
                 <input
                   value={profileEmail}
                   disabled
                   className="w-full px-4 py-3 bg-paper border border-border rounded-lg text-ink/60"
                 />
               </div>
-              <button
-                type="submit"
-                disabled={savingProfile}
-                className="bg-coffee text-paper px-4 py-2 rounded-lg font-body hover:bg-coffee/90 transition-vintage disabled:opacity-50"
-              >
-                {savingProfile ? 'Salvando...' : 'Salvar perfil'}
-              </button>
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="submit"
+                  disabled={savingProfile}
+                  className="bg-coffee text-paper px-5 py-2.5 rounded-lg font-body hover:bg-coffee/90 transition-vintage disabled:opacity-50"
+                >
+                  {savingProfile ? 'Salvando...' : 'Salvar alterações'}
+                </button>
+              </div>
             </form>
           </div>
 
