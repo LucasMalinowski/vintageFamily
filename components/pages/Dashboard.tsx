@@ -227,7 +227,7 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <VintageCard className="!bg-paper">
+            <VintageCard className="!bg-paper flex h-full flex-col">
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div>
                   <h3 className="text-xl font-body font-thin text-sidebar">Contas pendentes</h3>
@@ -235,36 +235,38 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {loadingPayables ? (
-                <div className="text-center py-8 text-ink/60">Carregando...</div>
-              ) : pendingPayables.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-petrol mb-2">Sem contas pendentes</p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                  {pendingPayables.map((payable) => (
-                    <Link
-                      key={payable.id}
-                      href={`/expenses#expense-${payable.id}`}
-                      className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-paper transition-vintage"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-body text-ink truncate">{payable.description}</p>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-ink/60">
-                          <span>{formatDate(payable.date, 'dd/MM')}</span>
-                          <span>•</span>
-                          <span>{payable.category_name}</span>
+              <div className="flex flex-1 flex-col">
+                {loadingPayables ? (
+                  <div className="flex-1 text-center py-8 text-ink/60">Carregando...</div>
+                ) : pendingPayables.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center text-center py-8">
+                    <p className="text-petrol mb-2">Sem contas pendentes</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                    {pendingPayables.map((payable) => (
+                      <Link
+                        key={payable.id}
+                        href={`/expenses#expense-${payable.id}`}
+                        className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-paper transition-vintage"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-body text-ink truncate">{payable.description}</p>
+                          <div className="flex items-center gap-2 mt-1 text-xs text-ink/60">
+                            <span>{formatDate(payable.date, 'dd/MM')}</span>
+                            <span>•</span>
+                            <span>{payable.category_name}</span>
+                          </div>
                         </div>
-                      </div>
-                      <span className="text-xs px-2 py-0.5 rounded bg-gold/20 text-gold">
-                        Em aberto
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-              <div className="pt-3">
+                        <span className="text-xs px-2 py-0.5 rounded bg-gold/20 text-gold">
+                          Em aberto
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="mt-auto pt-3">
                 <Link
                   href="/expenses"
                   className="text-xs text-ink/40 hover:text-ink/60 transition-vintage"
@@ -274,7 +276,7 @@ export default function Dashboard() {
               </div>
             </VintageCard>
 
-            <VintageCard className="!bg-paper">
+            <VintageCard className="!bg-paper flex h-full flex-col">
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div className="min-w-0">
                   <h3 className="text-lg font-body font-thin text-sidebar">Lembretes da casa</h3>
@@ -289,53 +291,55 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              {loading ? (
-                <div className="text-center py-8 text-ink/60">Carregando...</div>
-              ) : reminders.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-petrol  mb-2">Sem lembretes por agora</p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                  {reminders.map((reminder) => (
-                    <div
-                      key={reminder.id}
-                      className={`flex items-start gap-3 p-3 rounded-lg border border-border transition-vintage ${
-                        reminder.is_done ? 'opacity-60' : ''
-                      }`}
-                    >
-                      <button
-                        onClick={() => toggleDone(reminder.id, reminder.is_done)}
-                        className={`w-5 h-5 rounded border-2 flex-shrink-0 mt-0.5 transition-vintage ${
-                          reminder.is_done
-                            ? 'bg-olive border-olive'
-                            : 'border-border hover:border-olive'
+              <div className="flex flex-1 flex-col">
+                {loading ? (
+                  <div className="flex-1 text-center py-8 text-ink/60">Carregando...</div>
+                ) : reminders.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center text-center py-8">
+                    <p className="text-petrol  mb-2">Sem lembretes por agora</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                    {reminders.map((reminder) => (
+                      <div
+                        key={reminder.id}
+                        className={`flex items-start gap-3 p-3 rounded-lg border border-border transition-vintage ${
+                          reminder.is_done ? 'opacity-60' : ''
                         }`}
-                        aria-label={`Marcar ${reminder.title} como ${reminder.is_done ? 'pendente' : 'feito'}`}
                       >
-                        {reminder.is_done && <Check className="w-4 h-4 text-white" />}
-                      </button>
+                        <button
+                          onClick={() => toggleDone(reminder.id, reminder.is_done)}
+                          className={`w-5 h-5 rounded border-2 flex-shrink-0 mt-0.5 transition-vintage ${
+                            reminder.is_done
+                              ? 'bg-olive border-olive'
+                              : 'border-border hover:border-olive'
+                          }`}
+                          aria-label={`Marcar ${reminder.title} como ${reminder.is_done ? 'pendente' : 'feito'}`}
+                        >
+                          {reminder.is_done && <Check className="w-4 h-4 text-white" />}
+                        </button>
 
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-body ${reminder.is_done ? 'line-through' : ''}`}>
-                          {reminder.title}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          {reminder.due_date && (
-                            <span className={`text-xs px-2 py-0.5 rounded ${getReminderBadgeColor(reminder)}`}>
-                              {formatDate(reminder.due_date, 'dd/MM')}
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-body ${reminder.is_done ? 'line-through' : ''}`}>
+                            {reminder.title}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            {reminder.due_date && (
+                              <span className={`text-xs px-2 py-0.5 rounded ${getReminderBadgeColor(reminder)}`}>
+                                {formatDate(reminder.due_date, 'dd/MM')}
+                              </span>
+                            )}
+                            <span className={`text-xs px-2 py-0.5 rounded ${getCategoryColors[reminder.category] || getCategoryColors['Outros']}`}>
+                              {reminder.category}
                             </span>
-                          )}
-                          <span className={`text-xs px-2 py-0.5 rounded ${getCategoryColors[reminder.category] || getCategoryColors['Outros']}`}>
-                            {reminder.category}
-                          </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="pt-3">
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="mt-auto pt-3">
                 <Link
                   href="/reminders"
                   className="text-xs text-ink/40 hover:text-ink/60 transition-vintage"
