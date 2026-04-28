@@ -1,11 +1,12 @@
 'use client'
 
+import React from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import Topbar from '@/components/layout/Topbar'
 
 const fullWidthTop = [
-  "O nome <strong>Florim</strong> carrega raízes profundas na história econômica da Europa. Ele nasce do <span class='italic'>fiorino d'oro</span>, moeda de ouro cunhada em Florença no século XIII e reconhecida por sua pureza, estabilidade e ampla aceitação no comércio internacional.",
-  'Ao longo dos séculos, o florim tornou-se símbolo de valor real e confiança. A flor estampada na moeda, o Giglio, emblema de Florença, associava esse valor à beleza, à autenticidade e ao reconhecimento duradouro.',
+  <>O nome <strong>Florim</strong> carrega raízes profundas na história econômica da Europa. Ele nasce do <span className="italic">fiorino d&apos;oro</span>, moeda de ouro cunhada em Florença no século XIII e reconhecida por sua pureza, estabilidade e ampla aceitação no comércio internacional.</>,
+  <>Ao longo dos séculos, o florim tornou-se símbolo de valor real e confiança. A flor estampada na moeda, o Giglio, emblema de Florença, associava esse valor à beleza, à autenticidade e ao reconhecimento duradouro.</>,
 ]
 
 // All paragraphs that should wrap around the photo (3 to fill the height)
@@ -16,7 +17,7 @@ const floatedParagraphs = [
 ]
 
 const fullWidthBottom = [
-  'Florim é valor que permanece.<br>Feito por uma família, para famílias.',
+  <>Florim é valor que permanece.<br />Feito por uma família, para famílias.</>,
 ]
 
 export default function InternalAboutPage() {
@@ -36,7 +37,7 @@ export default function InternalAboutPage() {
               {/* Top full-width paragraphs */}
               <div className="mb-6">
                 {fullWidthTop.map((text, index) => (
-                    <p key={index} className="mb-4" dangerouslySetInnerHTML={{ __html: text }} />
+                    <p key={index} className="mb-4">{text}</p>
                 ))}
               </div>
 
@@ -61,7 +62,7 @@ export default function InternalAboutPage() {
               {/* Bottom full-width paragraphs */}
               <div>
                 {fullWidthBottom.map((text, index) => (
-                    <p key={index} className="mb-4" dangerouslySetInnerHTML={{ __html: text }} />
+                    <p key={index} className="mb-4">{text}</p>
                 ))}
               </div>
 

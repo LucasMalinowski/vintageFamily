@@ -35,7 +35,6 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     email: invite.email,
-    familyId: invite.family_id,
     familyName: family?.name ?? 'Família',
   })
 }

@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       family_id: family.id,
       name,
       email,
-      password_hash: 'managed_by_supabase_auth',
+      password_hash: null,
       role: 'admin',
     })
 

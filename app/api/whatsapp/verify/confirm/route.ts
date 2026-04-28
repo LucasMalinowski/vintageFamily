@@ -5,6 +5,8 @@ import { getAccessTokenFromCookieStore, requireUserByAccessToken } from '@/lib/b
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
 
+const MAX_ATTEMPTS = 5
+
 function hashOtp(code: string): string {
   return crypto.createHash('sha256').update(code).digest('hex')
 }
@@ -26,12 +28,28 @@ export async function POST(request: NextRequest) {
 
   const { data: userRow } = await supabaseAdmin
     .from('users')
-    .select('phone_number_pending,phone_verification_code,phone_verification_expires_at')
+    .select('phone_number_pending,phone_verification_code,phone_verification_expires_at,phone_verification_attempts')
     .eq('id', user.id)
     .maybeSingle()
 
   if (!userRow?.phone_verification_code || !userRow.phone_verification_expires_at) {
     return NextResponse.json({ error: 'Nenhum código pendente.' }, { status: 400 })
+  }
+
+  const attempts = userRow.phone_verification_attempts ?? 0
+  if (attempts >= MAX_ATTEMPTS) {
+    await supabaseAdmin
+      .from('users')
+      .update({
+        phone_verification_code: null,
+        phone_verification_expires_at: null,
+        phone_verification_attempts: 0,
+      })
+      .eq('id', user.id)
+    return NextResponse.json(
+      { error: 'Muitas tentativas. Solicite um novo código.' },
+      { status: 429 }
+    )
   }
 
   const expired = new Date(userRow.phone_verification_expires_at) < new Date()
@@ -41,6 +59,10 @@ export async function POST(request: NextRequest) {
 
   const hashed = hashOtp(code)
   if (hashed !== userRow.phone_verification_code) {
+    await supabaseAdmin
+      .from('users')
+      .update({ phone_verification_attempts: attempts + 1 })
+      .eq('id', user.id)
     return NextResponse.json({ error: 'Código inválido ou expirado.' }, { status: 400 })
   }
 
@@ -53,6 +75,7 @@ export async function POST(request: NextRequest) {
       phone_number_pending: null,
       phone_verification_code: null,
       phone_verification_expires_at: null,
+      phone_verification_attempts: 0,
     })
     .eq('id', user.id)
 

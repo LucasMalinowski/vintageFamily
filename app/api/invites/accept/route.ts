@@ -47,6 +47,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Convite expirado.' }, { status: 410 })
   }
 
+  const { data: existingUser } = await supabaseAdmin
+    .from('users')
+    .select('family_id')
+    .eq('id', authData.user.id)
+    .maybeSingle()
+
+  if (existingUser?.family_id) {
+    return NextResponse.json({ error: 'Usuário já pertence a uma família.' }, { status: 409 })
+  }
+
   const { error: profileError } = await supabaseAdmin
     .from('users')
     .upsert({
@@ -54,7 +64,7 @@ export async function POST(request: Request) {
       family_id: invite.family_id,
       name,
       email,
-      password_hash: 'managed_by_supabase_auth',
+      password_hash: null,
       role: 'member',
     })
 

@@ -5,6 +5,9 @@ import { getAccessTokenFromCookieStore, requireUserByAccessToken } from '@/lib/b
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
 
+const OTP_COOLDOWN_MS = 60_000
+const OTP_HOURLY_LIMIT = 5
+
 function normalizePhone(raw: string): string {
   const digits = raw.replace(/\D/g, '')
   return '+' + digits
@@ -50,8 +53,39 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Este número já está cadastrado em outra conta.' }, { status: 409 })
   }
 
+  // Rate limiting: enforce cooldown and hourly cap
+  const { data: userRow } = await supabaseAdmin
+    .from('users')
+    .select('phone_otp_sent_at,phone_otp_hour_count,phone_otp_hour_start')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (userRow?.phone_otp_sent_at) {
+    const elapsed = Date.now() - new Date(userRow.phone_otp_sent_at).getTime()
+    if (elapsed < OTP_COOLDOWN_MS) {
+      const wait = Math.ceil((OTP_COOLDOWN_MS - elapsed) / 1000)
+      return NextResponse.json(
+        { error: `Aguarde ${wait}s antes de solicitar um novo código.` },
+        { status: 429 }
+      )
+    }
+  }
+
+  // Rolling hourly cap
+  const hourStart = userRow?.phone_otp_hour_start ? new Date(userRow.phone_otp_hour_start) : null
+  const hourCount = userRow?.phone_otp_hour_count ?? 0
+  const hourExpired = !hourStart || Date.now() - hourStart.getTime() > 3_600_000
+
+  if (!hourExpired && hourCount >= OTP_HOURLY_LIMIT) {
+    return NextResponse.json(
+      { error: 'Limite de envios atingido. Tente novamente em 1 hora.' },
+      { status: 429 }
+    )
+  }
+
   const code = generateOtp()
   const hashed = hashOtp(code)
+  const now = new Date().toISOString()
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()
 
   await supabaseAdmin
@@ -60,6 +94,10 @@ export async function POST(request: NextRequest) {
       phone_number_pending: normalized,
       phone_verification_code: hashed,
       phone_verification_expires_at: expiresAt,
+      phone_verification_attempts: 0,
+      phone_otp_sent_at: now,
+      phone_otp_hour_count: hourExpired ? 1 : hourCount + 1,
+      phone_otp_hour_start: hourExpired ? now : (userRow?.phone_otp_hour_start ?? now),
     })
     .eq('id', user.id)
 

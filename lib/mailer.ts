@@ -1,6 +1,15 @@
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
 const from = process.env.RESEND_FROM ?? 'Florim Finanças <noreply@florim.app>'
 const LOGO_URL = 'https://florim.app/logo.png'
 
@@ -120,19 +129,21 @@ export async function sendInviteEmail({
   inviteLink: string
   familyName: string
 }) {
+  const safeFamilyName = escapeHtml(familyName)
+  const safeLink = encodeURI(inviteLink)
   const body = `
-    <p style="margin:0 0 12px;">Você recebeu um convite para participar da família <strong>${familyName}</strong> no Florim.</p>
+    <p style="margin:0 0 12px;">Você recebeu um convite para participar da família <strong>${safeFamilyName}</strong> no Florim.</p>
     <p style="margin:0 0 12px;">Clique abaixo para criar sua conta e começar a organizar as finanças da família.</p>
-    ${ctaButton(inviteLink, 'Aceitar convite')}
-    <p style="margin:20px 0 0;font-size:13px;color:#8C7B6B;">Ou copie e cole este link no navegador:<br><span style="color:#3E5F4B;">${inviteLink}</span></p>
+    ${ctaButton(safeLink, 'Aceitar convite')}
+    <p style="margin:20px 0 0;font-size:13px;color:#8C7B6B;">Ou copie e cole este link no navegador:<br><span style="color:#3E5F4B;">${safeLink}</span></p>
     <p style="margin:8px 0 0;font-size:13px;color:#8C7B6B;">Este convite expira em 7 dias.</p>
   `
   await resend.emails.send({
     from,
     to,
-    subject: `Convite para a família ${familyName} — Florim`,
+    subject: `Convite para a família ${safeFamilyName} — Florim`,
     html: emailShell(
-      `Você foi convidado para a família ${familyName}`,
+      `Você foi convidado para a família ${safeFamilyName}`,
       body,
       'O primeiro passo de algo bonito começa com um convite.'
     ),
@@ -149,9 +160,11 @@ export async function sendWelcomeEmail({
   familyName: string
 }) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://florim.app'
+  const safeName = escapeHtml(name)
+  const safeFamilyName = escapeHtml(familyName)
   const body = `
-    <p style="margin:0 0 12px;">Olá, <strong>${name}</strong>!</p>
-    <p style="margin:0 0 12px;">Sua conta foi criada. Você agora faz parte da família <strong>${familyName}</strong> no Florim.</p>
+    <p style="margin:0 0 12px;">Olá, <strong>${safeName}</strong>!</p>
+    <p style="margin:0 0 12px;">Sua conta foi criada. Você agora faz parte da família <strong>${safeFamilyName}</strong> no Florim.</p>
     <p style="margin:0 0 12px;">Comece registrando receitas, despesas, metas e lembretes para manter tudo organizado.</p>
     ${ctaButton(appUrl, 'Acessar o Florim')}
   `
@@ -160,7 +173,7 @@ export async function sendWelcomeEmail({
     to,
     subject: 'Bem-vindo ao Florim',
     html: emailShell(
-      `Bem-vindo, ${name}!`,
+      `Bem-vindo, ${safeName}!`,
       body,
       'Um lar tranquilo nasce de pequenas escolhas repetidas.'
     ),
@@ -174,8 +187,9 @@ export async function sendAccountDeletionEmail({
   to: string
   name: string
 }) {
+  const safeName = escapeHtml(name)
   const body = `
-    <p style="margin:0 0 12px;">Olá, <strong>${name}</strong>.</p>
+    <p style="margin:0 0 12px;">Olá, <strong>${safeName}</strong>.</p>
     <p style="margin:0 0 12px;">Sua conta no Florim foi excluída conforme solicitado. Todos os seus dados pessoais foram removidos da plataforma.</p>
     <p style="margin:0;font-size:13px;color:#8C7B6B;">Se você não solicitou esta exclusão, entre em contato: <a href="mailto:privacidade@florim.app" style="color:#3E5F4B;">privacidade@florim.app</a></p>
   `

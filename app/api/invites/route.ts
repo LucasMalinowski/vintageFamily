@@ -29,12 +29,16 @@ export async function POST(request: Request) {
 
   const { data: profile, error: profileError } = await supabaseAdmin
     .from('users')
-    .select('family_id,name')
+    .select('family_id,name,role')
     .eq('id', authData.user.id)
     .maybeSingle()
 
   if (profileError || !profile) {
     return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 400 })
+  }
+
+  if (profile.role !== 'admin') {
+    return NextResponse.json({ error: 'Apenas administradores podem enviar convites.' }, { status: 403 })
   }
 
   const { data: family, error: familyError } = await supabaseAdmin

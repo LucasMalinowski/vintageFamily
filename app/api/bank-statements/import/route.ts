@@ -20,6 +20,15 @@ const detectFormat = (fileName: string, mimeType: string): StatementFileFormat |
   return null
 }
 
+function detectFormatFromBuffer(buf: Buffer): StatementFileFormat | null {
+  const head = buf.slice(0, 128).toString('utf8', 0, 128)
+  if (head.startsWith('OFXHEADER') || head.startsWith('<OFX')) return 'ofx'
+  // CSV: must be printable text — reject if high-density non-printable bytes found
+  const nonPrintable = buf.slice(0, 512).filter((b) => b < 9 || (b > 13 && b < 32)).length
+  if (nonPrintable > 2) return null
+  return 'csv'
+}
+
 export async function POST(request: Request) {
   try {
     const accessToken = getAccessTokenFromAuthHeader(request)
@@ -68,11 +77,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'O OFX excede o tamanho máximo permitido de 5 MB.' }, { status: 422 })
     }
 
+    const fileBuffer = Buffer.from(await file.arrayBuffer())
+    const detectedFormat = detectFormatFromBuffer(fileBuffer)
+    if (!detectedFormat || detectedFormat !== format) {
+      return NextResponse.json({ error: 'O conteúdo do arquivo não corresponde ao formato declarado.' }, { status: 422 })
+    }
+
     const service = new BankStatementImportService()
     const baseRequest = {
       bank,
       format,
-      file: Buffer.from(await file.arrayBuffer()),
+      file: fileBuffer,
       fileName: file.name,
       familyId: profile.family_id,
       userId: auth.user.id,

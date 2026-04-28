@@ -12,10 +12,13 @@ export async function GET(request: Request) {
   const profile = await getProfileByUserId(auth.user.id)
   if (!profile?.super_admin) return NextResponse.json({ error: 'Acesso negado.' }, { status: 403 })
 
+  const VALID_TYPES = ['bug', 'feedback', 'suggestion']
+
   const url = new URL(request.url)
-  const type = url.searchParams.get('type') || null
+  const rawType = url.searchParams.get('type') || null
+  const type = rawType && VALID_TYPES.includes(rawType) ? rawType : null
   const location = url.searchParams.get('location') || null
-  const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1'))
+  const page = Math.max(1, Math.min(1000, parseInt(url.searchParams.get('page') ?? '1') || 1))
 
   let query = supabaseAdmin
     .from('feedback')

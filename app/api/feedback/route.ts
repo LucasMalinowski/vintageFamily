@@ -23,21 +23,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Tipo inválido' }, { status: 400 })
   }
 
-  let family_id: string | null = null
-  if (phone && typeof phone === 'string') {
-    const digits = phone.replace(/\D/g, '')
-    if (digits.length >= 8) {
-      const { data } = await supabaseAdmin
-        .from('users')
-        .select('family_id')
-        .like('phone_number', `%${digits}`)
-        .maybeSingle()
-      family_id = data?.family_id ?? null
-    }
-  }
-
   const { error } = await supabaseAdmin.from('feedback').insert({
-    family_id,
+    family_id: null,
     name: typeof name === 'string' ? name.trim() || null : null,
     email: typeof email === 'string' ? email.trim() || null : null,
     phone: typeof phone === 'string' ? phone.trim() || null : null,

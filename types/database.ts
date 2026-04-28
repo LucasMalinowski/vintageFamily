@@ -735,9 +735,13 @@ export type Database = {
           family_id: string
           id: string
           name: string
-          password_hash: string
+          password_hash: string | null
           phone_number: string | null
           phone_number_pending: string | null
+          phone_otp_hour_count: number
+          phone_otp_hour_start: string | null
+          phone_otp_sent_at: string | null
+          phone_verification_attempts: number
           phone_verification_code: string | null
           phone_verification_expires_at: string | null
           role: string
@@ -750,9 +754,13 @@ export type Database = {
           family_id: string
           id?: string
           name: string
-          password_hash: string
+          password_hash?: string | null
           phone_number?: string | null
           phone_number_pending?: string | null
+          phone_otp_hour_count?: number
+          phone_otp_hour_start?: string | null
+          phone_otp_sent_at?: string | null
+          phone_verification_attempts?: number
           phone_verification_code?: string | null
           phone_verification_expires_at?: string | null
           role?: string
@@ -765,9 +773,13 @@ export type Database = {
           family_id?: string
           id?: string
           name?: string
-          password_hash?: string
+          password_hash?: string | null
           phone_number?: string | null
           phone_number_pending?: string | null
+          phone_otp_hour_count?: number
+          phone_otp_hour_start?: string | null
+          phone_otp_sent_at?: string | null
+          phone_verification_attempts?: number
           phone_verification_code?: string | null
           phone_verification_expires_at?: string | null
           role?: string

@@ -7,7 +7,10 @@ import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
 
 function verifyMetaSignature(rawBody: string, signatureHeader: string | null): boolean {
   const secret = process.env.WHATSAPP_APP_SECRET
-  if (!secret) return true // skip verification if secret not set (dev only)
+  if (!secret) {
+    console.error('[webhook] WHATSAPP_APP_SECRET not configured — rejecting all requests')
+    return false
+  }
   if (!signatureHeader?.startsWith('sha256=')) return false
   const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex')
   const expectedBuf = Buffer.from(expected)
