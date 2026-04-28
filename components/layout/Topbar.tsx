@@ -189,7 +189,7 @@ export default function Topbar({
   }, [familyId])
 
   return (
-    <div className={`${variant === 'textured' ? 'bg-paper' : 'bg-bg'} px-4 py-3 md:px-6 md:py-5.5`}>
+    <div className={`${variant === 'textured' ? 'bg-paper' : 'bg-bg'} px-4 md:px-6`}>
       <div className={`${filters ? 'flex flex-col gap-2' : ''}`}>
         <div className="md:min-h-[103px] flex items-center">
           <div className="flex flex-row items-center justify-between w-full gap-3">
