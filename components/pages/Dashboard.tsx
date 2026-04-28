@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Check, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -11,6 +11,84 @@ import Modal from '../ui/Modal'
 import Select from '../ui/Select'
 import { formatDate, isDueDateToday, isDueDateOverdue } from '@/lib/dates'
 import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
+
+const PHRASES = [
+  'Organizar o dinheiro é cuidar do tempo que ainda vamos viver.',
+  'O amor também mora nos detalhes do orçamento.',
+  'Cuidar do dinheiro da casa é cuidar do tempo juntos.',
+  'Cada real guardado é um passo mais leve amanhã.',
+  'A paz começa quando os números fazem sentido.',
+  'Planejar juntos é a linguagem do cuidado.',
+  'Dinheiro bem cuidado, família bem vivida.',
+  'O futuro agradece o planejamento de hoje.',
+  'Juntos, cada conta paga é uma vitória da família.',
+  'Gastar com consciência é um ato de amor.',
+  'Pequenos controles, grandes tranquilidades.',
+  'Quando o dinheiro está em ordem, a mente respira.',
+  'A família que planeja junta, conquista junta.',
+  'Economizar hoje é presentear o amanhã.',
+  'Cada escolha financeira é um voto de confiança no futuro.',
+  'O orçamento é o mapa do lar.',
+  'Simplicidade financeira, riqueza de momentos.',
+  'Finanças em dia, vida mais leve.',
+  'Quem cuida do centavo, cuida do sonho.',
+  'Lembrar com calma também é uma forma de cuidar da casa.',
+]
+
+function pickNext(current: string): string {
+  const pool = PHRASES.filter((p) => p !== current)
+  return pool[Math.floor(Math.random() * pool.length)]
+}
+
+function useTypewriter() {
+  const [displayed, setDisplayed] = useState('')
+  const [cursor, setCursor] = useState(true)
+  const phraseRef = useRef(PHRASES[Math.floor(Math.random() * PHRASES.length)])
+  const indexRef = useRef(0)
+  const directionRef = useRef<'typing' | 'deleting'>('typing')
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const blinkInterval = setInterval(() => setCursor((c) => !c), 530)
+
+    function tick() {
+      const phrase = phraseRef.current
+
+      if (directionRef.current === 'typing') {
+        if (indexRef.current < phrase.length) {
+          indexRef.current += 1
+          setDisplayed(phrase.slice(0, indexRef.current))
+          timerRef.current = setTimeout(tick, 60 + Math.random() * 40)
+        } else {
+          timerRef.current = setTimeout(() => {
+            directionRef.current = 'deleting'
+            tick()
+          }, 2600)
+        }
+      } else {
+        if (indexRef.current > 0) {
+          indexRef.current -= 1
+          setDisplayed(phrase.slice(0, indexRef.current))
+          timerRef.current = setTimeout(tick, 35 + Math.random() * 20)
+        } else {
+          phraseRef.current = pickNext(phraseRef.current)
+          directionRef.current = 'typing'
+          setDisplayed('')
+          timerRef.current = setTimeout(tick, 400)
+        }
+      }
+    }
+
+    timerRef.current = setTimeout(tick, 700)
+
+    return () => {
+      clearInterval(blinkInterval)
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [])
+
+  return { displayed, cursor }
+}
 
 interface Reminder {
   id: string
@@ -31,6 +109,7 @@ interface Payable {
 }
 
 export default function Dashboard() {
+  const { displayed, cursor } = useTypewriter()
   const { familyId, user } = useAuth()
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [pendingPayables, setPendingPayables] = useState<Payable[]>([])
@@ -245,19 +324,24 @@ export default function Dashboard() {
           <div className="w-10 h-px bg-gold/60 mx-auto mt-5" />
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="max-w-7xl mx-auto px-6 pb-8">
           {/* Desktop hero — inside container with rounded corners */}
-          <div className="hidden md:block rounded-[20px] overflow-hidden mb-8 bg-[url('/texture-green.png')] bg-cover bg-center py-12 text-center text-paper">
+          <div className="hidden md:block rounded-[20px] overflow-hidden mb-8 bg-[url('/texture-green.png')] bg-cover bg-center py-8 text-center text-paper">
             <h1 className="text-4xl font-serif font-thin text-paper leading-snug px-6">
               Livro de Finanças<br/>da Família {familyName || '—'}
             </h1>
             <div className="w-10 h-px bg-gold/60 mx-auto mt-5" />
           </div>
 
-          <div className="mb-6">
-            <div className="max-w-md bg-paper px-6 py-4 shadow-soft text-ink/70 font-ptSerif italic">
-              Organizar o dinheiro é cuidar do tempo que ainda vamos viver.
-            </div>
+          <div className="flex justify-center">
+            <p className="max-w-xl text-center text-ink/60 font-ptSerif italic text-base md:text-lg leading-relaxed min-h-[2.5em]">
+              {displayed}
+              <span
+                className={`inline-block w-[2px] h-[1em] ml-[2px] align-middle bg-gold transition-opacity duration-100 ${
+                  cursor ? 'opacity-100' : 'opacity-0'
+                }`}
+              />
+            </p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
