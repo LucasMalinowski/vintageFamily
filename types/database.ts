@@ -602,6 +602,7 @@ export type Database = {
           family_id: string
           id: string
           is_done: boolean
+          hidden_on_dashboard: boolean
           note: string | null
           recurrence: string
           title: string
@@ -616,6 +617,7 @@ export type Database = {
           family_id: string
           id?: string
           is_done?: boolean
+          hidden_on_dashboard?: boolean
           note?: string | null
           recurrence?: string
           title: string
@@ -630,6 +632,7 @@ export type Database = {
           family_id?: string
           id?: string
           is_done?: boolean
+          hidden_on_dashboard?: boolean
           note?: string | null
           recurrence?: string
           title?: string

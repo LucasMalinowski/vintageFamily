@@ -370,6 +370,7 @@ CREATE TABLE IF NOT EXISTS "public"."reminders" (
     "recurrence" "text" DEFAULT 'none'::"text" NOT NULL,
     "category" "text" DEFAULT 'Outros'::"text" NOT NULL,
     "is_done" boolean DEFAULT false NOT NULL,
+    "hidden_on_dashboard" boolean DEFAULT false NOT NULL,
     "done_at" timestamp with time zone,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
@@ -1047,6 +1048,5 @@ using (((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (auth
   for insert
   to authenticated
 with check (((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)));
-
 
 

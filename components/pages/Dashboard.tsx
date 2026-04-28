@@ -18,7 +18,10 @@ interface Reminder {
   due_date: string | null
   category: string
   is_done: boolean
+  hidden_on_dashboard: boolean
 }
+
+type ReminderFilter = 'pending' | 'done' | null
 
 interface Payable {
   id: string
@@ -35,6 +38,7 @@ export default function Dashboard() {
   const [loadingPayables, setLoadingPayables] = useState(true)
   const [familyName, setFamilyName] = useState('')
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false)
+  const [reminderFilter, setReminderFilter] = useState<ReminderFilter>(null)
   const [reminderForm, setReminderForm] = useState({
     title: '',
     due_date: '',
@@ -49,7 +53,16 @@ export default function Dashboard() {
     loadFamilyName()
   }, [familyId, user?.id])
 
-  const loadReminders = async () => {
+  const pendingReminders = reminders.filter((reminder) => !reminder.is_done)
+  const completedReminders = reminders.filter((reminder) => reminder.is_done)
+  const visibleReminders =
+    reminderFilter === 'pending'
+      ? pendingReminders
+      : reminderFilter === 'done'
+        ? completedReminders
+        : reminders
+
+  async function loadReminders() {
     const { data } = await supabase
       .from('reminders')
       .select('*')
@@ -59,12 +72,12 @@ export default function Dashboard() {
       .limit(5)
 
     if (data) {
-      setReminders(data)
+      setReminders(data.filter((reminder) => !reminder.hidden_on_dashboard))
     }
     setLoading(false)
   }
 
-  const loadPendingPayables = async () => {
+  async function loadPendingPayables() {
     const { data } = await supabase
       .from('expenses')
       .select('id,description,date,category_name')
@@ -79,7 +92,7 @@ export default function Dashboard() {
     setLoadingPayables(false)
   }
 
-  const loadFamilyName = async () => {
+  async function loadFamilyName() {
     const cachedFamilyName = window.localStorage.getItem(LOCAL_STORAGE_KEYS.familyName)
     if (cachedFamilyName) {
       setFamilyName(cachedFamilyName)
@@ -145,6 +158,7 @@ export default function Dashboard() {
       .from('reminders')
       .update({ 
         is_done: !isDone,
+        hidden_on_dashboard: false,
         done_at: !isDone ? new Date().toISOString() : null
       })
       .eq('id', id)
@@ -154,6 +168,25 @@ export default function Dashboard() {
         reminder.id === id ? { ...reminder, is_done: !isDone } : reminder
       )
     )
+  }
+
+  const handleReminderFilterChange = (nextFilter: Exclude<ReminderFilter, null>) => {
+    setReminderFilter((current) => (current === nextFilter ? null : nextFilter))
+  }
+
+  const clearCompleted = async () => {
+    const completedIds = reminders.filter((reminder) => reminder.is_done).map((reminder) => reminder.id)
+    if (completedIds.length === 0) return
+
+    await supabase
+      .from('reminders')
+      .update({ hidden_on_dashboard: true })
+      .eq('family_id', familyId!)
+      .eq('is_done', true)
+      .eq('hidden_on_dashboard', false)
+
+    setReminders((prev) => prev.filter((reminder) => !reminder.is_done))
+    setReminderFilter(null)
   }
 
   const handleCreateReminder = async (event: React.FormEvent) => {
@@ -168,6 +201,7 @@ export default function Dashboard() {
       category: reminderForm.category || 'Outros',
       recurrence: 'none',
       is_done: false,
+      hidden_on_dashboard: false,
       note: null,
       due_time: null,
     })
@@ -291,16 +325,53 @@ export default function Dashboard() {
                 </button>
               </div>
 
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleReminderFilterChange('pending')}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-vintage ${
+                    reminderFilter === 'pending'
+                      ? 'bg-sidebar text-paper'
+                      : 'border border-border bg-offWhite text-ink hover:bg-paper'
+                  }`}
+                >
+                  Pendentes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleReminderFilterChange('done')}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-vintage ${
+                    reminderFilter === 'done'
+                      ? 'bg-sidebar text-paper'
+                      : 'border border-border bg-offWhite text-ink hover:bg-paper'
+                  }`}
+                >
+                  Concluídos
+                </button>
+                <button
+                  type="button"
+                  onClick={clearCompleted}
+                  disabled={completedReminders.length === 0}
+                  className="rounded-full border border-border bg-offWhite px-3 py-1.5 text-xs font-semibold text-ink transition-vintage hover:bg-paper disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Limpar concluídos
+                </button>
+              </div>
+
               <div className="flex flex-1 flex-col">
                 {loading ? (
                   <div className="flex-1 text-center py-8 text-ink/60">Carregando...</div>
                 ) : reminders.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center text-center py-8">
-                    <p className="text-petrol  mb-2">Sem lembretes por agora</p>
+                    <p className="text-petrol mb-2">Sem lembretes por agora</p>
+                  </div>
+                ) : visibleReminders.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center text-center py-8">
+                    <p className="text-petrol">Sem lembretes para mostrar.</p>
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                    {reminders.map((reminder) => (
+                    {visibleReminders.map((reminder) => (
                       <div
                         key={reminder.id}
                         className={`flex items-start gap-3 p-3 rounded-lg border border-border transition-vintage ${

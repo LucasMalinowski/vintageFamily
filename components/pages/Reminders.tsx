@@ -75,13 +75,17 @@ interface Reminder {
   due_date: string | null
   category: string
   is_done: boolean
+  hidden_on_dashboard: boolean
 }
+
+type ReminderFilter = 'pending' | 'done' | null
 
 export default function Reminders() {
   const { familyId } = useAuth()
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<ReminderFilter>(null)
   const [formData, setFormData] = useState({
     title: '',
     due_date: '',
@@ -94,7 +98,16 @@ export default function Reminders() {
     }
   }, [familyId])
 
-  const loadReminders = async () => {
+  const pendingReminders = reminders.filter((reminder) => !reminder.is_done)
+  const completedReminders = reminders.filter((reminder) => reminder.is_done)
+  const filteredReminders =
+    statusFilter === 'pending'
+      ? pendingReminders
+      : statusFilter === 'done'
+        ? completedReminders
+        : reminders
+
+  async function loadReminders() {
     const { data } = await supabase
       .from('reminders')
       .select('*')
@@ -113,6 +126,7 @@ export default function Reminders() {
       .from('reminders')
       .update({
         is_done: !isDone,
+        hidden_on_dashboard: false,
         done_at: !isDone ? new Date().toISOString() : null,
       })
       .eq('id', id)
@@ -122,6 +136,10 @@ export default function Reminders() {
         reminder.id === id ? { ...reminder, is_done: !isDone } : reminder
       )
     )
+  }
+
+  const handleStatusFilterChange = (nextFilter: Exclude<ReminderFilter, null>) => {
+    setStatusFilter((current) => (current === nextFilter ? null : nextFilter))
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -135,6 +153,7 @@ export default function Reminders() {
       category: formData.category || 'Outros',
       recurrence: 'none',
       is_done: false,
+      hidden_on_dashboard: false,
       note: null,
       due_time: null,
     })
@@ -185,38 +204,89 @@ export default function Reminders() {
               />
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Pendentes */}
-              {reminders.filter(r => !r.is_done).length > 0 && (
-                <div>
-                  <p className="font-serif text-xl text-coffee mb-3">Pendentes</p>
-                  <div className="space-y-2">
-                    {reminders.filter(r => !r.is_done).map((reminder) => (
-                      <ReminderRow
-                        key={reminder.id}
-                        reminder={reminder}
-                        onToggle={toggleDone}
-                        getCategoryColors={getCategoryColors}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleStatusFilterChange('pending')}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition-vintage ${
+                    statusFilter === 'pending'
+                      ? 'bg-sidebar text-paper'
+                      : 'border border-border bg-offWhite text-ink hover:bg-paper'
+                  }`}
+                >
+                  Pendentes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStatusFilterChange('done')}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition-vintage ${
+                    statusFilter === 'done'
+                      ? 'bg-sidebar text-paper'
+                      : 'border border-border bg-offWhite text-ink hover:bg-paper'
+                  }`}
+                >
+                  Concluídos
+                </button>
+              </div>
 
-              {/* Concluídos */}
-              {reminders.filter(r => r.is_done).length > 0 && (
-                <div>
-                  <p className="font-serif text-xl text-coffee mb-3 mt-3">Concluídos</p>
-                  <div className="space-y-2">
-                    {reminders.filter(r => r.is_done).map((reminder) => (
-                      <ReminderRow
-                        key={reminder.id}
-                        reminder={reminder}
-                        onToggle={toggleDone}
-                        getCategoryColors={getCategoryColors}
-                      />
-                    ))}
-                  </div>
+              {filteredReminders.length === 0 ? (
+                <div className="rounded-[12px] border border-border bg-offWhite px-6 py-10 shadow-soft text-center">
+                  <p className="text-petrol mb-2">
+                    {statusFilter === 'pending'
+                      ? 'Sem lembretes pendentes.'
+                      : statusFilter === 'done'
+                        ? 'Sem lembretes concluídos.'
+                        : 'Sem lembretes para mostrar.'}
+                  </p>
+                  <p className="text-sm text-ink/50">
+                    Clique no filtro ativo novamente para limpar a seleção.
+                  </p>
+                </div>
+              ) : statusFilter === null ? (
+                <div className="space-y-6">
+                  {pendingReminders.length > 0 && (
+                    <div>
+                      <p className="font-serif text-xl text-coffee mb-3">Pendentes</p>
+                      <div className="space-y-2">
+                        {pendingReminders.map((reminder) => (
+                          <ReminderRow
+                            key={reminder.id}
+                            reminder={reminder}
+                            onToggle={toggleDone}
+                            getCategoryColors={getCategoryColors}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {completedReminders.length > 0 && (
+                    <div>
+                      <p className="font-serif text-xl text-coffee mb-3 mt-3">Concluídos</p>
+                      <div className="space-y-2">
+                        {completedReminders.map((reminder) => (
+                          <ReminderRow
+                            key={reminder.id}
+                            reminder={reminder}
+                            onToggle={toggleDone}
+                            getCategoryColors={getCategoryColors}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredReminders.map((reminder) => (
+                    <ReminderRow
+                      key={reminder.id}
+                      reminder={reminder}
+                      onToggle={toggleDone}
+                      getCategoryColors={getCategoryColors}
+                    />
+                  ))}
                 </div>
               )}
             </div>

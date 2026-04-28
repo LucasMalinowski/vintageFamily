@@ -105,6 +105,7 @@ CREATE TABLE public.reminders (
                                   recurrence text NOT NULL DEFAULT 'none'::text,
                                   category text NOT NULL DEFAULT 'Outros'::text,
                                   is_done boolean NOT NULL DEFAULT false,
+                                  hidden_on_dashboard boolean NOT NULL DEFAULT false,
                                   done_at timestamp with time zone,
                                   created_at timestamp with time zone NOT NULL DEFAULT now(),
                                   updated_at timestamp with time zone NOT NULL DEFAULT now(),
