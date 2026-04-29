@@ -268,6 +268,7 @@ export type Database = {
           family_id: string
           id: string
           notes: string | null
+          status: string
           updated_at: string
         }
         Insert: {
@@ -280,6 +281,7 @@ export type Database = {
           family_id: string
           id?: string
           notes?: string | null
+          status?: string
           updated_at?: string
         }
         Update: {
@@ -292,6 +294,7 @@ export type Database = {
           family_id?: string
           id?: string
           notes?: string | null
+          status?: string
           updated_at?: string
         }
         Relationships: [

@@ -75,6 +75,7 @@ CREATE TABLE public.incomes (
                                 description text NOT NULL,
                                 amount_cents integer NOT NULL CHECK (amount_cents > 0),
                                 date date NOT NULL,
+                                status text NOT NULL DEFAULT 'received'::text CHECK (status = ANY (ARRAY['received'::text, 'pending'::text])),
                                 notes text,
                                 created_at timestamp with time zone NOT NULL DEFAULT now(),
                                 updated_at timestamp with time zone NOT NULL DEFAULT now(),

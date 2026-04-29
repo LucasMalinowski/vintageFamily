@@ -10,6 +10,7 @@ import FilterSidebar from '@/components/layout/FilterSidebar'
 import FilterSearchBar from '@/components/layout/FilterSearchBar'
 import VintageCard from '@/components/ui/VintageCard'
 import Select from '@/components/ui/Select'
+import PdfPreviewModal from '@/components/export/PdfPreviewModal'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import {
@@ -27,6 +28,7 @@ import {
 } from '@/lib/dates'
 import { matchesSearch } from '@/lib/filterSearch'
 import { formatBRL } from '@/lib/money'
+import { buildPdfBlob, downloadBlob, downloadCsv } from '@/lib/report-export'
 
 interface Totals {
   income: number
@@ -119,6 +121,11 @@ export default function Comparatives() {
   const [hoveredBar, setHoveredBar] = useState<MetricKey | null>(null)
   const pieScrollRef = useRef<HTMLDivElement | null>(null)
   const pieScrollIntervalRef = useRef<number | null>(null)
+  const [exportingFormat, setExportingFormat] = useState<'csv' | 'pdf' | null>(null)
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false)
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
+  const [pdfUrl, setPdfUrl] = useState('')
+  const [pdfGenerating, setPdfGenerating] = useState(false)
 
   useEffect(() => {
     const stored = window.localStorage.getItem('app-filters-open')
@@ -129,6 +136,14 @@ export default function Comparatives() {
   useEffect(() => {
     window.localStorage.setItem('app-filters-open', filtersOpen ? '1' : '0')
   }, [filtersOpen])
+
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl)
+      }
+    }
+  }, [pdfUrl])
 
   const stopPieAutoScroll = () => {
     if (pieScrollIntervalRef.current !== null) {
@@ -213,6 +228,7 @@ export default function Comparatives() {
       .from('incomes')
       .select('description,category_name,amount_cents,date')
       .eq('family_id', familyId!)
+      .eq('status', 'received')
 
     let paidQuery = supabase
       .from('expenses')
@@ -382,8 +398,108 @@ export default function Comparatives() {
     },
   ]
 
+  const exportRows = [
+    ...monthlyItems.map((item) => [
+      'Resumo',
+      item.label,
+      '',
+      '',
+      formatBRL(item.value),
+      '',
+    ]),
+    ...((['income', 'paid', 'saved', 'balance'] as MetricKey[]).flatMap((metric) =>
+      barDetails[metric].map((row) => [
+        'Barras',
+        metric === 'income' ? 'Recebido' : metric === 'paid' ? 'Pago' : metric === 'saved' ? 'Poupado' : 'Saldo',
+        row.name,
+        row.date ? formatDate(row.date) : '',
+        formatBRL(row.value),
+        row.source || '',
+      ]),
+    )),
+    ...selectedPieMetrics.flatMap((metric) =>
+      categorySlices[metric].map((slice, index) => {
+        const total = categorySlices[metric].reduce((sum, item) => sum + Math.max(0, item.value), 0) || 1
+        const percent = Math.round((slice.value / total) * 100)
+        return [
+          'Pizza',
+          PIE_METRIC_LABELS[metric],
+          slice.label,
+          `${percent}%`,
+          formatBRL(slice.value),
+          `ordem ${index + 1}`,
+        ]
+      }),
+    ),
+  ]
+
+  const exportSubtitle = [
+    `Período: ${selectedMonth === ALL_MONTHS_VALUE ? 'todos os meses' : getMonthLabel(selectedMonth)} / ${selectedYear === ALL_YEARS_VALUE ? 'todos os anos' : getYearLabel(selectedYear)}`,
+    chartMode === 'pie' ? `Pizza: ${selectedPieMetrics.map((metric) => PIE_METRIC_LABELS[metric]).join(', ')}` : 'Visão em barras',
+    searchTerm ? `Busca: ${searchTerm}` : null,
+  ]
+    .filter(Boolean)
+    .join(' • ')
+
+  const exportTable = {
+    filename: `comparativos-${format(new Date(), 'yyyy-MM-dd')}`,
+    title: 'Comparativos',
+    subtitle: exportSubtitle,
+    headers: ['Seção', 'Métrica', 'Item', 'Data', 'Valor', 'Origem'],
+    rows: exportRows,
+  }
+
+  const closePdfModal = () => {
+    if (pdfUrl) URL.revokeObjectURL(pdfUrl)
+    setPdfUrl('')
+    setPdfBlob(null)
+    setIsPdfModalOpen(false)
+  }
+
+  const openPdfPreview = async () => {
+    setExportingFormat('pdf')
+    setPdfGenerating(true)
+    setPdfUrl('')
+    setPdfBlob(null)
+    setIsPdfModalOpen(true)
+
+    try {
+      const blob = await buildPdfBlob(exportTable)
+      setPdfBlob(blob)
+      setPdfUrl(URL.createObjectURL(blob))
+    } finally {
+      setPdfGenerating(false)
+      setExportingFormat(null)
+    }
+  }
+
+  const downloadPreviewPdf = async () => {
+    if (pdfBlob) {
+      downloadBlob(`${exportTable.filename}.pdf`, pdfBlob)
+      return
+    }
+
+    const blob = await buildPdfBlob(exportTable)
+    downloadBlob(`${exportTable.filename}.pdf`, blob)
+  }
+
+  const handleExportCsv = async () => {
+    if (!exportRows.length) return
+    setExportingFormat('csv')
+    try {
+      downloadCsv({ ...exportTable, filename: `${exportTable.filename}.csv` })
+    } finally {
+      setExportingFormat(null)
+    }
+  }
+
+  const handleExportPdf = async () => {
+    if (!exportRows.length) return
+    await openPdfPreview()
+  }
+
   return (
-    <div className="flex flex-col h-full md:min-h-screen">
+      <div className="flex flex-col h-full md:min-h-screen">
       <Topbar
         title="Comparativos"
         subtitle="Entender o passado nos ajuda a construir o futuro."
@@ -720,11 +836,21 @@ export default function Comparatives() {
         <footer className="hidden md:block mt-auto w-full">
           <div className="px-6 mb-4">
             <div className="flex flex-row justify-end gap-3">
-              <button className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm">
-                Gerar CSV
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                disabled={!exportRows.length || exportingFormat !== null}
+                className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
+              >
+                {exportingFormat === 'csv' ? 'Gerando CSV...' : 'Gerar CSV'}
               </button>
-              <button className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm">
-                Gerar PDF
+              <button
+                type="button"
+                onClick={handleExportPdf}
+                disabled={!exportRows.length || exportingFormat !== null}
+                className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
+              >
+                {exportingFormat === 'pdf' ? 'Gerando PDF...' : 'Gerar PDF'}
               </button>
             </div>
           </div>
@@ -735,6 +861,18 @@ export default function Comparatives() {
           </div>
         </footer>
       </div>
+
+      <PdfPreviewModal
+        isOpen={isPdfModalOpen}
+        onClose={closePdfModal}
+        title="Preview do PDF"
+        summary={exportSubtitle}
+        pdfUrl={pdfUrl}
+        isGenerating={pdfGenerating}
+        onDownload={downloadPreviewPdf}
+        downloadLabel="Imprimir ou salvar"
+        previewLabel="Preview do PDF"
+      />
 
       <FilterSheet
         open={filterSheetOpen}

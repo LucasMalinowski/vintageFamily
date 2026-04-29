@@ -186,6 +186,7 @@ export class BankStatementImportService {
         description: item.item.description,
         amount_cents: item.amountCents,
         date: item.item.date,
+        status: 'received',
         notes: null,
         source: request.format === 'ofx' ? OFX_IMPORT_SOURCE : CSV_IMPORT_SOURCE,
         source_type: request.format === 'ofx' ? OFX_IMPORT_SOURCE_TYPE : CSV_IMPORT_SOURCE_TYPE,

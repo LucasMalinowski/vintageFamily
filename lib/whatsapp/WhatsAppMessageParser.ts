@@ -244,6 +244,7 @@ async function saveRecord(
         category_name: categoryName ?? 'Outros',
         payment_method: record.payment_method ?? 'Credito',
         status: i === 0 ? 'paid' : 'open',
+        paid_at: i === 0 ? new Date(record.date).toISOString() : null,
         notes: 'Criado via WhatsApp',
         low_confidence: false,
         installments: installmentCount,
@@ -272,6 +273,7 @@ async function saveRecord(
         category_name: categoryName ?? 'Outros',
         payment_method: record.payment_method,
         status,
+        paid_at: status === 'paid' ? new Date(record.date).toISOString() : null,
         notes: 'Criado via WhatsApp',
         low_confidence: false,
         installments: 1,
@@ -291,6 +293,7 @@ async function saveRecord(
 
   // ── Income ──────────────────────────────────────────────────────────────────
   if (record.type === 'income') {
+    const status = record.date > todayISO ? 'pending' : 'received'
     const { data, error } = await supabaseAdmin
       .from('incomes')
       .insert({
@@ -300,6 +303,7 @@ async function saveRecord(
         date: record.date,
         category_id: categoryId,
         category_name: categoryName ?? 'Outras Receitas',
+        status,
         notes: 'Criado via WhatsApp',
         low_confidence: false,
       })
@@ -307,7 +311,7 @@ async function saveRecord(
       .single()
 
     const catStr = resolvedLabel ? ` (${resolvedLabel})` : ''
-    const line = `💰 ${formatBRL(amount_cents)} — ${record.description}${catStr} _(recebido)_`
+    const line = `💰 ${formatBRL(amount_cents)} — ${record.description}${catStr} _(${status === 'received' ? 'recebido' : 'a receber'})_`
     if (error || !data?.id) {
       console.error('[WA] income insert error:', error?.message)
       return { ok: false, line }
@@ -407,7 +411,6 @@ async function handleMutation(
     return `Não foi possível ${intent.type === 'delete' ? 'apagar' : 'editar'} esse tipo de registro.`
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabaseAdmin as any
 
   if (intent.type === 'delete') {

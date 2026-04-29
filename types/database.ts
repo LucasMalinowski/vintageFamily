@@ -441,6 +441,7 @@ export type Database = {
           imported_at: string | null
           low_confidence: boolean
           notes: string | null
+          status: string
           raw_description: string | null
           raw_line: string | null
           raw_payload: Json | null
@@ -463,6 +464,7 @@ export type Database = {
           imported_at?: string | null
           low_confidence?: boolean
           notes?: string | null
+          status?: string
           raw_description?: string | null
           raw_line?: string | null
           raw_payload?: Json | null
@@ -485,6 +487,7 @@ export type Database = {
           imported_at?: string | null
           low_confidence?: boolean
           notes?: string | null
+          status?: string
           raw_description?: string | null
           raw_line?: string | null
           raw_payload?: Json | null

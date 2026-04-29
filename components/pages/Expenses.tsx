@@ -26,7 +26,7 @@ import {
   ALL_YEARS_VALUE,
 } from '@/lib/dates'
 import { buildInstallmentDates, splitAmountCents } from '@/lib/installments'
-import { Edit2, Download, Receipt, SlidersHorizontal, Search, Plus } from 'lucide-react'
+import { Check, Edit2, Download, Receipt, SlidersHorizontal, Search, Plus } from 'lucide-react'
 import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
 import FilterSheet from '@/components/layout/FilterSheet'
@@ -41,6 +41,8 @@ import {
 } from '@/lib/categories'
 import { matchesSearch } from '@/lib/filterSearch'
 import CurrencyInput from '@/components/ui/CurrencyInput'
+import { buildBrandedPdfBlob, downloadBlob, downloadCsv } from '@/lib/report-export'
+import PdfPreviewModal from '@/components/export/PdfPreviewModal'
 
 type PaymentMethod = 'PIX' | 'Credito' | 'Debito'
 
@@ -112,6 +114,10 @@ export default function Expenses() {
   const [detailExpense, setDetailExpense] = useState<Expense | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [currentAttachmentUrl, setCurrentAttachmentUrl] = useState<string | null>(null)
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false)
+  const [pdfUrl, setPdfUrl] = useState('')
+  const [includeSignatures, setIncludeSignatures] = useState(true)
+  const [exportingFormat, setExportingFormat] = useState<'csv' | 'pdf' | null>(null)
 
   // Form
   const [formData, setFormData] = useState({
@@ -163,6 +169,14 @@ export default function Expenses() {
   useEffect(() => {
     window.localStorage.setItem('app-filters-open', filtersOpen ? '1' : '0')
   }, [filtersOpen])
+
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl)
+      }
+    }
+  }, [pdfUrl])
 
   useEffect(() => {
     if (!selectedCategoryId) return
@@ -522,6 +536,150 @@ export default function Expenses() {
       : []),
   ]
 
+  const exportRows = sortedExpenses.map((expense) => [
+    formatDate(expense.date),
+    expense.description,
+    getCategoryLabel(expense.category_id, expense.category_name),
+    expense.status === 'paid' ? 'Pago' : 'Em aberto',
+    formatPaymentLabel(expense.payment_method, expense.installments),
+    expense.installments && expense.installments > 1 ? `${expense.installments}x` : '',
+    formatBRL(expense.amount_cents),
+    expense.paid_at ? formatDate(expense.paid_at) : '',
+    expense.notes || '',
+  ])
+
+  const exportSubtitle = [
+    `Período: ${selectedMonth === ALL_MONTHS_VALUE ? 'todos os meses' : getMonthLabel(selectedMonth)} / ${selectedYear === ALL_YEARS_VALUE ? 'todos os anos' : getYearLabel(selectedYear)}`,
+    selectedCategoryId ? `Categoria: ${getCategoryLabel(selectedCategoryId, 'Categoria')}` : null,
+    selectedStatus ? `Status: ${selectedStatus === 'paid' ? 'Pago' : 'Em aberto'}` : null,
+    selectedPaymentMethod ? `Método: ${selectedPaymentMethod}` : null,
+    onlyInstallments ? 'Apenas parceladas' : null,
+  ]
+    .filter(Boolean)
+    .join(' • ')
+
+  const exportTable = {
+    filename: `contas-a-pagar-${format(new Date(), 'yyyy-MM-dd')}`,
+    title: 'Contas a Pagar',
+    subtitle: exportSubtitle,
+    headers: ['Data', 'Descrição', 'Categoria', 'Status', 'Método', 'Parcelas', 'Valor', 'Pago em', 'Observações'],
+    rows: exportRows,
+  }
+
+  const buildFilterSummary = () => {
+    const monthLabel = selectedMonth === ALL_MONTHS_VALUE ? null : getMonthLabel(selectedMonth)
+    const yearLabel = selectedYear === ALL_YEARS_VALUE ? null : String(selectedYear)
+    const categoryLabel = selectedCategoryId ? getCategoryLabel(selectedCategoryId, 'Categoria') : null
+    const statusLabel = selectedStatus === 'paid' ? 'Pago' : selectedStatus === 'open' ? 'Em aberto' : null
+    const methodLabel = selectedPaymentMethod || null
+    const installmentsLabel = onlyInstallments ? 'Somente parceladas' : null
+
+    const parts = [
+      monthLabel || 'Todos os meses',
+      yearLabel ? `Ano ${yearLabel}` : 'Todos os anos',
+      categoryLabel ? `Categoria: ${categoryLabel}` : 'Todas as categorias',
+      statusLabel ? `Status: ${statusLabel}` : 'Todos os status',
+      methodLabel ? `Método: ${methodLabel}` : null,
+      installmentsLabel,
+    ].filter(Boolean)
+
+    return parts.length ? parts.join(' • ') : 'Sem filtros ativos'
+  }
+
+  const generatePdfBlob = async (expensesOverride = sortedExpenses, includeSignatureOverride = includeSignatures) => {
+    const totalCents = expensesOverride.reduce((sum, e) => sum + e.amount_cents, 0)
+    const paidCents = expensesOverride
+      .filter((e) => e.status === 'paid')
+      .reduce((sum, e) => sum + e.amount_cents, 0)
+
+    return buildBrandedPdfBlob({
+      title: 'Registro de Despesas',
+      filterSummary: buildFilterSummary(),
+      headers: ['Data', 'Descricao', 'Categoria', 'Status', 'Metodo', 'Parcelas', 'Valor', 'Pago em', 'Observacao'],
+      rows: expensesOverride.map((expense) => [
+        formatDate(expense.date),
+        expense.description,
+        getCategoryLabel(expense.category_id, expense.category_name),
+        expense.status === 'paid' ? 'Pago' : 'Em aberto',
+        formatPaymentLabel(expense.payment_method, expense.installments),
+        expense.installments && expense.installments > 1 ? `${expense.installments}x` : '',
+        formatBRL(expense.amount_cents),
+        expense.paid_at ? formatDate(expense.paid_at) : '',
+        expense.notes || '',
+      ]),
+      cards: [
+        { label: 'TOTAL', value: formatBRL(totalCents) },
+        { label: 'PAGO', value: formatBRL(paidCents) },
+        { label: 'EM ABERTO', value: formatBRL(totalCents - paidCents) },
+      ],
+      generatedDate: formatDate(new Date()),
+      includeSignatures: includeSignatureOverride,
+    })
+  }
+
+  const updatePdfUrl = (blob: Blob) => {
+    const url = URL.createObjectURL(blob)
+    setPdfUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return url
+    })
+  }
+
+  const closePdfModal = () => {
+    if (pdfUrl) {
+      URL.revokeObjectURL(pdfUrl)
+    }
+    setPdfUrl('')
+    setIsPdfModalOpen(false)
+  }
+
+  const openPdfPreview = async () => {
+    setExportingFormat('pdf')
+    setPdfUrl('')
+    setIsPdfModalOpen(true)
+    try {
+      const blob = await generatePdfBlob()
+      updatePdfUrl(blob)
+    } finally {
+      setExportingFormat(null)
+    }
+  }
+
+  const refreshPdfPreview = async (nextIncludeSignatures: boolean) => {
+    const blob = await generatePdfBlob(sortedExpenses, nextIncludeSignatures)
+    updatePdfUrl(blob)
+  }
+
+  const downloadPreviewPdf = async () => {
+    if (pdfUrl) {
+      const link = document.createElement('a')
+      link.href = pdfUrl
+      link.download = `${exportTable.filename}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      return
+    }
+
+    const blob = await generatePdfBlob()
+    downloadBlob(`${exportTable.filename}.pdf`, blob)
+  }
+
+  const handleExportCsv = async () => {
+    if (!exportRows.length) return
+    setExportingFormat('csv')
+    try {
+      downloadCsv({ ...exportTable, filename: `${exportTable.filename}.csv` })
+    } finally {
+      setExportingFormat(null)
+    }
+  }
+
+  const handleExportPdf = async () => {
+    if (!exportRows.length) return
+    await openPdfPreview()
+  }
+
   return (
     <div className="flex flex-col h-full md:min-h-screen">
       <Topbar
@@ -733,18 +891,37 @@ export default function Expenses() {
                           <div
                             id={`expense-${expense.id}`}
                             key={expense.id}
-                            className={`flex items-start justify-between gap-3 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage ${
+                            className={`flex items-start gap-3 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage ${
                               isUpdating ? 'opacity-60' : ''
                             }`}
                           >
+                            <button
+                              type="button"
+                              onClick={() => handleTogglePaid(expense)}
+                              disabled={isUpdating}
+                              className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-vintage disabled:opacity-50 ${
+                                expense.status === 'paid'
+                                  ? 'border-olive bg-olive'
+                                  : 'border-border bg-transparent hover:border-olive'
+                              }`}
+                              aria-label={`Marcar ${expense.description} como ${expense.status === 'paid' ? 'em aberto' : 'pago'}`}
+                            >
+                              {expense.status === 'paid' && <Check className="h-3 w-3 text-white" />}
+                            </button>
+
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                <h4 className="text-base font-medium text-sidebar font-serif leading-tight">
+                                <h4 className={`text-base font-medium font-serif leading-tight transition-vintage ${expense.status === 'paid' ? 'text-sidebar/60 line-through decoration-sidebar/30' : 'text-sidebar'}`}>
                                   {expense.description}
                                 </h4>
                                 <span className="rounded-full bg-ink/5 px-2.5 py-0.5 text-[11px] font-medium text-ink/60">
                                   {formatDate(expense.date)}
                                 </span>
+                                {expense.status === 'paid' && (
+                                  <span className="rounded-full bg-olive/15 px-2.5 py-0.5 text-[11px] font-semibold text-olive">
+                                    Pago
+                                  </span>
+                                )}
                               </div>
                               <CategoryPathStack
                                 label={getCategoryLabel(expense.category_id, expense.category_name)}
@@ -753,24 +930,9 @@ export default function Expenses() {
                             </div>
 
                             <div className="flex flex-col items-end gap-1 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => handleTogglePaid(expense)}
-                                disabled={isUpdating}
-                                className="disabled:opacity-60"
-                                aria-label={`Marcar ${expense.description} como ${expense.status === 'paid' ? 'em aberto' : 'pago'}`}
-                              >
-                                <span className={`text-xs px-2.5 py-1 rounded-md font-semibold transition-vintage ${
-                                  expense.status === 'paid'
-                                    ? 'bg-olive/20 text-olive'
-                                    : 'bg-gold/20 text-gold'
-                                }`}>
-                                  {expense.status === 'paid' ? 'Pago' : 'Em aberto'}
-                                </span>
-                              </button>
                               <span
                                 className={`font-numbers text-base font-semibold ${
-                                  expense.status === 'paid' ? 'text-sidebar/80' : 'text-sidebar'
+                                  expense.status === 'paid' ? 'text-sidebar/60' : 'text-sidebar'
                                 }`}
                               >
                                 {formatBRL(expense.amount_cents)}
@@ -790,6 +952,8 @@ export default function Expenses() {
                                 onEdit={() => openModal(expense)}
                                 onDelete={() => handleDelete(expense.id)}
                                 onAttach={(file) => handleAttachExpense(expense, file)}
+                                onToggleStatus={() => handleTogglePaid(expense)}
+                                toggleStatusLabel={expense.status === 'paid' ? 'Marcar como Em aberto' : 'Marcar como Pago'}
                                 disabled={isUpdating}
                               />
                             </div>
@@ -840,15 +1004,19 @@ export default function Expenses() {
           <div className="flex flex-row justify-end gap-3 mt-6">
             <button
               type="button"
+              onClick={handleExportCsv}
+              disabled={!sortedExpenses.length || exportingFormat !== null}
               className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
             >
-              Gerar CSV
+              {exportingFormat === 'csv' ? 'Gerando CSV...' : 'Gerar CSV'}
             </button>
             <button
               type="button"
+              onClick={handleExportPdf}
+              disabled={!sortedExpenses.length || exportingFormat !== null}
               className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
             >
-              Gerar PDF
+              {exportingFormat === 'pdf' ? 'Gerando PDF...' : 'Gerar PDF'}
             </button>
           </div>
         </div>
@@ -858,6 +1026,23 @@ export default function Expenses() {
           </p>
         </div>
       </footer>
+
+      <PdfPreviewModal
+        isOpen={isPdfModalOpen}
+        onClose={closePdfModal}
+        title="Preview do PDF"
+        summary={buildFilterSummary()}
+        pdfUrl={pdfUrl}
+        isGenerating={exportingFormat === 'pdf'}
+        showSignaturesToggle
+        includeSignatures={includeSignatures}
+        onToggleSignatures={async (nextValue) => {
+          setIncludeSignatures(nextValue)
+          await refreshPdfPreview(nextValue)
+        }}
+        onDownload={downloadPreviewPdf}
+        downloadLabel="Imprimir ou salvar"
+      />
 
       {/* Modal */}
       <Modal

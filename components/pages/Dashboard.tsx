@@ -146,12 +146,13 @@ export default function Dashboard() {
       .from('reminders')
       .select('*')
       .eq('family_id', familyId!)
+      .eq('hidden_on_dashboard', false)
       .order('is_done', { ascending: true })
       .order('due_date', { ascending: true })
       .limit(5)
 
     if (data) {
-      setReminders(data.filter((reminder) => !reminder.hidden_on_dashboard))
+      setReminders(data)
     }
     setLoading(false)
   }

@@ -335,10 +335,12 @@ CREATE TABLE IF NOT EXISTS "public"."incomes" (
     "description" "text" NOT NULL,
     "amount_cents" integer NOT NULL,
     "date" "date" NOT NULL,
+    "status" "text" DEFAULT 'received'::"text" NOT NULL,
     "notes" "text",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "incomes_amount_cents_check" CHECK (("amount_cents" > 0))
+    CONSTRAINT "incomes_amount_cents_check" CHECK (("amount_cents" > 0)),
+    CONSTRAINT "incomes_status_check" CHECK (("status" = ANY (ARRAY['received'::"text", 'pending'::"text"])))
 );
 
 
@@ -1048,5 +1050,4 @@ using (((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (auth
   for insert
   to authenticated
 with check (((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)));
-
 

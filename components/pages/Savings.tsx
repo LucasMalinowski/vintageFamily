@@ -30,6 +30,8 @@ import { PiggyBank, SlidersHorizontal, Search, Plus, TrendingDown, TrendingUp } 
 import { matchesSearch } from '@/lib/filterSearch'
 import FilterSheet from '@/components/layout/FilterSheet'
 import CurrencyInput from '@/components/ui/CurrencyInput'
+import PdfPreviewModal from '@/components/export/PdfPreviewModal'
+import { buildBrandedPdfBlob, downloadBlob, downloadCsv } from '@/lib/report-export'
 
 interface Saving {
   id: string
@@ -125,6 +127,11 @@ export default function Savings() {
   const [editingSaving, setEditingSaving] = useState<Saving | null>(null)
   const [detailsContributions, setDetailsContributions] = useState<Contribution[]>([])
   const [detailsLoading, setDetailsLoading] = useState(false)
+  const [exportingFormat, setExportingFormat] = useState<'csv' | 'pdf' | null>(null)
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false)
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
+  const [pdfUrl, setPdfUrl] = useState('')
+  const [pdfGenerating, setPdfGenerating] = useState(false)
 
   const [depositForm, setDepositForm] = useState(emptyTxForm())
   const [withdrawalForm, setWithdrawalForm] = useState(emptyTxForm())
@@ -139,6 +146,14 @@ export default function Savings() {
   useEffect(() => {
     window.localStorage.setItem('app-filters-open', filtersOpen ? '1' : '0')
   }, [filtersOpen])
+
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl)
+      }
+    }
+  }, [pdfUrl])
 
   const savingLabelMap = useMemo(() => buildSavingLabelMap(savings), [savings])
   const savingOptions = useMemo(() => buildSavingOptions(savings), [savings])
@@ -327,6 +342,102 @@ export default function Savings() {
       ? [{ key: 'category', label: getSavingLabel(selectedSavingId), onRemove: () => setSelectedSavingId('') }]
       : []),
   ]
+
+  const exportRows = visibleSavings.map((saving) => {
+    const totals = savingTotals.get(saving.id)
+    const total = totals?.total ?? 0
+
+    return [
+      getSavingLabel(saving.id),
+      saving.is_system ? 'Sistema' : 'Manual',
+      saving.target_cents ? formatBRL(saving.target_cents) : '',
+      formatBRL(total),
+      totals?.count ? String(totals.count) : '0',
+      totals?.lastDate ? formatDate(totals.lastDate) : '',
+    ]
+  })
+
+  const exportSubtitle = [
+    `Período: ${selectedMonth === ALL_MONTHS_VALUE ? 'todos os meses' : getMonthLabel(selectedMonth)} / ${selectedYear === ALL_YEARS_VALUE ? 'todos os anos' : getYearLabel(selectedYear)}`,
+    selectedSavingId ? `Categoria: ${getSavingLabel(selectedSavingId)}` : null,
+    searchTerm ? `Busca: ${searchTerm}` : null,
+  ]
+    .filter(Boolean)
+    .join(' • ')
+
+  const exportTable = {
+    filename: `poupancas-${format(new Date(), 'yyyy-MM-dd')}`,
+    title: 'Poupanças',
+    subtitle: exportSubtitle,
+    headers: ['Nome', 'Tipo', 'Meta', 'Total', 'Movimentos', 'Última atualização'],
+    rows: exportRows,
+  }
+
+  const buildSavingsPdfBlob = () => {
+    const totalSaved = visibleSavings.reduce((sum, s) => sum + (savingTotals.get(s.id)?.total ?? 0), 0)
+    const totalTarget = visibleSavings.reduce((sum, s) => sum + (s.target_cents ?? 0), 0)
+    return buildBrandedPdfBlob({
+      title: 'Poupanças',
+      filterSummary: exportSubtitle || 'Sem filtros ativos',
+      headers: ['Nome', 'Tipo', 'Meta', 'Total', 'Movimentos', 'Ultima atualizacao'],
+      rows: exportRows,
+      cards: [
+        { label: 'TOTAL GUARDADO', value: formatBRL(totalSaved) },
+        ...(totalTarget > 0 ? [{ label: 'META TOTAL', value: formatBRL(totalTarget) }] : []),
+        { label: 'POUPANÇAS', value: String(visibleSavings.length) },
+      ],
+      generatedDate: formatDate(new Date()),
+    })
+  }
+
+  const closePdfModal = () => {
+    if (pdfUrl) URL.revokeObjectURL(pdfUrl)
+    setPdfUrl('')
+    setPdfBlob(null)
+    setIsPdfModalOpen(false)
+  }
+
+  const openPdfPreview = async () => {
+    setExportingFormat('pdf')
+    setPdfGenerating(true)
+    setPdfUrl('')
+    setPdfBlob(null)
+    setIsPdfModalOpen(true)
+
+    try {
+      const blob = await buildSavingsPdfBlob()
+      setPdfBlob(blob)
+      setPdfUrl(URL.createObjectURL(blob))
+    } finally {
+      setPdfGenerating(false)
+      setExportingFormat(null)
+    }
+  }
+
+  const downloadPreviewPdf = async () => {
+    if (pdfBlob) {
+      downloadBlob(`${exportTable.filename}.pdf`, pdfBlob)
+      return
+    }
+
+    const blob = await buildSavingsPdfBlob()
+    downloadBlob(`${exportTable.filename}.pdf`, blob)
+  }
+
+  const handleExportCsv = async () => {
+    if (!exportRows.length) return
+    setExportingFormat('csv')
+    try {
+      downloadCsv({ ...exportTable, filename: `${exportTable.filename}.csv` })
+    } finally {
+      setExportingFormat(null)
+    }
+  }
+
+  const handleExportPdf = async () => {
+    if (!exportRows.length) return
+    await openPdfPreview()
+  }
 
   return (
     <>
@@ -565,25 +676,41 @@ export default function Savings() {
             <div className="flex flex-row justify-end gap-3 mt-4">
               <button
                 type="button"
+                onClick={handleExportCsv}
+                disabled={!visibleSavings.length || exportingFormat !== null}
                 className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
               >
-                Gerar CSV
+                {exportingFormat === 'csv' ? 'Gerando CSV...' : 'Gerar CSV'}
               </button>
               <button
                 type="button"
+                onClick={handleExportPdf}
+                disabled={!visibleSavings.length || exportingFormat !== null}
                 className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
               >
-                Gerar PDF
+                {exportingFormat === 'pdf' ? 'Gerando PDF...' : 'Gerar PDF'}
               </button>
             </div>
           </div>
-          <div className="h-[56px] bg-paper flex items-center justify-center px-6">
-            <p className="text-center text-[13px] text-gold italic">
+        <div className="h-[56px] bg-paper flex items-center justify-center px-6">
+          <p className="text-center text-[13px] text-gold italic">
               Poupança é um abraço longo no amanhã.
-            </p>
-          </div>
-        </footer>
+          </p>
+        </div>
+      </footer>
       </div>
+
+      <PdfPreviewModal
+        isOpen={isPdfModalOpen}
+        onClose={closePdfModal}
+        title="Preview do PDF"
+        summary={exportSubtitle}
+        pdfUrl={pdfUrl}
+        isGenerating={pdfGenerating}
+        onDownload={downloadPreviewPdf}
+        downloadLabel="Imprimir ou salvar"
+        previewLabel="Preview do PDF"
+      />
 
       {/* Guardar modal */}
       <Modal isOpen={isDepositOpen} onClose={() => { setIsDepositOpen(false); setDepositForm(emptyTxForm()) }} title="Guardar na Poupança">

@@ -16,9 +16,10 @@ interface FilterSheetProps {
   onApply: (month: number, year: number, status?: string, method?: string) => void
   showStatus?: boolean
   showMethod?: boolean
+  statusOptions?: Array<{ value: string; label: string }>
 }
 
-const STATUS_OPTIONS = [
+const DEFAULT_STATUS_OPTIONS = [
   { value: '', label: 'Todos' },
   { value: 'paid', label: 'Pago' },
   { value: 'open', label: 'Em aberto' },
@@ -41,6 +42,7 @@ export default function FilterSheet({
   onApply,
   showStatus = false,
   showMethod = false,
+  statusOptions = DEFAULT_STATUS_OPTIONS,
 }: FilterSheetProps) {
   const [mounted, setMounted] = useState(false)
   const [animated, setAnimated] = useState(false)
@@ -191,11 +193,11 @@ export default function FilterSheet({
             <div>
               <p className="text-xs uppercase tracking-wide text-ink/50 mb-3 font-medium">Status</p>
               <div className="flex gap-2 flex-wrap">
-                {STATUS_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setLocalStatus(opt.value)}
+                  {statusOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setLocalStatus(opt.value)}
                     className={`px-4 py-2 rounded-[10px] border text-sm font-medium transition-vintage ${
                       localStatus === opt.value
                         ? 'bg-petrol/10 text-petrol border-petrol'

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import Topbar from '@/components/layout/Topbar'
@@ -25,13 +25,14 @@ import {
   ALL_MONTHS_VALUE,
   ALL_YEARS_VALUE,
 } from '@/lib/dates'
-import { ArrowDown, DollarSign, Download, Edit2, SlidersHorizontal, Search, Plus } from 'lucide-react'
+import { ArrowDown, Check, DollarSign, Download, Edit2, SlidersHorizontal, Search, Plus } from 'lucide-react'
 import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
 import FilterSheet from '@/components/layout/FilterSheet'
 import { mergeAttachment, parseAttachment } from '@/lib/attachments'
 import CategorySettingsModal from '@/components/categories/CategorySettingsModal'
 import BankStatementImportModal from '@/components/bank-statements/BankStatementImportModal'
+import PdfPreviewModal from '@/components/export/PdfPreviewModal'
 import {
   buildCategoryLabelMap,
   buildCategoryOptions,
@@ -40,6 +41,9 @@ import {
 } from '@/lib/categories'
 import { matchesSearch } from '@/lib/filterSearch'
 import CurrencyInput from '@/components/ui/CurrencyInput'
+import { buildBrandedPdfBlob, downloadBlob, downloadCsv } from '@/lib/report-export'
+
+type IncomeStatus = 'received' | 'pending'
 
 interface Income {
   id: string
@@ -48,6 +52,7 @@ interface Income {
   category_name: string
   amount_cents: number
   date: string
+  status: IncomeStatus
   notes: string | null
 }
 
@@ -66,6 +71,7 @@ export default function Incomes() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
   const [selectedYear, setSelectedYear] = useState(getCurrentYear())
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState<'' | IncomeStatus>('')
   const [searchTerm, setSearchTerm] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(true)
 
@@ -79,61 +85,24 @@ export default function Incomes() {
   const [detailIncome, setDetailIncome] = useState<Income | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [currentAttachmentUrl, setCurrentAttachmentUrl] = useState<string | null>(null)
+  const [updatingIds, setUpdatingIds] = useState<string[]>([])
+  const [exportingFormat, setExportingFormat] = useState<'csv' | 'pdf' | null>(null)
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false)
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
+  const [pdfUrl, setPdfUrl] = useState('')
+  const [pdfGenerating, setPdfGenerating] = useState(false)
+  const [pdfError, setPdfError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     description: '',
     categoryId: '',
     amount: '',
     date: format(new Date(), 'yyyy-MM-dd'),
+    status: 'received' as IncomeStatus,
     notes: '',
   })
 
-  useEffect(() => {
-    if (familyId) {
-      // eslint-disable-next-line react-hooks/immutability
-      loadCategories()
-    }
-  }, [familyId])
-
-  useEffect(() => {
-    if (familyId) {
-      // eslint-disable-next-line react-hooks/immutability
-      loadIncomes()
-    }
-  }, [familyId, selectedMonth, selectedYear, selectedCategoryId])
-
-  const categoryById = useMemo(
-    () => new Map<string, CategoryRecord>(categories.map((category) => [category.id, category])),
-    [categories]
-  )
-  const categoryLabelMap = useMemo(() => buildCategoryLabelMap(categories), [categories])
-  const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories])
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem('app-filters-open')
-    if (stored === '0') setFiltersOpen(false)
-    if (stored === '1') setFiltersOpen(true)
-  }, [])
-
-  useEffect(() => {
-    window.localStorage.setItem('app-filters-open', filtersOpen ? '1' : '0')
-  }, [filtersOpen])
-
-  useEffect(() => {
-    if (!selectedCategoryId) return
-    if (!categoryById.has(selectedCategoryId)) {
-      setSelectedCategoryId('')
-    }
-  }, [selectedCategoryId, categoryById])
-
-  const getCategoryLabel = (categoryId: string | null, fallbackName: string) => {
-    if (categoryId) {
-      return categoryLabelMap.get(categoryId) || fallbackName
-    }
-    return fallbackName
-  }
-
-  async function loadCategories() {
+  const loadCategories = useCallback(async () => {
     const { data } = await supabase
       .from('categories')
       .select('id,name,kind,parent_id,is_system')
@@ -142,9 +111,9 @@ export default function Incomes() {
       .order('name')
 
     setCategories((data || []) as CategoryRecord[])
-  }
+  }, [familyId])
 
-  async function loadIncomes() {
+  const loadIncomes = useCallback(async () => {
     setLoading(true)
     let query = supabase
       .from('incomes')
@@ -164,12 +133,88 @@ export default function Incomes() {
       query = query.eq('category_id', selectedCategoryId)
     }
 
+    if (selectedStatus) {
+      query = query.eq('status', selectedStatus)
+    }
+
     const { data } = await query
 
     if (data) {
-      setIncomes(data.filter((income) => isDateWithinFilters(income.date, selectedMonth, selectedYear)))
+      setIncomes(
+        data
+          .map((row) => ({
+            ...row,
+            status: (row.status === 'pending' ? 'pending' : 'received') as IncomeStatus,
+          }))
+          .filter((income) => isDateWithinFilters(income.date, selectedMonth, selectedYear))
+      )
     }
     setLoading(false)
+  }, [familyId, selectedMonth, selectedYear, selectedCategoryId, selectedStatus])
+
+  useEffect(() => {
+    if (familyId) {
+      loadCategories()
+    }
+  }, [familyId, loadCategories])
+
+  useEffect(() => {
+    if (familyId) {
+      loadIncomes()
+    }
+  }, [familyId, loadIncomes])
+
+  const categoryById = useMemo(
+    () => new Map<string, CategoryRecord>(categories.map((category) => [category.id, category])),
+    [categories]
+  )
+  const categoryLabelMap = useMemo(() => buildCategoryLabelMap(categories), [categories])
+  const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories])
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem('app-filters-open')
+    if (stored === '0') setFiltersOpen(false)
+    if (stored === '1') setFiltersOpen(true)
+  }, [])
+
+  useEffect(() => {
+    window.localStorage.setItem('app-filters-open', filtersOpen ? '1' : '0')
+  }, [filtersOpen])
+
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl)
+      }
+    }
+  }, [pdfUrl])
+
+  useEffect(() => {
+    if (!selectedCategoryId) return
+    if (!categoryById.has(selectedCategoryId)) {
+      setSelectedCategoryId('')
+    }
+  }, [selectedCategoryId, categoryById])
+
+  const getCategoryLabel = (categoryId: string | null, fallbackName: string) => {
+    if (categoryId) {
+      return categoryLabelMap.get(categoryId) || fallbackName
+    }
+    return fallbackName
+  }
+
+  const getIncomeStatusLabel = (status: IncomeStatus) => (status === 'received' ? 'Recebido' : 'A receber')
+
+  const handleToggleReceived = async (income: Income) => {
+    if (updatingIds.includes(income.id)) return
+    const nextStatus: IncomeStatus = income.status === 'received' ? 'pending' : 'received'
+    setUpdatingIds((prev) => [...prev, income.id])
+    await supabase
+      .from('incomes')
+      .update({ status: nextStatus })
+      .eq('id', income.id)
+    setUpdatingIds((prev) => prev.filter((id) => id !== income.id))
+    loadIncomes()
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -178,6 +223,10 @@ export default function Incomes() {
     const amountCents = Math.round(parseFloat(formData.amount) * 100)
     const category = categoryById.get(formData.categoryId)
     const categoryLabel = category ? (categoryLabelMap.get(category.id) || category.name) : null
+    const todayISO = format(new Date(), 'yyyy-MM-dd')
+    const status: IncomeStatus = formData.date > todayISO && formData.status === 'received'
+      ? 'pending'
+      : formData.status
 
     if (!category || !categoryLabel) {
       alert('Selecione uma categoria válida.')
@@ -191,6 +240,7 @@ export default function Incomes() {
       category_name: categoryLabel,
       amount_cents: amountCents,
       date: formData.date,
+      status,
       notes: mergeAttachment(formData.notes || null, currentAttachmentUrl),
     }
 
@@ -254,6 +304,7 @@ export default function Incomes() {
         categoryId: income.category_id || findCategoryIdByStoredName(categories, income.category_name) || '',
         amount: (income.amount_cents / 100).toFixed(2),
         date: income.date,
+        status: income.status,
         notes: cleanNotes || '',
       })
     } else {
@@ -264,6 +315,7 @@ export default function Incomes() {
         categoryId: '',
         amount: '',
         date: format(new Date(), 'yyyy-MM-dd'),
+        status: 'received',
         notes: '',
       })
     }
@@ -301,12 +353,14 @@ export default function Incomes() {
     selectedMonth !== getCurrentMonth(),
     selectedYear !== getCurrentYear(),
     selectedCategoryId !== '',
+    selectedStatus !== '',
   ].filter(Boolean).length
 
   const clearFilters = () => {
     setSelectedMonth(getCurrentMonth())
     setSelectedYear(getCurrentYear())
     setSelectedCategoryId('')
+    setSelectedStatus('')
   }
   const activeFilterChips = [
     {
@@ -328,7 +382,124 @@ export default function Incomes() {
           onRemove: () => setSelectedCategoryId(''),
         }]
       : []),
+    ...(selectedStatus
+      ? [{
+          key: 'status',
+          label: getIncomeStatusLabel(selectedStatus as IncomeStatus),
+          onRemove: () => setSelectedStatus(''),
+        }]
+      : []),
   ]
+
+  const exportRows = groupedIncomes.flatMap((group) =>
+    group.items.map((income) => [
+      formatDate(income.date),
+      income.description,
+      getCategoryLabel(income.category_id, income.category_name),
+      getIncomeStatusLabel(income.status),
+      formatBRL(income.amount_cents),
+      income.notes || '',
+    ]),
+  )
+
+  const exportSubtitle = [
+    `Período: ${selectedMonth === ALL_MONTHS_VALUE ? 'todos os meses' : getMonthLabel(selectedMonth)} / ${selectedYear === ALL_YEARS_VALUE ? 'todos os anos' : getYearLabel(selectedYear)}`,
+    selectedCategoryId ? `Categoria: ${getCategoryLabel(selectedCategoryId, 'Categoria')}` : null,
+    selectedStatus ? `Status: ${getIncomeStatusLabel(selectedStatus as IncomeStatus)}` : null,
+    searchTerm ? `Busca: ${searchTerm}` : null,
+  ]
+    .filter(Boolean)
+    .join(' • ')
+
+  const exportTable = {
+    filename: `contas-a-receber-${format(new Date(), 'yyyy-MM-dd')}`,
+    title: 'Contas a Receber',
+    subtitle: exportSubtitle,
+    headers: ['Data', 'Descrição', 'Categoria', 'Status', 'Valor', 'Observações'],
+    rows: exportRows,
+  }
+
+  const buildIncomePdfBlob = () => {
+    const receivedCents = filteredIncomes
+      .filter((i) => i.status === 'received')
+      .reduce((sum, i) => sum + i.amount_cents, 0)
+    return buildBrandedPdfBlob({
+      title: 'Contas a Receber',
+      filterSummary: exportSubtitle || 'Sem filtros ativos',
+      headers: ['Data', 'Descricao', 'Categoria', 'Status', 'Valor', 'Observacao'],
+      rows: exportRows,
+      cards: [
+        { label: 'TOTAL', value: formatBRL(total) },
+        { label: 'RECEBIDO', value: formatBRL(receivedCents) },
+        { label: 'A RECEBER', value: formatBRL(total - receivedCents) },
+      ],
+      generatedDate: formatDate(new Date()),
+    })
+  }
+
+  const closePdfModal = () => {
+    if (pdfUrl) URL.revokeObjectURL(pdfUrl)
+    setPdfUrl('')
+    setPdfBlob(null)
+    setPdfError(null)
+    setIsPdfModalOpen(false)
+  }
+
+  const openPdfPreview = async () => {
+    setExportingFormat('pdf')
+    setPdfGenerating(true)
+    setPdfUrl('')
+    setPdfBlob(null)
+    setPdfError(null)
+    setIsPdfModalOpen(true)
+
+    try {
+      const blob = await buildIncomePdfBlob()
+      const url = URL.createObjectURL(blob)
+      setPdfBlob(blob)
+      setPdfUrl(url)
+    } catch {
+      setPdfError('Não foi possível gerar o preview do PDF nesta tela.')
+    } finally {
+      setPdfGenerating(false)
+      setExportingFormat(null)
+    }
+  }
+
+  const downloadPreviewPdf = async () => {
+    try {
+      if (pdfBlob) {
+        downloadBlob(`${exportTable.filename}.pdf`, pdfBlob)
+        return
+      }
+
+      const blob = await buildIncomePdfBlob()
+      downloadBlob(`${exportTable.filename}.pdf`, blob)
+    } catch {
+      setPdfError('Não foi possível baixar o PDF desta tela.')
+    }
+  }
+
+  const totalLabel = selectedStatus === 'pending'
+    ? 'Total A Receber'
+    : selectedStatus === 'received'
+      ? 'Total Recebido'
+      : 'Total no período'
+
+  const handleExportCsv = async () => {
+    if (!exportRows.length) return
+    setExportingFormat('csv')
+    try {
+      downloadCsv({ ...exportTable, filename: `${exportTable.filename}.csv` })
+    } finally {
+      setExportingFormat(null)
+    }
+  }
+
+  const handleExportPdf = async () => {
+    if (!exportRows.length) return
+    await openPdfPreview()
+  }
 
   return (
     <>
@@ -464,16 +635,27 @@ export default function Incomes() {
                 onChange={(v) => setSelectedYear(parseInt(v))}
                 options={getYearOptions(2020, true)}
               />
-                <Select
-                  variant="filter"
-                  label="Categoria"
-                  value={selectedCategoryId}
-                  onChange={setSelectedCategoryId}
-                  options={[
-                    { value: '', label: 'Todas' },
-                    ...categoryOptions,
-                  ]}
-                />
+              <Select
+                variant="filter"
+                label="Categoria"
+                value={selectedCategoryId}
+                onChange={setSelectedCategoryId}
+                options={[
+                  { value: '', label: 'Todas' },
+                  ...categoryOptions,
+                ]}
+              />
+              <Select
+                variant="filter"
+                label="Status"
+                value={selectedStatus}
+                onChange={(v) => setSelectedStatus((v as IncomeStatus) || '')}
+                options={[
+                  { value: '', label: 'Todos' },
+                  { value: 'received', label: 'Recebido' },
+                  { value: 'pending', label: 'A receber' },
+                ]}
+              />
               </FilterSidebar>
             </div>
 
@@ -503,33 +685,59 @@ export default function Incomes() {
                       {group.items.map((income) => (
                         <div
                           key={income.id}
-                          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage"
+                          className={`flex items-start gap-3 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage ${
+                            updatingIds.includes(income.id) ? 'opacity-60' : ''
+                          }`}
                         >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                              <h4 className="text-xl font-medium text-sidebar font-serif leading-tight">
-                                {income.description}
-                              </h4>
-                              <span className="rounded-full bg-ink/5 px-2.5 py-0.5 text-[11px] font-medium text-ink/60">
-                                {formatDate(income.date)}
-                              </span>
-                            </div>
-                            <CategoryPathStack
-                              label={getCategoryLabel(income.category_id, income.category_name)}
-                              className="mt-1"
-                            />
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleReceived(income)}
+                            disabled={updatingIds.includes(income.id)}
+                            className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-vintage disabled:opacity-50 ${
+                              income.status === 'received'
+                                ? 'border-olive bg-olive'
+                                : 'border-amber-400 bg-transparent hover:border-olive'
+                            }`}
+                            aria-label={`Marcar ${income.description} como ${income.status === 'received' ? 'a receber' : 'recebido'}`}
+                          >
+                            {income.status === 'received' && <Check className="h-3 w-3 text-white" />}
+                          </button>
 
-                          <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
-                            <span className="font-numbers text-lg font-semibold text-sidebar">
-                              {formatBRL(income.amount_cents)}
-                            </span>
-                            <ActionMenu
-                              onView={() => openDetails(income)}
-                              onEdit={() => openModal(income)}
-                              onDelete={() => handleDelete(income.id)}
-                              onAttach={(file) => handleAttachIncome(income, file)}
-                            />
+                          <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 min-w-0">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <h4 className={`text-xl font-medium font-serif leading-tight transition-vintage ${income.status === 'received' ? 'text-sidebar/60' : 'text-sidebar'}`}>
+                                  {income.description}
+                                </h4>
+                                <span className="rounded-full bg-ink/5 px-2.5 py-0.5 text-[11px] font-medium text-ink/60">
+                                  {formatDate(income.date)}
+                                </span>
+                                {income.status === 'received' && (
+                                  <span className="rounded-full bg-olive/15 px-2.5 py-0.5 text-[11px] font-semibold text-olive">
+                                    Recebido
+                                  </span>
+                                )}
+                              </div>
+                              <CategoryPathStack
+                                label={getCategoryLabel(income.category_id, income.category_name)}
+                                className="mt-1"
+                              />
+                            </div>
+
+                            <div className="flex items-center justify-between sm:justify-end gap-4">
+                              <span className={`font-numbers text-lg font-semibold ${income.status === 'received' ? 'text-sidebar/60' : 'text-sidebar'}`}>
+                                {formatBRL(income.amount_cents)}
+                              </span>
+                              <ActionMenu
+                                onView={() => openDetails(income)}
+                                onEdit={() => openModal(income)}
+                                onDelete={() => handleDelete(income.id)}
+                                onAttach={(file) => handleAttachIncome(income, file)}
+                                onToggleStatus={() => handleToggleReceived(income)}
+                                toggleStatusLabel={income.status === 'received' ? 'Marcar como A receber' : 'Marcar como Recebido'}
+                                disabled={updatingIds.includes(income.id)}
+                              />
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -546,7 +754,7 @@ export default function Incomes() {
         <div className="md:hidden shrink-0 px-[18px] pt-3 pb-2 border-t border-border bg-offWhite">
           <div className="rounded-[16px] px-6 py-4 bg-petrol text-white shadow-soft flex items-center justify-between">
             <div>
-              <div className="text-xs uppercase tracking-wide text-white/80 mb-1">Total Recebido</div>
+              <div className="text-xs uppercase tracking-wide text-white/80 mb-1">{totalLabel}</div>
               <div className="font-numbers text-xl font-semibold">{formatBRL(total)}</div>
             </div>
             <ArrowDown className="w-6 h-6 text-white/60" />
@@ -563,7 +771,7 @@ export default function Incomes() {
           <div className="px-6 mb-4">
             <div className="rounded-[16px] px-6 py-5 bg-petrol text-white shadow-soft flex items-center justify-between">
               <div>
-                <div className="text-xs uppercase tracking-wide text-white/80 mb-1">Total Recebido</div>
+                <div className="text-xs uppercase tracking-wide text-white/80 mb-1">{totalLabel}</div>
                 <div className="font-numbers text-xl font-semibold">{formatBRL(total)}</div>
               </div>
               <ArrowDown className="w-6 h-6 text-white/60" />
@@ -571,15 +779,19 @@ export default function Incomes() {
             <div className="flex flex-row justify-end gap-3 mt-4">
               <button
                 type="button"
+                onClick={handleExportCsv}
+                disabled={!filteredIncomes.length || exportingFormat !== null}
                 className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
               >
-                Gerar CSV
+                {exportingFormat === 'csv' ? 'Gerando CSV...' : 'Gerar CSV'}
               </button>
               <button
                 type="button"
+                onClick={handleExportPdf}
+                disabled={!filteredIncomes.length || exportingFormat !== null}
                 className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
               >
-                Gerar PDF
+                {exportingFormat === 'pdf' ? 'Gerando PDF...' : 'Gerar PDF'}
               </button>
             </div>
           </div>
@@ -590,6 +802,19 @@ export default function Incomes() {
           </div>
         </footer>
       </div>
+
+      <PdfPreviewModal
+        isOpen={isPdfModalOpen}
+        onClose={closePdfModal}
+        title="Preview do PDF"
+        summary={exportSubtitle}
+        pdfUrl={pdfUrl}
+        isGenerating={pdfGenerating}
+        error={pdfError}
+        onDownload={downloadPreviewPdf}
+        downloadLabel="Imprimir ou salvar"
+        previewLabel="Preview do PDF"
+      />
 
       <Modal
         isOpen={isModalOpen}
@@ -644,6 +869,18 @@ export default function Incomes() {
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
+
+          <Select
+            label="Status"
+            value={formData.status}
+            onChange={(v) => setFormData({ ...formData, status: (v as IncomeStatus) || 'received' })}
+            options={[
+              { value: 'received', label: 'Recebido' },
+              { value: 'pending', label: 'A receber' },
+            ]}
+            variant="modal"
+            required
+          />
 
           <div>
             <label className="block font-serif font-body text-ink mb-2">
@@ -702,6 +939,10 @@ export default function Incomes() {
                   <p>{formatDate(detailIncome.date)}</p>
                 </div>
                 <div>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">Status</p>
+                  <p>{getIncomeStatusLabel(detailIncome.status)}</p>
+                </div>
+                <div>
                   <p className="text-xs uppercase tracking-wide text-ink/50">Valor</p>
                   <p className="font-numbers">{formatBRL(detailIncome.amount_cents)}</p>
                 </div>
@@ -751,9 +992,17 @@ export default function Incomes() {
         onClose={() => setFilterSheetOpen(false)}
         month={selectedMonth}
         year={selectedYear}
-        onApply={(m, y) => {
+        status={selectedStatus || undefined}
+        showStatus
+        statusOptions={[
+          { value: '', label: 'Todos' },
+          { value: 'received', label: 'Recebido' },
+          { value: 'pending', label: 'A receber' },
+        ]}
+        onApply={(m, y, status) => {
           setSelectedMonth(m)
           setSelectedYear(y)
+          setSelectedStatus((status as IncomeStatus) || '')
         }}
       />
     </>

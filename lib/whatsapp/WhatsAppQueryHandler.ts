@@ -386,6 +386,7 @@ export class WhatsAppQueryHandler {
             .from('incomes')
             .select('id, date, description, category_name, amount_cents')
             .eq('family_id', familyId)
+            .eq('status', 'received')
             .gte('date', dateRange.from)
             .lte('date', dateRange.to)
             .order('date', { ascending: false })
