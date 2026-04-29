@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Check, Plus } from 'lucide-react'
+import { Check, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '../AuthProvider'
 import Topbar from '../layout/Topbar'
@@ -396,51 +396,58 @@ export default function Dashboard() {
             </VintageCard>
 
             <VintageCard className="!bg-paper flex h-full flex-col">
-              <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="flex items-start justify-between gap-2 mb-4">
                 <div className="min-w-0">
                   <h3 className="text-lg font-body font-thin text-sidebar">Lembretes da casa</h3>
                   <p className="text-sm text-ink/40">Notas de cuidado.</p>
                 </div>
-                <button
-                  onClick={() => setIsReminderModalOpen(true)}
-                  className="w-9 h-9 rounded-full bg-petrol text-white flex items-center justify-center hover:opacity-90 transition-vintage shrink-0"
-                  aria-label="Novo lembrete"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleReminderFilterChange('pending')}
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-vintage ${
-                    reminderFilter === 'pending'
-                      ? 'bg-sidebar text-paper'
-                      : 'border border-border bg-offWhite text-ink hover:bg-paper'
-                  }`}
-                >
-                  Pendentes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleReminderFilterChange('done')}
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-vintage ${
-                    reminderFilter === 'done'
-                      ? 'bg-sidebar text-paper'
-                      : 'border border-border bg-offWhite text-ink hover:bg-paper'
-                  }`}
-                >
-                  Concluídos
-                </button>
-                <button
-                  type="button"
-                  onClick={clearCompleted}
-                  disabled={completedReminders.length === 0}
-                  className="rounded-full border border-border bg-offWhite px-3 py-1.5 text-xs font-semibold text-ink transition-vintage hover:bg-paper disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Limpar concluídos
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleReminderFilterChange('pending')}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-vintage ${
+                      reminderFilter === 'pending'
+                        ? 'bg-sidebar text-paper'
+                        : 'border border-border bg-offWhite text-ink hover:bg-paper'
+                    }`}
+                  >
+                    Pendentes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleReminderFilterChange('done')}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-vintage ${
+                      reminderFilter === 'done'
+                        ? 'bg-sidebar text-paper'
+                        : 'border border-border bg-offWhite text-ink hover:bg-paper'
+                    }`}
+                  >
+                    Concluídos
+                  </button>
+                  <div className="relative group">
+                    <button
+                      type="button"
+                      onClick={clearCompleted}
+                      disabled={completedReminders.length === 0}
+                      className="flex items-center justify-center w-8 h-8 rounded-full border border-border bg-offWhite text-ink/50 hover:text-terracotta hover:border-terracotta/40 transition-vintage disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="Limpar concluídos"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="pointer-events-none absolute bottom-full right-0 mb-2 hidden group-hover:block">
+                      <span className="whitespace-nowrap rounded-md bg-ink/80 px-2 py-1 text-[11px] text-paper shadow-sm">
+                        Limpar concluídos
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsReminderModalOpen(true)}
+                    className="w-9 h-9 rounded-full bg-petrol text-white flex items-center justify-center hover:opacity-90 transition-vintage"
+                    aria-label="Novo lembrete"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               <div className="flex flex-1 flex-col">
