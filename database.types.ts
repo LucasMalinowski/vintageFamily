@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           created_at: string
           family_id: string
+          icon: string | null
           id: string
           is_system: boolean
           kind: string
@@ -28,6 +29,7 @@ export type Database = {
         Insert: {
           created_at?: string
           family_id: string
+          icon?: string | null
           id?: string
           is_system?: boolean
           kind: string
@@ -38,6 +40,7 @@ export type Database = {
         Update: {
           created_at?: string
           family_id?: string
+          icon?: string | null
           id?: string
           is_system?: boolean
           kind?: string
@@ -114,6 +117,7 @@ export type Database = {
         Row: {
           created_at: string
           family_id: string
+          icon: string | null
           id: string
           is_system: boolean
           name: string
@@ -124,6 +128,7 @@ export type Database = {
         Insert: {
           created_at?: string
           family_id: string
+          icon?: string | null
           id?: string
           is_system?: boolean
           name: string
@@ -134,6 +139,7 @@ export type Database = {
         Update: {
           created_at?: string
           family_id?: string
+          icon?: string | null
           id?: string
           is_system?: boolean
           name?: string

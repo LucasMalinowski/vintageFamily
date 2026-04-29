@@ -158,7 +158,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
     const loadCategories = async () => {
       const { data, error: categoryError } = await supabase
           .from('categories')
-          .select('id,name,kind,parent_id,is_system')
+          .select('id,name,kind,parent_id,is_system,icon')
           .eq('family_id', familyId)
           .order('name', { ascending: true })
 

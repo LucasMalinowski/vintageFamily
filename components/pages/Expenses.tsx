@@ -10,6 +10,7 @@ import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
 import CategoryPathStack from '@/components/ui/CategoryPathStack'
+import CategoryIcon from '@/components/ui/CategoryIcon'
 import { formatBRL } from '@/lib/money'
 import {
   formatDate,
@@ -34,6 +35,7 @@ import { mergeAttachment, parseAttachment } from '@/lib/attachments'
 import CategorySettingsModal from '@/components/categories/CategorySettingsModal'
 import BankStatementImportModal from '@/components/bank-statements/BankStatementImportModal'
 import {
+  buildCategoryIconMap,
   buildCategoryLabelMap,
   buildCategoryOptions,
   CategoryRecord,
@@ -158,6 +160,7 @@ export default function Expenses() {
     [categories]
   )
   const categoryLabelMap = useMemo(() => buildCategoryLabelMap(categories), [categories])
+  const categoryIconMap = useMemo(() => buildCategoryIconMap(categories), [categories])
   const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories])
 
   useEffect(() => {
@@ -195,7 +198,7 @@ export default function Expenses() {
   async function loadCategories() {
     const { data } = await supabase
       .from('categories')
-      .select('id,name,kind,parent_id,is_system')
+      .select('id,name,kind,parent_id,is_system,icon')
       .eq('family_id', familyId!)
       .eq('kind', 'expense')
       .order('name')
@@ -909,6 +912,13 @@ export default function Expenses() {
                               {expense.status === 'paid' && <Check className="h-3 w-3 text-white" />}
                             </button>
 
+                            {expense.category_id && categoryIconMap.get(expense.category_id) && (
+                              <CategoryIcon
+                                name={categoryIconMap.get(expense.category_id)}
+                                className="mt-1 w-4 h-4 shrink-0 text-ink/40"
+                              />
+                            )}
+
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                                 <h4 className={`text-base font-medium font-serif leading-tight transition-vintage ${expense.status === 'paid' ? 'text-sidebar/60 line-through decoration-sidebar/30' : 'text-sidebar'}`}>
@@ -925,6 +935,7 @@ export default function Expenses() {
                               </div>
                               <CategoryPathStack
                                 label={getCategoryLabel(expense.category_id, expense.category_name)}
+                                icon={expense.category_id ? categoryIconMap.get(expense.category_id) : null}
                                 className="mt-1"
                               />
                             </div>
@@ -1208,6 +1219,7 @@ export default function Expenses() {
                   <p className="text-xs uppercase tracking-wide text-ink/50">Categoria</p>
                   <CategoryPathStack
                     label={getCategoryLabel(detailExpense.category_id, detailExpense.category_name)}
+                    icon={detailExpense.category_id ? categoryIconMap.get(detailExpense.category_id) : null}
                     className="mt-1"
                   />
                 </div>

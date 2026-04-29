@@ -10,6 +10,7 @@ import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
 import CategoryPathStack from '@/components/ui/CategoryPathStack'
+import CategoryIcon from '@/components/ui/CategoryIcon'
 import { formatBRL } from '@/lib/money'
 import {
   formatDate,
@@ -34,6 +35,7 @@ import CategorySettingsModal from '@/components/categories/CategorySettingsModal
 import BankStatementImportModal from '@/components/bank-statements/BankStatementImportModal'
 import PdfPreviewModal from '@/components/export/PdfPreviewModal'
 import {
+  buildCategoryIconMap,
   buildCategoryLabelMap,
   buildCategoryOptions,
   CategoryRecord,
@@ -105,7 +107,7 @@ export default function Incomes() {
   const loadCategories = useCallback(async () => {
     const { data } = await supabase
       .from('categories')
-      .select('id,name,kind,parent_id,is_system')
+      .select('id,name,kind,parent_id,is_system,icon')
       .eq('family_id', familyId!)
       .eq('kind', 'income')
       .order('name')
@@ -169,6 +171,7 @@ export default function Incomes() {
     [categories]
   )
   const categoryLabelMap = useMemo(() => buildCategoryLabelMap(categories), [categories])
+  const categoryIconMap = useMemo(() => buildCategoryIconMap(categories), [categories])
   const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories])
 
   useEffect(() => {
@@ -703,6 +706,13 @@ export default function Incomes() {
                             {income.status === 'received' && <Check className="h-3 w-3 text-white" />}
                           </button>
 
+                          {income.category_id && categoryIconMap.get(income.category_id) && (
+                            <CategoryIcon
+                              name={categoryIconMap.get(income.category_id)}
+                              className="mt-1 w-4 h-4 shrink-0 text-ink/40"
+                            />
+                          )}
+
                           <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 min-w-0">
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -720,6 +730,7 @@ export default function Incomes() {
                               </div>
                               <CategoryPathStack
                                 label={getCategoryLabel(income.category_id, income.category_name)}
+                                icon={income.category_id ? categoryIconMap.get(income.category_id) : null}
                                 className="mt-1"
                               />
                             </div>
@@ -931,6 +942,7 @@ export default function Incomes() {
                   <p className="text-xs uppercase tracking-wide text-ink/50">Categoria</p>
                   <CategoryPathStack
                     label={getCategoryLabel(detailIncome.category_id, detailIncome.category_name)}
+                    icon={detailIncome.category_id ? categoryIconMap.get(detailIncome.category_id) : null}
                     className="mt-1"
                   />
                 </div>

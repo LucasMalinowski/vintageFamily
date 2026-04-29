@@ -97,9 +97,9 @@ export async function POST(request: Request) {
     }
 
     const defaultSavings = [
-      { family_id: family.id, name: 'Casa', is_system: true },
-      { family_id: family.id, name: 'Carro', is_system: true },
-      { family_id: family.id, name: 'Viagem', is_system: true },
+      { family_id: family.id, name: 'Casa',   is_system: true, icon: 'House'    },
+      { family_id: family.id, name: 'Carro',  is_system: true, icon: 'Car'      },
+      { family_id: family.id, name: 'Viagem', is_system: true, icon: 'TreePalm' },
     ]
 
     const { error: savingsError } = await supabaseAdmin.from('savings').insert(defaultSavings)

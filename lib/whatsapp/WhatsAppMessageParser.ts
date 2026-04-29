@@ -105,7 +105,7 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
 
   const { data: categories } = await supabaseAdmin
     .from('categories')
-    .select('id,name,kind,parent_id,is_system')
+    .select('id,name,kind,parent_id,is_system,icon')
     .eq('family_id', familyId)
 
   const categoryList = (categories ?? []) as CategoryRecord[]

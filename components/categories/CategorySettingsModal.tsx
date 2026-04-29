@@ -5,6 +5,8 @@ import { Pencil, Trash2 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
 import { CategoryKind, normalizeCategoryName } from '@/lib/categories'
+import CategoryIcon from '@/components/ui/CategoryIcon'
+import IconPicker from '@/components/ui/IconPicker'
 
 type Scope = 'categories' | 'savings'
 
@@ -13,6 +15,7 @@ type NodeItem = {
   name: string
   parent_id: string | null
   is_system: boolean
+  icon: string | null
 }
 
 interface CategorySettingsModalProps {
@@ -57,6 +60,7 @@ export default function CategorySettingsModal({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draftName, setDraftName] = useState('')
   const [draftParentId, setDraftParentId] = useState<string | null>(null)
+  const [draftIcon, setDraftIcon] = useState<string | null>(null)
 
   async function loadItems() {
     if (!familyId) return
@@ -66,7 +70,7 @@ export default function CategorySettingsModal({
     if (scope === 'savings') {
       const { data } = await supabase
         .from('savings')
-        .select('id,name,parent_id,is_system')
+        .select('id,name,parent_id,is_system,icon')
         .eq('family_id', familyId)
         .order('name')
 
@@ -77,7 +81,7 @@ export default function CategorySettingsModal({
 
     const { data } = await supabase
       .from('categories')
-      .select('id,name,parent_id,is_system')
+      .select('id,name,kind,parent_id,is_system,icon')
       .eq('family_id', familyId)
       .eq('kind', kind!)
       .order('name')
@@ -91,6 +95,7 @@ export default function CategorySettingsModal({
     setEditingId(null)
     setDraftName('')
     setDraftParentId(null)
+    setDraftIcon(null)
   }
 
   useEffect(() => {
@@ -145,6 +150,7 @@ export default function CategorySettingsModal({
     setEditingId(item.id)
     setDraftParentId(item.parent_id)
     setDraftName(item.name)
+    setDraftIcon(item.icon)
   }
 
   const saveComposer = async () => {
@@ -165,6 +171,7 @@ export default function CategorySettingsModal({
           .from('savings')
           .update({
             name,
+            icon: draftIcon,
             parent_id: draftParentId,
             updated_at: new Date().toISOString(),
           })
@@ -178,6 +185,7 @@ export default function CategorySettingsModal({
           .insert({
             family_id: familyId,
             name,
+            icon: draftIcon,
             parent_id: draftParentId,
             is_system: false,
           })
@@ -190,6 +198,7 @@ export default function CategorySettingsModal({
           .from('categories')
           .update({
             name,
+            icon: draftIcon,
             parent_id: draftParentId,
           })
           .eq('id', editingId)
@@ -205,6 +214,7 @@ export default function CategorySettingsModal({
             kind: kind!,
             is_system: false,
             name,
+            icon: draftIcon,
             parent_id: draftParentId,
           })
 
@@ -309,16 +319,23 @@ export default function CategorySettingsModal({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1">
+            {/* ── LEFT: main categories ── */}
             <div className="rounded-lg border border-border/80 bg-bg/50 p-2">
               <p className="text-xs uppercase tracking-wide text-ink/50 px-2 py-1">Categorias principais</p>
               <div className="space-y-1 max-h-[56vh] overflow-auto pr-1">
                 {tree.map((main) => {
                   const active = selectedMainId === main.id
+                  const isEditingThis = editingId === main.id
+
                   return (
                     <div
                       key={main.id}
                       className={`overflow-hidden rounded-[16px] border-2 transition-vintage ${
-                        active ? 'border-coffee/35 bg-offWhite shadow-soft' : 'border-border/70 bg-paper/70'
+                        isEditingThis
+                          ? 'border-coffee/50 bg-offWhite shadow-soft'
+                          : active
+                          ? 'border-coffee/35 bg-offWhite shadow-soft'
+                          : 'border-border/70 bg-paper/70'
                       }`}
                     >
                       <div
@@ -328,45 +345,82 @@ export default function CategorySettingsModal({
                             : 'bg-gradient-to-r from-terracotta via-gold to-coffee'
                         }`}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setSelectedMainId(main.id)}
-                        className="w-full flex items-center justify-between gap-3 px-3 py-3 text-left"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">Principal</p>
-                          <span className="block font-semibold text-sidebar truncate">{main.name}</span>
+
+                      {isEditingThis ? (
+                        /* ── inline edit form ── */
+                        <div className="px-3 py-3 space-y-2">
+                          <div className="flex gap-2 items-center">
+                            <IconPicker value={draftIcon} onSelect={setDraftIcon} />
+                            <input
+                              type="text"
+                              value={draftName}
+                              onChange={(event) => setDraftName(event.target.value)}
+                              autoFocus
+                              className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50"
+                              placeholder="Nome da categoria"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={resetComposer}
+                              className="px-3 py-1.5 rounded-lg border border-border text-sm text-ink/70"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={saveComposer}
+                              disabled={saving}
+                              className="px-3 py-1.5 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60"
+                            >
+                              {saving ? 'Salvando...' : 'Salvar'}
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
+                      ) : (
+                        /* ── normal card view ── */
+                        <>
                           <button
                             type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              startEdit(main)
-                            }}
-                            className="p-1 rounded border border-border text-ink/70 hover:bg-paper"
-                            aria-label={`Editar ${main.name}`}
+                            onClick={() => setSelectedMainId(main.id)}
+                            className="w-full flex items-center justify-between gap-3 px-3 py-3 text-left"
                           >
-                            <Pencil className="w-3.5 h-3.5" />
+                            <div className="min-w-0 flex items-center gap-2">
+                              {main.icon && (
+                                <CategoryIcon name={main.icon} className="w-4 h-4 shrink-0 text-sidebar/60" />
+                              )}
+                              <div className="min-w-0">
+                                <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">Principal</p>
+                                <span className="block font-semibold text-sidebar truncate">{main.name}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={(event) => { event.stopPropagation(); startEdit(main) }}
+                                className="p-1 rounded border border-border text-ink/70 hover:bg-paper"
+                                aria-label={`Editar ${main.name}`}
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(event) => { event.stopPropagation(); handleDelete(main) }}
+                                className="p-1 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10"
+                                aria-label={`Excluir ${main.name}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </button>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              handleDelete(main)
-                            }}
-                            className="p-1 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10"
-                            aria-label={`Excluir ${main.name}`}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </button>
-                      <div className="px-3 pb-3 min-h-7 flex items-center">
-                        {main.is_system ? (
-                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>
-                        ) : null}
-                      </div>
+                          <div className="px-3 pb-3 min-h-7 flex items-center">
+                            {main.is_system ? (
+                              <span className="text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>
+                            ) : null}
+                          </div>
+                        </>
+                      )}
                     </div>
                   )
                 })}
@@ -380,15 +434,19 @@ export default function CategorySettingsModal({
                 >
                   Nova Categoria Principal
                 </button>
-                {isMainComposer ? (
+                {isMainComposer && !editingId ? (
                   <div className="space-y-2">
-                    <input
-                      type="text"
-                      value={draftName}
-                      onChange={(event) => setDraftName(event.target.value)}
-                      className="w-full px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-                      placeholder="Nome da categoria principal"
-                    />
+                    <div className="flex gap-2 items-center">
+                      <IconPicker value={draftIcon} onSelect={setDraftIcon} />
+                      <input
+                        type="text"
+                        value={draftName}
+                        onChange={(event) => setDraftName(event.target.value)}
+                        autoFocus
+                        className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50"
+                        placeholder="Nome da categoria principal"
+                      />
+                    </div>
                     <div className="flex gap-2">
                       <button
                         type="button"
@@ -403,7 +461,7 @@ export default function CategorySettingsModal({
                         disabled={saving}
                         className="px-3 py-2 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60"
                       >
-                        {saving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}
+                        {saving ? 'Salvando...' : 'Criar'}
                       </button>
                     </div>
                   </div>
@@ -411,22 +469,28 @@ export default function CategorySettingsModal({
               </div>
             </div>
 
+            {/* ── RIGHT: subcategories ── */}
             <div className="rounded-lg border border-border/80 bg-bg/50 p-2">
               <p className="text-xs uppercase tracking-wide text-ink/50 px-2 py-1">
                 {selectedMain ? `Subcategorias de ${selectedMain.name}` : 'Subcategorias'}
               </p>
               {!selectedMain ? (
                 <p className="text-sm text-ink/60 px-2 py-3">Selecione uma categoria principal.</p>
-              ) : selectedMain.children.length === 0 ? (
+              ) : selectedMain.children.length === 0 && !(isChildComposer && !editingId) ? (
                 <p className="text-sm text-ink/60 px-2 py-3">Sem subcategorias.</p>
               ) : (
                 <div className="space-y-3 max-h-[56vh] overflow-auto pr-1">
                   <div className={`overflow-hidden rounded-[18px] border-2 ${mainStackTone} shadow-soft`}>
                     <div className="h-1 bg-gradient-to-r from-coffee via-petrol to-olive" />
                     <div className="flex items-center justify-between gap-3 px-4 py-3">
-                      <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">Categoria base</p>
-                        <h5 className="text-lg font-semibold text-sidebar truncate">{selectedMain.name}</h5>
+                      <div className="min-w-0 flex items-center gap-2">
+                        {selectedMain.icon && (
+                          <CategoryIcon name={selectedMain.icon} className="w-5 h-5 shrink-0 text-sidebar/60" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">Categoria base</p>
+                          <h5 className="text-lg font-semibold text-sidebar truncate">{selectedMain.name}</h5>
+                        </div>
                       </div>
                       {selectedMain.is_system ? (
                         <span className="flex-shrink-0 text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold">
@@ -435,43 +499,82 @@ export default function CategorySettingsModal({
                       ) : null}
                     </div>
                   </div>
-                  {selectedMain.children.map((child) => (
-                    <div
-                      key={child.id}
-                      className={`ml-6 overflow-hidden rounded-[16px] border-2 ${childStackTone} shadow-soft`}
-                    >
-                      <div className="h-1 bg-gradient-to-r from-petrol via-olive to-gold" />
-                      <div className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left">
-                        <div className="min-w-0">
-                          <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">Subcategoria</p>
-                          <span className="block text-sm font-semibold text-ink/80 truncate">{child.name}</span>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => startEdit(child)}
-                            className="p-1 rounded border border-border text-ink/70 hover:bg-paper"
-                            aria-label={`Editar ${child.name}`}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(child)}
-                            className="p-1 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10"
-                            aria-label={`Excluir ${child.name}`}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                  {selectedMain.children.map((child) => {
+                    const isEditingChild = editingId === child.id
+                    return (
+                      <div
+                        key={child.id}
+                        className={`ml-6 overflow-hidden rounded-[16px] border-2 shadow-soft ${
+                          isEditingChild ? 'border-coffee/50 bg-offWhite' : childStackTone
+                        }`}
+                      >
+                        <div className="h-1 bg-gradient-to-r from-petrol via-olive to-gold" />
+                        {isEditingChild ? (
+                          /* ── inline edit form for child ── */
+                          <div className="px-4 py-3 space-y-2">
+                            <input
+                              type="text"
+                              value={draftName}
+                              onChange={(event) => setDraftName(event.target.value)}
+                              autoFocus
+                              className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50"
+                              placeholder="Nome da subcategoria"
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={resetComposer}
+                                className="px-3 py-1.5 rounded-lg border border-border text-sm text-ink/70"
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={saveComposer}
+                                disabled={saving}
+                                className="px-3 py-1.5 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60"
+                              >
+                                {saving ? 'Salvando...' : 'Salvar'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          /* ── normal child view ── */
+                          <>
+                            <div className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left">
+                              <div className="min-w-0">
+                                <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">Subcategoria</p>
+                                <span className="block text-sm font-semibold text-ink/80 truncate">{child.name}</span>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => startEdit(child)}
+                                  className="p-1 rounded border border-border text-ink/70 hover:bg-paper"
+                                  aria-label={`Editar ${child.name}`}
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelete(child)}
+                                  className="p-1 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10"
+                                  aria-label={`Excluir ${child.name}`}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="px-4 pb-3 min-h-7 flex items-center">
+                              {child.is_system ? (
+                                <span className="text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>
+                              ) : null}
+                            </div>
+                          </>
+                        )}
                       </div>
-                      <div className="px-4 pb-3 min-h-7 flex items-center">
-                        {child.is_system ? (
-                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>
-                        ) : null}
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
 
@@ -484,13 +587,14 @@ export default function CategorySettingsModal({
                 >
                   Nova Subcategoria
                 </button>
-                {isChildComposer ? (
+                {isChildComposer && !editingId ? (
                   <div className="space-y-2">
                     <input
                       type="text"
                       value={draftName}
                       onChange={(event) => setDraftName(event.target.value)}
-                      className="w-full px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
+                      autoFocus
+                      className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50"
                       placeholder="Nome da subcategoria"
                     />
                     <div className="flex gap-2">
@@ -507,7 +611,7 @@ export default function CategorySettingsModal({
                         disabled={saving}
                         className="px-3 py-2 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60"
                       >
-                        {saving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}
+                        {saving ? 'Salvando...' : 'Criar'}
                       </button>
                     </div>
                   </div>

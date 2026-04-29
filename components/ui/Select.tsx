@@ -4,6 +4,7 @@ import { Fragment, useMemo, useState } from 'react'
 import { Listbox, Transition } from '@headlessui/react'
 import { Check, ChevronDown, Search } from 'lucide-react'
 import clsx from 'clsx'
+import CategoryIcon from '@/components/ui/CategoryIcon'
 
 interface SelectOption {
   value: string
@@ -11,6 +12,7 @@ interface SelectOption {
   meta?: {
     parentLabel?: string
     depth?: number
+    icon?: string | null
   }
 }
 
@@ -101,6 +103,9 @@ export default function Select({
           <div className="relative">
             <Listbox.Button className={buttonClassName}>
               <div className="flex items-center gap-3">
+                {selectedOption?.meta?.icon && !selectedOption?.meta?.parentLabel ? (
+                  <CategoryIcon name={selectedOption.meta.icon} className="w-4 h-4 shrink-0 text-ink/50" />
+                ) : null}
                 <div className="min-w-0 flex-1">
                   <div className={clsx('truncate', !selectedOption && 'text-ink/40')}>
                     {selectedOption ? selectedOption.label : placeholder}
@@ -154,6 +159,12 @@ export default function Select({
                         >
                           {({ selected: isSelected, active }) => (
                             <div className="flex items-center gap-3">
+                              {group.main.meta?.icon ? (
+                                <CategoryIcon
+                                  name={group.main.meta.icon}
+                                  className={clsx('w-4 h-4 shrink-0', active ? 'text-coffee' : 'text-ink/45')}
+                                />
+                              ) : null}
                               <div className="min-w-0 flex-1">
                                 <div
                                   className={clsx(

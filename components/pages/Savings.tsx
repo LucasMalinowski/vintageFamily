@@ -27,6 +27,7 @@ import {
   ALL_YEARS_VALUE,
 } from '@/lib/dates'
 import { PiggyBank, SlidersHorizontal, Search, Plus, TrendingDown, TrendingUp } from 'lucide-react'
+import CategoryIcon from '@/components/ui/CategoryIcon'
 import { matchesSearch } from '@/lib/filterSearch'
 import FilterSheet from '@/components/layout/FilterSheet'
 import CurrencyInput from '@/components/ui/CurrencyInput'
@@ -36,6 +37,7 @@ import { buildBrandedPdfBlob, downloadBlob, downloadCsv } from '@/lib/report-exp
 interface Saving {
   id: string
   name: string
+  icon: string | null
   target_cents: number | null
   parent_id: string | null
   is_system: boolean
@@ -170,7 +172,7 @@ export default function Savings() {
   async function loadSavings() {
     const { data } = await supabase
       .from('savings')
-      .select('id,name,target_cents,parent_id,is_system')
+      .select('id,name,icon,target_cents,parent_id,is_system')
       .eq('family_id', familyId!)
       .order('name')
     setSavings((data || []) as Saving[])
@@ -595,6 +597,9 @@ export default function Savings() {
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex flex-row gap-2 items-end">
+                            {saving.icon && (
+                              <CategoryIcon name={saving.icon} className="w-5 h-5 text-sidebar/60 shrink-0 mb-1" />
+                            )}
                             <h4 className="text-xl font-medium text-sidebar font-serif">{getSavingLabel(saving.id)}</h4>
                             {saving.is_system ? (
                               <span className="flex text-center text-[11px] h-5 px-2 py-0.5 my-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>

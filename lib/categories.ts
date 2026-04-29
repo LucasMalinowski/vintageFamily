@@ -6,6 +6,7 @@ export interface CategoryRecord {
   kind: CategoryKind
   parent_id: string | null
   is_system: boolean
+  icon: string | null
 }
 
 export interface CategoryNode extends CategoryRecord {
@@ -66,14 +67,30 @@ export const findCategoryIdByStoredName = (
 
 export const buildCategoryOptions = (categories: CategoryRecord[]) => {
   const tree = buildCategoryTree(categories)
-  const options: Array<{ value: string; label: string; meta?: { parentLabel?: string; depth?: number } }> = []
+  const options: Array<{ value: string; label: string; meta?: { parentLabel?: string; depth?: number; icon?: string | null } }> = []
 
   for (const main of tree) {
-    options.push({ value: main.id, label: main.name, meta: { depth: 0 } })
+    options.push({ value: main.id, label: main.name, meta: { depth: 0, icon: main.icon } })
     for (const child of main.children) {
-      options.push({ value: child.id, label: child.name, meta: { parentLabel: main.name, depth: 1 } })
+      options.push({ value: child.id, label: child.name, meta: { parentLabel: main.name, depth: 1, icon: null } })
     }
   }
 
   return options
+}
+
+export const buildCategoryIconMap = (categories: CategoryRecord[]): Map<string, string | null> => {
+  const byId = new Map<string, CategoryRecord>(categories.map((c) => [c.id, c]))
+  const icons = new Map<string, string | null>()
+
+  for (const category of categories) {
+    if (!category.parent_id) {
+      icons.set(category.id, category.icon)
+    } else {
+      const parent = byId.get(category.parent_id)
+      icons.set(category.id, parent?.icon ?? null)
+    }
+  }
+
+  return icons
 }
