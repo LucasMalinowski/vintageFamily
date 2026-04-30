@@ -697,10 +697,10 @@ export default function Expenses() {
           <button
             type="button"
             onClick={() => setFilterSheetOpen(true)}
-            className="flex items-center gap-1.5 h-[38px] px-3 rounded-[10px] border border-border bg-bg text-ink text-sm font-medium shrink-0"
+            className="flex items-center gap-1.5 h-[38px] px-3 rounded-[10px] border border-border bg-bg text-ink text-sm font-medium min-w-0 max-w-[150px] overflow-hidden shrink"
           >
-            <SlidersHorizontal className="w-4 h-4 text-petrol" />
-            <span className="leading-tight text-left">
+            <SlidersHorizontal className="w-4 h-4 text-petrol shrink-0" />
+            <span className="leading-tight text-left truncate">
               {selectedMonth === ALL_MONTHS_VALUE
                 ? (selectedYear === ALL_YEARS_VALUE ? 'Todos' : `Todos os meses`)
                 : `${getMonthLabel(selectedMonth).slice(0, 3)}${selectedYear === ALL_YEARS_VALUE ? ' • Todos os anos' : ` ${selectedYear}`}`}

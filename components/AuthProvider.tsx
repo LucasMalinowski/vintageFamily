@@ -43,14 +43,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setTimeout(() => resolve({ data: { session: null } }), 10000)
     )
 
-    Promise.race([sessionPromise, timeoutPromise]).then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setAccessTokenCookie(session?.access_token ?? null)
-      if (session?.user) {
-        loadFamilyId(session.user.id)
-      }
-      setLoading(false)
-    })
+    Promise.race([sessionPromise, timeoutPromise])
+      .then(({ data: { session } }) => {
+        setUser(session?.user ?? null)
+        setAccessTokenCookie(session?.access_token ?? null)
+        if (session?.user) {
+          loadFamilyId(session.user.id)
+        }
+        setLoading(false)
+      })
+      .catch(() => {
+        setLoading(false)
+      })
 
     // Listen for auth changes
     const {
@@ -72,19 +76,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const loadFamilyId = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('family_id')
-        .eq('id', userId)
-        .maybeSingle()
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('family_id')
+          .eq('id', userId)
+          .maybeSingle()
 
-      if (error) return
-
-      setFamilyId(data?.family_id ?? null)
-    } catch (error) {
-      setFamilyId(null)
+        if (!error) {
+          setFamilyId(data?.family_id ?? null)
+          return
+        }
+      } catch {
+        // network error — retry
+      }
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)))
     }
+    // All retries exhausted — sign out so the user isn't stuck on a blank loading screen
+    await supabase.auth.signOut()
+    router.push('/login')
   }
 
   const signIn = async (email: string, password: string) => {

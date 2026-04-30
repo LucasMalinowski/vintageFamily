@@ -563,16 +563,16 @@ export default function CategorySettingsModal({
                     return (
                       <div
                         key={main.id}
-                        className={`overflow-hidden rounded-[16px] border-2 transition-vintage ${
+                        className={`rounded-[16px] border-2 transition-vintage ${
                           isEditingThis
                             ? 'border-coffee/50 bg-offWhite shadow-soft'
-                            : active
-                            ? 'border-coffee/35 bg-offWhite shadow-soft'
-                            : 'border-border/70 bg-paper/70'
+                            : 'overflow-hidden ' + (active
+                              ? 'border-coffee/35 bg-offWhite shadow-soft'
+                              : 'border-border/70 bg-paper/70')
                         }`}
                       >
                         <div
-                          className={`h-1 ${
+                          className={`h-1 rounded-t-[14px] ${
                             main.is_system
                               ? 'bg-gradient-to-r from-coffee via-petrol to-olive'
                               : 'bg-gradient-to-r from-terracotta via-gold to-coffee'
