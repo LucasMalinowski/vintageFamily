@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { ChevronDown, Pencil, Plus, Trash2 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
 import { CategoryKind, normalizeCategoryName } from '@/lib/categories'
@@ -55,6 +55,7 @@ export default function CategorySettingsModal({
   const [items, setItems] = useState<NodeItem[]>([])
 
   const [selectedMainId, setSelectedMainId] = useState<string | null>(null)
+  const [expandedMainIds, setExpandedMainIds] = useState<Set<string>>(new Set())
 
   const [composerMode, setComposerMode] = useState<ComposerMode>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -105,6 +106,7 @@ export default function CategorySettingsModal({
     if (!isOpen) {
       resetComposer()
       setSelectedMainId(null)
+      setExpandedMainIds(new Set())
     }
   }, [isOpen, familyId, scope, kind])
 
@@ -126,6 +128,15 @@ export default function CategorySettingsModal({
     }
   }, [tree, selectedMainId])
 
+  const toggleExpandMain = (id: string) => {
+    setExpandedMainIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   const startCreateMain = () => {
     setComposerMode('main')
     setEditingId(null)
@@ -143,6 +154,15 @@ export default function CategorySettingsModal({
     setEditingId(null)
     setDraftParentId(selectedMain.id)
     setDraftName('')
+  }
+
+  const startCreateChildFor = (mainId: string) => {
+    setSelectedMainId(mainId)
+    setComposerMode('child')
+    setEditingId(null)
+    setDraftParentId(mainId)
+    setDraftName('')
+    setDraftIcon(null)
   }
 
   const startEdit = (item: NodeItem) => {
@@ -285,6 +305,47 @@ export default function CategorySettingsModal({
   const mainStackTone = 'border-coffee/35 bg-offWhite'
   const childStackTone = 'border-petrol/30 bg-paper'
 
+  const ComposerForm = ({
+    placeholder,
+    showIconPicker = false,
+    onCancel,
+  }: {
+    placeholder: string
+    showIconPicker?: boolean
+    onCancel: () => void
+  }) => (
+    <div className="space-y-2">
+      <div className="flex gap-2 items-center">
+        {showIconPicker && <IconPicker value={draftIcon} onSelect={setDraftIcon} />}
+        <input
+          type="text"
+          value={draftName}
+          onChange={(event) => setDraftName(event.target.value)}
+          autoFocus
+          className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50"
+          placeholder={placeholder}
+        />
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-3 py-1.5 rounded-lg border border-border text-sm text-ink/70"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={saveComposer}
+          disabled={saving}
+          className="px-3 py-1.5 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60"
+        >
+          {saving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}
+        </button>
+      </div>
+    </div>
+  )
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Categorias" size="xl">
       <div className="rounded-lg border border-border bg-paper p-4 min-h-[72vh] flex flex-col">
@@ -318,208 +379,219 @@ export default function CategorySettingsModal({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1">
-            {/* ── LEFT: main categories ── */}
-            <div className="rounded-lg border border-border/80 bg-bg/50 p-2">
-              <p className="text-xs uppercase tracking-wide text-ink/50 px-2 py-1">Categorias principais</p>
-              <div className="space-y-1 max-h-[56vh] overflow-auto pr-1">
-                {tree.map((main) => {
-                  const active = selectedMainId === main.id
-                  const isEditingThis = editingId === main.id
+          <>
+            {/* ── MOBILE: collapsible accordion tree ── */}
+            <div className="md:hidden space-y-2 overflow-auto flex-1">
+              {tree.map((main) => {
+                const isExpanded = expandedMainIds.has(main.id)
+                const isEditingThis = editingId === main.id
+                const isNewChildHere = isChildComposer && !editingId && draftParentId === main.id
 
-                  return (
+                return (
+                  <div
+                    key={main.id}
+                    className="overflow-hidden rounded-[16px] border-2 border-border/70 bg-paper/70"
+                  >
                     <div
-                      key={main.id}
-                      className={`overflow-hidden rounded-[16px] border-2 transition-vintage ${
-                        isEditingThis
-                          ? 'border-coffee/50 bg-offWhite shadow-soft'
-                          : active
-                          ? 'border-coffee/35 bg-offWhite shadow-soft'
-                          : 'border-border/70 bg-paper/70'
+                      className={`h-1 ${
+                        main.is_system
+                          ? 'bg-gradient-to-r from-coffee via-petrol to-olive'
+                          : 'bg-gradient-to-r from-terracotta via-gold to-coffee'
                       }`}
-                    >
-                      <div
-                        className={`h-1 ${
-                          main.is_system
-                            ? 'bg-gradient-to-r from-coffee via-petrol to-olive'
-                            : 'bg-gradient-to-r from-terracotta via-gold to-coffee'
-                        }`}
-                      />
+                    />
 
-                      {isEditingThis ? (
-                        /* ── inline edit form ── */
-                        <div className="px-3 py-3 space-y-2">
-                          <div className="flex gap-2 items-center">
-                            <IconPicker value={draftIcon} onSelect={setDraftIcon} />
-                            <input
-                              type="text"
-                              value={draftName}
-                              onChange={(event) => setDraftName(event.target.value)}
-                              autoFocus
-                              className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-                              placeholder="Nome da categoria"
-                            />
+                    {isEditingThis ? (
+                      <div className="px-3 py-3">
+                        <ComposerForm
+                          placeholder="Nome da categoria"
+                          showIconPicker
+                          onCancel={resetComposer}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 px-3 py-3">
+                        <button
+                          type="button"
+                          onClick={() => toggleExpandMain(main.id)}
+                          className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                        >
+                          <ChevronDown
+                            className={`w-4 h-4 shrink-0 text-ink/40 transition-transform ${
+                              isExpanded ? 'rotate-180' : ''
+                            }`}
+                          />
+                          {main.icon && (
+                            <CategoryIcon name={main.icon} className="w-4 h-4 shrink-0 text-sidebar/60" />
+                          )}
+                          <div className="min-w-0">
+                            <span className="block font-semibold text-sidebar truncate">{main.name}</span>
+                            <span className="text-[10px] text-ink/40">
+                              {main.children?.length ?? 0} subcategorias
+                              {main.is_system ? ' · Sistema' : ''}
+                            </span>
                           </div>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={resetComposer}
-                              className="px-3 py-1.5 rounded-lg border border-border text-sm text-ink/70"
-                            >
-                              Cancelar
-                            </button>
-                            <button
-                              type="button"
-                              onClick={saveComposer}
-                              disabled={saving}
-                              className="px-3 py-1.5 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60"
-                            >
-                              {saving ? 'Salvando...' : 'Salvar'}
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        /* ── normal card view ── */
-                        <>
+                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
                           <button
                             type="button"
-                            onClick={() => setSelectedMainId(main.id)}
-                            className="w-full flex items-center justify-between gap-3 px-3 py-3 text-left"
+                            onClick={() => startEdit(main)}
+                            className="p-1.5 rounded border border-border text-ink/70 hover:bg-paper"
+                            aria-label={`Editar ${main.name}`}
                           >
-                            <div className="min-w-0 flex items-center gap-2">
-                              {main.icon && (
-                                <CategoryIcon name={main.icon} className="w-4 h-4 shrink-0 text-sidebar/60" />
-                              )}
-                              <div className="min-w-0">
-                                <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">Principal</p>
-                                <span className="block font-semibold text-sidebar truncate">{main.name}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button
-                                type="button"
-                                onClick={(event) => { event.stopPropagation(); startEdit(main) }}
-                                className="p-1 rounded border border-border text-ink/70 hover:bg-paper"
-                                aria-label={`Editar ${main.name}`}
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(event) => { event.stopPropagation(); handleDelete(main) }}
-                                className="p-1 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10"
-                                aria-label={`Excluir ${main.name}`}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
+                            <Pencil className="w-3.5 h-3.5" />
                           </button>
-                          <div className="px-3 pb-3 min-h-7 flex items-center">
-                            {main.is_system ? (
-                              <span className="text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>
-                            ) : null}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(main)}
+                            className="p-1.5 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10"
+                            aria-label={`Excluir ${main.name}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
-              <div className="mt-3 pt-2 border-t border-border/70 space-y-2">
+                    {isExpanded && !isEditingThis && (
+                      <div className="border-t border-border/50 pb-2 px-3 space-y-2 pt-2">
+                        {main.children.map((child) => {
+                          const isEditingChild = editingId === child.id
+                          return (
+                            <div
+                              key={child.id}
+                              className={`ml-5 overflow-hidden rounded-[14px] border-2 ${
+                                isEditingChild ? 'border-coffee/50 bg-offWhite' : childStackTone
+                              }`}
+                            >
+                              <div className="h-0.5 bg-gradient-to-r from-petrol via-olive to-gold" />
+                              {isEditingChild ? (
+                                <div className="px-3 py-2">
+                                  <ComposerForm
+                                    placeholder="Nome da subcategoria"
+                                    onCancel={resetComposer}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 px-3 py-2">
+                                  <div className="flex-1 min-w-0">
+                                    <span className="block text-sm font-semibold text-ink/80 truncate">
+                                      {child.name}
+                                    </span>
+                                    {child.is_system && (
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/20 text-gold">
+                                        Sistema
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => startEdit(child)}
+                                      className="p-1.5 rounded border border-border text-ink/70 hover:bg-paper"
+                                      aria-label={`Editar ${child.name}`}
+                                    >
+                                      <Pencil className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDelete(child)}
+                                      className="p-1.5 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10"
+                                      aria-label={`Excluir ${child.name}`}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+
+                        {isNewChildHere ? (
+                          <div className="ml-5 px-3 py-2 rounded-[14px] border-2 border-coffee/30 bg-offWhite">
+                            <ComposerForm
+                              placeholder="Nome da subcategoria"
+                              onCancel={resetComposer}
+                            />
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => startCreateChildFor(main.id)}
+                            className="ml-5 flex items-center gap-1.5 text-xs text-petrol px-2 py-1.5 rounded-lg border border-petrol/30 hover:bg-petrol/5 transition-vintage"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Nova subcategoria
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+
+              <div className="pt-1 space-y-2">
                 <button
                   type="button"
                   onClick={startCreateMain}
-                  className="w-full px-3 py-2 rounded-md bg-petrol text-white text-sm hover:bg-petrol/90 transition-vintage"
+                  className="w-full px-3 py-2.5 rounded-lg bg-petrol text-white text-sm hover:bg-petrol/90 transition-vintage"
                 >
-                  Nova Categoria Principal
+                  + Nova Categoria Principal
                 </button>
-                {isMainComposer && !editingId ? (
-                  <div className="space-y-2">
-                    <div className="flex gap-2 items-center">
-                      <IconPicker value={draftIcon} onSelect={setDraftIcon} />
-                      <input
-                        type="text"
-                        value={draftName}
-                        onChange={(event) => setDraftName(event.target.value)}
-                        autoFocus
-                        className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-                        placeholder="Nome da categoria principal"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={resetComposer}
-                        className="px-3 py-2 rounded-lg border border-border text-sm text-ink/70"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={saveComposer}
-                        disabled={saving}
-                        className="px-3 py-2 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60"
-                      >
-                        {saving ? 'Salvando...' : 'Criar'}
-                      </button>
-                    </div>
+                {isMainComposer && !editingId && (
+                  <div className="px-3 py-3 rounded-lg border-2 border-coffee/30 bg-offWhite">
+                    <ComposerForm
+                      placeholder="Nome da categoria principal"
+                      showIconPicker
+                      onCancel={resetComposer}
+                    />
                   </div>
-                ) : null}
+                )}
               </div>
             </div>
 
-            {/* ── RIGHT: subcategories ── */}
-            <div className="rounded-lg border border-border/80 bg-bg/50 p-2">
-              <p className="text-xs uppercase tracking-wide text-ink/50 px-2 py-1">
-                {selectedMain ? `Subcategorias de ${selectedMain.name}` : 'Subcategorias'}
-              </p>
-              {!selectedMain ? (
-                <p className="text-sm text-ink/60 px-2 py-3">Selecione uma categoria principal.</p>
-              ) : selectedMain.children.length === 0 && !(isChildComposer && !editingId) ? (
-                <p className="text-sm text-ink/60 px-2 py-3">Sem subcategorias.</p>
-              ) : (
-                <div className="space-y-3 max-h-[56vh] overflow-auto pr-1">
-                  <div className={`overflow-hidden rounded-[18px] border-2 ${mainStackTone} shadow-soft`}>
-                    <div className="h-1 bg-gradient-to-r from-coffee via-petrol to-olive" />
-                    <div className="flex items-center justify-between gap-3 px-4 py-3">
-                      <div className="min-w-0 flex items-center gap-2">
-                        {selectedMain.icon && (
-                          <CategoryIcon name={selectedMain.icon} className="w-5 h-5 shrink-0 text-sidebar/60" />
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">Categoria base</p>
-                          <h5 className="text-lg font-semibold text-sidebar truncate">{selectedMain.name}</h5>
-                        </div>
-                      </div>
-                      {selectedMain.is_system ? (
-                        <span className="flex-shrink-0 text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold">
-                          Sistema
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                  {selectedMain.children.map((child) => {
-                    const isEditingChild = editingId === child.id
+            {/* ── DESKTOP: two-column grid ── */}
+            <div className="hidden md:grid grid-cols-2 gap-3 flex-1">
+              {/* Left: main categories */}
+              <div className="rounded-lg border border-border/80 bg-bg/50 p-2">
+                <p className="text-xs uppercase tracking-wide text-ink/50 px-2 py-1">Categorias principais</p>
+                <div className="space-y-1 max-h-[56vh] overflow-auto pr-1">
+                  {tree.map((main) => {
+                    const active = selectedMainId === main.id
+                    const isEditingThis = editingId === main.id
+
                     return (
                       <div
-                        key={child.id}
-                        className={`ml-6 overflow-hidden rounded-[16px] border-2 shadow-soft ${
-                          isEditingChild ? 'border-coffee/50 bg-offWhite' : childStackTone
+                        key={main.id}
+                        className={`overflow-hidden rounded-[16px] border-2 transition-vintage ${
+                          isEditingThis
+                            ? 'border-coffee/50 bg-offWhite shadow-soft'
+                            : active
+                            ? 'border-coffee/35 bg-offWhite shadow-soft'
+                            : 'border-border/70 bg-paper/70'
                         }`}
                       >
-                        <div className="h-1 bg-gradient-to-r from-petrol via-olive to-gold" />
-                        {isEditingChild ? (
-                          /* ── inline edit form for child ── */
-                          <div className="px-4 py-3 space-y-2">
-                            <input
-                              type="text"
-                              value={draftName}
-                              onChange={(event) => setDraftName(event.target.value)}
-                              autoFocus
-                              className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-                              placeholder="Nome da subcategoria"
-                            />
+                        <div
+                          className={`h-1 ${
+                            main.is_system
+                              ? 'bg-gradient-to-r from-coffee via-petrol to-olive'
+                              : 'bg-gradient-to-r from-terracotta via-gold to-coffee'
+                          }`}
+                        />
+
+                        {isEditingThis ? (
+                          <div className="px-3 py-3 space-y-2">
+                            <div className="flex gap-2 items-center">
+                              <IconPicker value={draftIcon} onSelect={setDraftIcon} />
+                              <input
+                                type="text"
+                                value={draftName}
+                                onChange={(event) => setDraftName(event.target.value)}
+                                autoFocus
+                                className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50"
+                                placeholder="Nome da categoria"
+                              />
+                            </div>
                             <div className="flex gap-2">
                               <button
                                 type="button"
@@ -539,34 +611,42 @@ export default function CategorySettingsModal({
                             </div>
                           </div>
                         ) : (
-                          /* ── normal child view ── */
                           <>
-                            <div className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left">
-                              <div className="min-w-0">
-                                <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">Subcategoria</p>
-                                <span className="block text-sm font-semibold text-ink/80 truncate">{child.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedMainId(main.id)}
+                              className="w-full flex items-center justify-between gap-3 px-3 py-3 text-left"
+                            >
+                              <div className="min-w-0 flex items-center gap-2">
+                                {main.icon && (
+                                  <CategoryIcon name={main.icon} className="w-4 h-4 shrink-0 text-sidebar/60" />
+                                )}
+                                <div className="min-w-0">
+                                  <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">Principal</p>
+                                  <span className="block font-semibold text-sidebar truncate">{main.name}</span>
+                                </div>
                               </div>
                               <div className="flex items-center gap-1 shrink-0">
                                 <button
                                   type="button"
-                                  onClick={() => startEdit(child)}
+                                  onClick={(event) => { event.stopPropagation(); startEdit(main) }}
                                   className="p-1 rounded border border-border text-ink/70 hover:bg-paper"
-                                  aria-label={`Editar ${child.name}`}
+                                  aria-label={`Editar ${main.name}`}
                                 >
                                   <Pencil className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => handleDelete(child)}
+                                  onClick={(event) => { event.stopPropagation(); handleDelete(main) }}
                                   className="p-1 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10"
-                                  aria-label={`Excluir ${child.name}`}
+                                  aria-label={`Excluir ${main.name}`}
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
-                            </div>
-                            <div className="px-4 pb-3 min-h-7 flex items-center">
-                              {child.is_system ? (
+                            </button>
+                            <div className="px-3 pb-3 min-h-7 flex items-center">
+                              {main.is_system ? (
                                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>
                               ) : null}
                             </div>
@@ -576,49 +656,199 @@ export default function CategorySettingsModal({
                     )
                   })}
                 </div>
-              )}
 
-              <div className="mt-3 pt-2 border-t border-border/70 space-y-2">
-                <button
-                  type="button"
-                  onClick={startCreateChild}
-                  className="w-full px-3 py-2 rounded-md bg-petrol text-white text-sm hover:bg-petrol/90 transition-vintage"
-                  disabled={!selectedMain}
-                >
-                  Nova Subcategoria
-                </button>
-                {isChildComposer && !editingId ? (
-                  <div className="space-y-2">
-                    <input
-                      type="text"
-                      value={draftName}
-                      onChange={(event) => setDraftName(event.target.value)}
-                      autoFocus
-                      className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-                      placeholder="Nome da subcategoria"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={resetComposer}
-                        className="px-3 py-2 rounded-lg border border-border text-sm text-ink/70"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={saveComposer}
-                        disabled={saving}
-                        className="px-3 py-2 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60"
-                      >
-                        {saving ? 'Salvando...' : 'Criar'}
-                      </button>
+                <div className="mt-3 pt-2 border-t border-border/70 space-y-2">
+                  <button
+                    type="button"
+                    onClick={startCreateMain}
+                    className="w-full px-3 py-2 rounded-md bg-petrol text-white text-sm hover:bg-petrol/90 transition-vintage"
+                  >
+                    Nova Categoria Principal
+                  </button>
+                  {isMainComposer && !editingId ? (
+                    <div className="space-y-2">
+                      <div className="flex gap-2 items-center">
+                        <IconPicker value={draftIcon} onSelect={setDraftIcon} />
+                        <input
+                          type="text"
+                          value={draftName}
+                          onChange={(event) => setDraftName(event.target.value)}
+                          autoFocus
+                          className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50"
+                          placeholder="Nome da categoria principal"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={resetComposer}
+                          className="px-3 py-2 rounded-lg border border-border text-sm text-ink/70"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={saveComposer}
+                          disabled={saving}
+                          className="px-3 py-2 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60"
+                        >
+                          {saving ? 'Salvando...' : 'Criar'}
+                        </button>
+                      </div>
                     </div>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Right: subcategories */}
+              <div className="rounded-lg border border-border/80 bg-bg/50 p-2">
+                <p className="text-xs uppercase tracking-wide text-ink/50 px-2 py-1">
+                  {selectedMain ? `Subcategorias de ${selectedMain.name}` : 'Subcategorias'}
+                </p>
+                {!selectedMain ? (
+                  <p className="text-sm text-ink/60 px-2 py-3">Selecione uma categoria principal.</p>
+                ) : selectedMain.children.length === 0 && !(isChildComposer && !editingId) ? (
+                  <p className="text-sm text-ink/60 px-2 py-3">Sem subcategorias.</p>
+                ) : (
+                  <div className="space-y-3 max-h-[56vh] overflow-auto pr-1">
+                    <div className={`overflow-hidden rounded-[18px] border-2 ${mainStackTone} shadow-soft`}>
+                      <div className="h-1 bg-gradient-to-r from-coffee via-petrol to-olive" />
+                      <div className="flex items-center justify-between gap-3 px-4 py-3">
+                        <div className="min-w-0 flex items-center gap-2">
+                          {selectedMain.icon && (
+                            <CategoryIcon name={selectedMain.icon} className="w-5 h-5 shrink-0 text-sidebar/60" />
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">Categoria base</p>
+                            <h5 className="text-lg font-semibold text-sidebar truncate">{selectedMain.name}</h5>
+                          </div>
+                        </div>
+                        {selectedMain.is_system ? (
+                          <span className="flex-shrink-0 text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold">
+                            Sistema
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                    {selectedMain.children.map((child) => {
+                      const isEditingChild = editingId === child.id
+                      return (
+                        <div
+                          key={child.id}
+                          className={`ml-6 overflow-hidden rounded-[16px] border-2 shadow-soft ${
+                            isEditingChild ? 'border-coffee/50 bg-offWhite' : childStackTone
+                          }`}
+                        >
+                          <div className="h-1 bg-gradient-to-r from-petrol via-olive to-gold" />
+                          {isEditingChild ? (
+                            <div className="px-4 py-3 space-y-2">
+                              <input
+                                type="text"
+                                value={draftName}
+                                onChange={(event) => setDraftName(event.target.value)}
+                                autoFocus
+                                className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50"
+                                placeholder="Nome da subcategoria"
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={resetComposer}
+                                  className="px-3 py-1.5 rounded-lg border border-border text-sm text-ink/70"
+                                >
+                                  Cancelar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={saveComposer}
+                                  disabled={saving}
+                                  className="px-3 py-1.5 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60"
+                                >
+                                  {saving ? 'Salvando...' : 'Salvar'}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left">
+                                <div className="min-w-0">
+                                  <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">Subcategoria</p>
+                                  <span className="block text-sm font-semibold text-ink/80 truncate">{child.name}</span>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => startEdit(child)}
+                                    className="p-1 rounded border border-border text-ink/70 hover:bg-paper"
+                                    aria-label={`Editar ${child.name}`}
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDelete(child)}
+                                    className="p-1 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10"
+                                    aria-label={`Excluir ${child.name}`}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="px-4 pb-3 min-h-7 flex items-center">
+                                {child.is_system ? (
+                                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>
+                                ) : null}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
-                ) : null}
+                )}
+
+                <div className="mt-3 pt-2 border-t border-border/70 space-y-2">
+                  <button
+                    type="button"
+                    onClick={startCreateChild}
+                    className="w-full px-3 py-2 rounded-md bg-petrol text-white text-sm hover:bg-petrol/90 transition-vintage"
+                    disabled={!selectedMain}
+                  >
+                    Nova Subcategoria
+                  </button>
+                  {isChildComposer && !editingId ? (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={draftName}
+                        onChange={(event) => setDraftName(event.target.value)}
+                        autoFocus
+                        className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50"
+                        placeholder="Nome da subcategoria"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={resetComposer}
+                          className="px-3 py-2 rounded-lg border border-border text-sm text-ink/70"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={saveComposer}
+                          disabled={saving}
+                          className="px-3 py-2 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60"
+                        >
+                          {saving ? 'Salvando...' : 'Criar'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </div>
-          </div>
+          </>
         )}
       </div>
     </Modal>

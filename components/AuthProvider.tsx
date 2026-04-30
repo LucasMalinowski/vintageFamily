@@ -37,8 +37,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
-    // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Check active session with a 10s timeout to prevent infinite loading in PWA
+    const sessionPromise = supabase.auth.getSession()
+    const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
+      setTimeout(() => resolve({ data: { session: null } }), 10000)
+    )
+
+    Promise.race([sessionPromise, timeoutPromise]).then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       setAccessTokenCookie(session?.access_token ?? null)
       if (session?.user) {

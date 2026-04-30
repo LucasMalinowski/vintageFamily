@@ -29,7 +29,7 @@ const isStandaloneMode = () => {
 }
 
 const menuItems = [
-  { icon: User, label: 'Meu perfil', subtitle: 'Dados pessoais e familia', href: '/profile' },
+  { icon: User, label: 'Meu perfil', subtitle: 'Dados pessoais e familia', href: '/settings/profile' },
   { icon: Info, label: 'Sobre o Florim', subtitle: 'A história e o propósito', href: '/sobre' },
   { icon: Bell, label: 'Lembretes', subtitle: 'Lembretes da casa', href: '/reminders' },
   { icon: Settings, label: 'Configurações', subtitle: 'Preferências da conta', href: '/settings' },

@@ -1,27 +1,18 @@
 'use client'
 
-import * as Icons from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Pencil, Search, Tag, X } from 'lucide-react'
 import clsx from 'clsx'
-
-const PINNED_ICONS = [
-  'House', 'Utensils', 'Smile', 'HousePlus', 'Car', 'HeartPlus', 'Shirt',
-  'MonitorPlay', 'Book', 'Guitar', 'Receipt', 'Banknote', 'WalletCards',
-  'BadgeDollarSign', 'TreePalm',
-]
-
-const ALL_ICON_NAMES: string[] = Object.keys(Icons).filter((key) => {
-  if (!(/^[A-Z]/.test(key))) return false
-  const val = (Icons as Record<string, any>)[key]
-  return val != null && typeof val === 'object' && typeof val.displayName === 'string'
-})
+import { ICON_REGISTRY, ICON_MAP, PINNED_ICON_NAMES } from '@/lib/icon-registry'
 
 interface IconPickerProps {
   value: string | null
   onSelect: (name: string | null) => void
 }
+
+const ALL_NAMES = ICON_REGISTRY.map((e) => e.name)
+const PINNED = PINNED_ICON_NAMES.filter((n) => ICON_MAP.has(n))
 
 export default function IconPicker({ value, onSelect }: IconPickerProps) {
   const [open, setOpen] = useState(false)
@@ -33,20 +24,40 @@ export default function IconPicker({ value, onSelect }: IconPickerProps) {
   const updatePosition = () => {
     if (!triggerRef.current) return
     const rect = triggerRef.current.getBoundingClientRect()
-    setDropdownStyle({
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const DROPDOWN_W = Math.min(384, vw - 16)
+    const APPROX_H = 420
+    const GAP = 6
+    const PADDING = 8
+
+    const style: React.CSSProperties = {
       position: 'fixed',
-      top: rect.bottom + 6,
-      left: rect.left,
       zIndex: 9999,
-    })
+      width: DROPDOWN_W,
+    }
+
+    const spaceBelow = vh - rect.bottom - GAP
+    const spaceAbove = rect.top - GAP
+    if (spaceBelow >= APPROX_H || spaceBelow >= spaceAbove) {
+      style.top = rect.bottom + GAP
+      style.maxHeight = Math.max(spaceBelow - PADDING, 200)
+    } else {
+      style.bottom = vh - rect.top + GAP
+      style.maxHeight = Math.max(spaceAbove - PADDING, 200)
+    }
+
+    const left = Math.min(rect.left, vw - DROPDOWN_W - PADDING)
+    style.left = Math.max(PADDING, left)
+
+    setDropdownStyle(style)
   }
 
   useEffect(() => {
     if (!open) return
     updatePosition()
-    const handleScroll = () => updatePosition()
-    window.addEventListener('scroll', handleScroll, true)
-    return () => window.removeEventListener('scroll', handleScroll, true)
+    window.addEventListener('scroll', updatePosition, true)
+    return () => window.removeEventListener('scroll', updatePosition, true)
   }, [open])
 
   useEffect(() => {
@@ -63,24 +74,24 @@ export default function IconPicker({ value, onSelect }: IconPickerProps) {
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  const filteredIcons = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    if (!query) {
-      const rest = ALL_ICON_NAMES.filter((n) => !PINNED_ICONS.includes(n))
-      return [...PINNED_ICONS, ...rest]
+  const filteredNames = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) {
+      const rest = ALL_NAMES.filter((n) => !PINNED.includes(n))
+      return [...PINNED, ...rest]
     }
-    return ALL_ICON_NAMES.filter((n) => n.toLowerCase().includes(query))
+    return ALL_NAMES.filter((n) => n.toLowerCase().includes(q))
   }, [search])
 
-  const CurrentIcon = value ? (Icons as Record<string, any>)[value] : null
+  const CurrentIcon = value ? ICON_MAP.get(value) ?? null : null
 
   const dropdown = open ? (
     <div
       ref={dropdownRef}
       style={dropdownStyle}
-      className="w-96 rounded-[16px] border border-border/70 bg-offWhite shadow-vintage"
+      className="rounded-[16px] border border-border/70 bg-offWhite shadow-vintage overflow-hidden flex flex-col"
     >
-      <div className="p-3 border-b border-border/50">
+      <div className="p-3 border-b border-border/50 shrink-0">
         <div className="flex items-center gap-2 rounded-[10px] border border-border/70 bg-paper px-3 py-2">
           <Search className="w-3.5 h-3.5 shrink-0 text-ink/40" />
           <input
@@ -99,7 +110,7 @@ export default function IconPicker({ value, onSelect }: IconPickerProps) {
         </div>
       </div>
 
-      <div className="p-2">
+      <div className="p-2 overflow-y-auto flex-1">
         <button
           type="button"
           onClick={() => { onSelect(null); setOpen(false) }}
@@ -108,9 +119,9 @@ export default function IconPicker({ value, onSelect }: IconPickerProps) {
           <X className="w-4 h-4" /> Nenhum ícone
         </button>
 
-        <div className="grid grid-cols-6 gap-1 max-h-72 overflow-y-auto pr-1">
-          {filteredIcons.map((name) => {
-            const Icon = (Icons as Record<string, any>)[name]
+        <div className="grid grid-cols-6 gap-1">
+          {filteredNames.map((name) => {
+            const Icon = ICON_MAP.get(name)
             if (!Icon) return null
             const isSelected = name === value
             return (

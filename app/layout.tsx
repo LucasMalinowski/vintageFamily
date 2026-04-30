@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: 'Florim',
   description: 'Gestão financeira familiar com alma vintage',
   manifest: '/manifest.json',
-  themeColor: '#3E5F4B',
+  themeColor: '#FFFFFF',
   viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
   appleWebApp: {
     capable: true,

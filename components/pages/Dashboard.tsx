@@ -396,12 +396,21 @@ export default function Dashboard() {
             </VintageCard>
 
             <VintageCard className="!bg-paper flex h-full flex-col">
-              <div className="flex items-start justify-between gap-2 mb-4">
-                <div className="min-w-0">
-                  <h3 className="text-lg font-body font-thin text-sidebar">Lembretes da casa</h3>
-                  <p className="text-sm text-ink/40">Notas de cuidado.</p>
+              <div className="mb-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-body font-thin text-sidebar">Lembretes da casa</h3>
+                    <p className="text-sm text-ink/40">Notas de cuidado.</p>
+                  </div>
+                  <button
+                    onClick={() => setIsReminderModalOpen(true)}
+                    className="w-9 h-9 rounded-full bg-petrol text-white flex items-center justify-center hover:opacity-90 transition-vintage shrink-0"
+                    aria-label="Novo lembrete"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 mt-2">
                   <button
                     type="button"
                     onClick={() => handleReminderFilterChange('pending')}
@@ -424,7 +433,7 @@ export default function Dashboard() {
                   >
                     Concluídos
                   </button>
-                  <div className="relative group">
+                  <div className="relative group ml-auto">
                     <button
                       type="button"
                       onClick={clearCompleted}
@@ -440,13 +449,6 @@ export default function Dashboard() {
                       </span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setIsReminderModalOpen(true)}
-                    className="w-9 h-9 rounded-full bg-petrol text-white flex items-center justify-center hover:opacity-90 transition-vintage"
-                    aria-label="Novo lembrete"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
 

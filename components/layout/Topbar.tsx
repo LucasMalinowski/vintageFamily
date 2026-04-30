@@ -61,7 +61,6 @@ export default function Topbar({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
-  const totalTrialDays = 15
 
   useEffect(() => {
     const loadHeaderData = async () => {
@@ -189,7 +188,7 @@ export default function Topbar({
   }, [familyId])
 
   return (
-    <div className={`${variant === 'textured' ? 'bg-paper' : 'bg-bg'} px-4 md:px-6`}>
+    <div className={`${variant === 'textured' ? 'bg-paper' : 'bg-bg'} px-4 md:px-6 py-3 md:py-0`}>
       <div className={`${filters ? 'flex flex-col gap-2' : ''}`}>
         <div className="md:min-h-[103px] flex items-center">
           <div className="flex flex-row items-center justify-between w-full gap-3">

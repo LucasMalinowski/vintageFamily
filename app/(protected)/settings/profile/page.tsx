@@ -389,7 +389,7 @@ export default function ProfileSettingsPage() {
               <p className="font-serif text-[22px] text-coffee leading-tight">{profileName || 'Seu nome'}</p>
               <p className="text-sm text-ink/55 mt-1">{profileEmail}</p>
               <label className="mt-2 inline-block cursor-pointer px-3 py-1.5 rounded-lg border border-border text-sm text-ink hover:bg-paper transition-vintage">
-                Trocar avatar
+                Trocar foto
                 <input
                   type="file"
                   accept="image/*"

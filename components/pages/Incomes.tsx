@@ -26,7 +26,7 @@ import {
   ALL_MONTHS_VALUE,
   ALL_YEARS_VALUE,
 } from '@/lib/dates'
-import { ArrowDown, Check, DollarSign, Download, Edit2, SlidersHorizontal, Search, Plus } from 'lucide-react'
+import { ArrowDown, Calendar, Check, DollarSign, Download, Edit2, SlidersHorizontal, Search, Plus, X, Tag } from 'lucide-react'
 import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
 import FilterSheet from '@/components/layout/FilterSheet'
@@ -79,6 +79,7 @@ export default function Incomes() {
 
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const [addMenuOpen, setAddMenuOpen] = useState(false)
+  const [mobileSearchExpanded, setMobileSearchExpanded] = useState(false)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCategorySettingsOpen, setIsCategorySettingsOpen] = useState(false)
@@ -527,16 +528,50 @@ export default function Incomes() {
                 : `${getMonthLabel(selectedMonth).slice(0, 3)}${selectedYear === ALL_YEARS_VALUE ? ' • Todos os anos' : ` ${selectedYear}`}`}
             </span>
           </button>
-          <div className="flex-1 flex items-center relative">
-            <Search className="pointer-events-none absolute left-3 z-10 h-4 w-4 text-petrol" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar..."
-              className="h-[38px] w-full rounded-[10px] border border-border bg-bg pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-paper-2/30"
-            />
-          </div>
+
+          {mobileSearchExpanded ? (
+            <div className="flex-1 flex items-center gap-2">
+              <div className="flex-1 flex items-center relative">
+                <Search className="pointer-events-none absolute left-3 z-10 h-4 w-4 text-petrol" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar..."
+                  autoFocus
+                  className="h-[38px] w-full rounded-[10px] border border-border bg-bg pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-petrol/30"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => { setMobileSearchExpanded(false); setSearchTerm('') }}
+                className="w-[38px] h-[38px] rounded-[10px] border border-border bg-bg text-ink/60 flex items-center justify-center shrink-0"
+                aria-label="Fechar busca"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsCategorySettingsOpen(true)}
+                className="flex-1 flex items-center justify-center gap-1.5 h-[38px] px-3 rounded-[10px] border border-border bg-bg text-petrol text-sm font-medium"
+              >
+                <Tag className="w-4 h-4" />
+                <span>Categorias</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileSearchExpanded(true)}
+                className="w-[38px] h-[38px] rounded-[10px] border border-border bg-bg text-ink/60 flex items-center justify-center shrink-0"
+                aria-label="Buscar"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           <button
             type="button"
             onClick={() => setAddMenuOpen((prev) => !prev)}
@@ -685,73 +720,147 @@ export default function Incomes() {
                       </div>
                     )}
                     <div className="space-y-3">
-                      {group.items.map((income) => (
-                        <div
-                          key={income.id}
-                          className={`flex items-start gap-3 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage ${
-                            updatingIds.includes(income.id) ? 'opacity-60' : ''
-                          }`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => handleToggleReceived(income)}
-                            disabled={updatingIds.includes(income.id)}
-                            className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-vintage disabled:opacity-50 ${
-                              income.status === 'received'
-                                ? 'border-olive bg-olive'
-                                : 'border-amber-400 bg-transparent hover:border-olive'
-                            }`}
-                            aria-label={`Marcar ${income.description} como ${income.status === 'received' ? 'a receber' : 'recebido'}`}
+                      {group.items.map((income) => {
+                        const isUpdating = updatingIds.includes(income.id)
+                        const catLabel = getCategoryLabel(income.category_id, income.category_name)
+                        const catParts = catLabel ? catLabel.split(' / ') : []
+                        const catIcon = income.category_id ? categoryIconMap.get(income.category_id) : null
+                        const isReceived = income.status === 'received'
+                        return (
+                          <div
+                            key={income.id}
+                            className={`transition-vintage ${isUpdating ? 'opacity-60' : ''}`}
                           >
-                            {income.status === 'received' && <Check className="h-3 w-3 text-white" />}
-                          </button>
+                            {/* ── MOBILE card ── */}
+                            <div className="md:hidden rounded-xl overflow-hidden border border-border bg-offWhite shadow-sm flex">
+                              <div className={`w-[3px] shrink-0 ${isReceived ? 'bg-olive' : 'bg-amber-400'}`} />
+                              <div className="flex-1 p-3 min-w-0 space-y-2">
+                                {/* Row 1: checkbox + icon + title + menu */}
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleReceived(income)}
+                                    disabled={isUpdating}
+                                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-vintage disabled:opacity-50 ${
+                                      isReceived ? 'border-olive bg-olive' : 'border-amber-400 bg-transparent'
+                                    }`}
+                                    aria-label={`Marcar ${income.description} como ${isReceived ? 'a receber' : 'recebido'}`}
+                                  >
+                                    {isReceived && <Check className="h-3 w-3 text-white" />}
+                                  </button>
+                                  {catIcon && <CategoryIcon name={catIcon} className="w-4 h-4 shrink-0 text-ink/40" />}
+                                  <h4 className={`flex-1 min-w-0 text-base font-medium font-serif truncate ${isReceived ? 'line-through text-sidebar/50 decoration-sidebar/30' : 'text-sidebar'}`}>
+                                    {income.description}
+                                  </h4>
+                                  <ActionMenu
+                                    onView={() => openDetails(income)}
+                                    onEdit={() => openModal(income)}
+                                    onDelete={() => handleDelete(income.id)}
+                                    onAttach={(file) => handleAttachIncome(income, file)}
+                                    onToggleStatus={() => handleToggleReceived(income)}
+                                    toggleStatusLabel={isReceived ? 'Marcar como A receber' : 'Marcar como Recebido'}
+                                    disabled={isUpdating}
+                                  />
+                                </div>
 
-                          {income.category_id && categoryIconMap.get(income.category_id) && (
-                            <CategoryIcon
-                              name={categoryIconMap.get(income.category_id)}
-                              className="mt-1 w-4 h-4 shrink-0 text-ink/40"
-                            />
-                          )}
+                                {/* Row 2: status badge + date */}
+                                <div className="flex items-center justify-between">
+                                  {isReceived ? (
+                                    <span className="rounded-full bg-olive/15 px-2.5 py-0.5 text-[11px] font-semibold text-olive">Recebido</span>
+                                  ) : (
+                                    <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600">A receber</span>
+                                  )}
+                                  <div className="flex items-center gap-1 text-ink/50 text-[11px]">
+                                    <Calendar className="w-3.5 h-3.5" />
+                                    <span>{formatDate(income.date)}</span>
+                                  </div>
+                                </div>
 
-                          <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 min-w-0">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                <h4 className={`text-xl font-medium font-serif leading-tight transition-vintage ${income.status === 'received' ? 'text-sidebar/60' : 'text-sidebar'}`}>
-                                  {income.description}
-                                </h4>
-                                <span className="rounded-full bg-ink/5 px-2.5 py-0.5 text-[11px] font-medium text-ink/60">
-                                  {formatDate(income.date)}
-                                </span>
-                                {income.status === 'received' && (
-                                  <span className="rounded-full bg-olive/15 px-2.5 py-0.5 text-[11px] font-semibold text-olive">
-                                    Recebido
-                                  </span>
+                                <div className="h-px bg-border/50" />
+
+                                {/* Row 3: VALOR + amount */}
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-wide text-ink/40 font-medium">Valor</p>
+                                  <p className={`font-numbers text-xl font-semibold ${isReceived ? 'text-olive' : 'text-sidebar'}`}>
+                                    {formatBRL(income.amount_cents)}
+                                  </p>
+                                </div>
+
+                                {/* Row 4: category */}
+                                {catParts.length > 0 && (
+                                  <div className="flex items-center gap-1 text-[11px] text-ink/50 min-w-0">
+                                    {catIcon && <CategoryIcon name={catIcon} className="w-3.5 h-3.5 shrink-0 text-ink/40" />}
+                                    <span className="truncate">{catParts[0]}</span>
+                                    {catParts[1] && (
+                                      <>
+                                        <span className="text-ink/30 shrink-0">›</span>
+                                        <span className="truncate">{catParts[1]}</span>
+                                      </>
+                                    )}
+                                  </div>
                                 )}
                               </div>
-                              <CategoryPathStack
-                                label={getCategoryLabel(income.category_id, income.category_name)}
-                                icon={income.category_id ? categoryIconMap.get(income.category_id) : null}
-                                className="mt-1"
-                              />
                             </div>
 
-                            <div className="flex items-center justify-between sm:justify-end gap-4">
-                              <span className={`font-numbers text-lg font-semibold ${income.status === 'received' ? 'text-sidebar/60' : 'text-sidebar'}`}>
-                                {formatBRL(income.amount_cents)}
-                              </span>
-                              <ActionMenu
-                                onView={() => openDetails(income)}
-                                onEdit={() => openModal(income)}
-                                onDelete={() => handleDelete(income.id)}
-                                onAttach={(file) => handleAttachIncome(income, file)}
-                                onToggleStatus={() => handleToggleReceived(income)}
-                                toggleStatusLabel={income.status === 'received' ? 'Marcar como A receber' : 'Marcar como Recebido'}
-                                disabled={updatingIds.includes(income.id)}
-                              />
+                            {/* ── DESKTOP card ── */}
+                            <div className="hidden md:flex items-start gap-3 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleReceived(income)}
+                                disabled={isUpdating}
+                                className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-vintage disabled:opacity-50 ${
+                                  isReceived ? 'border-olive bg-olive' : 'border-amber-400 bg-transparent hover:border-olive'
+                                }`}
+                                aria-label={`Marcar ${income.description} como ${isReceived ? 'a receber' : 'recebido'}`}
+                              >
+                                {isReceived && <Check className="h-3 w-3 text-white" />}
+                              </button>
+
+                              {catIcon && (
+                                <CategoryIcon name={catIcon} className="mt-1 w-4 h-4 shrink-0 text-ink/40" />
+                              )}
+
+                              <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 min-w-0">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <h4 className={`text-xl font-medium font-serif leading-tight transition-vintage ${isReceived ? 'text-sidebar/60' : 'text-sidebar'}`}>
+                                      {income.description}
+                                    </h4>
+                                    <span className="rounded-full bg-ink/5 px-2.5 py-0.5 text-[11px] font-medium text-ink/60">
+                                      {formatDate(income.date)}
+                                    </span>
+                                    {isReceived && (
+                                      <span className="rounded-full bg-olive/15 px-2.5 py-0.5 text-[11px] font-semibold text-olive">
+                                        Recebido
+                                      </span>
+                                    )}
+                                  </div>
+                                  <CategoryPathStack
+                                    label={catLabel}
+                                    icon={catIcon}
+                                    className="mt-1"
+                                  />
+                                </div>
+
+                                <div className="flex items-center justify-between sm:justify-end gap-4">
+                                  <span className={`font-numbers text-lg font-semibold ${isReceived ? 'text-sidebar/60' : 'text-sidebar'}`}>
+                                    {formatBRL(income.amount_cents)}
+                                  </span>
+                                  <ActionMenu
+                                    onView={() => openDetails(income)}
+                                    onEdit={() => openModal(income)}
+                                    onDelete={() => handleDelete(income.id)}
+                                    onAttach={(file) => handleAttachIncome(income, file)}
+                                    onToggleStatus={() => handleToggleReceived(income)}
+                                    toggleStatusLabel={isReceived ? 'Marcar como A receber' : 'Marcar como Recebido'}
+                                    disabled={isUpdating}
+                                  />
+                                </div>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 ))}

@@ -1,6 +1,6 @@
 'use client'
 
-import * as Icons from 'lucide-react'
+import { ICON_MAP } from '@/lib/icon-registry'
 
 interface CategoryIconProps {
   name: string | null | undefined
@@ -9,7 +9,7 @@ interface CategoryIconProps {
 
 export default function CategoryIcon({ name, className = 'w-4 h-4' }: CategoryIconProps) {
   if (!name) return null
-  const Icon = (Icons as Record<string, any>)[name]
-  if (!Icon || typeof Icon.displayName !== 'string') return null
+  const Icon = ICON_MAP.get(name)
+  if (!Icon) return null
   return <Icon className={className} />
 }
