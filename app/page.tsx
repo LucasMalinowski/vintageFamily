@@ -56,16 +56,25 @@ export default function Home() {
       <div className="relative overflow-hidden bg-paper h-[400px] md:h-[85vh]">
         <PublicNavbar color="sidebar" showWordmark={false} />
 
-        {/* Mobile hero — texture-green background with text overlay */}
-        <div
-          className="md:hidden absolute inset-0 flex flex-col justify-end px-7 pb-8 bg-paper"
-        >
-          {/* Dark gradient so text is always readable */}
+        {/* Mobile hero — video background with text overlay */}
+        <div className="md:hidden absolute inset-0 flex flex-col justify-end px-7 pb-8">
+          {/* Full-bleed background video */}
+          <video
+            className="absolute inset-0 w-full h-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+            src="/main-video.mp4"
+          />
+          {/* Gradient overlay for text legibility */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+
           <div className="relative z-10">
-            <h1 className="font-serif font-light text-[34px] leading-[1.1] text-sidebar mb-3">
-              Um sistema de finanças para familias
+            <h1 className="font-serif font-light text-[34px] leading-[1.1] text-paper mb-3">
+              Um sistema de finanças para famílias
             </h1>
-            <p className="text-sidebar/75 text-[14px] leading-relaxed mb-5">
+            <p className="text-paper/80 text-[14px] leading-relaxed mb-5">
               Organize contas, sonhos e combinados. Sem pressão.
             </p>
             <div className="flex gap-[10px]">
@@ -77,7 +86,7 @@ export default function Home() {
               </Link>
               <Link
                 href="/plans"
-                className="px-5 py-3 rounded-full border-[1.5px] border-ink/50 text-ink text-[14px] hover:bg-ink/10 transition-vintage"
+                className="px-5 py-3 rounded-full border-[1.5px] border-paper/60 text-paper text-[14px] hover:bg-white/10 transition-vintage"
               >
                 Ver planos
               </Link>
