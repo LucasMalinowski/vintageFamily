@@ -72,8 +72,26 @@ export default function RootLayout({
           <Script id="sw-register" strategy="afterInteractive">
             {`
               if ('serviceWorker' in navigator) {
+                let refreshing = false;
+                const hadController = Boolean(navigator.serviceWorker.controller);
+
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                  if (!hadController) return;
+                  if (refreshing) return;
+                  refreshing = true;
+                  window.location.reload();
+                });
+
                 window.addEventListener('load', () => {
-                  navigator.serviceWorker.register('/sw.js');
+                  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((registration) => {
+                    const update = () => registration.update().catch(() => {});
+
+                    update();
+                    window.addEventListener('focus', update);
+                    document.addEventListener('visibilitychange', () => {
+                      if (document.visibilityState === 'visible') update();
+                    });
+                  });
                 });
               }
             `}

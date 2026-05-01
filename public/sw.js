@@ -1,4 +1,4 @@
-const CACHE_NAME = 'florim-v3'
+const CACHE_NAME = 'florim-v4'
 const STATIC_ASSETS = [
   '/logo-small.png',
   '/pwa-192.png',
@@ -39,25 +39,33 @@ self.addEventListener('fetch', (event) => {
   // Navigation (HTML pages): network-first, no cache fallback for stale HTML
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() => {
+      fetch(request, { cache: 'no-store' }).catch(() => {
         return caches.match(request)
       })
     )
     return
   }
 
-  // Static image/font assets: cache-first
+  // Static image/font assets: network-first, cache fallback
   const url = new URL(request.url)
   if (/\.(png|jpg|jpeg|svg|ico|webp|woff2?|ttf|otf)$/.test(url.pathname)) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached
-        return fetch(request).then((response) => {
-          if (response.ok) {
-            const clone = response.clone()
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
-          }
-          return response
+      fetch(request, { cache: 'no-store' }).then((response) => {
+        if (response.ok) {
+          const clone = response.clone()
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
+        }
+        return response
+      }).catch(() => {
+        return caches.match(request).then((cached) => {
+          if (cached) return cached
+          return fetch(request).then((response) => {
+            if (response.ok) {
+              const clone = response.clone()
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
+            }
+            return response
+          })
         })
       })
     )
