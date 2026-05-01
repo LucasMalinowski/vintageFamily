@@ -1,5 +1,14 @@
-const CACHE_NAME = 'florim-v2'
-const STATIC_ASSETS = ['/pwa-192.png', '/pwa-512.png', '/favicon.ico']
+const CACHE_NAME = 'florim-v3'
+const STATIC_ASSETS = [
+  '/logo-small.png',
+  '/pwa-192.png',
+  '/pwa-512.png',
+  '/pwa-192-maskable.png',
+  '/pwa-512-maskable.png',
+  '/apple-touch-icon.png',
+  '/favicon-32x32.png',
+  '/favicon.ico',
+]
 
 self.addEventListener('install', (event) => {
   self.skipWaiting()
