@@ -7,6 +7,7 @@ import Topbar from '@/components/layout/Topbar'
 import FilterSidebar from '@/components/layout/FilterSidebar'
 import FilterSearchBar from '@/components/layout/FilterSearchBar'
 import Select from '@/components/ui/Select'
+import MonthYearPicker from '@/components/ui/MonthYearPicker'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
 import CategoryPathStack from '@/components/ui/CategoryPathStack'
@@ -17,17 +18,17 @@ import {
   formatMonthYear,
   getCurrentMonth,
   getCurrentYear,
-  getMonthOptions,
   getMonthLabel,
   getYearLabel,
-  getYearOptions,
   getYearRange,
   isDateWithinFilters,
   ALL_MONTHS_VALUE,
   ALL_YEARS_VALUE,
 } from '@/lib/dates'
+import AnalyticsKpiCard from '@/components/ui/AnalyticsKpiCard'
+import SankeyChart, { SankeyNode, SankeyLink } from '@/components/ui/SankeyChart'
 import { buildInstallmentDates, splitAmountCents } from '@/lib/installments'
-import { Calendar, Check, Edit2, Download, Receipt, SlidersHorizontal, Search, Plus, X, Tag } from 'lucide-react'
+import { Calendar, Check, CheckCircle2, Clock, Edit2, Download, FileDown, FileText, Receipt, SlidersHorizontal, Search, Plus, X, Tag } from 'lucide-react'
 import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
 import FilterSheet from '@/components/layout/FilterSheet'
@@ -90,6 +91,7 @@ const formatPaymentLabel = (method: PaymentMethod | null, installments: number |
 export default function Expenses() {
   const { familyId } = useAuth()
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [rawYearExpenses, setRawYearExpenses] = useState<Expense[]>([])
   const [categories, setCategories] = useState<CategoryRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [updatingIds, setUpdatingIds] = useState<string[]>([])
@@ -257,6 +259,7 @@ export default function Expenses() {
         installment_group_id: row.installment_group_id,
         installment_index: row.installment_index,
       }))
+      setRawYearExpenses(normalized)
       setExpenses(normalized.filter((expense) => isDateWithinFilters(expense.date, selectedMonth, selectedYear)))
     }
     setLoading(false)
@@ -469,6 +472,114 @@ export default function Expenses() {
     .filter(e => e.status === 'paid')
     .reduce((sum, e) => sum + e.amount_cents, 0)
   const open = total - paid
+
+  // Analytics computations
+  const dailyAverage = useMemo(() => {
+    if (selectedMonth === ALL_MONTHS_VALUE || selectedYear === ALL_YEARS_VALUE) return 0
+    const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate()
+    return daysInMonth > 0 ? Math.round(total / daysInMonth) : 0
+  }, [total, selectedMonth, selectedYear])
+
+  const prevMonthTotal = useMemo(() => {
+    if (selectedMonth === ALL_MONTHS_VALUE || selectedMonth === 1 || selectedYear === ALL_YEARS_VALUE) return null
+    const prevM = selectedMonth - 1
+    return rawYearExpenses
+      .filter((e) => {
+        const d = new Date(e.date)
+        return d.getFullYear() === selectedYear && d.getMonth() + 1 === prevM
+      })
+      .reduce((s, e) => s + e.amount_cents, 0)
+  }, [rawYearExpenses, selectedMonth, selectedYear])
+
+  const prevMonthLabel = useMemo(() => {
+    if (selectedMonth === ALL_MONTHS_VALUE || selectedMonth === 1) return null
+    return `${getMonthLabel(selectedMonth - 1).slice(0, 3)}/${selectedYear}`
+  }, [selectedMonth, selectedYear])
+
+  const totalDeltaPct = prevMonthTotal != null && prevMonthTotal > 0
+    ? Math.round(((total - prevMonthTotal) / prevMonthTotal) * 100)
+    : null
+
+  const EXPENSE_CAT_PALETTE = [
+    '#4D9E6A', '#5E8E62', '#4A7A58', '#6FBF8A', '#3E9E6A',
+    '#7AAE82', '#5A9E72', '#8A9E8A', '#3E7A5A', '#6A8E6A',
+  ]
+
+  const categoryBreakdown = useMemo(() => {
+    const map = new Map<string, number>()
+    filteredExpenses.forEach((e) => {
+      const label = getCategoryLabel(e.category_id, e.category_name)
+      map.set(label, (map.get(label) || 0) + e.amount_cents)
+    })
+    return Array.from(map.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredExpenses])
+
+  const paidCategoryBreakdown = useMemo(() => {
+    const map = new Map<string, number>()
+    filteredExpenses.filter(e => e.status === 'paid').forEach((e) => {
+      const label = getCategoryLabel(e.category_id, e.category_name)
+      map.set(label, (map.get(label) || 0) + e.amount_cents)
+    })
+    return Array.from(map.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredExpenses])
+
+  const openCategoryBreakdown = useMemo(() => {
+    const map = new Map<string, number>()
+    filteredExpenses.filter(e => e.status === 'open').forEach((e) => {
+      const label = getCategoryLabel(e.category_id, e.category_name)
+      map.set(label, (map.get(label) || 0) + e.amount_cents)
+    })
+    return Array.from(map.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredExpenses])
+
+  const expenseSankeyData = useMemo(() => {
+    const nodes: SankeyNode[] = [
+      { id: 'total', col: 0, label: 'Total', value: total, color: '#3E5F4B' },
+    ]
+    const links: SankeyLink[] = []
+
+    if (paid > 0) {
+      const paidPct = total > 0 ? Math.round((paid / total) * 100) : 0
+      nodes.push({ id: 'paid_n', col: 1, label: 'Pagas', value: paid, color: '#6FBF8A', pct: `${paidPct}%` })
+      links.push({ from: 'total', to: 'paid_n', value: paid, color: '#6FBF8A' })
+      paidCategoryBreakdown.forEach((c, i) => {
+        const catId = `cat_p_${i}`
+        nodes.push({ id: catId, col: 2, label: c.label, value: c.value, color: EXPENSE_CAT_PALETTE[i % EXPENSE_CAT_PALETTE.length] })
+        links.push({ from: 'paid_n', to: catId, value: c.value, color: EXPENSE_CAT_PALETTE[i % EXPENSE_CAT_PALETTE.length] })
+      })
+    }
+    if (open > 0) {
+      const openPct = total > 0 ? Math.round((open / total) * 100) : 0
+      nodes.push({ id: 'open_n', col: 1, label: 'A pagar', value: open, color: '#C2A45D', pct: `${openPct}%` })
+      links.push({ from: 'total', to: 'open_n', value: open, color: '#C2A45D' })
+      openCategoryBreakdown.forEach((c, i) => {
+        const existing = nodes.find(n => n.col === 2 && n.label === c.label)
+        if (existing) {
+          links.push({ from: 'open_n', to: existing.id, value: c.value, color: '#C2A45D' })
+        } else {
+          const catId = `cat_o_${i}`
+          nodes.push({ id: catId, col: 2, label: c.label, value: c.value, color: '#C2A45D' })
+          links.push({ from: 'open_n', to: catId, value: c.value, color: '#C2A45D' })
+        }
+      })
+    }
+
+    return { nodes, links }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [total, paid, open, paidCategoryBreakdown, openCategoryBreakdown])
+
+  const monthLabel = selectedMonth !== ALL_MONTHS_VALUE
+    ? getMonthLabel(selectedMonth)
+    : 'Todos os meses'
   const sortedExpenses = filteredExpenses.slice().sort((a, b) => b.date.localeCompare(a.date))
   const groupedExpenses = sortedExpenses.reduce<Array<{ label: string; items: Expense[] }>>((groups, expense) => {
     const label = formatMonthYear(expense.date)
@@ -776,7 +887,7 @@ export default function Expenses() {
               </button>
               <button
                 onClick={() => { setIsImportModalOpen(true); setAddMenuOpen(false) }}
-                className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage flex items-center gap-3"
+                className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
               >
                 <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
                   <Download className="w-4 h-4 text-ink/60" />
@@ -784,6 +895,44 @@ export default function Expenses() {
                 <div>
                   <p className="text-sm font-medium text-ink">Importar extrato</p>
                   <p className="text-xs text-ink/45">OFX, CSV de banco</p>
+                </div>
+              </button>
+              <button
+                onClick={() => { setIsCategorySettingsOpen(true); setAddMenuOpen(false) }}
+                className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
+              >
+                <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                  <Tag className="w-4 h-4 text-ink/60" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-ink">Categorias</p>
+                  <p className="text-xs text-ink/45">Gerenciar categorias</p>
+                </div>
+              </button>
+              <button
+                onClick={() => { handleExportCsv(); setAddMenuOpen(false) }}
+                disabled={!sortedExpenses.length || exportingFormat !== null}
+                className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3 disabled:opacity-40"
+              >
+                <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                  <FileDown className="w-4 h-4 text-ink/60" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-ink">Exportar CSV</p>
+                  <p className="text-xs text-ink/45">Planilha com os dados</p>
+                </div>
+              </button>
+              <button
+                onClick={() => { handleExportPdf(); setAddMenuOpen(false) }}
+                disabled={!sortedExpenses.length || exportingFormat !== null}
+                className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage flex items-center gap-3 disabled:opacity-40"
+              >
+                <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                  <FileText className="w-4 h-4 text-ink/60" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-ink">Exportar PDF</p>
+                  <p className="text-xs text-ink/45">Relatório para imprimir</p>
                 </div>
               </button>
             </div>
@@ -801,26 +950,82 @@ export default function Expenses() {
           placeholder="Buscar por nome ou categoria"
           filterChips={activeFilterChips}
           rightSlot={
-            <>
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setIsImportModalOpen(true)}
-                className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
-              >
-                Importar extrato bancário
-              </button>
-              <button
+                type="button"
                 onClick={() => setIsCategorySettingsOpen(true)}
-                className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
+                className="h-[38px] px-4 text-sm bg-bg border border-petrol/25 rounded-[10px] text-petrol font-medium hover:bg-petrol/5 transition-vintage"
               >
                 Categorias
               </button>
-              <button
-                onClick={() => openModal()}
-                className="px-5 py-2 bg-petrol text-white rounded-md hover:bg-petrol/90 transition-vintage text-sm"
-              >
-                Nova Despesa
-              </button>
-            </>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setAddMenuOpen((prev) => !prev)}
+                  className="w-[38px] h-[38px] rounded-[10px] bg-coffee text-paper flex items-center justify-center"
+                  aria-label="Adicionar"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+                {addMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setAddMenuOpen(false)} />
+                    <div className="absolute right-0 top-full mt-1 z-50 bg-offWhite rounded-[14px] border border-border shadow-lg w-64 overflow-hidden animate-popup-in">
+                      <button
+                        onClick={() => { openModal(); setAddMenuOpen(false) }}
+                        className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
+                      >
+                        <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                          <Edit2 className="w-4 h-4 text-ink/60" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-ink">Adicionar manualmente</p>
+                          <p className="text-xs text-ink/45">Preencher um formulário</p>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => { setIsImportModalOpen(true); setAddMenuOpen(false) }}
+                        className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
+                      >
+                        <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                          <Download className="w-4 h-4 text-ink/60" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-ink">Importar extrato</p>
+                          <p className="text-xs text-ink/45">OFX, CSV de banco</p>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => { handleExportCsv(); setAddMenuOpen(false) }}
+                        disabled={!sortedExpenses.length || exportingFormat !== null}
+                        className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3 disabled:opacity-40"
+                      >
+                        <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                          <FileDown className="w-4 h-4 text-ink/60" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-ink">Exportar CSV</p>
+                          <p className="text-xs text-ink/45">Planilha com os dados</p>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => { handleExportPdf(); setAddMenuOpen(false) }}
+                        disabled={!sortedExpenses.length || exportingFormat !== null}
+                        className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage flex items-center gap-3 disabled:opacity-40"
+                      >
+                        <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                          <FileText className="w-4 h-4 text-ink/60" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-ink">Exportar PDF</p>
+                          <p className="text-xs text-ink/45">Relatório para imprimir</p>
+                        </div>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           }
         />
       </div>
@@ -837,23 +1042,10 @@ export default function Expenses() {
               activeFiltersCount={activeFiltersCount}
               onClearFilters={clearFilters}
             >
-              <Select
-                variant="filter"
-                label="Mês"
-                value={selectedMonth.toString()}
-                onChange={(v) =>
-                  setSelectedMonth(v ? parseInt(v, 10) : getCurrentMonth())
-                }
-                options={getMonthOptions(true)}
-              />
-              <Select
-                variant="filter"
-                label="Ano"
-                value={selectedYear.toString()}
-                onChange={(v) =>
-                  setSelectedYear(v ? parseInt(v, 10) : getCurrentYear())
-                }
-                options={getYearOptions(2020, true)}
+              <MonthYearPicker
+                month={selectedMonth}
+                year={selectedYear}
+                onChange={(m, y) => { setSelectedMonth(m); setSelectedYear(y) }}
               />
               <Select
                 variant="filter"
@@ -901,6 +1093,86 @@ export default function Expenses() {
           </div>
 
           <div className="flex-1 min-w-0 flex flex-col px-[18px] pt-3 pb-4 md:px-0 md:pt-0 md:pb-0">
+            {/* ── Analytics section ── */}
+            {!loading && filteredExpenses.length > 0 && (
+              <div className="space-y-4 mb-5">
+                {/* KPI row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <AnalyticsKpiCard
+                    label="Total de Despesas"
+                    value={formatBRL(total)}
+                    sub={totalDeltaPct != null ? `${totalDeltaPct >= 0 ? '↑' : '↓'} ${Math.abs(totalDeltaPct)}% vs ${prevMonthLabel}` : undefined}
+                    subPositive={totalDeltaPct != null && totalDeltaPct > 0}
+                    subNegative={totalDeltaPct != null && totalDeltaPct < 0}
+                    iconTheme="red"
+                    icon={Receipt}
+                  />
+                  <AnalyticsKpiCard
+                    label="Pagas"
+                    value={formatBRL(paid)}
+                    sub={total > 0 ? `${Math.round((paid / total) * 100)}% do total` : undefined}
+                    subPositive
+                    iconTheme="green"
+                    icon={CheckCircle2}
+                  />
+                  <AnalyticsKpiCard
+                    label="A Pagar"
+                    value={formatBRL(open)}
+                    sub={total > 0 ? `${Math.round((open / total) * 100)}% do total` : undefined}
+                    iconTheme="orange"
+                    icon={Clock}
+                  />
+                </div>
+
+                {/* Sankey card */}
+                {total > 0 && (expenseSankeyData.nodes.length > 1) && (
+                  <div className="bg-white rounded-xl border border-border shadow-soft p-4 md:p-5">
+                    <h3 className="text-sm font-semibold text-ink font-serif mb-3">
+                      Fluxo de despesas ({monthLabel}/{selectedYear !== ALL_YEARS_VALUE ? selectedYear : '—'})
+                    </h3>
+                    {/* Desktop: 3-col sankey + legend */}
+                    <div className="hidden md:flex gap-6 items-start">
+                      <div className="flex-1 min-w-0">
+                        <SankeyChart
+                          nodes={expenseSankeyData.nodes}
+                          links={expenseSankeyData.links}
+                          width={560}
+                          height={250}
+                        />
+                      </div>
+                      <div className="w-44 shrink-0 pt-1 flex flex-col gap-2">
+                        {categoryBreakdown.slice(0, 8).map((c, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-[2px] shrink-0" style={{ background: '#4D9E6A' }} />
+                            <span className="text-[11px] text-ink flex-1 truncate">{c.label}</span>
+                            <span className="text-[11px] text-ink/55 tabular-nums shrink-0">{formatBRL(c.value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Mobile: 2-col sankey with col0→col1 links */}
+                    <div className="md:hidden space-y-3">
+                      {(() => {
+                        const mn = expenseSankeyData.nodes.filter(n => n.col < 2)
+                        const mids = new Set(mn.map(n => n.id))
+                        const ml = expenseSankeyData.links.filter(l => mids.has(l.from) && mids.has(l.to))
+                        return <SankeyChart nodes={mn} links={ml} width={300} height={120} />
+                      })()}
+                      <div className="flex flex-col gap-1.5">
+                        {categoryBreakdown.slice(0, 6).map((c, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-[2px] shrink-0" style={{ background: '#4D9E6A' }} />
+                            <span className="text-[11px] text-ink flex-1 truncate">{c.label}</span>
+                            <span className="text-[11px] text-ink/55 tabular-nums shrink-0">{formatBRL(c.value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {loading ? (
               <div className="text-center py-12 text-ink/60">Carregando...</div>
             ) : filteredExpenses.length === 0 ? (
@@ -1115,36 +1387,6 @@ export default function Expenses() {
 
       {/* Desktop footer */}
       <footer className="hidden md:block mt-auto w-full">
-        <div className="px-6 mb-4">
-          <div className="flex flex-row gap-4 justify-center items-center">
-            <div className="flex-1 rounded-[16px] px-6 py-5 bg-petrol text-white text-center shadow-soft">
-              <div className="text-xs uppercase tracking-wide text-white/80 mb-1">Em aberto</div>
-              <div className="font-numbers text-xl font-medium">{formatBRL(open)}</div>
-            </div>
-            <div className="flex-1 rounded-[16px] px-6 py-5 bg-olive text-white text-center shadow-soft">
-              <div className="text-xs uppercase tracking-wide text-white/80 mb-1">Pago</div>
-              <div className="font-numbers text-xl font-medium">{formatBRL(paid)}</div>
-            </div>
-          </div>
-          <div className="flex flex-row justify-end gap-3 mt-6">
-            <button
-              type="button"
-              onClick={handleExportCsv}
-              disabled={!sortedExpenses.length || exportingFormat !== null}
-              className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
-            >
-              {exportingFormat === 'csv' ? 'Gerando CSV...' : 'Gerar CSV'}
-            </button>
-            <button
-              type="button"
-              onClick={handleExportPdf}
-              disabled={!sortedExpenses.length || exportingFormat !== null}
-              className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
-            >
-              {exportingFormat === 'pdf' ? 'Gerando PDF...' : 'Gerar PDF'}
-            </button>
-          </div>
-        </div>
         <div className="h-[56px] bg-paper flex items-center justify-center px-6">
           <p className="text-center text-[13px] text-gold italic">
             Cada conta paga é um gesto de cuidado com o amanhã da família.

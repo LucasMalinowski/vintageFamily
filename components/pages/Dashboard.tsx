@@ -334,7 +334,7 @@ export default function Dashboard() {
             <div className="w-10 h-px bg-gold/60 mx-auto mt-5" />
           </div>
 
-          <div className="flex justify-center">
+          <div className="flex justify-center pt-4 md:pt-0">
             <p className="max-w-xl text-center text-ink/60 font-ptSerif italic text-base md:text-lg leading-relaxed min-h-[2.5em]">
               {displayed}
               <span

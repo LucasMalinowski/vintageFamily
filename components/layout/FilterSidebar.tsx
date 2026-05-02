@@ -52,7 +52,7 @@ export default function FilterSidebar({
 
   return (
     <aside className={`${open ? expandedWidthClass : collapsedWidthClass} shrink-0 transition-all duration-300 overflow-hidden ${open ? 'h-full' : ''}`}>
-      <div className="sticky top-4 h-[calc(100vh-210px)] flex flex-col">
+      <div className="sticky top-4 flex flex-col max-h-[calc(100vh-210px)]">
         {showToggle ? (
           <button
             type="button"
@@ -66,7 +66,7 @@ export default function FilterSidebar({
         ) : null}
 
         {open ? (
-          <div className={`${showToggle ? 'mt-3' : ''} flex-1 rounded-[18px] border-2 border-border/40 bg-offWhite p-3`}>
+          <div className={`${showToggle ? 'mt-3' : ''} rounded-[18px] border-2 border-border/40 bg-offWhite p-3 overflow-y-auto`}>
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="text-sm leading-none font-semibold text-ink/60">
                 Filtros <span className="text-ink/40 text-xs">({activeFiltersCount})</span>
@@ -81,7 +81,7 @@ export default function FilterSidebar({
                 </button>
               ) : null}
             </div>
-            <div className="space-y-4 h-[calc(100%-52px)] overflow-auto pr-1">
+            <div className="space-y-4 pr-1">
               {children}
             </div>
           </div>

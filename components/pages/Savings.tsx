@@ -3,9 +3,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import Topbar from '@/components/layout/Topbar'
+import AnalyticsKpiCard from '@/components/ui/AnalyticsKpiCard'
+import SankeyChart, { SankeyNode, SankeyLink } from '@/components/ui/SankeyChart'
 import FilterSidebar from '@/components/layout/FilterSidebar'
 import FilterSearchBar from '@/components/layout/FilterSearchBar'
 import Select from '@/components/ui/Select'
+import MonthYearPicker from '@/components/ui/MonthYearPicker'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
 import ActionMenu from '@/components/ui/ActionMenu'
@@ -18,15 +21,13 @@ import {
   getCurrentMonth,
   getCurrentYear,
   getMonthLabel,
-  getMonthOptions,
   getYearLabel,
-  getYearOptions,
   getYearRange,
   isDateWithinFilters,
   ALL_MONTHS_VALUE,
   ALL_YEARS_VALUE,
 } from '@/lib/dates'
-import { PiggyBank, SlidersHorizontal, Search, Plus, TrendingDown, TrendingUp } from 'lucide-react'
+import { FileDown, FileText, Folder, PiggyBank, SlidersHorizontal, Search, Plus, Tag, Target, TrendingDown, TrendingUp, X } from 'lucide-react'
 import CategoryIcon from '@/components/ui/CategoryIcon'
 import { matchesSearch } from '@/lib/filterSearch'
 import FilterSheet from '@/components/layout/FilterSheet'
@@ -110,6 +111,7 @@ export default function Savings() {
   const { familyId } = useAuth()
   const [savings, setSavings] = useState<Saving[]>([])
   const [contributions, setContributions] = useState<Contribution[]>([])
+  const [allTimeContributions, setAllTimeContributions] = useState<Contribution[]>([])
   const [loading, setLoading] = useState(true)
 
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
@@ -120,6 +122,7 @@ export default function Savings() {
 
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const [addMenuOpen, setAddMenuOpen] = useState(false)
+  const [mobileSearchExpanded, setMobileSearchExpanded] = useState(false)
 
   // modals
   const [isDepositOpen, setIsDepositOpen] = useState(false)
@@ -205,10 +208,19 @@ export default function Savings() {
     setLoading(false)
   }
 
+  async function loadAllTimeContributions() {
+    const { data } = await supabase
+      .from('savings_contributions')
+      .select('saving_id,amount_cents,date,type')
+      .eq('family_id', familyId!)
+    setAllTimeContributions((data || []) as Contribution[])
+  }
+
   useEffect(() => {
     if (familyId) {
       loadSavings()
       loadContributions()
+      loadAllTimeContributions()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [familyId, selectedMonth, selectedYear, selectedSavingId])
@@ -310,6 +322,106 @@ export default function Savings() {
 
     return totals
   }, [savings, contributions])
+
+  // Analytics
+  const totalBalance = useMemo(
+    () => allTimeContributions.reduce((s, c) => s + (c.type === 'withdrawal' ? -c.amount_cents : c.amount_cents), 0),
+    [allTimeContributions],
+  )
+
+  const periodDeposits = useMemo(
+    () => contributions.filter((c) => c.type !== 'withdrawal').reduce((s, c) => s + c.amount_cents, 0),
+    [contributions],
+  )
+
+  const periodWithdrawals = useMemo(
+    () => contributions.filter((c) => c.type === 'withdrawal').reduce((s, c) => s + c.amount_cents, 0),
+    [contributions],
+  )
+
+  const globalTarget = useMemo(
+    () => savings.filter((s) => !s.parent_id && s.target_cents).reduce((s, sv) => s + (sv.target_cents || 0), 0),
+    [savings],
+  )
+  const globalProgressPct = globalTarget > 0 ? Math.round((totalBalance / globalTarget) * 100) : null
+
+  const periodIncome = useMemo(
+    () => contributions.filter((c) => c.type === 'income').reduce((s, c) => s + c.amount_cents, 0),
+    [contributions],
+  )
+
+  const savingsSankeyData = useMemo(() => {
+    const nodes: SankeyNode[] = []
+    const links: SankeyLink[] = []
+
+    if (periodDeposits <= 0 && periodWithdrawals <= 0) return { nodes, links }
+
+    const periodStartBalance = totalBalance - periodDeposits + periodWithdrawals
+
+    // Col 0: input sources
+    if (periodStartBalance > 0) {
+      nodes.push({ id: 'prev', col: 0, label: 'Saldo inicial', value: periodStartBalance, color: '#2F6F7E' })
+    }
+    if (periodDeposits > 0) {
+      nodes.push({ id: 'dep', col: 0, label: 'Aportes', value: periodDeposits, color: '#3E9E6A' })
+    }
+
+    // Col 1: output destinations
+    if (totalBalance > 0) {
+      nodes.push({ id: 'cur', col: 1, label: 'Saldo atual', value: totalBalance, color: '#1F4D5E' })
+    }
+    if (periodWithdrawals > 0) {
+      nodes.push({ id: 'wit', col: 1, label: 'Resgates', value: periodWithdrawals, color: '#C06060' })
+    }
+
+    // Withdrawals come from deposits first, then from initial balance
+    const witFromDep = Math.min(periodDeposits, periodWithdrawals)
+    const depNet = periodDeposits - witFromDep
+    const witFromPrev = periodWithdrawals - witFromDep
+
+    if (periodDeposits > 0) {
+      if (depNet > 0 && totalBalance > 0) {
+        links.push({ from: 'dep', to: 'cur', value: depNet, color: '#3E9E6A' })
+      }
+      if (witFromDep > 0) {
+        links.push({ from: 'dep', to: 'wit', value: witFromDep, color: '#C06060' })
+      }
+    }
+
+    if (periodStartBalance > 0) {
+      const prevToCur = periodStartBalance - witFromPrev
+      if (prevToCur > 0 && totalBalance > 0) {
+        links.push({ from: 'prev', to: 'cur', value: prevToCur, color: '#2F6F7E' })
+      }
+      if (witFromPrev > 0) {
+        links.push({ from: 'prev', to: 'wit', value: Math.min(witFromPrev, periodStartBalance), color: '#C06060' })
+      }
+    }
+
+    return { nodes, links }
+  }, [periodDeposits, periodWithdrawals, totalBalance])
+
+  const monthLabelSav = selectedMonth !== ALL_MONTHS_VALUE ? getMonthLabel(selectedMonth) : 'Todos'
+
+  const perSavingAnalytics = useMemo(() => {
+    return savings.filter((s) => !s.parent_id).map((s) => {
+      const allTimeDep = allTimeContributions
+        .filter((c) => c.saving_id === s.id && c.type !== 'withdrawal')
+        .reduce((sum, c) => sum + c.amount_cents, 0)
+      const allTimeWit = allTimeContributions
+        .filter((c) => c.saving_id === s.id && c.type === 'withdrawal')
+        .reduce((sum, c) => sum + c.amount_cents, 0)
+      const balance = allTimeDep - allTimeWit
+      const periodDep = contributions
+        .filter((c) => c.saving_id === s.id && c.type !== 'withdrawal')
+        .reduce((sum, c) => sum + c.amount_cents, 0)
+      const periodWit = contributions
+        .filter((c) => c.saving_id === s.id && c.type === 'withdrawal')
+        .reduce((sum, c) => sum + c.amount_cents, 0)
+      const prevBalance = balance - periodDep + periodWit
+      return { saving: s, balance, prevBalance, periodDep, periodWit }
+    })
+  }, [savings, allTimeContributions, contributions])
 
   const visibleSavings = (
     selectedSavingId ? savings.filter((s) => s.id === selectedSavingId) : savings
@@ -464,39 +576,123 @@ export default function Savings() {
                 : `${getMonthLabel(selectedMonth).slice(0, 3)}${selectedYear === ALL_YEARS_VALUE ? ' • Todos os anos' : ` ${selectedYear}`}`}
             </span>
           </button>
-          <div className="flex-1 flex items-center relative">
-            <Search className="pointer-events-none absolute left-3 z-10 h-4 w-4 text-petrol" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar..."
-              className="h-[38px] w-full rounded-[10px] border border-border bg-bg pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-paper-2/30"
-            />
-          </div>
+
+          {mobileSearchExpanded ? (
+            <div className="flex-1 flex items-center gap-2">
+              <div className="flex-1 flex items-center relative">
+                <Search className="pointer-events-none absolute left-3 z-10 h-4 w-4 text-petrol" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar..."
+                  autoFocus
+                  className="h-[38px] w-full rounded-[10px] border border-border bg-bg pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-petrol/30"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => { setMobileSearchExpanded(false); setSearchTerm('') }}
+                className="w-[38px] h-[38px] rounded-[10px] border border-border bg-bg text-ink/60 flex items-center justify-center shrink-0"
+                aria-label="Fechar busca"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsDepositOpen(true)}
+                className="flex-1 flex items-center justify-center gap-1.5 h-[38px] px-3 rounded-[10px] border border-border bg-bg text-petrol text-sm font-medium"
+              >
+                <TrendingUp className="w-4 h-4" />
+                <span>Guardar</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileSearchExpanded(true)}
+                className="w-[38px] h-[38px] rounded-[10px] border border-border bg-bg text-ink/60 flex items-center justify-center shrink-0"
+                aria-label="Buscar"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           <button
             type="button"
             onClick={() => setAddMenuOpen((prev) => !prev)}
             className="w-[38px] h-[38px] rounded-[10px] bg-coffee text-paper flex items-center justify-center shrink-0"
-            aria-label="Adicionar"
+            aria-label="Mais opções"
           >
             <Plus className="w-5 h-5" />
           </button>
           {addMenuOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setAddMenuOpen(false)} />
-              <div className="absolute right-0 top-full mt-1 z-50 bg-offWhite rounded-[14px] border border-border shadow-lg w-52 overflow-hidden animate-popup-in">
+              <div className="absolute right-0 top-full mt-1 z-50 bg-offWhite rounded-[14px] border border-border shadow-lg w-64 overflow-hidden animate-popup-in">
                 <button
                   onClick={() => { setIsDepositOpen(true); setAddMenuOpen(false) }}
-                  className="w-full text-left px-4 py-3.5 text-sm text-ink hover:bg-paper transition-vintage"
+                  className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
                 >
-                  Guardar em poupança
+                  <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                    <TrendingUp className="w-4 h-4 text-ink/60" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-ink">Guardar em poupança</p>
+                    <p className="text-xs text-ink/45">Registrar depósito</p>
+                  </div>
                 </button>
                 <button
                   onClick={() => { setIsWithdrawalOpen(true); setAddMenuOpen(false) }}
-                  className="w-full text-left px-4 py-3.5 text-sm text-ink hover:bg-paper transition-vintage"
+                  className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
                 >
-                  Resgatar da poupança
+                  <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                    <TrendingDown className="w-4 h-4 text-ink/60" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-ink">Resgatar da poupança</p>
+                    <p className="text-xs text-ink/45">Registrar retirada</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { setIsSavingSettingsOpen(true); setAddMenuOpen(false) }}
+                  className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
+                >
+                  <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                    <Tag className="w-4 h-4 text-ink/60" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-ink">Categorias</p>
+                    <p className="text-xs text-ink/45">Gerenciar poupanças</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { handleExportCsv(); setAddMenuOpen(false) }}
+                  disabled={!visibleSavings.length || exportingFormat !== null}
+                  className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3 disabled:opacity-40"
+                >
+                  <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                    <FileDown className="w-4 h-4 text-ink/60" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-ink">Exportar CSV</p>
+                    <p className="text-xs text-ink/45">Planilha com os dados</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { handleExportPdf(); setAddMenuOpen(false) }}
+                  disabled={!visibleSavings.length || exportingFormat !== null}
+                  className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage flex items-center gap-3 disabled:opacity-40"
+                >
+                  <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4 text-ink/60" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-ink">Exportar PDF</p>
+                    <p className="text-xs text-ink/45">Relatório para imprimir</p>
+                  </div>
                 </button>
               </div>
             </>
@@ -513,27 +709,82 @@ export default function Savings() {
             placeholder="Buscar por nome ou categoria"
             filterChips={activeFilterChips}
             rightSlot={
-              <>
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setIsDepositOpen(true)}
-                  className="min-w-[140px] px-5 py-2 bg-sidebar text-white rounded-md hover:bg-olive/90 transition-vintage text-sm font-semibold"
-                >
-                  Guardar
-                </button>
-                <button
+                  type="button"
                   onClick={() => setIsSavingSettingsOpen(true)}
-                  className="px-5 py-2 bg-petrol text-white rounded-md hover:bg-petrol/90 transition-vintage text-sm font-semibold"
+                  className="h-[38px] px-4 text-sm bg-bg border border-petrol/25 rounded-[10px] text-petrol font-medium hover:bg-petrol/5 transition-vintage"
                 >
                   Categorias
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setIsWithdrawalOpen(true)}
-                  className="px-5 py-2 bg-petrol text-white rounded-md hover:bg-petrol/90 transition-vintage text-sm font-semibold"
-                >
-                  Resgatar
-                </button>
-              </>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setAddMenuOpen((prev) => !prev)}
+                    className="w-[38px] h-[38px] rounded-[10px] bg-coffee text-paper flex items-center justify-center"
+                    aria-label="Mais opções"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                  {addMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setAddMenuOpen(false)} />
+                      <div className="absolute right-0 top-full mt-1 z-50 bg-offWhite rounded-[14px] border border-border shadow-lg w-64 overflow-hidden animate-popup-in">
+                        <button
+                          onClick={() => { setIsDepositOpen(true); setAddMenuOpen(false) }}
+                          className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
+                        >
+                          <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                            <TrendingUp className="w-4 h-4 text-ink/60" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-ink">Guardar em poupança</p>
+                            <p className="text-xs text-ink/45">Registrar depósito</p>
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => { setIsWithdrawalOpen(true); setAddMenuOpen(false) }}
+                          className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
+                        >
+                          <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                            <TrendingDown className="w-4 h-4 text-ink/60" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-ink">Resgatar da poupança</p>
+                            <p className="text-xs text-ink/45">Registrar retirada</p>
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => { handleExportCsv(); setAddMenuOpen(false) }}
+                          disabled={!visibleSavings.length || exportingFormat !== null}
+                          className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3 disabled:opacity-40"
+                        >
+                          <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                            <FileDown className="w-4 h-4 text-ink/60" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-ink">Exportar CSV</p>
+                            <p className="text-xs text-ink/45">Planilha com os dados</p>
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => { handleExportPdf(); setAddMenuOpen(false) }}
+                          disabled={!visibleSavings.length || exportingFormat !== null}
+                          className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage flex items-center gap-3 disabled:opacity-40"
+                        >
+                          <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                            <FileText className="w-4 h-4 text-ink/60" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-ink">Exportar PDF</p>
+                            <p className="text-xs text-ink/45">Relatório para imprimir</p>
+                          </div>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             }
           />
         </div>
@@ -550,19 +801,10 @@ export default function Savings() {
                 activeFiltersCount={activeFiltersCount}
                 onClearFilters={clearFilters}
               >
-                <Select
-                  variant="filter"
-                  label="Mês"
-                  value={selectedMonth.toString()}
-                  onChange={(value) => setSelectedMonth(parseInt(value))}
-                  options={getMonthOptions(true)}
-                />
-                <Select
-                  variant="filter"
-                  label="Ano"
-                  value={selectedYear.toString()}
-                  onChange={(value) => setSelectedYear(parseInt(value))}
-                  options={getYearOptions(2020, true)}
+                <MonthYearPicker
+                  month={selectedMonth}
+                  year={selectedYear}
+                  onChange={(m, y) => { setSelectedMonth(m); setSelectedYear(y) }}
                 />
                 <Select
                   variant="filter"
@@ -575,134 +817,146 @@ export default function Savings() {
             </div>
 
             <div className="flex-1 min-w-0 flex flex-col px-[18px] pt-3 pb-4 md:px-0 md:pt-0 md:pb-0">
-              {loading ? (
-                <div className="text-center py-12 text-ink/60">Carregando...</div>
-              ) : visibleSavings.length === 0 ? (
-                <EmptyState
-                  icon={<PiggyBank className="w-16 h-16" />}
-                  message="Ainda não há poupanças cadastradas."
-                  submessage="Use o botão + para adicionar uma poupança e registrar um valor guardado."
-                />
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {visibleSavings.map((saving) => {
-                    const totals = savingTotals.get(saving.id)
-                    const total = totals?.total ?? 0
-                    const lastDate = totals?.lastDate
+              {/* ── Analytics section ── */}
+              {!loading && savings.length > 0 && (
+                <div className="space-y-4 mb-5">
+                  {/* Row 1: current state */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <AnalyticsKpiCard
+                      label="Saldo atual"
+                      value={formatBRL(totalBalance)}
+                      iconTheme="teal"
+                      icon={PiggyBank}
+                    />
+                    {globalProgressPct != null ? (
+                      <AnalyticsKpiCard
+                        label="Meta global"
+                        value={`${Math.min(globalProgressPct, 100)}%`}
+                        sub={`de ${formatBRL(globalTarget)}`}
+                        iconTheme="orange"
+                        icon={Target}
+                      />
+                    ) : (
+                      <AnalyticsKpiCard
+                        label="Poupanças"
+                        value={String(savings.filter(s => !s.parent_id).length)}
+                        sub="categorias ativas"
+                        iconTheme="blue"
+                        icon={Folder}
+                      />
+                    )}
+                  </div>
 
-                    return (
-                      <div
-                        key={saving.id}
-                        className="p-4 bg-offWhite rounded-[12px] border border-border hover:shadow-soft transition-vintage"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex flex-row gap-2 items-end">
-                            {saving.icon && (
-                              <CategoryIcon name={saving.icon} className="w-5 h-5 text-sidebar/60 shrink-0 mb-1" />
-                            )}
-                            <h4 className="text-xl font-medium text-sidebar font-serif">{getSavingLabel(saving.id)}</h4>
-                            {saving.is_system ? (
-                              <span className="flex text-center text-[11px] h-5 px-2 py-0.5 my-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>
-                            ) : null}
-                          </div>
-                          <ActionMenu
-                            onDeposit={() => { setDepositForm({ ...emptyTxForm(), savingId: saving.id }); setIsDepositOpen(true) }}
-                            onWithdrawal={() => { setWithdrawalForm({ ...emptyTxForm(), savingId: saving.id }); setIsWithdrawalOpen(true) }}
-                            onView={() => openDetails(saving)}
-                            onEdit={() => openEdit(saving)}
-                          />
-                        </div>
-                        <p className="text-sm text-ink/25 mb-2">
-                          Última atualização {lastDate ? formatDate(lastDate) : '—'}
-                        </p>
-                        {saving.target_cents ? (
-                          <p className="text-xs text-ink/40 mb-1">
-                            Meta: {formatBRL(saving.target_cents)}
+                  {/* Row 2: period activity */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <AnalyticsKpiCard
+                      label="Aportes no mês"
+                      value={formatBRL(periodDeposits)}
+                      iconTheme="green"
+                      icon={TrendingUp}
+                      small
+                    />
+                    <AnalyticsKpiCard
+                      label="Rendimentos"
+                      value={formatBRL(periodIncome)}
+                      iconTheme="blue"
+                      icon={TrendingUp}
+                      small
+                    />
+                    <AnalyticsKpiCard
+                      label="Resgates no mês"
+                      value={formatBRL(periodWithdrawals)}
+                      iconTheme="red"
+                      icon={TrendingDown}
+                      small
+                    />
+                  </div>
+
+                  {/* Savings flow chart */}
+                  {savingsSankeyData.nodes.length >= 2 && savingsSankeyData.links.length > 0 && (
+                    <div className="bg-white rounded-xl border border-border shadow-soft p-4 md:p-5">
+                      <h3 className="text-sm font-semibold text-ink font-serif mb-3">
+                        Fluxo da poupança — {monthLabelSav}/{selectedYear !== ALL_YEARS_VALUE ? selectedYear : '—'}
+                      </h3>
+                      <SankeyChart
+                        nodes={savingsSankeyData.nodes}
+                        links={savingsSankeyData.links}
+                        width={560}
+                        height={200}
+                      />
+                      {(() => {
+                        const net = periodDeposits - periodWithdrawals
+                        return (
+                          <p className="mt-3 text-[12px] font-semibold" style={{ color: net >= 0 ? '#3E9E6A' : '#C06060' }}>
+                            Saldo líquido no período: {net >= 0 ? '+' : ''}{formatBRL(net)}
                           </p>
-                        ) : null}
-                        <div className="text-center">
-                          <div className="font-numbers text-3xl font-semibold text-sidebar leading-tight">
-                            {formatBRL(total)}
-                          </div>
-                        </div>
+                        )
+                      })()}
+                    </div>
+                  )}
+
+                  {/* Category breakdown table (desktop) */}
+                  {perSavingAnalytics.length > 0 && (
+                    <div className="hidden md:block bg-white rounded-xl border border-border shadow-soft overflow-hidden">
+                      <div className="px-5 py-3 border-b border-border">
+                        <h3 className="text-sm font-semibold text-ink font-serif">Categorias</h3>
                       </div>
-                    )
-                  })}
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[12px]">
+                          <thead>
+                            <tr>
+                              {['Categoria', 'Saldo Anterior', 'Aportes', 'Resgates', 'Saldo Atual', 'Meta'].map((h, i) => (
+                                <th key={h} className={`px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-ink/45 border-b border-border ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {perSavingAnalytics.map(({ saving, balance, prevBalance, periodDep, periodWit }) => (
+                              <tr key={saving.id} className="border-b border-border/50 hover:bg-paper/50 transition-colors">
+                                <td className="px-4 py-2.5 text-ink font-medium">{saving.name}</td>
+                                <td className="px-4 py-2.5 text-right text-ink/70 tabular-nums">{formatBRL(prevBalance)}</td>
+                                <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#3E9E6A' }}>{periodDep > 0 ? `+${formatBRL(periodDep)}` : '—'}</td>
+                                <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#C06060' }}>{periodWit > 0 ? formatBRL(periodWit) : '—'}</td>
+                                <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-ink">{formatBRL(balance)}</td>
+                                <td className="px-4 py-2.5 text-right tabular-nums text-ink/60">{saving.target_cents ? formatBRL(saving.target_cents) : '—'}</td>
+                              </tr>
+                            ))}
+                            <tr className="bg-paper/60">
+                              <td className="px-4 py-2.5 font-bold text-ink">Total</td>
+                              <td className="px-4 py-2.5 text-right font-bold tabular-nums text-ink">{formatBRL(totalBalance - periodDeposits + periodWithdrawals)}</td>
+                              <td className="px-4 py-2.5 text-right font-bold tabular-nums" style={{ color: '#3E9E6A' }}>{formatBRL(periodDeposits)}</td>
+                              <td className="px-4 py-2.5 text-right font-bold tabular-nums" style={{ color: '#C06060' }}>{periodWithdrawals > 0 ? formatBRL(periodWithdrawals) : '—'}</td>
+                              <td className="px-4 py-2.5 text-right font-bold tabular-nums text-ink">{formatBRL(totalBalance)}</td>
+                              <td className="px-4 py-2.5 text-right font-bold tabular-nums text-ink/60">{perSavingAnalytics.reduce((s, { saving: sv }) => s + (sv.target_cents ?? 0), 0) > 0 ? formatBRL(perSavingAnalytics.reduce((s, { saving: sv }) => s + (sv.target_cents ?? 0), 0)) : '—'}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
+
+
             </div>
           </div>
         </div>
 
         {/* Mobile footer — sticky outside scroll */}
-        <div className="md:hidden shrink-0 px-[18px] pt-3 pb-2 border-t border-border bg-offWhite">
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => setIsDepositOpen(true)}
-              className="flex-1 py-4 bg-olive text-white rounded-[16px] font-semibold text-base hover:bg-olive/90 transition-vintage shadow-soft"
-            >
-              Guardar
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsWithdrawalOpen(true)}
-              className="flex-1 py-4 bg-paper text-ink border border-border rounded-[16px] font-semibold text-base hover:bg-bg transition-vintage shadow-soft"
-            >
-              Resgatar
-            </button>
-          </div>
-          <div className="h-[44px] flex items-center justify-center">
-            <p className="text-center text-[13px] text-gold italic">
-              Poupança é um abraço longo no amanhã.
-            </p>
-          </div>
+        <div className="md:hidden shrink-0 h-[42px] flex items-center justify-center border-t border-border bg-offWhite">
+          <p className="text-center text-[13px] text-gold italic">
+            Poupança é um abraço longo no amanhã.
+          </p>
         </div>
 
         {/* Desktop footer */}
         <footer className="hidden md:block mt-auto w-full">
-          <div className="px-6 mb-4">
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setIsDepositOpen(true)}
-                className="flex-1 py-4 bg-olive text-white rounded-[16px] font-semibold text-base hover:bg-olive/90 transition-vintage shadow-soft"
-              >
-                Guardar
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsWithdrawalOpen(true)}
-                className="flex-1 py-4 bg-paper text-ink border border-border rounded-[16px] font-semibold text-base hover:bg-bg transition-vintage shadow-soft"
-              >
-                Resgatar
-              </button>
-            </div>
-            <div className="flex flex-row justify-end gap-3 mt-4">
-              <button
-                type="button"
-                onClick={handleExportCsv}
-                disabled={!visibleSavings.length || exportingFormat !== null}
-                className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
-              >
-                {exportingFormat === 'csv' ? 'Gerando CSV...' : 'Gerar CSV'}
-              </button>
-              <button
-                type="button"
-                onClick={handleExportPdf}
-                disabled={!visibleSavings.length || exportingFormat !== null}
-                className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
-              >
-                {exportingFormat === 'pdf' ? 'Gerando PDF...' : 'Gerar PDF'}
-              </button>
-            </div>
+          <div className="h-[56px] bg-paper flex items-center justify-center px-6">
+            <p className="text-center text-[13px] text-gold italic">
+                Poupança é um abraço longo no amanhã.
+            </p>
           </div>
-        <div className="h-[56px] bg-paper flex items-center justify-center px-6">
-          <p className="text-center text-[13px] text-gold italic">
-              Poupança é um abraço longo no amanhã.
-          </p>
-        </div>
-      </footer>
+        </footer>
       </div>
 
       <PdfPreviewModal

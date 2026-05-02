@@ -3,10 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
+import AnalyticsKpiCard from '@/components/ui/AnalyticsKpiCard'
+import LineChart, { LineSeries } from '@/components/ui/LineChart'
+import DonutChart, { DonutSlice } from '@/components/ui/DonutChart'
 import Topbar from '@/components/layout/Topbar'
 import FilterSidebar from '@/components/layout/FilterSidebar'
 import FilterSearchBar from '@/components/layout/FilterSearchBar'
 import Select from '@/components/ui/Select'
+import MonthYearPicker from '@/components/ui/MonthYearPicker'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
 import CategoryPathStack from '@/components/ui/CategoryPathStack'
@@ -18,15 +22,14 @@ import {
   getCurrentMonth,
   getCurrentYear,
   getMonthLabel,
-  getMonthOptions,
+  getMonthRange,
   getYearLabel,
-  getYearOptions,
   getYearRange,
   isDateWithinFilters,
   ALL_MONTHS_VALUE,
   ALL_YEARS_VALUE,
 } from '@/lib/dates'
-import { ArrowDown, Calendar, Check, DollarSign, Download, Edit2, SlidersHorizontal, Search, Plus, X, Tag } from 'lucide-react'
+import { ArrowDown, Calendar, Check, Clock, DollarSign, Download, Edit2, FileDown, FileText, List, SlidersHorizontal, Search, Plus, TrendingUp, X, Tag } from 'lucide-react'
 import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
 import FilterSheet from '@/components/layout/FilterSheet'
@@ -67,6 +70,8 @@ const buildAttachmentPath = (familyId: string, incomeId: string, fileName: strin
 export default function Incomes() {
   const { familyId } = useAuth()
   const [incomes, setIncomes] = useState<Income[]>([])
+  const [rawYearIncomes, setRawYearIncomes] = useState<Income[]>([])
+  const [trendData, setTrendData] = useState<{ label: string; value: number }[]>([])
   const [categories, setCategories] = useState<CategoryRecord[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -143,14 +148,12 @@ export default function Incomes() {
     const { data } = await query
 
     if (data) {
-      setIncomes(
-        data
-          .map((row) => ({
-            ...row,
-            status: (row.status === 'pending' ? 'pending' : 'received') as IncomeStatus,
-          }))
-          .filter((income) => isDateWithinFilters(income.date, selectedMonth, selectedYear))
-      )
+      const normalized = data.map((row) => ({
+        ...row,
+        status: (row.status === 'pending' ? 'pending' : 'received') as IncomeStatus,
+      }))
+      setRawYearIncomes(normalized)
+      setIncomes(normalized.filter((income) => isDateWithinFilters(income.date, selectedMonth, selectedYear)))
     }
     setLoading(false)
   }, [familyId, selectedMonth, selectedYear, selectedCategoryId, selectedStatus])
@@ -199,6 +202,34 @@ export default function Incomes() {
       setSelectedCategoryId('')
     }
   }, [selectedCategoryId, categoryById])
+
+  useEffect(() => {
+    if (!familyId) return
+    let cancelled = false
+    ;(async () => {
+      const now = new Date()
+      const months = Array.from({ length: 6 }, (_, i) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1)
+        return { year: d.getFullYear(), month: d.getMonth() + 1 }
+      })
+      const results = await Promise.all(
+        months.map(async ({ year, month }) => {
+          const { start, end } = getMonthRange(month, year)
+          const { data } = await supabase
+            .from('incomes')
+            .select('amount_cents')
+            .eq('family_id', familyId)
+            .gte('date', format(start, 'yyyy-MM-dd'))
+            .lte('date', format(end, 'yyyy-MM-dd'))
+          const total = (data || []).reduce((s: number, r: { amount_cents: number }) => s + r.amount_cents, 0)
+          const label = `${getMonthLabel(month).slice(0, 3)}/${String(year).slice(2)}`
+          return { label, value: total }
+        }),
+      )
+      if (!cancelled) setTrendData(results)
+    })()
+    return () => { cancelled = true }
+  }, [familyId])
 
   const getCategoryLabel = (categoryId: string | null, fallbackName: string) => {
     if (categoryId) {
@@ -353,6 +384,65 @@ export default function Incomes() {
       return groups
     }, [])
   const total = filteredIncomes.reduce((sum, inc) => sum + inc.amount_cents, 0)
+  const pending = filteredIncomes
+    .filter((i) => i.status === 'pending')
+    .reduce((sum, i) => sum + i.amount_cents, 0)
+
+  const dailyAverageInc = useMemo(() => {
+    if (selectedMonth === ALL_MONTHS_VALUE || selectedYear === ALL_YEARS_VALUE) return 0
+    const days = new Date(selectedYear, selectedMonth, 0).getDate()
+    return days > 0 ? Math.round(total / days) : 0
+  }, [total, selectedMonth, selectedYear])
+
+  const prevMonthTotalInc = useMemo(() => {
+    if (selectedMonth === ALL_MONTHS_VALUE || selectedMonth === 1 || selectedYear === ALL_YEARS_VALUE) return null
+    const prevM = selectedMonth - 1
+    return rawYearIncomes
+      .filter((i) => {
+        const d = new Date(i.date)
+        return d.getFullYear() === selectedYear && d.getMonth() + 1 === prevM
+      })
+      .reduce((s, i) => s + i.amount_cents, 0)
+  }, [rawYearIncomes, selectedMonth, selectedYear])
+
+  const prevMonthLabelInc = useMemo(() => {
+    if (selectedMonth === ALL_MONTHS_VALUE || selectedMonth === 1) return null
+    return `${getMonthLabel(selectedMonth - 1).slice(0, 3)}/${selectedYear}`
+  }, [selectedMonth, selectedYear])
+
+  const totalDeltaPctInc = prevMonthTotalInc != null && prevMonthTotalInc > 0
+    ? Math.round(((total - prevMonthTotalInc) / prevMonthTotalInc) * 100)
+    : null
+
+  const INC_CAT_PALETTE = [
+    '#3E5F4B', '#6FBF8A', '#2F6F7E', '#4D9E6A', '#7A66A1',
+    '#C2A45D', '#5E8E62', '#3689B5', '#5578A2', '#8A6B8F',
+  ]
+
+  const categoryDonutSlices = useMemo((): DonutSlice[] => {
+    const map = new Map<string, number>()
+    filteredIncomes.forEach((i) => {
+      const label = getCategoryLabel(i.category_id, i.category_name)
+      map.set(label, (map.get(label) || 0) + i.amount_cents)
+    })
+    const sorted = Array.from(map.entries()).sort((a, b) => b[1] - a[1])
+    const t = sorted.reduce((s, [, v]) => s + v, 0) || 1
+    return sorted.map(([label, value], i) => ({
+      label,
+      value,
+      pct: Math.round((value / t) * 100),
+      color: INC_CAT_PALETTE[i % INC_CAT_PALETTE.length],
+    }))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredIncomes])
+
+  const trendSeries = useMemo((): LineSeries[] => {
+    if (!trendData.length) return []
+    return [{ label: 'Receitas', data: trendData.map((d) => d.value / 100), color: '#6FBF8A' }]
+  }, [trendData])
+
+  const monthLabelInc = selectedMonth !== ALL_MONTHS_VALUE ? getMonthLabel(selectedMonth) : 'Todos os meses'
+
   const activeFiltersCount = [
     selectedMonth !== getCurrentMonth(),
     selectedYear !== getCurrentYear(),
@@ -598,7 +688,7 @@ export default function Incomes() {
                 </button>
                 <button
                   onClick={() => { setIsImportModalOpen(true); setAddMenuOpen(false) }}
-                  className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage flex items-center gap-3"
+                  className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
                 >
                   <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
                     <Download className="w-4 h-4 text-ink/60" />
@@ -606,6 +696,44 @@ export default function Incomes() {
                   <div>
                     <p className="text-sm font-medium text-ink">Importar extrato</p>
                     <p className="text-xs text-ink/45">OFX, CSV de banco</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { setIsCategorySettingsOpen(true); setAddMenuOpen(false) }}
+                  className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
+                >
+                  <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                    <Tag className="w-4 h-4 text-ink/60" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-ink">Categorias</p>
+                    <p className="text-xs text-ink/45">Gerenciar categorias</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { handleExportCsv(); setAddMenuOpen(false) }}
+                  disabled={!filteredIncomes.length || exportingFormat !== null}
+                  className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3 disabled:opacity-40"
+                >
+                  <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                    <FileDown className="w-4 h-4 text-ink/60" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-ink">Exportar CSV</p>
+                    <p className="text-xs text-ink/45">Planilha com os dados</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { handleExportPdf(); setAddMenuOpen(false) }}
+                  disabled={!filteredIncomes.length || exportingFormat !== null}
+                  className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage flex items-center gap-3 disabled:opacity-40"
+                >
+                  <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4 text-ink/60" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-ink">Exportar PDF</p>
+                    <p className="text-xs text-ink/45">Relatório para imprimir</p>
                   </div>
                 </button>
               </div>
@@ -623,26 +751,82 @@ export default function Incomes() {
             placeholder="Buscar por nome ou categoria"
             filterChips={activeFilterChips}
             rightSlot={
-              <>
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setIsImportModalOpen(true)}
-                  className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
-                >
-                  Importar extrato bancário
-                </button>
-                <button
+                  type="button"
                   onClick={() => setIsCategorySettingsOpen(true)}
-                  className="px-5 py-2 bg-bg text-petrol border border-petrol/30 rounded-md hover:bg-paper transition-vintage text-sm"
+                  className="h-[38px] px-4 text-sm bg-bg border border-petrol/25 rounded-[10px] text-petrol font-medium hover:bg-petrol/5 transition-vintage"
                 >
                   Categorias
                 </button>
-                <button
-                  onClick={() => openModal()}
-                  className="px-5 py-2 bg-petrol text-white rounded-md hover:bg-petrol/90 transition-vintage text-sm"
-                >
-                  Nova Receita
-                </button>
-              </>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setAddMenuOpen((prev) => !prev)}
+                    className="w-[38px] h-[38px] rounded-[10px] bg-coffee text-paper flex items-center justify-center"
+                    aria-label="Adicionar"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                  {addMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setAddMenuOpen(false)} />
+                      <div className="absolute right-0 top-full mt-1 z-50 bg-offWhite rounded-[14px] border border-border shadow-lg w-64 overflow-hidden animate-popup-in">
+                        <button
+                          onClick={() => { openModal(); setAddMenuOpen(false) }}
+                          className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
+                        >
+                          <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                            <Edit2 className="w-4 h-4 text-ink/60" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-ink">Adicionar manualmente</p>
+                            <p className="text-xs text-ink/45">Preencher um formulário</p>
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => { setIsImportModalOpen(true); setAddMenuOpen(false) }}
+                          className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
+                        >
+                          <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                            <Download className="w-4 h-4 text-ink/60" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-ink">Importar extrato</p>
+                            <p className="text-xs text-ink/45">OFX, CSV de banco</p>
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => { handleExportCsv(); setAddMenuOpen(false) }}
+                          disabled={!filteredIncomes.length || exportingFormat !== null}
+                          className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3 disabled:opacity-40"
+                        >
+                          <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                            <FileDown className="w-4 h-4 text-ink/60" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-ink">Exportar CSV</p>
+                            <p className="text-xs text-ink/45">Planilha com os dados</p>
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => { handleExportPdf(); setAddMenuOpen(false) }}
+                          disabled={!filteredIncomes.length || exportingFormat !== null}
+                          className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage flex items-center gap-3 disabled:opacity-40"
+                        >
+                          <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
+                            <FileText className="w-4 h-4 text-ink/60" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-ink">Exportar PDF</p>
+                            <p className="text-xs text-ink/45">Relatório para imprimir</p>
+                          </div>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             }
           />
         </div>
@@ -659,19 +843,10 @@ export default function Incomes() {
                 activeFiltersCount={activeFiltersCount}
                 onClearFilters={clearFilters}
               >
-              <Select
-                variant="filter"
-                label="Mês"
-                value={selectedMonth.toString()}
-                onChange={(v) => setSelectedMonth(parseInt(v))}
-                options={getMonthOptions(true)}
-              />
-              <Select
-                variant="filter"
-                label="Ano"
-                value={selectedYear.toString()}
-                onChange={(v) => setSelectedYear(parseInt(v))}
-                options={getYearOptions(2020, true)}
+              <MonthYearPicker
+                month={selectedMonth}
+                year={selectedYear}
+                onChange={(m, y) => { setSelectedMonth(m); setSelectedYear(y) }}
               />
               <Select
                 variant="filter"
@@ -698,6 +873,71 @@ export default function Incomes() {
             </div>
 
             <div className="flex-1 min-w-0 flex flex-col px-[18px] pt-3 pb-4 md:px-0 md:pt-0 md:pb-0">
+              {/* ── Analytics section ── */}
+              {!loading && filteredIncomes.length > 0 && (
+                <div className="space-y-4 mb-5">
+                  {/* KPI row */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <AnalyticsKpiCard
+                      label="Total Recebido"
+                      value={formatBRL(total)}
+                      sub={totalDeltaPctInc != null ? `${totalDeltaPctInc >= 0 ? '↑' : '↓'} ${Math.abs(totalDeltaPctInc)}% vs ${prevMonthLabelInc}` : undefined}
+                      subPositive={totalDeltaPctInc != null && totalDeltaPctInc > 0}
+                      subNegative={totalDeltaPctInc != null && totalDeltaPctInc < 0}
+                      iconTheme="green"
+                      icon={TrendingUp}
+                    />
+                    <AnalyticsKpiCard
+                      label="Recebimentos"
+                      value={String(filteredIncomes.length)}
+                      sub={`${filteredIncomes.length === 1 ? 'registro' : 'registros'} em ${monthLabelInc}`}
+                      iconTheme="blue"
+                      icon={List}
+                    />
+                    <AnalyticsKpiCard
+                      label="Média Diária"
+                      value={formatBRL(dailyAverageInc)}
+                      sub={selectedMonth !== ALL_MONTHS_VALUE ? `em ${monthLabelInc}` : undefined}
+                      iconTheme="purple"
+                      icon={Calendar}
+                    />
+                    <AnalyticsKpiCard
+                      label="Pendente"
+                      value={formatBRL(pending)}
+                      sub={pending > 0 ? `${filteredIncomes.filter(i => i.status === 'pending').length} pendente(s)` : 'Tudo recebido'}
+                      iconTheme="orange"
+                      icon={Clock}
+                    />
+                  </div>
+
+                  {/* Line + Donut charts */}
+                  <div className="grid md:grid-cols-[1fr_280px] gap-4">
+                    <div className="bg-white rounded-xl border border-border shadow-soft p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold text-ink font-serif">Evolução das receitas</h3>
+                        <span className="text-[11px] text-ink/45">Últimos 6 meses</span>
+                      </div>
+                      {trendSeries.length > 0 ? (
+                        <LineChart series={trendSeries} labels={trendData.map(d => d.label)} height={160} />
+                      ) : (
+                        <div className="h-[140px] flex items-center justify-center text-sm text-ink/40">Carregando...</div>
+                      )}
+                    </div>
+                    <div className="bg-white rounded-xl border border-border shadow-soft p-4">
+                      <h3 className="text-sm font-semibold text-ink font-serif mb-3">Receitas por categoria</h3>
+                      {categoryDonutSlices.length > 0 ? (
+                        <DonutChart
+                          slices={categoryDonutSlices}
+                          center={formatBRL(total).replace('R$ ', '')}
+                        />
+                      ) : (
+                        <div className="text-sm text-ink/40 italic">Sem dados</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {loading ? (
                 <div className="text-center py-12 text-ink/60">Carregando...</div>
             ) : filteredIncomes.length === 0 ? (
@@ -872,13 +1112,6 @@ export default function Incomes() {
 
         {/* Mobile footer — sticky outside scroll */}
         <div className="md:hidden shrink-0 px-[18px] pt-3 pb-2 border-t border-border bg-offWhite">
-          <div className="rounded-[16px] px-6 py-4 bg-petrol text-white shadow-soft flex items-center justify-between">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-white/80 mb-1">{totalLabel}</div>
-              <div className="font-numbers text-xl font-semibold">{formatBRL(total)}</div>
-            </div>
-            <ArrowDown className="w-6 h-6 text-white/60" />
-          </div>
           <div className="h-[44px] flex items-center justify-center">
             <p className="text-center text-[13px] text-gold italic">
               O fruto do trabalho honrado alimenta os sonhos da família.
@@ -888,33 +1121,6 @@ export default function Incomes() {
 
         {/* Desktop footer */}
         <footer className="hidden md:block mt-auto w-full">
-          <div className="px-6 mb-4">
-            <div className="rounded-[16px] px-6 py-5 bg-petrol text-white shadow-soft flex items-center justify-between">
-              <div>
-                <div className="text-xs uppercase tracking-wide text-white/80 mb-1">{totalLabel}</div>
-                <div className="font-numbers text-xl font-semibold">{formatBRL(total)}</div>
-              </div>
-              <ArrowDown className="w-6 h-6 text-white/60" />
-            </div>
-            <div className="flex flex-row justify-end gap-3 mt-4">
-              <button
-                type="button"
-                onClick={handleExportCsv}
-                disabled={!filteredIncomes.length || exportingFormat !== null}
-                className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
-              >
-                {exportingFormat === 'csv' ? 'Gerando CSV...' : 'Gerar CSV'}
-              </button>
-              <button
-                type="button"
-                onClick={handleExportPdf}
-                disabled={!filteredIncomes.length || exportingFormat !== null}
-                className="px-4 py-2 rounded-md border border-petrol text-petrol/70 hover:bg-bg hover:text-petrol transition-vintage text-sm"
-              >
-                {exportingFormat === 'pdf' ? 'Gerando PDF...' : 'Gerar PDF'}
-              </button>
-            </div>
-          </div>
           <div className="h-[56px] bg-paper flex items-center justify-center px-6">
             <p className="text-center text-[13px] text-gold italic">
               O fruto do trabalho honrado alimenta os sonhos da família.
