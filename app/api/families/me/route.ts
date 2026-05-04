@@ -1,28 +1,18 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-
-function getAccessToken(request: Request) {
-  const header = request.headers.get('authorization')
-  if (!header) return null
-  const [, token] = header.split(' ')
-  return token || null
-}
+import { getAccessTokenFromAuthHeader, requireUserByAccessToken } from '@/lib/billing/auth'
 
 export async function GET(request: Request) {
-  const accessToken = getAccessToken(request)
-  if (!accessToken) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
-  }
-
-  const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken)
-  if (authError || !authData.user) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+  const accessToken = getAccessTokenFromAuthHeader(request)
+  const auth = await requireUserByAccessToken(accessToken)
+  if (!auth.user) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
 
   const { data: profile, error: profileError } = await supabaseAdmin
     .from('users')
     .select('family_id')
-    .eq('id', authData.user.id)
+    .eq('id', auth.user.id)
     .maybeSingle()
 
   if (profileError || !profile?.family_id) {

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
 import { stripe } from '@/lib/billing/stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
@@ -53,6 +54,6 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     console.error('create-payment-method-setup failed', error)
-    return NextResponse.json({ error: error?.message || 'Erro inesperado ao iniciar atualização de pagamento.' }, { status: 500 })
+    return NextResponse.json({ error: billingErrorMessage(error, 'Erro inesperado ao iniciar atualização de pagamento.') }, { status: 500 })
   }
 }

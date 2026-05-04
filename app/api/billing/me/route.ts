@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
 import { hasBillingAccess } from '@/lib/billing/access'
 import { getPlanCodeByPriceId, stripe } from '@/lib/billing/stripe'
@@ -76,6 +77,6 @@ export async function GET(request: Request) {
     })
   } catch (error: any) {
     console.error('billing-me failed', error)
-    return NextResponse.json({ error: error?.message || 'Erro inesperado na cobrança.' }, { status: 500 })
+    return NextResponse.json({ error: billingErrorMessage(error, 'Erro inesperado na cobrança.') }, { status: 500 })
   }
 }

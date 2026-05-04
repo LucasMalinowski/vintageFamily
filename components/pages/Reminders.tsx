@@ -114,6 +114,7 @@ export default function Reminders() {
       .eq('family_id', familyId!)
       .order('is_done', { ascending: true })
       .order('due_date', { ascending: true })
+      .limit(500)
 
     if (data) {
       setReminders(data)

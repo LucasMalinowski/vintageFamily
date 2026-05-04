@@ -185,9 +185,9 @@ export default function Comparatives() {
     }
 
     const [incomeRows, paidRows, savingsRows, savingsListRows] = await Promise.all([
-      incomeQuery,
-      paidQuery,
-      dreamQuery,
+      incomeQuery.limit(2000),
+      paidQuery.limit(2000),
+      dreamQuery.limit(2000),
       supabase
         .from('savings')
         .select('id,name')

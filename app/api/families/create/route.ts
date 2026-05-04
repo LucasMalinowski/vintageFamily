@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       .single()
 
     if (familyError || !family) {
-      return NextResponse.json({ error: familyError?.message || 'Não foi possível criar a família.' }, { status: 500 })
+      return NextResponse.json({ error: 'Não foi possível criar a família.' }, { status: 500 })
     }
 
     const { error: userError } = await supabaseAdmin.from('users').insert({
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     })
 
     if (userError) {
-      return NextResponse.json({ error: userError.message }, { status: 500 })
+      return NextResponse.json({ error: 'Não foi possível criar o perfil do usuário.' }, { status: 500 })
     }
 
     const parentCategories = FAMILY_CATEGORY_SEEDS.map(({ children, ...category }) => ({
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       .select('id,name,kind')
 
     if (categoriesError) {
-      return NextResponse.json({ error: categoriesError.message }, { status: 500 })
+      return NextResponse.json({ error: 'Não foi possível criar as categorias padrão.' }, { status: 500 })
     }
 
     const parentByKey = new Map(
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     if (childCategories.length > 0) {
       const { error: childCategoriesError } = await supabaseAdmin.from('categories').insert(childCategories)
       if (childCategoriesError) {
-        return NextResponse.json({ error: childCategoriesError.message }, { status: 500 })
+        return NextResponse.json({ error: 'Não foi possível criar as subcategorias padrão.' }, { status: 500 })
       }
     }
 
@@ -104,12 +104,12 @@ export async function POST(request: Request) {
 
     const { error: savingsError } = await supabaseAdmin.from('savings').insert(defaultSavings)
     if (savingsError) {
-      return NextResponse.json({ error: savingsError.message }, { status: 500 })
+      return NextResponse.json({ error: 'Não foi possível criar os sonhos padrão.' }, { status: 500 })
     }
 
     void sendWelcomeEmail({ to: email, name, familyName })
     return NextResponse.json({ familyId: family.id })
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || 'Erro inesperado.' }, { status: 500 })
+  } catch {
+    return NextResponse.json({ error: 'Erro inesperado ao criar família.' }, { status: 500 })
   }
 }

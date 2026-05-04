@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
 import { stripe } from '@/lib/billing/stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
@@ -48,6 +49,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, cleared: true })
   } catch (error: any) {
     console.error('clear-scheduled-change failed', error)
-    return NextResponse.json({ error: error?.message || 'Erro inesperado ao remover alteração agendada.' }, { status: 500 })
+    return NextResponse.json({ error: billingErrorMessage(error, 'Erro inesperado ao remover alteração agendada.') }, { status: 500 })
   }
 }

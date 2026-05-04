@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
 import { ACTIVE_SUBSCRIPTION_STATUSES, DOWNGRADE_PATHS, isPlanCode } from '@/lib/billing/constants'
 import { getPlanCodeByPriceId, getPriceIdByPlanCode, stripe } from '@/lib/billing/stripe'
@@ -131,6 +132,6 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     console.error('downgrade-subscription failed', error)
-    return NextResponse.json({ error: error?.message || 'Erro inesperado na cobrança.' }, { status: 500 })
+    return NextResponse.json({ error: billingErrorMessage(error, 'Erro inesperado na cobrança.') }, { status: 500 })
   }
 }

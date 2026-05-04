@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     .order('created_at', { ascending: false })
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao carregar cupons.' }, { status: 500 })
   }
 
   return NextResponse.json({ coupons: data })
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   if (error || !data) {
-    return NextResponse.json({ error: error?.message || 'Não foi possível criar o cupom.' }, { status: 500 })
+    return NextResponse.json({ error: 'Não foi possível criar o cupom.' }, { status: 500 })
   }
 
   return NextResponse.json({ coupon: data })
@@ -87,7 +87,7 @@ export async function PATCH(request: Request) {
     .maybeSingle()
 
   if (error || !data) {
-    return NextResponse.json({ error: error?.message || 'Cupom não encontrado.' }, { status: 500 })
+    return NextResponse.json({ error: 'Cupom não encontrado.' }, { status: 500 })
   }
 
   return NextResponse.json({ coupon: data })

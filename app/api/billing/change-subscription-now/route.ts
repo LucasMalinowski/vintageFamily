@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
 import { DOWNGRADE_PATHS, isFoundersPlan, isPlanCode, UPGRADE_PATHS } from '@/lib/billing/constants'
 import { getPlanCodeByPriceId, getPriceIdByPlanCode, stripe } from '@/lib/billing/stripe'
@@ -136,6 +137,6 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     console.error('change-subscription-now failed', error)
-    return NextResponse.json({ error: error?.message || 'Erro inesperado ao alterar plano.' }, { status: 500 })
+    return NextResponse.json({ error: billingErrorMessage(error, 'Erro inesperado ao alterar plano.') }, { status: 500 })
   }
 }

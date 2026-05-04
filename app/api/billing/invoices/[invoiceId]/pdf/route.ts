@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
 import { stripe } from '@/lib/billing/stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
@@ -69,6 +70,6 @@ export async function GET(
     })
   } catch (error: any) {
     console.error('invoice-pdf failed', error)
-    return NextResponse.json({ error: error?.message || 'Erro inesperado ao baixar PDF.' }, { status: 500 })
+    return NextResponse.json({ error: billingErrorMessage(error, 'Erro inesperado ao baixar PDF.') }, { status: 500 })
   }
 }

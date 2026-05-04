@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
 import { isFoundersPlan, isPlanCode, UPGRADE_PATHS } from '@/lib/billing/constants'
 import { ACTIVE_SUBSCRIPTION_STATUSES } from '@/lib/billing/constants'
@@ -132,6 +133,6 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     console.error('upgrade-subscription failed', error)
-    return NextResponse.json({ error: error?.message || 'Erro inesperado na cobrança.' }, { status: 500 })
+    return NextResponse.json({ error: billingErrorMessage(error, 'Erro inesperado na cobrança.') }, { status: 500 })
   }
 }

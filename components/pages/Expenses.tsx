@@ -223,7 +223,7 @@ export default function Expenses() {
         .lte('date', format(end, 'yyyy-MM-dd'))
     }
 
-    query = query.order('date', { ascending: false })
+    query = query.order('date', { ascending: false }).limit(2000)
 
     if (selectedCategoryId) {
       query = query.eq('category_id', selectedCategoryId)

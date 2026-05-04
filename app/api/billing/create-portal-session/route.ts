@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
 import { stripe } from '@/lib/billing/stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
@@ -44,6 +45,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: portal.url })
   } catch (error: any) {
     console.error('create-portal-session failed', error)
-    return NextResponse.json({ error: error?.message || 'Erro inesperado na cobrança.' }, { status: 500 })
+    return NextResponse.json({ error: billingErrorMessage(error, 'Erro inesperado na cobrança.') }, { status: 500 })
   }
 }

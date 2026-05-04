@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     .order('created_at', { ascending: true })
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao carregar planos.' }, { status: 500 })
   }
 
   return NextResponse.json({ plans: data })
@@ -67,7 +67,7 @@ export async function PATCH(request: Request) {
     .maybeSingle()
 
   if (error || !data) {
-    return NextResponse.json({ error: error?.message || 'Plano não encontrado.' }, { status: 500 })
+    return NextResponse.json({ error: 'Plano não encontrado.' }, { status: 500 })
   }
 
   return NextResponse.json({ plan: data })

@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   if (location) query = query.eq('location', location)
 
   const { data, count, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Erro ao carregar feedbacks.' }, { status: 500 })
 
   return NextResponse.json({ feedbacks: data ?? [], total: count ?? 0, page, pageSize: PAGE_SIZE })
 }

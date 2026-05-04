@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
 import { isFoundersPlan, isPlanCode } from '@/lib/billing/constants'
 import { BLOCKING_SUBSCRIPTION_STATUSES, getPriceIdByPlanCode, stripe } from '@/lib/billing/stripe'
@@ -202,6 +203,6 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     console.error('create-subscription failed', error)
-    return NextResponse.json({ error: error?.message || 'Erro inesperado na cobrança.' }, { status: 500 })
+    return NextResponse.json({ error: billingErrorMessage(error, 'Erro inesperado na cobrança.') }, { status: 500 })
   }
 }

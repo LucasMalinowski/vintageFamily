@@ -1,36 +1,27 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { sendInviteEmail } from '@/lib/mailer'
+import { getAccessTokenFromAuthHeader, requireUserByAccessToken } from '@/lib/billing/auth'
 
 const INVITE_EXPIRY_DAYS = 7
 
-function getAccessToken(request: Request) {
-  const header = request.headers.get('authorization')
-  if (!header) return null
-  const [, token] = header.split(' ')
-  return token || null
-}
-
 export async function POST(request: Request) {
-  const accessToken = getAccessToken(request)
-  if (!accessToken) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+  const accessToken = getAccessTokenFromAuthHeader(request)
+  const auth = await requireUserByAccessToken(accessToken)
+  if (!auth.user) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
 
-  const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken)
-  if (authError || !authData.user) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
-  }
-
-  const { email } = await request.json()
-  if (!email) {
+  const body = await request.json().catch(() => null)
+  const email = body?.email
+  if (!email || typeof email !== 'string') {
     return NextResponse.json({ error: 'Email obrigatório.' }, { status: 400 })
   }
 
   const { data: profile, error: profileError } = await supabaseAdmin
     .from('users')
     .select('family_id,name,role')
-    .eq('id', authData.user.id)
+    .eq('id', auth.user.id)
     .maybeSingle()
 
   if (profileError || !profile) {
@@ -72,7 +63,7 @@ export async function POST(request: Request) {
     .insert({
       family_id: profile.family_id,
       email,
-      invited_by: authData.user.id,
+      invited_by: auth.user.id,
       token,
       expires_at: expiresAt,
     })
@@ -86,8 +77,8 @@ export async function POST(request: Request) {
 
   try {
     await sendInviteEmail({ to: email, inviteLink, familyName: family.name })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Erro ao enviar email.' }, { status: 500 })
+  } catch {
+    return NextResponse.json({ error: 'Erro ao enviar email de convite.' }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })
