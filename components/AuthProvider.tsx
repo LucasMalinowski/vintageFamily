@@ -1,15 +1,18 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { getSidebarCollapsedStorageKey, LOCAL_STORAGE_KEYS } from '@/lib/storage'
 import { useRouter } from 'next/navigation'
 
+export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'error'
+
 interface AuthContextType {
   user: User | null
   familyId: string | null
   loading: boolean
+  authStatus: AuthStatus
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, name: string, familyName: string) => Promise<void>
   acceptInvite: (token: string, email: string, name: string, password: string) => Promise<void>
@@ -33,50 +36,27 @@ function setAccessTokenCookie(accessToken: string | null) {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [familyId, setFamilyId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [authStatus, setAuthStatus] = useState<AuthStatus>('loading')
   const router = useRouter()
+  const mountedRef = useRef(true)
+  const familyLoadInProgressRef = useRef<string | null>(null)
+  const userRef = useRef<User | null>(null)
+  const familyIdRef = useRef<string | null>(null)
 
-  useEffect(() => {
-    // Check active session with a 10s timeout to prevent infinite loading in PWA
-    const sessionPromise = supabase.auth.getSession()
-    const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
-      setTimeout(() => resolve({ data: { session: null } }), 10000)
-    )
+  // Keep refs in sync so event listeners read current values without stale closures
+  useEffect(() => { userRef.current = user }, [user])
+  useEffect(() => { familyIdRef.current = familyId }, [familyId])
 
-    Promise.race([sessionPromise, timeoutPromise])
-      .then(({ data: { session } }) => {
-        setUser(session?.user ?? null)
-        setAccessTokenCookie(session?.access_token ?? null)
-        if (session?.user) {
-          loadFamilyId(session.user.id)
-        }
-        setLoading(false)
-      })
-      .catch(() => {
-        setLoading(false)
-      })
+  // loading is true only during the initial session resolution
+  const loading = authStatus === 'loading'
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      setAccessTokenCookie(session?.access_token ?? null)
-      if (session?.user) {
-        loadFamilyId(session.user.id)
-      } else {
-        setFamilyId(null)
-        if (typeof window !== 'undefined') {
-          window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
-        }
-      }
-    })
+  const loadFamilyId = useCallback(async (userId: string) => {
+    // Prevent concurrent loads for the same user
+    if (familyLoadInProgressRef.current === userId) return
+    familyLoadInProgressRef.current = userId
 
-    return () => subscription.unsubscribe()
-  }, [])
-
-  const loadFamilyId = async (userId: string) => {
     for (let attempt = 0; attempt < 3; attempt++) {
+      if (!mountedRef.current) return
       try {
         const { data, error } = await supabase
           .from('users')
@@ -84,8 +64,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('id', userId)
           .maybeSingle()
 
+        if (!mountedRef.current) return
+
         if (!error) {
-          setFamilyId(data?.family_id ?? null)
+          if (familyLoadInProgressRef.current === userId) {
+            setFamilyId(data?.family_id ?? null)
+            familyLoadInProgressRef.current = null
+          }
           return
         }
       } catch {
@@ -93,38 +78,96 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       if (attempt < 2) await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)))
     }
-    // All retries exhausted — sign out so the user isn't stuck on a blank loading screen
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    // All retries exhausted — do NOT sign out; user stays authenticated
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[AuthProvider] familyId lookup failed after retries; keeping user session')
+    }
+    if (mountedRef.current) familyLoadInProgressRef.current = null
+  }, [])
+
+  useEffect(() => {
+    mountedRef.current = true
+
+    // Register listener before getSession so we never miss an event
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mountedRef.current) return
+
+      if (session?.user) {
+        setUser(session.user)
+        setAccessTokenCookie(session.access_token)
+        setAuthStatus('authenticated')
+        loadFamilyId(session.user.id)
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setFamilyId(null)
+        setAccessTokenCookie(null)
+        setAuthStatus('unauthenticated')
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
+        }
+      }
+      // Other events without a session (e.g. TOKEN_REFRESHED failure) are ignored —
+      // Supabase will emit SIGNED_OUT if the session is truly gone
     })
 
+    // Initial session check — no timeout, no false logout on slow networks
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!mountedRef.current) return
+        if (session?.user) {
+          setUser(session.user)
+          setAccessTokenCookie(session.access_token)
+          setAuthStatus('authenticated')
+          loadFamilyId(session.user.id)
+        } else {
+          setUser(null)
+          setAccessTokenCookie(null)
+          setAuthStatus('unauthenticated')
+        }
+      })
+      .catch(() => {
+        if (!mountedRef.current) return
+        // Transient error — do not clear user or cookies; show error state
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[AuthProvider] getSession failed; preserving existing auth state')
+        }
+        setAuthStatus((prev) => (prev === 'loading' ? 'error' : prev))
+      })
+
+    // On visibility restore, retry familyId if user is authenticated but familyId is missing
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && userRef.current && !familyIdRef.current) {
+        loadFamilyId(userRef.current.id)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      mountedRef.current = false
+      subscription.unsubscribe()
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [loadFamilyId])
+
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
     router.push('/inicio')
   }
 
   const signUp = async (email: string, password: string, name: string, familyName: string) => {
     try {
-      // 1. Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-      })
-
+      const { data: authData, error: authError } = await supabase.auth.signUp({ email, password })
       if (authError) throw authError
       if (!authData.user) throw new Error('User creation failed')
 
-      // 2. Sign in immediately (bypass email confirmation)
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
-
       if (signInError) throw signInError
 
       let session: typeof signInData.session | null = signInData.session ?? null
@@ -132,18 +175,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: sessionData } = await supabase.auth.getSession()
         session = sessionData.session
       }
+      if (!session) throw new Error('Não foi possível autenticar o usuário.')
 
-      if (!session) {
-        throw new Error('Não foi possível autenticar o usuário.')
-      }
-
-      // Ensure the client is using the authenticated session before RLS writes
       await supabase.auth.setSession({
         access_token: session.access_token,
         refresh_token: session.refresh_token,
       })
 
-      // 3. Create family + profile + defaults on server (service role)
       const response = await fetch('/api/families/create', {
         method: 'POST',
         headers: {
@@ -160,11 +198,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const payload = await response.json()
       const createdFamilyId = payload.familyId as string | undefined
-      if (!createdFamilyId) {
-        throw new Error('Resposta inválida ao criar família.')
-      }
+      if (!createdFamilyId) throw new Error('Resposta inválida ao criar família.')
 
-      // 4. Set family ID and redirect
       setFamilyId(createdFamilyId)
       router.push('/inicio')
     } catch (error: any) {
@@ -174,11 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const acceptInvite = async (token: string, email: string, name: string, password: string) => {
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-      })
-
+      const { data: authData, error: authError } = await supabase.auth.signUp({ email, password })
       if (authError) throw authError
 
       let session: typeof authData.session | null = authData.session ?? null
@@ -187,14 +218,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email,
           password,
         })
-
         if (signInError) throw signInError
         session = signInData.session
       }
-
-      if (!session) {
-        throw new Error('Não foi possível autenticar o usuário.')
-      }
+      if (!session) throw new Error('Não foi possível autenticar o usuário.')
 
       const response = await fetch('/api/invites/accept', {
         method: 'POST',
@@ -233,7 +260,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, familyId, loading, signIn, signUp, acceptInvite, signOut }}>
+    <AuthContext.Provider value={{ user, familyId, loading, authStatus, signIn, signUp, acceptInvite, signOut }}>
       {children}
     </AuthContext.Provider>
   )

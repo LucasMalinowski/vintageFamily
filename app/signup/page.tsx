@@ -1,11 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/components/AuthProvider'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function SignUpPage() {
-  const { signUp } = useAuth()
+  const { signUp, user } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (user) router.replace('/inicio')
+  }, [user, router])
   const [name, setName] = useState('')
   const [familyName, setFamilyName] = useState('')
   const [email, setEmail] = useState('')

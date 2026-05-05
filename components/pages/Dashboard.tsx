@@ -128,6 +128,10 @@ export default function Dashboard() {
     if (familyId) {
       loadReminders()
       loadPendingPayables()
+    } else {
+      // familyId not yet available — clear loading state so cards don't spin forever
+      setLoading(false)
+      setLoadingPayables(false)
     }
     loadFamilyName()
   }, [familyId, user?.id])
@@ -142,34 +146,48 @@ export default function Dashboard() {
         : reminders
 
   async function loadReminders() {
-    const { data } = await supabase
-      .from('reminders')
-      .select('*')
-      .eq('family_id', familyId!)
-      .eq('hidden_on_dashboard', false)
-      .order('is_done', { ascending: true })
-      .order('due_date', { ascending: true })
-      .limit(5)
+    try {
+      const { data, error } = await supabase
+        .from('reminders')
+        .select('*')
+        .eq('family_id', familyId!)
+        .eq('hidden_on_dashboard', false)
+        .order('is_done', { ascending: true })
+        .order('due_date', { ascending: true })
+        .limit(5)
 
-    if (data) {
-      setReminders(data)
+      if (process.env.NODE_ENV === 'development' && error) {
+        console.warn('[Dashboard] loadReminders error:', error)
+      }
+      setReminders(data ?? [])
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.warn('[Dashboard] loadReminders threw:', err)
+      setReminders([])
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   async function loadPendingPayables() {
-    const { data } = await supabase
-      .from('expenses')
-      .select('id,description,date,category_name')
-      .eq('family_id', familyId!)
-      .eq('status', 'open')
-      .order('date', { ascending: true })
-      .limit(5)
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('id,description,date,category_name')
+        .eq('family_id', familyId!)
+        .eq('status', 'open')
+        .order('date', { ascending: true })
+        .limit(5)
 
-    if (data) {
-      setPendingPayables(data)
+      if (process.env.NODE_ENV === 'development' && error) {
+        console.warn('[Dashboard] loadPendingPayables error:', error)
+      }
+      setPendingPayables(data ?? [])
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.warn('[Dashboard] loadPendingPayables threw:', err)
+      setPendingPayables([])
+    } finally {
+      setLoadingPayables(false)
     }
-    setLoadingPayables(false)
   }
 
   async function loadFamilyName() {

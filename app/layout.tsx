@@ -72,26 +72,32 @@ export default function RootLayout({
           <Script id="sw-register" strategy="afterInteractive">
             {`
               if ('serviceWorker' in navigator) {
-                let refreshing = false;
-                const hadController = Boolean(navigator.serviceWorker.controller);
+                // Throttle: check for SW updates at most once per hour to avoid
+                // triggering a controllerchange reload during PWA resume/background.
+                var SW_UPDATE_KEY = 'sw_last_update';
+                var SW_UPDATE_INTERVAL = 60 * 60 * 1000;
 
-                navigator.serviceWorker.addEventListener('controllerchange', () => {
-                  if (!hadController) return;
-                  if (refreshing) return;
-                  refreshing = true;
-                  window.location.reload();
-                });
+                function throttledUpdate(registration) {
+                  try {
+                    var last = parseInt(localStorage.getItem(SW_UPDATE_KEY) || '0', 10);
+                    if (Date.now() - last > SW_UPDATE_INTERVAL) {
+                      localStorage.setItem(SW_UPDATE_KEY, String(Date.now()));
+                      registration.update().catch(function() {});
+                    }
+                  } catch(e) {}
+                }
 
-                window.addEventListener('load', () => {
-                  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((registration) => {
-                    const update = () => registration.update().catch(() => {});
-
-                    update();
-                    window.addEventListener('focus', update);
-                    document.addEventListener('visibilitychange', () => {
-                      if (document.visibilityState === 'visible') update();
-                    });
-                  });
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+                    .then(function(registration) {
+                      throttledUpdate(registration);
+                      document.addEventListener('visibilitychange', function() {
+                        if (document.visibilityState === 'visible') {
+                          throttledUpdate(registration);
+                        }
+                      });
+                    })
+                    .catch(function() {});
                 });
               }
             `}

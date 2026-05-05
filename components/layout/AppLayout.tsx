@@ -7,23 +7,25 @@ import Sidebar from '@/components/layout/Sidebar'
 import BottomNav from '@/components/layout/BottomNav'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, authStatus } = useAuth()
   const router = useRouter()
   const [showReload, setShowReload] = useState(false)
 
   useEffect(() => {
-    if (!loading && !user) {
+    // Only redirect when Supabase has definitively confirmed there is no session
+    if (authStatus === 'unauthenticated') {
       router.push('/login')
     }
-  }, [user, loading, router])
+  }, [authStatus, router])
 
   useEffect(() => {
-    if (!loading) return
+    if (authStatus !== 'loading' && authStatus !== 'error') return
     const t = setTimeout(() => setShowReload(true), 12000)
     return () => clearTimeout(t)
-  }, [loading])
+  }, [authStatus])
 
-  if (loading) {
+  // Show spinner while loading or during transient errors (never redirect on error)
+  if (authStatus === 'loading' || authStatus === 'error') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

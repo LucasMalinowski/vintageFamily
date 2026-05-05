@@ -1,25 +1,22 @@
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { getAccessTokenFromCookieStore, requireUserByAccessToken, getProfileByUserId } from '@/lib/billing/auth'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { getProfileByUserId } from '@/lib/billing/auth'
 import { hasBillingAccess } from '@/lib/billing/access'
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = cookies()
-  const accessToken = getAccessTokenFromCookieStore(cookieStore)
-  const auth = await requireUserByAccessToken(accessToken)
+  const supabase = createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  if (!auth.user) {
+  if (!user) {
     redirect('/login')
   }
 
-  const profile = await getProfileByUserId(auth.user.id)
+  const profile = await getProfileByUserId(user.id)
   if (!profile) {
     redirect('/login')
   }
 
-  const access = await hasBillingAccess({
-    familyId: profile.family_id,
-  })
+  const access = await hasBillingAccess({ familyId: profile.family_id })
 
   if (!access.hasAccess) {
     redirect('/pricing')
