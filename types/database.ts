@@ -851,6 +851,38 @@ export type Database = {
         }
         Relationships: []
       }
+      usage_counters: {
+        Row: {
+          family_id: string
+          period: string
+          whatsapp_recordings: number
+          ai_queries: number
+          export_import_count: number
+        }
+        Insert: {
+          family_id: string
+          period: string
+          whatsapp_recordings?: number
+          ai_queries?: number
+          export_import_count?: number
+        }
+        Update: {
+          family_id?: string
+          period?: string
+          whatsapp_recordings?: number
+          ai_queries?: number
+          export_import_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'usage_counters_family_id_fkey'
+            columns: ['family_id']
+            isOneToOne: false
+            referencedRelation: 'families'
+            referencedColumns: ['id']
+          }
+        ]
+      }
       feedback: {
         Row: {
           id: string

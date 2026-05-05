@@ -5,6 +5,8 @@ import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { getSidebarCollapsedStorageKey, LOCAL_STORAGE_KEYS } from '@/lib/storage'
 import { useRouter } from 'next/navigation'
+import { posthog } from '@/lib/posthog'
+import { EVENTS } from '@/components/PostHogProvider'
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'error'
 
@@ -115,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Initial session check — no timeout, no false logout on slow networks
     supabase.auth.getSession()
-      .then(({ data: { session } }) => {
+      .then(async ({ data: { session } }) => {
         if (!mountedRef.current) return
         if (session?.user) {
           setUser(session.user)
@@ -123,6 +125,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAuthStatus('authenticated')
           loadFamilyId(session.user.id)
         } else {
+          // PWA cold-start: localStorage may be empty but cookies (set by SSR middleware)
+          // may still hold a valid refresh token — attempt one silent refresh before logout.
+          try {
+            const { data: refreshData } = await supabase.auth.refreshSession()
+            if (!mountedRef.current) return
+            if (refreshData.session?.user) {
+              setUser(refreshData.session.user)
+              setAccessTokenCookie(refreshData.session.access_token)
+              setAuthStatus('authenticated')
+              loadFamilyId(refreshData.session.user.id)
+              return
+            }
+          } catch {
+            // refresh failed — fall through to unauthenticated
+          }
+          if (!mountedRef.current) return
           setUser(null)
           setAccessTokenCookie(null)
           setAuthStatus('unauthenticated')
@@ -201,6 +219,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!createdFamilyId) throw new Error('Resposta inválida ao criar família.')
 
       setFamilyId(createdFamilyId)
+      posthog.capture(EVENTS.SIGNUP_COMPLETED, { family_id: createdFamilyId })
       router.push('/inicio')
     } catch (error: any) {
       throw error
@@ -239,6 +258,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const payload = await response.json()
       setFamilyId(payload.familyId)
+      posthog.capture(EVENTS.INVITE_ACCEPTED, { family_id: payload.familyId })
       router.push('/inicio')
     } catch (error: any) {
       throw error

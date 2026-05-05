@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import Sidebar from '@/components/layout/Sidebar'
 import BottomNav from '@/components/layout/BottomNav'
+import TrialCountdownBanner from '@/components/billing/TrialCountdownBanner'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, authStatus } = useAuth()
@@ -49,10 +50,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-paper">
-      <Sidebar />
-      <main className="app-main flex-1 overflow-auto bg-paper pb-[80px] md:pb-0">{children}</main>
-      <BottomNav />
+    <div className="flex flex-col min-h-screen bg-paper">
+      <TrialCountdownBanner />
+      <div className="flex flex-1 min-h-0">
+        <Sidebar />
+        <main className="app-main flex-1 overflow-auto bg-paper pb-[80px] md:pb-0">{children}</main>
+        <BottomNav />
+      </div>
     </div>
   )
 }

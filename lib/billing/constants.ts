@@ -32,3 +32,10 @@ export const ACTIVE_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing'])
 export function isPlanCode(value: string): value is PlanCode {
   return PLAN_CODES.includes(value as PlanCode)
 }
+
+export const FREE_TIER_LIMITS = {
+  whatsappRecordingsPerMonth: 75,
+  aiQueriesPerMonth: 15,
+  exportImportPerMonth: 3,
+  comparativeHistoryMonths: 2,
+} as const

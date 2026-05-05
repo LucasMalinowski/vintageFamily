@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getProfileByUserId } from '@/lib/billing/auth'
 import { hasBillingAccess } from '@/lib/billing/access'
+import { PlanProvider, type PlanTier } from '@/lib/billing/plan-context'
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const supabase = createSupabaseServerClient()
@@ -18,9 +19,11 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   const access = await hasBillingAccess({ familyId: profile.family_id })
 
-  if (!access.hasAccess) {
-    redirect('/pricing')
-  }
+  const tier: PlanTier = access.isPaidTier ? 'paid' : access.hasActiveTrial ? 'trial' : 'free'
 
-  return <>{children}</>
+  return (
+    <PlanProvider tier={tier} trialExpiresAt={access.trialExpiresAt ?? null}>
+      {children}
+    </PlanProvider>
+  )
 }

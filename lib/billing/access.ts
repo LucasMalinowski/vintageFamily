@@ -32,13 +32,17 @@ export async function hasBillingAccess(args: { familyId: string }) {
 
   const hasValidSubscription = Boolean(subscription?.status && ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status))
   const hasActiveTrial = Boolean(trialExpiresAt && new Date(trialExpiresAt).getTime() > Date.now())
+  const isPaidTier = hasLifetimeAccess || hasValidSubscription
+  const isFreeTier = !isPaidTier && !hasActiveTrial
 
   return {
     hasLifetimeAccess,
     foundersEnabled,
     hasValidSubscription,
     hasActiveTrial,
-    hasAccess: hasLifetimeAccess || hasValidSubscription || hasActiveTrial,
+    hasAccess: true, // Free tier always has access; feature limits enforced per-feature
+    isPaidTier,
+    isFreeTier,
     trialExpiresAt,
   }
 }

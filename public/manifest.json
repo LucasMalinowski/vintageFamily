@@ -3,7 +3,7 @@
   "short_name": "Florim",
   "description": "Sistema de finanças pessoais",
   "id": "/",
-  "start_url": "/signup",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "background_color": "#3E5F4B",

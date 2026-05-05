@@ -5,6 +5,8 @@ import { nvidiaAIService, AIExtractedRecord, IntentClassification } from '@/lib/
 import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
 import { whatsAppQueryHandler } from '@/lib/whatsapp/WhatsAppQueryHandler'
 import { formatBRL } from '@/lib/money'
+import { hasBillingAccess } from '@/lib/billing/access'
+import { checkAndIncrementWhatsAppRecording, checkAndIncrementAIQuery } from '@/lib/billing/free-tier'
 
 const FEEDBACK_LINE = '\n\n_Algo deu errado? Nos conte: https://florim.app/feedback_'
 
@@ -94,6 +96,17 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
   }
 
   if (intent.type === 'query') {
+    const access = await hasBillingAccess({ familyId })
+    if (access.isFreeTier) {
+      const usage = await checkAndIncrementAIQuery(familyId)
+      if (!usage.allowed) {
+        await whatsAppService.sendTextMessage(
+          fromPhone,
+          'Você usou todas as 15 consultas gratuitas deste mês. 🎯\n\nAssine o Florim Pro para consultas ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.'
+        )
+        return
+      }
+    }
     try {
       const reply = await whatsAppQueryHandler.handle(text, intent, familyId, todayISO, fromPhone)
       await whatsAppService.sendTextMessage(fromPhone, reply + FEEDBACK_LINE)
@@ -143,6 +156,19 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
   if (!records.length) {
     await whatsAppService.sendTextMessage(fromPhone, USAGE_HINT)
     return
+  }
+
+  // Free tier recording limit check
+  const recordAccess = await hasBillingAccess({ familyId })
+  if (recordAccess.isFreeTier) {
+    const usage = await checkAndIncrementWhatsAppRecording(familyId)
+    if (!usage.allowed) {
+      await whatsAppService.sendTextMessage(
+        fromPhone,
+        'Você usou todas as 75 mensagens gratuitas deste mês. 🎯\n\nAssine o Florim Pro para mensagens ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.'
+      )
+      return
+    }
   }
 
   const results: SaveResult[] = []

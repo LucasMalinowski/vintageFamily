@@ -6,6 +6,8 @@ import AppLayout from '@/components/layout/AppLayout'
 import Topbar from '@/components/layout/Topbar'
 import PlanCheckout from '@/components/billing/PlanCheckout'
 import { getAuthBearerToken } from '@/lib/billing/client'
+import { posthog } from '@/lib/posthog'
+import { EVENTS } from '@/components/PostHogProvider'
 
 type PlanSetting = {
   plan_code: 'standard_monthly' | 'standard_yearly' | 'founders_monthly' | 'founders_yearly'
@@ -27,28 +29,28 @@ const PLAN_CONTENT: Record<PlanSetting['plan_code'], PlanContent> = {
   standard_monthly: {
     name: 'Plano Mensal',
     teaser: 'Ideal para quem quer começar com flexibilidade.',
-    price: '29,90',
+    price: '19,90',
     period: '/ mês',
     benefitsTitle: 'Benefícios:',
     benefits: [
-      'Controle de contas a pagar e a receber',
+      'Controle ilimitado de contas a pagar e a receber',
       'Organização de sonhos e poupanças',
       'Visão clara de saldo mensal',
-      'Comparativos financeiros',
-      'Interface intuitiva e acolhedora',
-      'Acesso completo ao sistema',
+      'Comparativos históricos completos',
+      'WhatsApp ilimitado + consultas com IA',
+      'Importação e exportação ilimitadas',
     ],
-    quote: 'Menos do que um jantar fora. Mais do que uma planilha.',
+    quote: 'Menos do que um café por semana. Mais do que uma planilha.',
   },
   standard_yearly: {
     name: 'Plano Anual',
     teaser: 'Para famílias que desejam compromisso e continuidade.',
-    price: '299,00',
+    price: '189,00',
     period: '/ ano',
     benefitsTitle: 'Benefícios:',
     benefits: [
-      'Equivalente a R$ 24,90/mês',
-      'Economia de dois meses',
+      'Equivalente a R$ 15,75/mês',
+      'Economia de 4 meses',
       'Prioridade em novas funcionalidades',
       'Atualizações contínuas',
       'Estabilidade no valor durante o contrato',
@@ -137,6 +139,7 @@ export default function PricingPage() {
         }),
       )
       setLoading(false)
+      posthog.capture(EVENTS.PRICING_PAGE_VIEWED)
     }
 
     load()
@@ -246,7 +249,10 @@ export default function PricingPage() {
                       </div>
                       <button
                         disabled={!plan.is_active}
-                        onClick={() => setSelectedPlan(plan.plan_code)}
+                        onClick={() => {
+                          posthog.capture(EVENTS.CHECKOUT_STARTED, { plan_code: plan.plan_code })
+                          setSelectedPlan(plan.plan_code)
+                        }}
                         className="mt-6 w-full rounded-full bg-sidebar px-4 py-3 text-sm font-semibold text-white transition-vintage hover:bg-olive/90 disabled:opacity-60"
                       >
                         Assinar
@@ -331,6 +337,7 @@ export default function PricingPage() {
                   planCode={selectedPlan}
                   onCancel={() => setSelectedPlan(null)}
                   onSuccess={() => {
+                    posthog.capture(EVENTS.CHECKOUT_COMPLETED, { plan_code: selectedPlan })
                     setSelectedPlan(null)
                     setActivationMessage('Confirmando seus dados...')
                     setWaitingForActivation(true)

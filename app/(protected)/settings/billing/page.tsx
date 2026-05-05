@@ -5,6 +5,8 @@ import { Info } from 'lucide-react'
 import BillingPaymentElement from '@/components/billing/BillingPaymentElement'
 import { getAuthBearerToken } from '@/lib/billing/client'
 import { DOWNGRADE_PATHS, PLAN_CODES, PLAN_NAME, type PlanCode, UPGRADE_PATHS } from '@/lib/billing/constants'
+import { posthog } from '@/lib/posthog'
+import { EVENTS } from '@/components/PostHogProvider'
 
 type BillingResponse = {
   subscription: {
@@ -247,6 +249,7 @@ export default function BillingSettingsPage() {
       return
     }
 
+    if (cancelAtPeriodEnd) posthog.capture(EVENTS.CANCELLATION_STARTED)
     setMessage(cancelAtPeriodEnd ? 'Assinatura programada para encerrar no fim do período.' : 'Renovação automática reativada com sucesso.')
     await load()
   }

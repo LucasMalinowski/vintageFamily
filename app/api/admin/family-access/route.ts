@@ -22,7 +22,7 @@ export async function GET(request: Request) {
   const admin = await requireSuperAdmin(request)
   if (!admin.ok) return admin.response
 
-  const [{ data: families, error: familiesError }, { data: users, error: usersError }] = await Promise.all([
+  const [{ data: families, error: familiesError }, { data: users, error: usersError }, { data: subs, error: subsError }] = await Promise.all([
     supabaseService
       .from('families')
       .select('id,name,trial_expires_at,lifetime_access,founders_enabled')
@@ -31,10 +31,20 @@ export async function GET(request: Request) {
       .from('users')
       .select('id,family_id,name,email')
       .order('created_at', { ascending: true }),
+    supabaseService
+      .from('subscriptions')
+      .select('family_id,status')
+      .order('updated_at', { ascending: false }),
   ])
 
-  if (familiesError || usersError) {
-    return NextResponse.json({ error: familiesError?.message || usersError?.message || 'Não foi possível carregar as famílias.' }, { status: 500 })
+  if (familiesError || usersError || subsError) {
+    return NextResponse.json({ error: familiesError?.message || usersError?.message || subsError?.message || 'Não foi possível carregar as famílias.' }, { status: 500 })
+  }
+
+  // Take most-recent subscription per family (already ordered by updated_at desc)
+  const subsByFamily = new Map<string, string | null>()
+  for (const sub of subs ?? []) {
+    if (!subsByFamily.has(sub.family_id)) subsByFamily.set(sub.family_id, sub.status)
   }
 
   const rows = (families ?? []).map((family) => {
@@ -42,6 +52,7 @@ export async function GET(request: Request) {
 
     return {
       ...family,
+      subscription_status: subsByFamily.get(family.id) ?? null,
       members: familyUsers.map((user) => ({
         id: user.id,
         name: user.name,
@@ -61,14 +72,23 @@ export async function PATCH(request: Request) {
     family_id?: string
     lifetime_access?: boolean
     founders_enabled?: boolean
+    trial_expires_at?: string | null
   } | null
 
   if (!body?.family_id) {
     return NextResponse.json({ error: 'Família inválida.' }, { status: 400 })
   }
 
-  if (typeof body.lifetime_access !== 'boolean' && typeof body.founders_enabled !== 'boolean') {
+  const hasLifetimeChange = typeof body.lifetime_access === 'boolean'
+  const hasFoundersChange = typeof body.founders_enabled === 'boolean'
+  const hasTrialChange = body !== null && 'trial_expires_at' in body
+
+  if (!hasLifetimeChange && !hasFoundersChange && !hasTrialChange) {
     return NextResponse.json({ error: 'Nenhuma alteração foi informada.' }, { status: 400 })
+  }
+
+  if (hasTrialChange && body.trial_expires_at !== null && isNaN(Date.parse(body.trial_expires_at as string))) {
+    return NextResponse.json({ error: 'Data inválida.' }, { status: 400 })
   }
 
   const { data: familyUsers, error: usersError } = await supabaseService
@@ -83,15 +103,12 @@ export async function PATCH(request: Request) {
   const updatePayload: {
     lifetime_access?: boolean
     founders_enabled?: boolean
+    trial_expires_at?: string | null
   } = {}
 
-  if (typeof body.lifetime_access === 'boolean') {
-    updatePayload.lifetime_access = body.lifetime_access
-  }
-
-  if (typeof body.founders_enabled === 'boolean') {
-    updatePayload.founders_enabled = body.founders_enabled
-  }
+  if (hasLifetimeChange) updatePayload.lifetime_access = body.lifetime_access
+  if (hasFoundersChange) updatePayload.founders_enabled = body.founders_enabled
+  if (hasTrialChange) updatePayload.trial_expires_at = body.trial_expires_at as string | null
 
   const { error: updateError } = await supabaseService
     .from('families')

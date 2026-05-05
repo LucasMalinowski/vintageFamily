@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
+import { hasBillingAccess } from '@/lib/billing/access'
+import { checkAndIncrementExportImport } from '@/lib/billing/free-tier'
 import { BANK_TUTORIALS_BY_ID } from '@/lib/bank-statements/tutorials'
 import { BANK_IDS, type BankId, type ReviewedImportItem, type StatementFileFormat } from '@/lib/bank-statements/types'
 import { BankStatementImportError, BankStatementImportService, buildImportPreview } from '@/lib/bank-statements/BankStatementImportService'
@@ -44,6 +46,20 @@ export async function POST(request: Request) {
 
     const formData = await request.formData()
     const action = String(formData.get('action') || 'preview')
+
+    // Only check limit on commit (not preview), so the user can still review before hitting a wall
+    if (action === 'commit') {
+      const access = await hasBillingAccess({ familyId: profile.family_id })
+      if (access.isFreeTier) {
+        const usage = await checkAndIncrementExportImport(profile.family_id)
+        if (!usage.allowed) {
+          return NextResponse.json(
+            { error: 'Você atingiu o limite de 3 importações/exportações gratuitas este mês. Assine o Pro para continuar.' },
+            { status: 403 }
+          )
+        }
+      }
+    }
     const bank = String(formData.get('bank') || '') as BankId
     const file = formData.get('file')
 

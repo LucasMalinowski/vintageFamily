@@ -19,6 +19,9 @@ import MonthYearPicker from '@/components/ui/MonthYearPicker'
 import PdfPreviewModal from '@/components/export/PdfPreviewModal'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
+import { usePlan } from '@/lib/billing/plan-context'
+import { posthog } from '@/lib/posthog'
+import { EVENTS } from '@/components/PostHogProvider'
 import {
   formatDate,
   getCurrentMonth,
@@ -92,6 +95,8 @@ const buildColorizedSlices = (rows: Array<{ label: string; value: number }>): Ca
 
 export default function Comparatives() {
   const { familyId } = useAuth()
+  const { tier } = usePlan()
+  const isFreeTier = tier === 'free'
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(true)
@@ -318,8 +323,9 @@ export default function Comparatives() {
     let cancelled = false
     ;(async () => {
       const now = new Date()
-      const months = Array.from({ length: 6 }, (_, i) => {
-        const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1)
+      const historyMonths = isFreeTier ? 2 : 6
+      const months = Array.from({ length: historyMonths }, (_, i) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - (historyMonths - 1) + i, 1)
         return { year: d.getFullYear(), month: d.getMonth() + 1 }
       })
       const results = await Promise.all(
@@ -524,8 +530,25 @@ export default function Comparatives() {
     downloadBlob(`${exportTable.filename}.pdf`, blob)
   }
 
+  const checkExportLimit = async (): Promise<boolean> => {
+    if (!isFreeTier) return true
+    const token = document.cookie.match(/app_access_token=([^;]+)/)?.[1]
+    const res = await fetch('/api/billing/usage/export-import', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${decodeURIComponent(token)}` } : {},
+    })
+    const data = await res.json()
+    if (!data.allowed) {
+      posthog.capture(EVENTS.EXPORT_IMPORT_LIMIT_REACHED)
+      alert('Você atingiu o limite de 3 exportações/importações gratuitas este mês.\n\nAssine o Florim Pro em florim.app/pricing para continuar.')
+      return false
+    }
+    return true
+  }
+
   const handleExportCsv = async () => {
     if (!exportRows.length) return
+    if (!(await checkExportLimit())) return
     setExportingFormat('csv')
     try {
       downloadCsv({ ...exportTable, filename: `${exportTable.filename}.csv` })
@@ -536,6 +559,7 @@ export default function Comparatives() {
 
   const handleExportPdf = async () => {
     if (!exportRows.length) return
+    if (!(await checkExportLimit())) return
     await openPdfPreview()
   }
 

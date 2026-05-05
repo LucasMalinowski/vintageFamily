@@ -17,6 +17,8 @@ import { getAuthBearerToken } from '@/lib/billing/client'
 import { MAX_CSV_SIZE_BYTES, MAX_OFX_SIZE_BYTES } from '@/lib/bank-statements/constants'
 import type { CategoryRecord } from '@/lib/categories'
 import { buildCategoryLabelMap } from '@/lib/categories'
+import { posthog } from '@/lib/posthog'
+import { EVENTS } from '@/components/PostHogProvider'
 
 interface ImportResponse {
   batchId: string
@@ -283,6 +285,11 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
       if (!response.ok) throw new Error(payload?.error || 'Não foi possível concluir a importação.')
 
       setResult(payload as ImportResponse)
+      posthog.capture(EVENTS.BANK_IMPORT_COMPLETED, {
+        bank: selectedBank,
+        incomes_created: (payload as ImportResponse).summary.incomesCreated,
+        expenses_created: (payload as ImportResponse).summary.expensesCreated,
+      })
       onImported?.()
     } catch (cause: any) {
       setError(cause?.message || 'Falha ao importar o extrato.')

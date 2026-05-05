@@ -47,6 +47,9 @@ import {
 import { matchesSearch } from '@/lib/filterSearch'
 import CurrencyInput from '@/components/ui/CurrencyInput'
 import { buildBrandedPdfBlob, downloadBlob, downloadCsv } from '@/lib/report-export'
+import { usePlan } from '@/lib/billing/plan-context'
+import { posthog } from '@/lib/posthog'
+import { EVENTS } from '@/components/PostHogProvider'
 
 type IncomeStatus = 'received' | 'pending'
 
@@ -69,6 +72,8 @@ const buildAttachmentPath = (familyId: string, incomeId: string, fileName: strin
 
 export default function Incomes() {
   const { familyId } = useAuth()
+  const { tier } = usePlan()
+  const isFreeTier = tier === 'free'
   const [incomes, setIncomes] = useState<Income[]>([])
   const [rawYearIncomes, setRawYearIncomes] = useState<Income[]>([])
   const [trendData, setTrendData] = useState<{ label: string; value: number }[]>([])
@@ -288,6 +293,7 @@ export default function Incomes() {
       await supabase.from('incomes').insert(incomeData)
     }
 
+    if (!editingIncome && incomes.length === 0) posthog.capture(EVENTS.FIRST_INCOME_CREATED)
     closeModal()
     loadIncomes()
   }
@@ -580,8 +586,25 @@ export default function Incomes() {
       ? 'Total Recebido'
       : 'Total no período'
 
+  const checkExportLimit = async (): Promise<boolean> => {
+    if (!isFreeTier) return true
+    const token = document.cookie.match(/app_access_token=([^;]+)/)?.[1]
+    const res = await fetch('/api/billing/usage/export-import', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${decodeURIComponent(token)}` } : {},
+    })
+    const data = await res.json()
+    if (!data.allowed) {
+      posthog.capture(EVENTS.EXPORT_IMPORT_LIMIT_REACHED)
+      alert('Você atingiu o limite de 3 exportações/importações gratuitas este mês.\n\nAssine o Florim Pro em florim.app/pricing para continuar.')
+      return false
+    }
+    return true
+  }
+
   const handleExportCsv = async () => {
     if (!exportRows.length) return
+    if (!(await checkExportLimit())) return
     setExportingFormat('csv')
     try {
       downloadCsv({ ...exportTable, filename: `${exportTable.filename}.csv` })
@@ -592,6 +615,7 @@ export default function Incomes() {
 
   const handleExportPdf = async () => {
     if (!exportRows.length) return
+    if (!(await checkExportLimit())) return
     await openPdfPreview()
   }
 

@@ -6,6 +6,8 @@ import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import Modal from '@/components/ui/Modal'
 import { useRouter } from 'next/navigation'
+import { posthog } from '@/lib/posthog'
+import { EVENTS } from '@/components/PostHogProvider'
 
 type PhoneState = 'none' | 'pending' | 'verified'
 
@@ -208,6 +210,7 @@ export default function ProfileSettingsPage() {
         setPhoneState('verified')
         setOtpInput('')
         setPhoneSuccess('Número verificado com sucesso!')
+        posthog.capture(EVENTS.WHATSAPP_CONNECTED)
       }
     } catch {
       setPhoneError('Erro de conexão.')

@@ -46,6 +46,9 @@ import { matchesSearch } from '@/lib/filterSearch'
 import CurrencyInput from '@/components/ui/CurrencyInput'
 import { buildBrandedPdfBlob, downloadBlob, downloadCsv } from '@/lib/report-export'
 import PdfPreviewModal from '@/components/export/PdfPreviewModal'
+import { usePlan } from '@/lib/billing/plan-context'
+import { posthog } from '@/lib/posthog'
+import { EVENTS } from '@/components/PostHogProvider'
 
 type PaymentMethod = 'PIX' | 'Credito' | 'Debito'
 
@@ -90,6 +93,8 @@ const formatPaymentLabel = (method: PaymentMethod | null, installments: number |
 
 export default function Expenses() {
   const { familyId } = useAuth()
+  const { tier } = usePlan()
+  const isFreeTier = tier === 'free'
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [rawYearExpenses, setRawYearExpenses] = useState<Expense[]>([])
   const [categories, setCategories] = useState<CategoryRecord[]>([])
@@ -361,6 +366,7 @@ export default function Expenses() {
       }
     }
 
+    if (!editingExpense && expenses.length === 0) posthog.capture(EVENTS.FIRST_EXPENSE_CREATED)
     closeModal()
     loadExpenses()
   }
@@ -780,8 +786,25 @@ export default function Expenses() {
     downloadBlob(`${exportTable.filename}.pdf`, blob)
   }
 
+  const checkExportLimit = async (): Promise<boolean> => {
+    if (!isFreeTier) return true
+    const token = document.cookie.match(/app_access_token=([^;]+)/)?.[1]
+    const res = await fetch('/api/billing/usage/export-import', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${decodeURIComponent(token)}` } : {},
+    })
+    const data = await res.json()
+    if (!data.allowed) {
+      posthog.capture(EVENTS.EXPORT_IMPORT_LIMIT_REACHED)
+      alert('Você atingiu o limite de 3 exportações/importações gratuitas este mês.\n\nAssine o Florim Pro em florim.app/pricing para continuar.')
+      return false
+    }
+    return true
+  }
+
   const handleExportCsv = async () => {
     if (!exportRows.length) return
+    if (!(await checkExportLimit())) return
     setExportingFormat('csv')
     try {
       downloadCsv({ ...exportTable, filename: `${exportTable.filename}.csv` })
@@ -792,6 +815,7 @@ export default function Expenses() {
 
   const handleExportPdf = async () => {
     if (!exportRows.length) return
+    if (!(await checkExportLimit())) return
     await openPdfPreview()
   }
 
