@@ -245,7 +245,7 @@ export default function CategorySettingsModal({
     setSaving(false)
 
     if (errorMessage) {
-      alert(errorMessage)
+      alert('Não foi possível salvar. Verifique se o nome já existe.')
       return
     }
 
@@ -275,7 +275,7 @@ export default function CategorySettingsModal({
         .in('id', idsToDelete)
 
       if (error) {
-        alert(error.message)
+        alert('Não foi possível excluir. Tente novamente.')
         return
       }
     } else {
@@ -287,7 +287,7 @@ export default function CategorySettingsModal({
         .eq('kind', kind!)
 
       if (error) {
-        alert(error.message)
+        alert('Não foi possível excluir. Tente novamente.')
         return
       }
     }

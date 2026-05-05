@@ -1,26 +1,44 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { supabaseService } from '@/lib/billing/supabase-service'
+import { stripe } from '@/lib/billing/stripe'
 import { sendAccountDeletionEmail } from '@/lib/mailer'
+import { getAccessTokenFromAuthHeader, requireUserByAccessToken } from '@/lib/billing/auth'
 
-function getAccessToken(request: Request) {
-  const header = request.headers.get('authorization')
-  if (!header) return null
-  const [, token] = header.split(' ')
-  return token || null
+async function cancelFamilyStripeSubscription(familyId: string) {
+  try {
+    const { data: customerRow } = await supabaseService
+      .from('stripe_customers')
+      .select('stripe_customer_id')
+      .eq('family_id', familyId)
+      .maybeSingle()
+
+    if (!customerRow?.stripe_customer_id) return
+
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customerRow.stripe_customer_id,
+      status: 'all',
+      limit: 10,
+    })
+
+    await Promise.all(
+      subscriptions.data
+        .filter((sub) => sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due')
+        .map((sub) => stripe.subscriptions.cancel(sub.id))
+    )
+  } catch (err) {
+    console.error('[account-delete] stripe subscription cancel failed', err)
+  }
 }
 
 export async function POST(request: Request) {
-  const accessToken = getAccessToken(request)
-  if (!accessToken) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+  const accessToken = getAccessTokenFromAuthHeader(request)
+  const auth = await requireUserByAccessToken(accessToken)
+  if (!auth.user) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
 
-  const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken)
-  if (authError || !authData.user) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
-  }
-
-  const userId = authData.user.id
+  const userId = auth.user.id
   const { newAdminId } = await request.json().catch(() => ({}))
 
   const { data: profile, error: profileError } = await supabaseAdmin
@@ -63,6 +81,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Erro ao promover novo administrador.' }, { status: 500 })
       }
     } else {
+      // Last member — cancel Stripe subscription before soft-deleting family
+      await cancelFamilyStripeSubscription(profile.family_id)
+
       const { error: softDeleteError } = await supabaseAdmin
         .from('families')
         .update({ deleted_at: new Date().toISOString() })

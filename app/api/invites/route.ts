@@ -72,7 +72,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Erro ao criar convite.' }, { status: 500 })
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000' // TODO: replace with production URL
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) {
+    return NextResponse.json({ error: 'Configuração do servidor incompleta.' }, { status: 500 })
+  }
   const inviteLink = `${appUrl}/invite?token=${token}`
 
   try {
