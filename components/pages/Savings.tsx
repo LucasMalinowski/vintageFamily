@@ -27,7 +27,7 @@ import {
   ALL_MONTHS_VALUE,
   ALL_YEARS_VALUE,
 } from '@/lib/dates'
-import { FileDown, FileText, Folder, PiggyBank, SlidersHorizontal, Search, Plus, Tag, Target, TrendingDown, TrendingUp, X } from 'lucide-react'
+import { FileDown, FileText, Folder, Pencil, PiggyBank, SlidersHorizontal, Search, Plus, Tag, Target, TrendingDown, TrendingUp, X } from 'lucide-react'
 import CategoryIcon from '@/components/ui/CategoryIcon'
 import { matchesSearch } from '@/lib/filterSearch'
 import FilterSheet from '@/components/layout/FilterSheet'
@@ -848,18 +848,11 @@ export default function Savings() {
                   </div>
 
                   {/* Row 2: period activity */}
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <AnalyticsKpiCard
                       label="Aportes no mês"
                       value={formatBRL(periodDeposits)}
                       iconTheme="green"
-                      icon={TrendingUp}
-                      small
-                    />
-                    <AnalyticsKpiCard
-                      label="Rendimentos"
-                      value={formatBRL(periodIncome)}
-                      iconTheme="blue"
                       icon={TrendingUp}
                       small
                     />
@@ -918,7 +911,19 @@ export default function Savings() {
                                 <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#3E9E6A' }}>{periodDep > 0 ? `+${formatBRL(periodDep)}` : '—'}</td>
                                 <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#C06060' }}>{periodWit > 0 ? formatBRL(periodWit) : '—'}</td>
                                 <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-ink">{formatBRL(balance)}</td>
-                                <td className="px-4 py-2.5 text-right tabular-nums text-ink/60">{saving.target_cents ? formatBRL(saving.target_cents) : '—'}</td>
+                                <td className="px-4 py-2.5">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <span className="tabular-nums text-ink/60">{saving.target_cents ? formatBRL(saving.target_cents) : '—'}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => openEdit(saving)}
+                                      className="w-5 h-5 flex items-center justify-center rounded text-ink/25 hover:text-petrol hover:bg-petrol/10 transition-vintage"
+                                      title="Editar meta"
+                                    >
+                                      <Pencil className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </td>
                               </tr>
                             ))}
                             <tr className="bg-paper/60">
@@ -937,6 +942,58 @@ export default function Savings() {
                 </div>
               )}
 
+              {/* Mobile per-saving cards — desktop has the table above */}
+              {!loading && perSavingAnalytics.length > 0 && (
+                <div className="md:hidden space-y-2.5">
+                  <h3 className="text-sm font-semibold text-ink font-serif">Poupanças</h3>
+                  {perSavingAnalytics.map(({ saving, balance }) => {
+                    const pct = saving.target_cents
+                      ? Math.min(100, Math.round((balance / saving.target_cents) * 100))
+                      : null
+                    return (
+                      <div key={saving.id} className="bg-bg border border-border rounded-vintage shadow-vintage p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <CategoryIcon name={saving.icon} className="w-4 h-4 text-ink/50" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-ink truncate">{saving.name}</p>
+                              <p className="text-xs text-ink/50 tabular-nums">{formatBRL(balance)}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="text-right">
+                              {saving.target_cents ? (
+                                <>
+                                  <p className="text-xs font-medium text-ink/70 tabular-nums">{pct}%</p>
+                                  <p className="text-[10px] text-ink/40 tabular-nums">de {formatBRL(saving.target_cents)}</p>
+                                </>
+                              ) : (
+                                <p className="text-xs text-ink/30">Sem meta</p>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => openEdit(saving)}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg text-ink/35 hover:text-petrol hover:bg-petrol/10 transition-vintage"
+                              title="Editar meta"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                        {pct !== null && (
+                          <div className="mt-3 h-1.5 bg-ink/8 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{ width: `${pct}%`, background: pct >= 100 ? '#3E9E6A' : '#2F6F7E' }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
 
             </div>
           </div>

@@ -1,8 +1,16 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useMemo, useRef, useEffect, useState, useCallback, memo } from 'react'
+import { createPortal } from 'react-dom'
+import {
+  sankey as d3Sankey,
+  sankeyLinkHorizontal,
+  SankeyGraph,
+  SankeyNode as D3SankeyNode,
+  SankeyLink as D3SankeyLink,
+} from 'd3-sankey'
 import { formatBRL } from '@/lib/money'
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
+import { ZoomIn, ZoomOut, RotateCcw, Maximize2, X, ChevronLeft } from 'lucide-react'
 
 export interface SankeyNode {
   id: string
@@ -24,316 +32,541 @@ interface SankeyChartProps {
   nodes: SankeyNode[]
   links: SankeyLink[]
   width?: number
-  height?: number  // treated as minimum; chart grows if needed
+  height?: number  // ignored — auto-computed
   currency?: boolean
 }
 
-const MIN_NODE_H = 52
-const NODE_GAP = 14
-const V_PADDING = 20
+type LayoutNode = D3SankeyNode<{ id: string; label: string; color: string; pct?: string }, { color: string }>
+type LayoutLink = D3SankeyLink<{ id: string; label: string; color: string; pct?: string }, { color: string }>
 
-function computeHeight(nodes: SankeyNode[], minHeight: number): number {
-  const maxInCol = Math.max(
-    ...([0, 1, 2].map((c) => nodes.filter((n) => n.col === c).length)),
-    0
-  )
-  const needed = maxInCol * MIN_NODE_H + (maxInCol - 1) * NODE_GAP + V_PADDING * 2
-  return Math.max(minHeight, needed)
+const NODE_WIDTH = 110
+const NODE_PADDING = 16
+const H_PADDING = 8
+const MIN_HEIGHT = 260
+const PREVIEW_HEIGHT = 200
+const MODAL_SVG_WIDTH = 1140
+
+function useContainerWidth(ref: React.RefObject<HTMLDivElement | null>) {
+  const [width, setWidth] = useState(560)
+  useEffect(() => {
+    if (!ref.current) return
+    const obs = new ResizeObserver(([e]) => setWidth(e.contentRect.width))
+    obs.observe(ref.current)
+    setWidth(ref.current.clientWidth)
+    return () => obs.disconnect()
+  }, [])
+  return width
 }
 
-export default function SankeyChart({
-  nodes,
-  links,
-  width = 600,
-  height: minHeight = 280,
-  currency = true,
-}: SankeyChartProps) {
-  const [hoveredPath, setHoveredPath] = useState<string | null>(null)
-  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null)
-  const [zoom, setZoom] = useState(1)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const lastTouchDist = useRef<number | null>(null)
-
-  const fmt = (v: number) => (currency ? formatBRL(v) : v.toLocaleString('pt-BR'))
-  const clampZoom = (z: number) => Math.min(3, Math.max(0.5, z))
-
-  // Native wheel listener — must be non-passive to call preventDefault
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const handler = (e: WheelEvent) => {
-      if (!e.ctrlKey && Math.abs(e.deltaX) < Math.abs(e.deltaY)) return // only intercept when zooming (ctrl) or horizontal scroll
-      e.preventDefault()
-      setZoom((z) => clampZoom(z - e.deltaY * 0.001))
-    }
-    el.addEventListener('wheel', handler, { passive: false })
-    return () => el.removeEventListener('wheel', handler)
-  }, [])
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length !== 2) return
-    const dx = e.touches[0].clientX - e.touches[1].clientX
-    const dy = e.touches[0].clientY - e.touches[1].clientY
-    const dist = Math.sqrt(dx * dx + dy * dy)
-    if (lastTouchDist.current !== null) {
-      setZoom((z) => clampZoom(z + (dist - lastTouchDist.current!) * 0.004))
-    }
-    lastTouchDist.current = dist
-  }, [])
-
-  const handleTouchEnd = useCallback(() => { lastTouchDist.current = null }, [])
-
-  const visibleNodes = focusedNodeId
-    ? nodes.filter((n) => {
-        if (n.col === 0) return true
-        if (n.col === 1) return n.id === focusedNodeId
-        return links.some((l) => l.from === focusedNodeId && l.to === n.id)
-      })
-    : nodes
-
-  const visibleIds = new Set(visibleNodes.map((n) => n.id))
-  const visibleLinks = links.filter((l) => visibleIds.has(l.from) && visibleIds.has(l.to))
-
-  // Auto-size height to never clip nodes
-  const height = computeHeight(visibleNodes, minHeight)
-
-  const maxCol = visibleNodes.length > 0 ? Math.max(...visibleNodes.map((n) => n.col)) : 2
-  const colX = maxCol <= 1 ? [0.05, 0.58, 0.95] : [0.04, 0.38, 0.72]
-
-  const cols = [0, 1, 2].map((c) => visibleNodes.filter((n) => n.col === c))
-  const nodeW = width < 380 ? 76 : 108
-  const fs = width < 380 ? 8 : 10
-  const maxLabelChars = Math.floor(nodeW / (fs * 0.62))
-  const trunc = (s: string) => s.length > maxLabelChars ? s.slice(0, maxLabelChars - 1) + '…' : s
-  const placed: Record<string, { x: number; y: number; h: number; w: number }> = {}
-
-  const usableH = height - V_PADDING * 2
-  const maxNodeVal = visibleNodes.length > 0 ? Math.max(...visibleNodes.map((n) => n.value)) : 1
-
-  cols.forEach((col, ci) => {
-    if (col.length === 0) return
-    const gap = col.length > 1 ? NODE_GAP : 0
-    const totalGap = gap * (col.length - 1)
-
-    // Give each node its fair share of vertical space
-    const perNode = Math.max(MIN_NODE_H, (usableH - totalGap) / col.length)
-    const rawH = col.map((n) => Math.max(MIN_NODE_H, (n.value / maxNodeVal) * usableH))
-    const rawTotal = rawH.reduce((s, h) => s + h, 0)
-    const maxAvail = usableH - totalGap
-
-    const heights: number[] = rawTotal <= maxAvail
-      ? rawH
-      : (() => {
-          // Scale proportionally but never below perNode minimum
-          const scale = maxAvail / rawTotal
-          return rawH.map((h) => Math.max(perNode * 0.6, h * scale))
-        })()
-
-    const colH = heights.reduce((s, h) => s + h, 0) + totalGap
-    let y = V_PADDING + Math.max(0, (usableH - colH) / 2)
-
-    col.forEach((n, ni) => {
-      placed[n.id] = { x: colX[ci] * width, y, h: heights[ni], w: nodeW }
-      y += heights[ni] + gap
-    })
-  })
-
-  const minBand = 8
-  const capBand = (val: number, total: number, nodeH: number) =>
-    Math.max(minBand, Math.min(nodeH * 0.5, (val / (total || 1)) * nodeH))
-
-  const srcTotals = new Map<string, number>()
-  const dstTotals = new Map<string, number>()
-  visibleLinks.forEach((lk) => {
-    if (!srcTotals.has(lk.from))
-      srcTotals.set(lk.from, visibleLinks.filter((l) => l.from === lk.from).reduce((s, l) => s + l.value, 0))
-    if (!dstTotals.has(lk.to))
-      dstTotals.set(lk.to, visibleLinks.filter((l) => l.to === lk.to).reduce((s, l) => s + l.value, 0))
-  })
-
-  const bandH = visibleLinks.map((lk) => {
-    const src = placed[lk.from]
-    const dst = placed[lk.to]
-    if (!src || !dst) return { s: minBand, d: minBand }
-    return {
-      s: capBand(lk.value, srcTotals.get(lk.from) ?? 1, src.h),
-      d: capBand(lk.value, dstTotals.get(lk.to) ?? 1, dst.h),
-    }
-  })
-
-  const nodeSrcUsed = new Map<string, number>()
-  const nodeDstUsed = new Map<string, number>()
-  visibleLinks.forEach((lk, i) => {
-    nodeSrcUsed.set(lk.from, (nodeSrcUsed.get(lk.from) ?? 0) + bandH[i].s)
-    nodeDstUsed.set(lk.to, (nodeDstUsed.get(lk.to) ?? 0) + bandH[i].d)
-  })
-
-  const paths = visibleLinks.map((lk, i) => {
-    const src = placed[lk.from]
-    const dst = placed[lk.to]
-    if (!src || !dst) return null
-
-    const srcH = bandH[i].s
-    const dstH = bandH[i].d
-    const srcCenter = Math.max(0, (src.h - (nodeSrcUsed.get(lk.from) ?? 0)) / 2)
-    const dstCenter = Math.max(0, (dst.h - (nodeDstUsed.get(lk.to) ?? 0)) / 2)
-
-    const srcStack = visibleLinks
-      .filter((l, j) => l.from === lk.from && j < i)
-      .reduce((s, l) => s + bandH[visibleLinks.indexOf(l)].s, 0)
-    const dstStack = visibleLinks
-      .filter((l, j) => l.to === lk.to && j < i)
-      .reduce((s, l) => s + bandH[visibleLinks.indexOf(l)].d, 0)
-
-    const x1 = src.x + src.w
-    const y1 = src.y + srcCenter + srcStack
-    const x2 = dst.x
-    const y2 = dst.y + dstCenter + dstStack
-    const mx = (x1 + x2) / 2
-
-    return {
-      id: `lk${i}`,
-      color: lk.color,
-      d: `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2} L${x2},${y2 + dstH} C${mx},${y2 + dstH} ${mx},${y1 + srcH} ${x1},${y1 + srcH} Z`,
-    }
-  })
-
-  const handleNodeClick = (node: SankeyNode) => {
-    if (node.col !== 1) return
-    setFocusedNodeId((prev) => (prev === node.id ? null : node.id))
+function computeLayout(nodes: SankeyNode[], links: SankeyLink[], svgW: number, svgH: number) {
+  const nodeIds = new Set(nodes.map((n) => n.id))
+  const graph: SankeyGraph<
+    { id: string; label: string; color: string; pct?: string },
+    { color: string }
+  > = {
+    nodes: nodes.map((n) => ({ id: n.id, label: n.label, color: n.color, pct: n.pct })),
+    links: links
+      .filter((l) => nodeIds.has(l.from) && nodeIds.has(l.to) && l.from !== l.to)
+      .map((l) => ({
+        source: l.from as unknown as number,
+        target: l.to as unknown as number,
+        value: Math.max(l.value, 1),
+        color: l.color,
+      })),
   }
+  return d3Sankey<
+    { id: string; label: string; color: string; pct?: string },
+    { color: string }
+  >()
+    .nodeId((d) => d.id)
+    .nodeWidth(NODE_WIDTH)
+    .nodePadding(NODE_PADDING)
+    .extent([[H_PADDING, H_PADDING], [svgW - H_PADDING, svgH - H_PADDING]])(graph)
+}
+
+const pathGen = sankeyLinkHorizontal()
+
+// ─── Shared SVG renderer ──────────────────────────────────────────────────────
+
+interface SvgContentProps {
+  layoutNodes: LayoutNode[]
+  layoutLinks: LayoutLink[]
+  fmt: (v: number) => string
+  idPrefix: string
+  interactive: boolean
+  focusedNodeId?: string | null
+  onNodeClick?: (id: string | null) => void
+}
+
+function SvgContent({
+  layoutNodes, layoutLinks, fmt, idPrefix, interactive, focusedNodeId, onNodeClick,
+}: SvgContentProps) {
+  const [hoveredLink, setHoveredLink] = useState<number | null>(null)
+  const hasFocus = !!focusedNodeId
+
+  // All nodes reachable from the focused node via a single link hop
+  const connectedNodeIds = useMemo(() => {
+    if (!focusedNodeId) return new Set<string>()
+    const ids = new Set<string>([focusedNodeId])
+    for (const lk of layoutLinks) {
+      const s = (lk.source as LayoutNode).id
+      const t = (lk.target as LayoutNode).id
+      if (s === focusedNodeId) ids.add(t)
+      if (t === focusedNodeId) ids.add(s)
+    }
+    return ids
+  }, [focusedNodeId, layoutLinks])
+
+  // Sanitize node id for use in XML id attributes
+  const clipId = (id: string) => `${idPrefix}c-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`
 
   return (
-    <div className="relative">
-      {/* Controls row */}
-      <div className="flex items-center justify-between mb-2">
-        {focusedNodeId ? (
-          <button
-            type="button"
-            onClick={() => setFocusedNodeId(null)}
-            className="inline-flex items-center gap-1 text-xs text-petrol font-medium hover:opacity-75 transition-opacity"
-          >
-            ← Voltar à visão geral
-          </button>
-        ) : <div />}
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setZoom((z) => clampZoom(z - 0.2))}
-            className="w-6 h-6 flex items-center justify-center rounded text-ink/40 hover:bg-paper hover:text-ink transition-vintage"
-            title="Reduzir"
-          >
-            <ZoomOut className="w-3.5 h-3.5" />
-          </button>
-          <span className="text-[11px] text-ink/40 w-9 text-center tabular-nums">{Math.round(zoom * 100)}%</span>
-          <button
-            type="button"
-            onClick={() => setZoom((z) => clampZoom(z + 0.2))}
-            className="w-6 h-6 flex items-center justify-center rounded text-ink/40 hover:bg-paper hover:text-ink transition-vintage"
-            title="Ampliar"
-          >
-            <ZoomIn className="w-3.5 h-3.5" />
-          </button>
-          {zoom !== 1 && (
-            <button
-              type="button"
-              onClick={() => setZoom(1)}
-              className="w-6 h-6 flex items-center justify-center rounded text-ink/40 hover:bg-paper hover:text-ink transition-vintage"
-              title="Resetar zoom"
+    <>
+      <defs>
+        {/* Link gradients */}
+        {layoutLinks.map((lk, i) => {
+          const src = lk.source as LayoutNode
+          const dst = lk.target as LayoutNode
+          return (
+            <linearGradient
+              key={i}
+              id={`${idPrefix}g${i}`}
+              gradientUnits="userSpaceOnUse"
+              x1={src.x1}
+              x2={dst.x0}
             >
-              <RotateCcw className="w-3 h-3" />
-            </button>
-          )}
-        </div>
-      </div>
+              <stop offset="0%" stopColor={(lk as { color: string }).color} stopOpacity="0.5" />
+              <stop offset="100%" stopColor={(lk as { color: string }).color} stopOpacity="0.3" />
+            </linearGradient>
+          )
+        })}
+        {/* Per-node clip paths — 1px inset so text is always contained inside the pill */}
+        {layoutNodes.map((n) => {
+          const x0 = n.x0 ?? 0, x1 = n.x1 ?? 0, y0 = n.y0 ?? 0, y1 = n.y1 ?? 0
+          return (
+            <clipPath key={n.id} id={clipId(n.id)}>
+              <rect x={x0 + 1} y={y0 + 1} width={Math.max(0, x1 - x0 - 2)} height={Math.max(0, y1 - y0 - 2)} rx="6" />
+            </clipPath>
+          )
+        })}
+      </defs>
 
-      {/* Zoomable container — overflow:auto so zoomed content scrolls instead of clipping */}
-      <div
-        ref={containerRef}
-        className="overflow-auto rounded-lg"
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        <svg
-          width={width * zoom}
-          height={height * zoom}
-          viewBox={`0 0 ${width} ${height}`}
-          style={{ display: 'block', minWidth: `${width * zoom}px` }}
-        >
-          {paths.map(
-            (p) =>
-              p && (
-                <path
-                  key={p.id}
-                  d={p.d}
-                  fill={p.color}
-                  fillOpacity={hoveredPath === p.id ? 0.55 : 0.32}
-                  stroke={p.color}
-                  strokeOpacity={hoveredPath === p.id ? 0.7 : 0.4}
-                  strokeWidth="0.5"
-                  onMouseEnter={() => setHoveredPath(p.id)}
-                  onMouseLeave={() => setHoveredPath(null)}
-                  style={{ transition: 'fill-opacity .15s' }}
-                />
-              ),
-          )}
+      {/* Links */}
+      {layoutLinks.map((lk, i) => {
+        const srcId = (lk.source as LayoutNode).id
+        const dstId = (lk.target as LayoutNode).id
+        // highlight links that touch the focused node
+        const highlighted = !hasFocus || srcId === focusedNodeId || dstId === focusedNodeId
+        const d = pathGen(lk as Parameters<typeof pathGen>[0])
+        const w = Math.max(1, lk.width ?? 1)
+        return (
+          <path
+            key={i}
+            d={d ?? ''}
+            fill="none"
+            stroke={`url(#${idPrefix}g${i})`}
+            strokeWidth={w}
+            strokeOpacity={hasFocus ? (highlighted ? 0.75 : 0.06) : hoveredLink === i ? 0.8 : 0.45}
+            onMouseEnter={interactive && !hasFocus ? () => setHoveredLink(i) : undefined}
+            onMouseLeave={interactive && !hasFocus ? () => setHoveredLink(null) : undefined}
+            style={{ transition: 'stroke-opacity .2s', cursor: 'default' }}
+          />
+        )
+      })}
 
-          {visibleNodes.map((n) => {
-            const p = placed[n.id]
-            if (!p) return null
-            const isClickable = n.col === 1
-            const isFocused = focusedNodeId === n.id
-            const dimmed = focusedNodeId && n.col === 1 && !isFocused
+      {/* Nodes */}
+      {layoutNodes.map((n) => {
+        const x0 = n.x0 ?? 0, x1 = n.x1 ?? 0, y0 = n.y0 ?? 0, y1 = n.y1 ?? 0
+        const w = x1 - x0, h = y1 - y0
+        const cx = x0 + w / 2
+        const cy = y0 + h / 2
+        const label = n.label ?? ''
+        // Dynamic font size — shrink for very short nodes so text fits
+        const fs = h < 22 ? 8 : w < 90 ? 9 : 10
+        const maxChars = Math.floor(w / 6.5)
+        const displayLabel = label.length > maxChars ? label.slice(0, maxChars - 1) + '…' : label
 
-            return (
-              <g
-                key={n.id}
-                onClick={() => handleNodeClick(n)}
-                style={{ cursor: isClickable ? 'pointer' : 'default' }}
-              >
-                <rect
-                  x={p.x} y={p.y} width={p.w} height={p.h} rx="8"
-                  fill={n.color}
-                  opacity={dimmed ? 0.25 : 1}
-                  style={{ transition: 'opacity .2s' }}
-                />
-                {isFocused && (
-                  <rect
-                    x={p.x - 2} y={p.y - 2} width={p.w + 4} height={p.h + 4} rx="10"
-                    fill="none" stroke="white" strokeWidth="2" strokeOpacity="0.55"
-                  />
-                )}
-                {n.label.length > maxLabelChars && <title>{n.label}</title>}
-                <text
-                  x={p.x + p.w / 2} y={p.y + p.h / 2 - (n.pct ? 10 : 5)}
-                  textAnchor="middle" fill="white" fontSize={fs} fontWeight="600"
-                  fontFamily="Inter,sans-serif" style={{ pointerEvents: 'none' }}
-                >
-                  {trunc(n.label)}
-                </text>
-                <text
-                  x={p.x + p.w / 2} y={p.y + p.h / 2 + (n.pct ? 4 : 8)}
-                  textAnchor="middle" fill="white" fontSize={fs - 1}
-                  fontFamily="Inter,sans-serif" style={{ pointerEvents: 'none' }}
-                >
-                  {fmt(n.value)}
-                </text>
-                {n.pct && (
+        const isFocused   = focusedNodeId === n.id
+        const isConnected = connectedNodeIds.has(n.id)
+        const dimmed      = hasFocus && !isConnected
+        const clickable   = interactive && !!onNodeClick
+
+        // Lines to show — thresholds based on actual font size so small nodes still get labels
+        // Using dominantBaseline="middle": text glyph is centered on the given y
+        // Gap between two lines: fs * 0.65 above/below center
+        const gap = fs * 0.65
+        const show3 = h >= fs * 2.4 + 8 && !!n.pct
+        const show2 = h >= fs * 1.4 + 2   // label + value with tight gap
+        const show1 = h >= fs + 2          // at least the value line
+
+        const labelY = show3 ? cy - fs * 1.3 : show2 ? cy - gap : cy
+        const valueY = show3 ? cy           : show2 ? cy + gap  : cy
+        const pctY   = cy + fs * 1.3
+
+        return (
+          <g
+            key={n.id}
+            style={{ cursor: clickable ? 'pointer' : 'default', transition: 'opacity .2s' }}
+            opacity={dimmed ? 0.18 : 1}
+            onClick={clickable ? () => onNodeClick!(isFocused ? null : n.id) : undefined}
+          >
+            <rect
+              x={x0} y={y0} width={w} height={h} rx="7"
+              fill={n.color}
+              stroke={isFocused ? 'rgba(255,255,255,0.85)' : 'none'}
+              strokeWidth={isFocused ? 2.5 : 0}
+            />
+            {displayLabel !== label && <title>{label}</title>}
+            {show1 && (
+              <g clipPath={`url(#${clipId(n.id)})`} style={{ pointerEvents: 'none' }}>
+                {show2 && (
                   <text
-                    x={p.x + p.w / 2} y={p.y + p.h / 2 + 16}
-                    textAnchor="middle" fill="rgba(255,255,255,.7)" fontSize={fs - 2}
-                    fontFamily="Inter,sans-serif" style={{ pointerEvents: 'none' }}
+                    x={cx} y={labelY}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fill="white" fontSize={fs} fontWeight="600" fontFamily="Inter,sans-serif"
+                  >
+                    {displayLabel}
+                  </text>
+                )}
+                <text
+                  x={cx} y={valueY}
+                  textAnchor="middle" dominantBaseline="middle"
+                  fill="rgba(255,255,255,.92)" fontSize={Math.max(7, fs - 1)} fontFamily="Inter,sans-serif"
+                >
+                  {fmt(n.value ?? 0)}
+                </text>
+                {show3 && (
+                  <text
+                    x={cx} y={pctY}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fill="rgba(255,255,255,.62)" fontSize={Math.max(6, fs - 2)} fontFamily="Inter,sans-serif"
                   >
                     {n.pct}
                   </text>
                 )}
               </g>
-            )
-          })}
-        </svg>
+            )}
+          </g>
+        )
+      })}
+    </>
+  )
+}
+
+// ─── Full-screen modal ────────────────────────────────────────────────────────
+
+function SankeyModal({
+  nodes, links, fmt, onClose,
+}: {
+  nodes: SankeyNode[]
+  links: SankeyLink[]
+  fmt: (v: number) => string
+  onClose: () => void
+}) {
+  const canvasRef = useRef<HTMLDivElement>(null)
+
+  // Refs for synchronous access in event handlers — avoids stale closure issues
+  const panRef  = useRef({ x: 0, y: 0 })
+  const zoomRef = useRef(1)
+  const dragRef = useRef({ active: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0 })
+
+  const [transform, setTransform] = useState({ x: 0, y: 0, zoom: 1 })
+  const [dragging, setDragging] = useState(false)
+  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null)
+
+  const clampZ = (z: number) => Math.min(3, Math.max(0.25, z))
+
+  const applyTransform = useCallback((x: number, y: number, zoom: number) => {
+    panRef.current  = { x, y }
+    zoomRef.current = zoom
+    setTransform({ x, y, zoom })
+  }, [])
+
+  // Modal uses more vertical room so even small-value nodes have readable text
+  const maxNodesInCol = Math.max(...[0, 1, 2].map(c => nodes.filter(n => n.col === c).length))
+  const modalSvgHeight = Math.max(500, maxNodesInCol * 110 + Math.max(0, maxNodesInCol - 1) * NODE_PADDING + 32)
+
+  const { layoutNodes, layoutLinks } = useMemo(() => {
+    if (nodes.length === 0) return { layoutNodes: [], layoutLinks: [] }
+    const computed = computeLayout(nodes, links, MODAL_SVG_WIDTH, modalSvgHeight)
+    return {
+      layoutNodes: computed.nodes as LayoutNode[],
+      layoutLinks: computed.links as LayoutLink[],
+    }
+  }, [nodes, links, modalSvgHeight])
+
+  const focusedNode = focusedNodeId ? layoutNodes.find(n => n.id === focusedNodeId) : null
+
+  // Center SVG in canvas on first render
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    applyTransform(
+      Math.max(24, (rect.width  - MODAL_SVG_WIDTH)   / 2),
+      Math.max(24, (rect.height - modalSvgHeight) / 2),
+      1,
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Ctrl+scroll zoom centered on the cursor position
+  useEffect(() => {
+    const el = canvasRef.current
+    if (!el) return
+    const handler = (e: WheelEvent) => {
+      e.preventDefault()
+      const rect = el.getBoundingClientRect()
+      const cx = e.clientX - rect.left
+      const cy = e.clientY - rect.top
+      const oldZ = zoomRef.current
+      const newZ = clampZ(oldZ - e.deltaY * 0.002)
+      const ratio = newZ / oldZ
+      applyTransform(
+        cx - ratio * (cx - panRef.current.x),
+        cy - ratio * (cy - panRef.current.y),
+        newZ,
+      )
+    }
+    el.addEventListener('wheel', handler, { passive: false })
+    return () => el.removeEventListener('wheel', handler)
+  }, [applyTransform])
+
+  // Escape → close or clear focus first
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (focusedNodeId) setFocusedNodeId(null)
+      else onClose()
+    }
+    document.addEventListener('keydown', h)
+    return () => document.removeEventListener('keydown', h)
+  }, [onClose, focusedNodeId])
+
+  // Lock body scroll
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
+  // Drag handlers
+  const onMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return
+    dragRef.current = { active: true, startX: e.clientX, startY: e.clientY, startPanX: panRef.current.x, startPanY: panRef.current.y }
+    setDragging(true)
+    e.preventDefault()
+  }
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!dragRef.current.active) return
+    applyTransform(
+      dragRef.current.startPanX + (e.clientX - dragRef.current.startX),
+      dragRef.current.startPanY + (e.clientY - dragRef.current.startY),
+      zoomRef.current,
+    )
+  }
+  const stopDrag = () => { dragRef.current.active = false; setDragging(false) }
+
+  const zoomIn  = () => applyTransform(panRef.current.x, panRef.current.y, clampZ(zoomRef.current + 0.2))
+  const zoomOut = () => applyTransform(panRef.current.x, panRef.current.y, clampZ(zoomRef.current - 0.2))
+  const resetView = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return applyTransform(0, 0, 1)
+    const rect = canvas.getBoundingClientRect()
+    applyTransform(
+      Math.max(24, (rect.width  - MODAL_SVG_WIDTH)   / 2),
+      Math.max(24, (rect.height - modalSvgHeight) / 2),
+      1,
+    )
+  }
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div
+        className="relative flex flex-col bg-paper rounded-xl shadow-2xl"
+        style={{ width: 'min(96vw, 1480px)', height: '90vh' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Toolbar */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border shrink-0 gap-3">
+          {/* Left: breadcrumb */}
+          <div className="flex items-center gap-1.5 min-w-0">
+            {focusedNode ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setFocusedNodeId(null)}
+                  className="flex items-center gap-1 text-xs text-ink/50 hover:text-ink transition-vintage shrink-0"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  Ver tudo
+                </button>
+                <span className="text-ink/30 text-xs">›</span>
+                <span
+                  className="text-xs font-medium px-2 py-0.5 rounded-full text-white truncate"
+                  style={{ background: (focusedNode as { color?: string }).color ?? '#888' }}
+                >
+                  {(focusedNode as { label?: string }).label}
+                </span>
+              </>
+            ) : (
+              <span className="text-sm font-medium text-ink/55 font-serif truncate">Fluxo financeiro</span>
+            )}
+          </div>
+
+          {/* Right: zoom controls + close */}
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button type="button" onClick={zoomOut}
+              className="w-7 h-7 flex items-center justify-center rounded hover:bg-paper-2 text-ink/50 hover:text-ink transition-vintage"
+              title="Reduzir (−)"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-xs text-ink/40 w-9 text-center tabular-nums select-none">
+              {Math.round(transform.zoom * 100)}%
+            </span>
+            <button type="button" onClick={zoomIn}
+              className="w-7 h-7 flex items-center justify-center rounded hover:bg-paper-2 text-ink/50 hover:text-ink transition-vintage"
+              title="Ampliar (+)"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+            <button type="button" onClick={resetView}
+              className="w-7 h-7 flex items-center justify-center rounded hover:bg-paper-2 text-ink/40 hover:text-ink transition-vintage ml-0.5"
+              title="Centralizar"
+            >
+              <RotateCcw className="w-3 h-3" />
+            </button>
+            <div className="w-px h-4 bg-border mx-2" />
+            <button type="button" onClick={onClose}
+              className="w-7 h-7 flex items-center justify-center rounded hover:bg-paper-2 text-ink/50 hover:text-ink transition-vintage"
+              title="Fechar (Esc)"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Hint when no focus */}
+        {!focusedNode && (
+          <p className="text-center text-[10px] text-ink/30 py-1 border-b border-border/50 shrink-0 select-none">
+            Clique em um bloco para focar · Arraste para mover · Scroll para zoom
+          </p>
+        )}
+
+        {/* Draggable canvas */}
+        <div
+          ref={canvasRef}
+          className="flex-1 overflow-hidden relative select-none"
+          style={{ cursor: dragging ? 'grabbing' : 'grab' }}
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={stopDrag}
+          onMouseLeave={stopDrag}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
+              transformOrigin: '0 0',
+              willChange: 'transform',
+            }}
+          >
+            <svg
+              width={MODAL_SVG_WIDTH}
+              height={modalSvgHeight}
+              viewBox={`0 0 ${MODAL_SVG_WIDTH} ${modalSvgHeight}`}
+              style={{ display: 'block', userSelect: 'none' }}
+            >
+              <SvgContent
+                layoutNodes={layoutNodes}
+                layoutLinks={layoutLinks}
+                fmt={fmt}
+                idPrefix="mod-"
+                interactive
+                focusedNodeId={focusedNodeId}
+                onNodeClick={setFocusedNodeId}
+              />
+            </svg>
+          </div>
+        </div>
       </div>
-      {zoom !== 1 && (
-        <p className="mt-1 text-[10px] text-ink/30 text-right">Ctrl + scroll para zoom</p>
+    </div>,
+    document.body,
+  )
+}
+
+// ─── Public component ─────────────────────────────────────────────────────────
+
+export default function SankeyChart({ nodes, links, currency = true, height: _height, width: _width }: SankeyChartProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const containerWidth = useContainerWidth(wrapperRef)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const fmt = useCallback(
+    (v: number) => (currency ? formatBRL(v) : v.toLocaleString('pt-BR')),
+    [currency],
+  )
+
+  const { svgWidth, svgHeight, layoutNodes, layoutLinks } = useMemo(() => {
+    if (nodes.length === 0) return { svgWidth: 0, svgHeight: 0, layoutNodes: [], layoutLinks: [] }
+    const maxNodesInCol = Math.max(...[0, 1, 2].map(c => nodes.filter(n => n.col === c).length))
+    const svgH = Math.max(MIN_HEIGHT, maxNodesInCol * 64 + Math.max(0, maxNodesInCol - 1) * NODE_PADDING)
+    const svgW = Math.max(300, containerWidth - 4)
+    const computed = computeLayout(nodes, links, svgW, svgH)
+    return {
+      svgWidth: svgW,
+      svgHeight: svgH,
+      layoutNodes: computed.nodes as LayoutNode[],
+      layoutLinks: computed.links as LayoutLink[],
+    }
+  }, [nodes, links, containerWidth])
+
+  if (nodes.length === 0) return null
+
+  return (
+    <div ref={wrapperRef} className="relative w-full">
+      {/* Static preview — non-interactive, scaled to fit card height */}
+      <div className="relative overflow-hidden rounded-lg" style={{ height: PREVIEW_HEIGHT }}>
+        <svg
+          width="100%"
+          height={PREVIEW_HEIGHT}
+          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+          preserveAspectRatio="xMidYMid meet"
+          style={{ display: 'block', pointerEvents: 'none' }}
+        >
+          <SvgContent
+            layoutNodes={layoutNodes}
+            layoutLinks={layoutLinks}
+            fmt={fmt}
+            idPrefix="prev-"
+            interactive={false}
+          />
+        </svg>
+
+        {/* Expand button */}
+        <button
+          type="button"
+          onClick={() => setIsModalOpen(true)}
+          className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-lg bg-black/25 hover:bg-black/50 text-white transition-colors backdrop-blur-sm"
+          title="Expandir visualização"
+        >
+          <Maximize2 className="w-4 h-4" />
+        </button>
+      </div>
+
+      {isModalOpen && (
+        <SankeyModal
+          nodes={nodes}
+          links={links}
+          fmt={fmt}
+          onClose={() => setIsModalOpen(false)}
+        />
       )}
     </div>
   )
