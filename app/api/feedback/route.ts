@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { flushPostHogLogs, posthogLogs } from '@/lib/posthog-logs'
 
 const VALID_TYPES = ['bug', 'feedback', 'suggestion'] as const
 
@@ -8,6 +9,8 @@ export async function POST(request: Request) {
   try {
     body = await request.json()
   } catch {
+    posthogLogs.warn('Feedback submission rejected: invalid JSON', { endpoint: '/api/feedback' })
+    await flushPostHogLogs()
     return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
   }
 
@@ -35,8 +38,26 @@ export async function POST(request: Request) {
 
   if (error) {
     console.error('[feedback] insert error:', error.message)
+    posthogLogs.error(
+      'Feedback submission failed',
+      {
+        endpoint: '/api/feedback',
+        feedback_type: type as string,
+        supabase_code: error.code,
+      },
+      error
+    )
+    await flushPostHogLogs()
     return NextResponse.json({ error: 'Erro ao salvar feedback' }, { status: 500 })
   }
+
+  posthogLogs.info('Feedback submitted', {
+    endpoint: '/api/feedback',
+    feedback_type: type as string,
+    has_email: typeof email === 'string' && email.trim().length > 0,
+    has_phone: typeof phone === 'string' && phone.trim().length > 0,
+  })
+  await flushPostHogLogs()
 
   return NextResponse.json({ ok: true })
 }

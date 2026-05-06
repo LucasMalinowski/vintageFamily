@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
 import { getPlanCodeByPriceId, stripe } from '@/lib/billing/stripe'
+import { flushPostHogLogs, posthogLogs } from '@/lib/posthog-logs'
 
 function toIso(timestamp?: number | null) {
   if (!timestamp) return null
@@ -28,6 +29,11 @@ async function upsertSubscription(subscription: Stripe.Subscription) {
 
   if (!userId || !familyId) {
     console.warn('webhook: family billing context not found for subscription', { subscriptionId: subscription.id })
+    posthogLogs.warn('Stripe subscription missing family billing context', {
+      endpoint: '/api/billing/webhooks/stripe',
+      stripe_subscription_id: subscription.id,
+      stripe_customer_id: customerId ?? 'unknown',
+    })
     return
   }
 
@@ -60,6 +66,12 @@ export async function POST(request: Request) {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
     if (!signature || !webhookSecret) {
+      posthogLogs.error('Stripe webhook rejected: missing signature configuration', {
+        endpoint: '/api/billing/webhooks/stripe',
+        has_signature: Boolean(signature),
+        has_webhook_secret: Boolean(webhookSecret),
+      })
+      await flushPostHogLogs()
       return NextResponse.json({ error: 'Configuração da assinatura do webhook ausente.' }, { status: 400 })
     }
 
@@ -70,6 +82,8 @@ export async function POST(request: Request) {
       event = stripe.webhooks.constructEvent(payload, signature, webhookSecret)
     } catch (error: any) {
       console.error('webhook signature verification failed', error)
+      posthogLogs.warn('Stripe webhook signature verification failed', { endpoint: '/api/billing/webhooks/stripe' }, error)
+      await flushPostHogLogs()
       return NextResponse.json({ error: 'Assinatura inválida.' }, { status: 400 })
     }
 
@@ -80,10 +94,27 @@ export async function POST(request: Request) {
 
     if (insertEventError) {
       if (insertEventError.code === '23505') {
+        posthogLogs.info('Stripe webhook duplicate event ignored', {
+          endpoint: '/api/billing/webhooks/stripe',
+          stripe_event_id: event.id,
+          stripe_event_type: event.type,
+        })
+        await flushPostHogLogs()
         return NextResponse.json({ received: true, idempotent: true })
       }
 
       console.error('webhook idempotency insert failed', insertEventError)
+      posthogLogs.error(
+        'Stripe webhook idempotency insert failed',
+        {
+          endpoint: '/api/billing/webhooks/stripe',
+          stripe_event_id: event.id,
+          stripe_event_type: event.type,
+          supabase_code: insertEventError.code,
+        },
+        insertEventError
+      )
+      await flushPostHogLogs()
       return NextResponse.json({ error: 'Não foi possível registrar o evento.' }, { status: 500 })
     }
 
@@ -123,9 +154,18 @@ export async function POST(request: Request) {
       throw processingError
     }
 
+    posthogLogs.info('Stripe webhook processed', {
+      endpoint: '/api/billing/webhooks/stripe',
+      stripe_event_id: event.id,
+      stripe_event_type: event.type,
+    })
+    await flushPostHogLogs()
+
     return NextResponse.json({ received: true })
   } catch (error: any) {
     console.error('stripe webhook failed', error)
+    posthogLogs.error('Stripe webhook failed', { endpoint: '/api/billing/webhooks/stripe' }, error)
+    await flushPostHogLogs()
     return NextResponse.json({ error: 'Webhook processing failed.' }, { status: 500 })
   }
 }

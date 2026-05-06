@@ -4,11 +4,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { processWhatsAppMessage } from '@/lib/whatsapp/WhatsAppMessageParser'
 import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
+import { flushPostHogLogs, posthogLogs } from '@/lib/posthog-logs'
 
 function verifyMetaSignature(rawBody: string, signatureHeader: string | null): boolean {
   const secret = process.env.WHATSAPP_APP_SECRET
   if (!secret) {
     console.error('[webhook] WHATSAPP_APP_SECRET not configured — rejecting all requests')
+    posthogLogs.error('WhatsApp webhook rejected: app secret missing', { endpoint: '/api/whatsapp/webhook' })
     return false
   }
   if (!signatureHeader?.startsWith('sha256=')) return false
@@ -38,6 +40,8 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get('x-hub-signature-256')
 
     if (!verifyMetaSignature(rawBody, signature)) {
+      posthogLogs.warn('WhatsApp webhook rejected: invalid signature', { endpoint: '/api/whatsapp/webhook' })
+      await flushPostHogLogs()
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -48,6 +52,8 @@ export async function POST(request: NextRequest) {
     const value = changes?.value
 
     if (!value?.messages) {
+      posthogLogs.info('WhatsApp webhook received non-message payload', { endpoint: '/api/whatsapp/webhook' })
+      await flushPostHogLogs()
       return NextResponse.json({ status: 'ok' }, { status: 200 })
     }
 
@@ -56,6 +62,11 @@ export async function POST(request: NextRequest) {
 
     if (message?.type !== 'text') {
       await whatsAppService.sendTextMessage(from, 'Só consigo processar mensagens de texto. Descreva sua despesa, receita ou lembrete em texto. 😊')
+      posthogLogs.info('WhatsApp webhook ignored unsupported message type', {
+        endpoint: '/api/whatsapp/webhook',
+        message_type: message?.type ?? 'unknown',
+      })
+      await flushPostHogLogs()
       return NextResponse.json({ status: 'ok' }, { status: 200 })
     }
 
@@ -63,9 +74,12 @@ export async function POST(request: NextRequest) {
     const text: string = message.text?.body ?? ''
 
     await processWhatsAppMessage(from, text, messageId)
-  } catch {
+    posthogLogs.info('WhatsApp text message processed', { endpoint: '/api/whatsapp/webhook' })
+  } catch (error) {
+    posthogLogs.error('WhatsApp webhook processing failed', { endpoint: '/api/whatsapp/webhook' }, error)
     // Always return 200 to prevent Meta from retrying
   }
 
+  await flushPostHogLogs()
   return NextResponse.json({ status: 'ok' }, { status: 200 })
 }

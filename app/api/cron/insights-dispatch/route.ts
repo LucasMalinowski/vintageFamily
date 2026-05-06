@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { hasBillingAccess } from '@/lib/billing/access'
 import { generateProactiveInsights } from '@/lib/insights/generator'
 import { dispatchInsights } from '@/lib/insights/dispatcher'
+import { flushPostHogLogs, posthogLogs } from '@/lib/posthog-logs'
 
 function getCurrentPeriodLabel(): string {
   const now = new Date()
@@ -80,8 +81,23 @@ export async function GET(request: NextRequest) {
       dispatched++
     } catch (err) {
       console.error('[insights-dispatch] error for family', family.id, err)
+      posthogLogs.error(
+        'Insights dispatch failed for family',
+        {
+          endpoint: '/api/cron/insights-dispatch',
+          family_id: family.id,
+        },
+        err
+      )
     }
   }
+
+  posthogLogs.info('Insights dispatch completed', {
+    endpoint: '/api/cron/insights-dispatch',
+    family_count: families.length,
+    dispatched,
+  })
+  await flushPostHogLogs()
 
   return NextResponse.json({ ok: true, dispatched })
 }

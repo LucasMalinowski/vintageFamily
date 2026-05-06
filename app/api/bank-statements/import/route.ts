@@ -6,6 +6,7 @@ import { BANK_TUTORIALS_BY_ID } from '@/lib/bank-statements/tutorials'
 import { BANK_IDS, type BankId, type ReviewedImportItem, type StatementFileFormat } from '@/lib/bank-statements/types'
 import { BankStatementImportError, BankStatementImportService, buildImportPreview } from '@/lib/bank-statements/BankStatementImportService'
 import { MAX_CSV_SIZE_BYTES, MAX_OFX_SIZE_BYTES } from '@/lib/bank-statements/constants'
+import { flushPostHogLogs, posthogLogs } from '@/lib/posthog-logs'
 
 export const runtime = 'nodejs'
 
@@ -131,6 +132,17 @@ export async function POST(request: Request) {
         reviewedItems,
       })
 
+      posthogLogs.info('Bank statement import committed', {
+        endpoint: '/api/bank-statements/import',
+        family_id: profile.family_id,
+        user_id: auth.user.id,
+        bank,
+        format,
+        item_count: result.items.length,
+        warning_count: result.warnings.length,
+      })
+      await flushPostHogLogs()
+
       return NextResponse.json({
         batchId: result.batchId,
         bank: result.bank,
@@ -154,9 +166,30 @@ export async function POST(request: Request) {
 
     const preview = await service.preview(baseRequest)
 
+    posthogLogs.info('Bank statement import preview generated', {
+      endpoint: '/api/bank-statements/import',
+      family_id: profile.family_id,
+      user_id: auth.user.id,
+      bank,
+      format,
+      item_count: preview.items.length,
+      warning_count: preview.warnings.length,
+    })
+    await flushPostHogLogs()
+
     return NextResponse.json(preview)
   } catch (error) {
     if (error instanceof BankStatementImportError) {
+      posthogLogs.warn(
+        'Bank statement import rejected',
+        {
+          endpoint: '/api/bank-statements/import',
+          error_code: error.code,
+          status: error.status,
+        },
+        error
+      )
+      await flushPostHogLogs()
       return NextResponse.json(
         {
           error: error.message,
@@ -167,6 +200,8 @@ export async function POST(request: Request) {
       )
     }
 
+    posthogLogs.error('Bank statement import failed', { endpoint: '/api/bank-statements/import' }, error)
+    await flushPostHogLogs()
     return NextResponse.json({ error: 'Falha ao importar o extrato bancário.' }, { status: 500 })
   }
 }

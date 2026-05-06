@@ -11,6 +11,10 @@
   },
   "dependencies": {
     "@headlessui/react": "^1.7.18",
+    "@opentelemetry/api-logs": "^0.217.0",
+    "@opentelemetry/exporter-logs-otlp-http": "^0.217.0",
+    "@opentelemetry/resources": "^2.7.1",
+    "@opentelemetry/sdk-logs": "^0.217.0",
     "@stripe/react-stripe-js": "^3.10.0",
     "@stripe/stripe-js": "^7.4.0",
     "@supabase/ssr": "^0.10.2",

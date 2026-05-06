@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { detectAndUpsertRecurringPatterns } from '@/lib/recurring/detector'
 import { launchDueRecurringItems } from '@/lib/recurring/launcher'
+import { flushPostHogLogs, posthogLogs } from '@/lib/posthog-logs'
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
@@ -25,10 +26,26 @@ export async function GET(request: NextRequest) {
       totalDetected += await detectAndUpsertRecurringPatterns(family.id)
     } catch (err) {
       console.error('[recurring-check] detect error', family.id, err)
+      posthogLogs.error(
+        'Recurring detection failed for family',
+        {
+          endpoint: '/api/cron/recurring-check',
+          family_id: family.id,
+        },
+        err
+      )
     }
   }
 
   totalLaunched = await launchDueRecurringItems()
+
+  posthogLogs.info('Recurring check completed', {
+    endpoint: '/api/cron/recurring-check',
+    family_count: families.length,
+    total_detected: totalDetected,
+    total_launched: totalLaunched,
+  })
+  await flushPostHogLogs()
 
   return NextResponse.json({ ok: true, families: families.length, totalDetected, totalLaunched })
 }
