@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { formatBRL } from '@/lib/money'
+import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
 
 export interface SankeyNode {
   id: string
@@ -23,21 +24,64 @@ interface SankeyChartProps {
   nodes: SankeyNode[]
   links: SankeyLink[]
   width?: number
-  height?: number
+  height?: number  // treated as minimum; chart grows if needed
   currency?: boolean
+}
+
+const MIN_NODE_H = 52
+const NODE_GAP = 14
+const V_PADDING = 20
+
+function computeHeight(nodes: SankeyNode[], minHeight: number): number {
+  const maxInCol = Math.max(
+    ...([0, 1, 2].map((c) => nodes.filter((n) => n.col === c).length)),
+    0
+  )
+  const needed = maxInCol * MIN_NODE_H + (maxInCol - 1) * NODE_GAP + V_PADDING * 2
+  return Math.max(minHeight, needed)
 }
 
 export default function SankeyChart({
   nodes,
   links,
   width = 600,
-  height = 280,
+  height: minHeight = 280,
   currency = true,
 }: SankeyChartProps) {
   const [hoveredPath, setHoveredPath] = useState<string | null>(null)
   const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null)
+  const [zoom, setZoom] = useState(1)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const lastTouchDist = useRef<number | null>(null)
 
   const fmt = (v: number) => (currency ? formatBRL(v) : v.toLocaleString('pt-BR'))
+  const clampZoom = (z: number) => Math.min(3, Math.max(0.5, z))
+
+  // Native wheel listener — must be non-passive to call preventDefault
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const handler = (e: WheelEvent) => {
+      if (!e.ctrlKey && Math.abs(e.deltaX) < Math.abs(e.deltaY)) return // only intercept when zooming (ctrl) or horizontal scroll
+      e.preventDefault()
+      setZoom((z) => clampZoom(z - e.deltaY * 0.001))
+    }
+    el.addEventListener('wheel', handler, { passive: false })
+    return () => el.removeEventListener('wheel', handler)
+  }, [])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 2) return
+    const dx = e.touches[0].clientX - e.touches[1].clientX
+    const dy = e.touches[0].clientY - e.touches[1].clientY
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    if (lastTouchDist.current !== null) {
+      setZoom((z) => clampZoom(z + (dist - lastTouchDist.current!) * 0.004))
+    }
+    lastTouchDist.current = dist
+  }, [])
+
+  const handleTouchEnd = useCallback(() => { lastTouchDist.current = null }, [])
 
   const visibleNodes = focusedNodeId
     ? nodes.filter((n) => {
@@ -50,6 +94,9 @@ export default function SankeyChart({
   const visibleIds = new Set(visibleNodes.map((n) => n.id))
   const visibleLinks = links.filter((l) => visibleIds.has(l.from) && visibleIds.has(l.to))
 
+  // Auto-size height to never clip nodes
+  const height = computeHeight(visibleNodes, minHeight)
+
   const maxCol = visibleNodes.length > 0 ? Math.max(...visibleNodes.map((n) => n.col)) : 2
   const colX = maxCol <= 1 ? [0.05, 0.58, 0.95] : [0.04, 0.38, 0.72]
 
@@ -60,35 +107,30 @@ export default function SankeyChart({
   const trunc = (s: string) => s.length > maxLabelChars ? s.slice(0, maxLabelChars - 1) + '…' : s
   const placed: Record<string, { x: number; y: number; h: number; w: number }> = {}
 
-  const usableH = height - 20
-  const minH = 50
-  // Normalize node heights globally so small-value nodes in sparse columns stay small
+  const usableH = height - V_PADDING * 2
   const maxNodeVal = visibleNodes.length > 0 ? Math.max(...visibleNodes.map((n) => n.value)) : 1
 
   cols.forEach((col, ci) => {
     if (col.length === 0) return
-    const gap = col.length > 1 ? 14 : 0
+    const gap = col.length > 1 ? NODE_GAP : 0
     const totalGap = gap * (col.length - 1)
+
+    // Give each node its fair share of vertical space
+    const perNode = Math.max(MIN_NODE_H, (usableH - totalGap) / col.length)
+    const rawH = col.map((n) => Math.max(MIN_NODE_H, (n.value / maxNodeVal) * usableH))
+    const rawTotal = rawH.reduce((s, h) => s + h, 0)
     const maxAvail = usableH - totalGap
 
-    // Raw heights proportional to the global max node value
-    const rawH = col.map((n) => Math.max(minH, (n.value / maxNodeVal) * usableH))
-    const rawTotal = rawH.reduce((s, h) => s + h, 0)
-
-    // If they exceed available space, scale the over-minimum portion down to fit
     const heights: number[] = rawTotal <= maxAvail
       ? rawH
       : (() => {
-          const overMin = rawH.map((h) => h - minH)
-          const overTotal = overMin.reduce((s, h) => s + h, 0)
-          const budget = Math.max(0, maxAvail - minH * col.length)
-          const scale = overTotal > 0 ? budget / overTotal : 0
-          return rawH.map((h, i) => minH + overMin[i] * scale)
+          // Scale proportionally but never below perNode minimum
+          const scale = maxAvail / rawTotal
+          return rawH.map((h) => Math.max(perNode * 0.6, h * scale))
         })()
 
-    // Vertically center the column within the SVG
     const colH = heights.reduce((s, h) => s + h, 0) + totalGap
-    let y = 10 + Math.max(0, (usableH - colH) / 2)
+    let y = V_PADDING + Math.max(0, (usableH - colH) / 2)
 
     col.forEach((n, ni) => {
       placed[n.id] = { x: colX[ci] * width, y, h: heights[ni], w: nodeW }
@@ -96,13 +138,10 @@ export default function SankeyChart({
     })
   })
 
-  // Cap band height at half the node height so flows don't fill the entire pill.
-  // minBand keeps tiny flows visible.
-  const minBand = 10
+  const minBand = 8
   const capBand = (val: number, total: number, nodeH: number) =>
     Math.max(minBand, Math.min(nodeH * 0.5, (val / (total || 1)) * nodeH))
 
-  // Pre-compute totals per node for band-height calculation
   const srcTotals = new Map<string, number>()
   const dstTotals = new Map<string, number>()
   visibleLinks.forEach((lk) => {
@@ -112,7 +151,6 @@ export default function SankeyChart({
       dstTotals.set(lk.to, visibleLinks.filter((l) => l.to === lk.to).reduce((s, l) => s + l.value, 0))
   })
 
-  // Capped band height for every link
   const bandH = visibleLinks.map((lk) => {
     const src = placed[lk.from]
     const dst = placed[lk.to]
@@ -123,7 +161,6 @@ export default function SankeyChart({
     }
   })
 
-  // Total band height consumed per node (for centering the stack within the pill)
   const nodeSrcUsed = new Map<string, number>()
   const nodeDstUsed = new Map<string, number>()
   visibleLinks.forEach((lk, i) => {
@@ -138,12 +175,9 @@ export default function SankeyChart({
 
     const srcH = bandH[i].s
     const dstH = bandH[i].d
-
-    // Center the band stack within the pill
     const srcCenter = Math.max(0, (src.h - (nodeSrcUsed.get(lk.from) ?? 0)) / 2)
     const dstCenter = Math.max(0, (dst.h - (nodeDstUsed.get(lk.to) ?? 0)) / 2)
 
-    // Cumulative stack offset for links at the same node before this one
     const srcStack = visibleLinks
       .filter((l, j) => l.from === lk.from && j < i)
       .reduce((s, l) => s + bandH[visibleLinks.indexOf(l)].s, 0)
@@ -170,116 +204,137 @@ export default function SankeyChart({
   }
 
   return (
-    <div className="relative overflow-hidden">
-      {focusedNodeId && (
-        <button
-          type="button"
-          onClick={() => setFocusedNodeId(null)}
-          className="mb-2 inline-flex items-center gap-1 text-xs text-petrol font-medium hover:opacity-75 transition-opacity"
-        >
-          ← Voltar à visão geral
-        </button>
-      )}
-      <svg
-        width="100%"
-        viewBox={`0 0 ${width} ${height}`}
-        style={{ overflow: 'visible', maxWidth: '100%' }}
-      >
-        {paths.map(
-          (p) =>
-            p && (
-              <path
-                key={p.id}
-                d={p.d}
-                fill={p.color}
-                fillOpacity={hoveredPath === p.id ? 0.55 : 0.32}
-                stroke={p.color}
-                strokeOpacity={hoveredPath === p.id ? 0.7 : 0.4}
-                strokeWidth="0.5"
-                onMouseEnter={() => setHoveredPath(p.id)}
-                onMouseLeave={() => setHoveredPath(null)}
-                style={{ transition: 'fill-opacity .15s' }}
-              />
-            ),
-        )}
-
-        {visibleNodes.map((n) => {
-          const p = placed[n.id]
-          if (!p) return null
-          const isClickable = n.col === 1
-          const isFocused = focusedNodeId === n.id
-          const dimmed = focusedNodeId && n.col === 1 && !isFocused
-
-          return (
-            <g
-              key={n.id}
-              onClick={() => handleNodeClick(n)}
-              style={{ cursor: isClickable ? 'pointer' : 'default' }}
+    <div className="relative">
+      {/* Controls row */}
+      <div className="flex items-center justify-between mb-2">
+        {focusedNodeId ? (
+          <button
+            type="button"
+            onClick={() => setFocusedNodeId(null)}
+            className="inline-flex items-center gap-1 text-xs text-petrol font-medium hover:opacity-75 transition-opacity"
+          >
+            ← Voltar à visão geral
+          </button>
+        ) : <div />}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setZoom((z) => clampZoom(z - 0.2))}
+            className="w-6 h-6 flex items-center justify-center rounded text-ink/40 hover:bg-paper hover:text-ink transition-vintage"
+            title="Reduzir"
+          >
+            <ZoomOut className="w-3.5 h-3.5" />
+          </button>
+          <span className="text-[11px] text-ink/40 w-9 text-center tabular-nums">{Math.round(zoom * 100)}%</span>
+          <button
+            type="button"
+            onClick={() => setZoom((z) => clampZoom(z + 0.2))}
+            className="w-6 h-6 flex items-center justify-center rounded text-ink/40 hover:bg-paper hover:text-ink transition-vintage"
+            title="Ampliar"
+          >
+            <ZoomIn className="w-3.5 h-3.5" />
+          </button>
+          {zoom !== 1 && (
+            <button
+              type="button"
+              onClick={() => setZoom(1)}
+              className="w-6 h-6 flex items-center justify-center rounded text-ink/40 hover:bg-paper hover:text-ink transition-vintage"
+              title="Resetar zoom"
             >
-              <rect
-                x={p.x}
-                y={p.y}
-                width={p.w}
-                height={p.h}
-                rx="8"
-                fill={n.color}
-                opacity={dimmed ? 0.25 : 1}
-                style={{ transition: 'opacity .2s' }}
-              />
-              {isFocused && (
-                <rect
-                  x={p.x - 2}
-                  y={p.y - 2}
-                  width={p.w + 4}
-                  height={p.h + 4}
-                  rx="10"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeOpacity="0.55"
+              <RotateCcw className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Zoomable container — overflow:auto so zoomed content scrolls instead of clipping */}
+      <div
+        ref={containerRef}
+        className="overflow-auto rounded-lg"
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <svg
+          width={width * zoom}
+          height={height * zoom}
+          viewBox={`0 0 ${width} ${height}`}
+          style={{ display: 'block', minWidth: `${width * zoom}px` }}
+        >
+          {paths.map(
+            (p) =>
+              p && (
+                <path
+                  key={p.id}
+                  d={p.d}
+                  fill={p.color}
+                  fillOpacity={hoveredPath === p.id ? 0.55 : 0.32}
+                  stroke={p.color}
+                  strokeOpacity={hoveredPath === p.id ? 0.7 : 0.4}
+                  strokeWidth="0.5"
+                  onMouseEnter={() => setHoveredPath(p.id)}
+                  onMouseLeave={() => setHoveredPath(null)}
+                  style={{ transition: 'fill-opacity .15s' }}
                 />
-              )}
-              {n.label.length > maxLabelChars && <title>{n.label}</title>}
-              <text
-                x={p.x + p.w / 2}
-                y={p.y + p.h / 2 - (n.pct ? 10 : 5)}
-                textAnchor="middle"
-                fill="white"
-                fontSize={fs}
-                fontWeight="600"
-                fontFamily="Inter,sans-serif"
-                style={{ pointerEvents: 'none' }}
+              ),
+          )}
+
+          {visibleNodes.map((n) => {
+            const p = placed[n.id]
+            if (!p) return null
+            const isClickable = n.col === 1
+            const isFocused = focusedNodeId === n.id
+            const dimmed = focusedNodeId && n.col === 1 && !isFocused
+
+            return (
+              <g
+                key={n.id}
+                onClick={() => handleNodeClick(n)}
+                style={{ cursor: isClickable ? 'pointer' : 'default' }}
               >
-                {trunc(n.label)}
-              </text>
-              <text
-                x={p.x + p.w / 2}
-                y={p.y + p.h / 2 + (n.pct ? 4 : 8)}
-                textAnchor="middle"
-                fill="white"
-                fontSize={fs - 1}
-                fontFamily="Inter,sans-serif"
-                style={{ pointerEvents: 'none' }}
-              >
-                {fmt(n.value)}
-              </text>
-              {n.pct && (
+                <rect
+                  x={p.x} y={p.y} width={p.w} height={p.h} rx="8"
+                  fill={n.color}
+                  opacity={dimmed ? 0.25 : 1}
+                  style={{ transition: 'opacity .2s' }}
+                />
+                {isFocused && (
+                  <rect
+                    x={p.x - 2} y={p.y - 2} width={p.w + 4} height={p.h + 4} rx="10"
+                    fill="none" stroke="white" strokeWidth="2" strokeOpacity="0.55"
+                  />
+                )}
+                {n.label.length > maxLabelChars && <title>{n.label}</title>}
                 <text
-                  x={p.x + p.w / 2}
-                  y={p.y + p.h / 2 + 16}
-                  textAnchor="middle"
-                  fill="rgba(255,255,255,.7)"
-                  fontSize={fs - 2}
-                  fontFamily="Inter,sans-serif"
-                  style={{ pointerEvents: 'none' }}
+                  x={p.x + p.w / 2} y={p.y + p.h / 2 - (n.pct ? 10 : 5)}
+                  textAnchor="middle" fill="white" fontSize={fs} fontWeight="600"
+                  fontFamily="Inter,sans-serif" style={{ pointerEvents: 'none' }}
                 >
-                  {n.pct}
+                  {trunc(n.label)}
                 </text>
-              )}
-            </g>
-          )
-        })}
-      </svg>
+                <text
+                  x={p.x + p.w / 2} y={p.y + p.h / 2 + (n.pct ? 4 : 8)}
+                  textAnchor="middle" fill="white" fontSize={fs - 1}
+                  fontFamily="Inter,sans-serif" style={{ pointerEvents: 'none' }}
+                >
+                  {fmt(n.value)}
+                </text>
+                {n.pct && (
+                  <text
+                    x={p.x + p.w / 2} y={p.y + p.h / 2 + 16}
+                    textAnchor="middle" fill="rgba(255,255,255,.7)" fontSize={fs - 2}
+                    fontFamily="Inter,sans-serif" style={{ pointerEvents: 'none' }}
+                  >
+                    {n.pct}
+                  </text>
+                )}
+              </g>
+            )
+          })}
+        </svg>
+      </div>
+      {zoom !== 1 && (
+        <p className="mt-1 text-[10px] text-ink/30 text-right">Ctrl + scroll para zoom</p>
+      )}
     </div>
   )
 }

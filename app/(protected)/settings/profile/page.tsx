@@ -85,6 +85,9 @@ export default function ProfileSettingsPage() {
   const [countrySearch, setCountrySearch] = useState('')
   const [countryMenuOpen, setCountryMenuOpen] = useState(false)
 
+  const [billingCycleDay, setBillingCycleDay] = useState(7)
+  const [savingCycleDay, setSavingCycleDay] = useState(false)
+
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deletionInfo, setDeletionInfo] = useState<DeletionInfo | null>(null)
   const [deletionInfoLoading, setDeletionInfoLoading] = useState(false)
@@ -127,7 +130,7 @@ export default function ProfileSettingsPage() {
 
       const { data: userRow, error: userError } = await supabase
         .from('users')
-        .select('name,email,avatar_url,phone_number,phone_number_pending')
+        .select('name,email,avatar_url,phone_number,phone_number_pending,billing_cycle_day')
         .eq('id', user.id)
         .maybeSingle()
 
@@ -140,6 +143,7 @@ export default function ProfileSettingsPage() {
         setProfileEmail(userRow.email ?? user.email ?? '')
         setAvatarUrl(userRow.avatar_url ?? '')
         setAvatarPreview(userRow.avatar_url ?? '')
+        setBillingCycleDay(userRow.billing_cycle_day ?? 7)
         if (userRow.phone_number) {
           const resolvedCountry = findCountryByPhone(userRow.phone_number)
           setVerifiedPhone(userRow.phone_number)
@@ -277,6 +281,13 @@ export default function ProfileSettingsPage() {
     }
 
     setSavingProfile(false)
+  }
+
+  const handleSaveCycleDay = async () => {
+    if (!user) return
+    setSavingCycleDay(true)
+    await supabase.from('users').update({ billing_cycle_day: billingCycleDay }).eq('id', user.id)
+    setSavingCycleDay(false)
   }
 
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -617,6 +628,37 @@ export default function ProfileSettingsPage() {
                 </button>
               </div>
             </form>
+          </div>
+
+          <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-serif text-ink">Dia do ciclo financeiro</h2>
+              <p className="text-sm text-ink/60 font-body mt-1">
+                Informe o dia do mês em que você recebe seu salário. O filtro de "mês" vai usar esse dia como início do período.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <select
+                value={billingCycleDay}
+                onChange={(e) => setBillingCycleDay(Number(e.target.value))}
+                className="px-4 py-2.5 bg-paper border border-border rounded-lg text-sm text-ink focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
+              >
+                {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={d}>Dia {d}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleSaveCycleDay}
+                disabled={savingCycleDay}
+                className="bg-coffee text-paper px-5 py-2.5 rounded-lg font-body hover:bg-coffee/90 transition-vintage disabled:opacity-50 text-sm"
+              >
+                {savingCycleDay ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+            <p className="text-xs text-ink/40">
+              Ex.: se você recebe no dia 21, o "mês de maio" vai de 21 de abril até 20 de maio.
+            </p>
           </div>
 
           <div className="bg-bg border border-terracotta/30 rounded-vintage shadow-vintage p-6 space-y-4">

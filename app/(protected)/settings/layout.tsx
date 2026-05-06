@@ -12,6 +12,7 @@ const settingsItems = [
   { label: 'Perfil', href: '/settings/profile' },
   { label: 'Família', href: '/settings/family' },
   { label: 'Assinatura', href: '/settings/billing' },
+  { label: 'Insights', href: '/settings/insights' },
 ]
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {

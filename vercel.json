@@ -2,6 +2,22 @@
   "functions": {
     "app/api/whatsapp/webhook/route.ts": {
       "maxDuration": 30
+    },
+    "app/api/cron/recurring-check/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/insights-dispatch/route.ts": {
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/recurring-check",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/insights-dispatch",
+      "schedule": "0 9 * * 1"
+    }
+  ]
 }

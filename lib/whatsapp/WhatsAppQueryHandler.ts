@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { nvidiaAIService } from '@/lib/ai/NvidiaAIService'
 import { formatBRL } from '@/lib/money'
 import type { IntentClassification, ClassifyItem, ClassifyResult } from '@/lib/ai/NvidiaAIService'
+import { getBillingCycleRange } from '@/lib/billing-cycle'
 
 type DateRange = { from: string; to: string }
 
@@ -62,13 +63,14 @@ export class WhatsAppQueryHandler {
     intent: IntentClassification,
     familyId: string,
     todayISO: string,
-    fromPhone?: string
+    fromPhone?: string,
+    billingCycleDay: number = 7
   ): Promise<string> {
     if (intent.data_needed.length === 0) {
       return `Não entendi o que você quer consultar. Tente perguntar como: "Quanto gastei esse mês?" 😊`
     }
 
-    const dateRange = WhatsAppQueryHandler.buildDateRange(intent.time_range, todayISO)
+    const dateRange = WhatsAppQueryHandler.buildDateRange(intent.time_range, todayISO, billingCycleDay)
     const payload = await this.fetchData(intent, familyId, dateRange)
     const rawPeriod = periodLabel(intent.time_range, dateRange)
     const period = intent.status_filter === 'open'
@@ -322,14 +324,25 @@ export class WhatsAppQueryHandler {
     return lines.join('\n')
   }
 
-  private static buildDateRange(timeRange: IntentClassification['time_range'], todayISO: string): DateRange {
+  private static buildDateRange(
+    timeRange: IntentClassification['time_range'],
+    todayISO: string,
+    billingCycleDay: number = 7
+  ): DateRange {
     const today = parseISO(todayISO)
     const fmt = (d: Date) => format(d, 'yyyy-MM-dd')
 
     switch (timeRange) {
+      case 'current_month': {
+        const refMonth = format(today, 'yyyy-MM')
+        const { start, end } = getBillingCycleRange(billingCycleDay, refMonth)
+        return { from: start, to: end }
+      }
       case 'last_month': {
         const prev = subMonths(today, 1)
-        return { from: fmt(startOfMonth(prev)), to: fmt(endOfMonth(prev)) }
+        const refMonth = format(prev, 'yyyy-MM')
+        const { start, end } = getBillingCycleRange(billingCycleDay, refMonth)
+        return { from: start, to: end }
       }
       case 'current_year':
         return { from: fmt(startOfYear(today)), to: fmt(endOfYear(today)) }
@@ -339,7 +352,6 @@ export class WhatsAppQueryHandler {
         return { from: todayISO, to: fmt(subDays(today, -7)) }
       case 'all':
         return { from: '2000-01-01', to: todayISO }
-      case 'current_month':
       default:
         return { from: fmt(startOfMonth(today)), to: fmt(endOfMonth(today)) }
     }

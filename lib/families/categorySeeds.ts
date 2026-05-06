@@ -35,6 +35,17 @@ export const FAMILY_CATEGORY_SEEDS: CategorySeed[] = [
   },
   {
     kind: 'expense',
+    name: 'Pets',
+    is_system: true,
+    icon: 'PawPrint',
+    children: [
+      { name: 'Ração' },
+      { name: 'Veterinário' },
+      { name: 'Itens diários' },
+    ],
+  },
+  {
+    kind: 'expense',
     name: 'Lazer',
     is_system: true,
     icon: 'Smile',

@@ -25,10 +25,10 @@ import {
   getMonthRange,
   getYearLabel,
   getYearRange,
-  isDateWithinFilters,
   ALL_MONTHS_VALUE,
   ALL_YEARS_VALUE,
 } from '@/lib/dates'
+import { getBillingCycleRange } from '@/lib/billing-cycle'
 import { ArrowDown, Calendar, Check, Clock, DollarSign, Download, Edit2, FileDown, FileText, List, SlidersHorizontal, Search, Plus, TrendingUp, X, Tag } from 'lucide-react'
 import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
@@ -70,8 +70,15 @@ const buildAttachmentPath = (familyId: string, incomeId: string, fileName: strin
   return `${familyId}/${incomeId}/${timestamp}-${safeName}`
 }
 
+function isDateInBillingPeriod(date: string, month: number, year: number, cycleDay: number): boolean {
+  if (month === ALL_MONTHS_VALUE || year === ALL_YEARS_VALUE) return true
+  const refMonth = `${year}-${String(month).padStart(2, '0')}`
+  const { start, end } = getBillingCycleRange(cycleDay, refMonth)
+  return date >= start && date <= end
+}
+
 export default function Incomes() {
-  const { familyId } = useAuth()
+  const { familyId, user } = useAuth()
   const { tier } = usePlan()
   const isFreeTier = tier === 'free'
   const [incomes, setIncomes] = useState<Income[]>([])
@@ -79,6 +86,7 @@ export default function Incomes() {
   const [trendData, setTrendData] = useState<{ label: string; value: number }[]>([])
   const [categories, setCategories] = useState<CategoryRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [billingCycleDay, setBillingCycleDay] = useState(1)
 
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
   const [selectedYear, setSelectedYear] = useState(getCurrentYear())
@@ -106,6 +114,16 @@ export default function Incomes() {
   const [pdfGenerating, setPdfGenerating] = useState(false)
   const [pdfError, setPdfError] = useState<string | null>(null)
 
+  const RECURRENCE_OPTIONS = [
+    { value: 'weekly', label: 'Semanal' },
+    { value: 'biweekly', label: 'Quinzenal' },
+    { value: 'monthly', label: 'Mensal' },
+    { value: 'bimonthly', label: 'Bimestral' },
+    { value: 'quarterly', label: 'Trimestral' },
+    { value: 'semiannual', label: 'Semestral' },
+    { value: 'annual', label: 'Anual' },
+  ]
+
   const [formData, setFormData] = useState({
     description: '',
     categoryId: '',
@@ -113,7 +131,29 @@ export default function Incomes() {
     date: format(new Date(), 'yyyy-MM-dd'),
     status: 'received' as IncomeStatus,
     notes: '',
+    isRecurring: false,
+    recurrenceFrequency: 'monthly',
   })
+  const [suggestedCategoryId, setSuggestedCategoryId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (formData.categoryId) { setSuggestedCategoryId(null); return }
+    const desc = formData.description.trim()
+    if (desc.length < 2) { setSuggestedCategoryId(null); return }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/suggest/category', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ description: desc, kind: 'income' }),
+        })
+        const data = await res.json()
+        if (data.categoryId && !formData.categoryId) setSuggestedCategoryId(data.categoryId)
+      } catch { /* silent */ }
+    }, 350)
+    return () => clearTimeout(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.description])
 
   const loadCategories = useCallback(async () => {
     const { data } = await supabase
@@ -158,16 +198,28 @@ export default function Incomes() {
         status: (row.status === 'pending' ? 'pending' : 'received') as IncomeStatus,
       }))
       setRawYearIncomes(normalized)
-      setIncomes(normalized.filter((income) => isDateWithinFilters(income.date, selectedMonth, selectedYear)))
+      setIncomes(normalized.filter((income) => isDateInBillingPeriod(income.date, selectedMonth, selectedYear, billingCycleDay)))
     }
     setLoading(false)
-  }, [familyId, selectedMonth, selectedYear, selectedCategoryId, selectedStatus])
+  }, [familyId, selectedMonth, selectedYear, selectedCategoryId, selectedStatus, billingCycleDay])
 
   useEffect(() => {
     if (familyId) {
       loadCategories()
     }
   }, [familyId, loadCategories])
+
+  useEffect(() => {
+    if (!user?.id) return
+    supabase
+      .from('users')
+      .select('billing_cycle_day')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.billing_cycle_day) setBillingCycleDay(data.billing_cycle_day)
+      })
+  }, [user?.id])
 
   useEffect(() => {
     if (familyId) {
@@ -294,6 +346,33 @@ export default function Incomes() {
     }
 
     if (!editingIncome && incomes.length === 0) posthog.capture(EVENTS.FIRST_INCOME_CREATED)
+
+    if (formData.isRecurring && !editingIncome) {
+      const dateObj = new Date(formData.date)
+      const freq = formData.recurrenceFrequency
+      const freqDays: Record<string, number> = { weekly:7,biweekly:14,monthly:30,bimonthly:60,quarterly:91,semiannual:182,annual:365 }
+      const nextDate = new Date(dateObj)
+      nextDate.setDate(nextDate.getDate() + (freqDays[freq] ?? 30))
+      const toISO = (d: Date) => d.toISOString().slice(0, 10)
+      await supabase.from('recurring_patterns').upsert(
+        {
+          family_id: familyId!,
+          description_pattern: formData.description.toLowerCase().trim(),
+          kind: 'income',
+          category_id: category.id,
+          estimated_amount_cents: amountCents,
+          frequency: freq,
+          source: 'user',
+          day_of_month: Math.min(dateObj.getDate(), 28),
+          last_occurrence_date: formData.date,
+          next_expected_date: toISO(nextDate),
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'family_id,description_pattern,kind' }
+      )
+    }
+
     closeModal()
     loadIncomes()
   }
@@ -347,6 +426,8 @@ export default function Incomes() {
         date: income.date,
         status: income.status,
         notes: cleanNotes || '',
+        isRecurring: false,
+        recurrenceFrequency: 'monthly',
       })
     } else {
       setEditingIncome(null)
@@ -358,6 +439,8 @@ export default function Incomes() {
         date: format(new Date(), 'yyyy-MM-dd'),
         status: 'received',
         notes: '',
+        isRecurring: false,
+        recurrenceFrequency: 'monthly',
       })
     }
     setIsModalOpen(true)
@@ -1180,10 +1263,21 @@ export default function Incomes() {
               type="text"
               required
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value, categoryId: '' })}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder="Ex: Salário"
             />
+            {suggestedCategoryId && !formData.categoryId && categoryLabelMap.get(suggestedCategoryId) && (
+              <button
+                type="button"
+                onClick={() => { setFormData(f => ({ ...f, categoryId: suggestedCategoryId })); setSuggestedCategoryId(null) }}
+                className="mt-1.5 flex items-center gap-1.5 text-xs text-petrol border border-petrol/30 rounded-full px-2.5 py-1 hover:bg-petrol/5 transition-vintage"
+              >
+                <span className="text-ink/40">Sugestão:</span>
+                <span className="font-medium">{categoryLabelMap.get(suggestedCategoryId)}</span>
+                <Check className="w-3 h-3 ml-0.5" />
+              </button>
+            )}
           </div>
 
           <Select
@@ -1244,6 +1338,30 @@ export default function Incomes() {
               placeholder="Notas adicionais..."
             />
           </div>
+
+          {!editingIncome && (
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.isRecurring}
+                  onChange={(e) => setFormData({ ...formData, isRecurring: e.target.checked })}
+                  className="w-5 h-5 rounded border-border"
+                />
+                <span className="text-sm font-body text-ink">Receita recorrente</span>
+              </label>
+              {formData.isRecurring && (
+                <Select
+                  label="Recorrência"
+                  value={formData.recurrenceFrequency}
+                  onChange={(v) => setFormData({ ...formData, recurrenceFrequency: v })}
+                  options={RECURRENCE_OPTIONS}
+                  required
+                  variant="modal"
+                />
+              )}
+            </div>
+          )}
 
           <div className="flex gap-3 pt-4">
             <button

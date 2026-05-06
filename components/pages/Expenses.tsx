@@ -21,10 +21,10 @@ import {
   getMonthLabel,
   getYearLabel,
   getYearRange,
-  isDateWithinFilters,
   ALL_MONTHS_VALUE,
   ALL_YEARS_VALUE,
 } from '@/lib/dates'
+import { getBillingCycleRange } from '@/lib/billing-cycle'
 import AnalyticsKpiCard from '@/components/ui/AnalyticsKpiCard'
 import SankeyChart, { SankeyNode, SankeyLink } from '@/components/ui/SankeyChart'
 import { buildInstallmentDates, splitAmountCents } from '@/lib/installments'
@@ -72,7 +72,7 @@ interface Expense {
   category_name: string
   amount_cents: number
   date: string
-  status: 'open' | 'paid'
+  status: 'open' | 'paid' | 'pending_confirmation'
   paid_at: string | null
   notes: string | null
   payment_method: PaymentMethod | null
@@ -91,8 +91,15 @@ const formatPaymentLabel = (method: PaymentMethod | null, installments: number |
   return 'Não definido'
 }
 
+function isDateInBillingPeriod(date: string, month: number, year: number, cycleDay: number): boolean {
+  if (month === ALL_MONTHS_VALUE || year === ALL_YEARS_VALUE) return true
+  const refMonth = `${year}-${String(month).padStart(2, '0')}`
+  const { start, end } = getBillingCycleRange(cycleDay, refMonth)
+  return date >= start && date <= end
+}
+
 export default function Expenses() {
-  const { familyId } = useAuth()
+  const { familyId, user } = useAuth()
   const { tier } = usePlan()
   const isFreeTier = tier === 'free'
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -100,6 +107,7 @@ export default function Expenses() {
   const [categories, setCategories] = useState<CategoryRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [updatingIds, setUpdatingIds] = useState<string[]>([])
+  const [billingCycleDay, setBillingCycleDay] = useState(1)
 
   // Filtros
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
@@ -130,6 +138,16 @@ export default function Expenses() {
   const [exportingFormat, setExportingFormat] = useState<'csv' | 'pdf' | null>(null)
 
   // Form
+  const RECURRENCE_OPTIONS = [
+    { value: 'weekly', label: 'Semanal' },
+    { value: 'biweekly', label: 'Quinzenal' },
+    { value: 'monthly', label: 'Mensal' },
+    { value: 'bimonthly', label: 'Bimestral' },
+    { value: 'quarterly', label: 'Trimestral' },
+    { value: 'semiannual', label: 'Semestral' },
+    { value: 'annual', label: 'Anual' },
+  ]
+
   const [formData, setFormData] = useState({
     description: '',
     categoryId: '',
@@ -139,7 +157,29 @@ export default function Expenses() {
     notes: '',
     paymentMethod: 'PIX' as PaymentMethod,
     installments: 1,
+    isRecurring: false,
+    recurrenceFrequency: 'monthly',
   })
+  const [suggestedCategoryId, setSuggestedCategoryId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (formData.categoryId) { setSuggestedCategoryId(null); return }
+    const desc = formData.description.trim()
+    if (desc.length < 2) { setSuggestedCategoryId(null); return }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/suggest/category', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ description: desc, kind: 'expense' }),
+        })
+        const data = await res.json()
+        if (data.categoryId && !formData.categoryId) setSuggestedCategoryId(data.categoryId)
+      } catch { /* silent */ }
+    }, 150)
+    return () => clearTimeout(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.description])
 
   useEffect(() => {
     if (familyId) {
@@ -147,6 +187,18 @@ export default function Expenses() {
       loadCategories()
     }
   }, [familyId])
+
+  useEffect(() => {
+    if (!user?.id) return
+    supabase
+      .from('users')
+      .select('billing_cycle_day')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.billing_cycle_day) setBillingCycleDay(data.billing_cycle_day)
+      })
+  }, [user?.id])
 
   useEffect(() => {
     if (familyId) {
@@ -161,6 +213,7 @@ export default function Expenses() {
     selectedStatus,
     selectedPaymentMethod,
     onlyInstallments,
+    billingCycleDay,
   ])
 
   const categoryById = useMemo(
@@ -256,7 +309,7 @@ export default function Expenses() {
         category_name: row.category_name,
         amount_cents: row.amount_cents,
         date: row.date,
-        status: row.status === 'paid' ? 'paid' : 'open',
+        status: row.status === 'paid' ? 'paid' : row.status === 'pending_confirmation' ? 'pending_confirmation' : 'open',
         paid_at: row.paid_at,
         notes: row.notes,
         payment_method: normalizePaymentMethod(row.payment_method),
@@ -265,7 +318,7 @@ export default function Expenses() {
         installment_index: row.installment_index,
       }))
       setRawYearExpenses(normalized)
-      setExpenses(normalized.filter((expense) => isDateWithinFilters(expense.date, selectedMonth, selectedYear)))
+      setExpenses(normalized.filter((expense) => isDateInBillingPeriod(expense.date, selectedMonth, selectedYear, billingCycleDay)))
     }
     setLoading(false)
   }
@@ -367,6 +420,33 @@ export default function Expenses() {
     }
 
     if (!editingExpense && expenses.length === 0) posthog.capture(EVENTS.FIRST_EXPENSE_CREATED)
+
+    if (formData.isRecurring && !editingExpense) {
+      const dateObj = new Date(formData.date)
+      const freq = formData.recurrenceFrequency
+      const freqDays: Record<string, number> = { weekly:7,biweekly:14,monthly:30,bimonthly:60,quarterly:91,semiannual:182,annual:365 }
+      const nextDate = new Date(dateObj)
+      nextDate.setDate(nextDate.getDate() + (freqDays[freq] ?? 30))
+      const toISO = (d: Date) => d.toISOString().slice(0, 10)
+      await supabase.from('recurring_patterns').upsert(
+        {
+          family_id: familyId!,
+          description_pattern: formData.description.toLowerCase().trim(),
+          kind: 'expense',
+          category_id: category.id,
+          estimated_amount_cents: amountCents,
+          frequency: freq,
+          source: 'user',
+          day_of_month: Math.min(dateObj.getDate(), 28),
+          last_occurrence_date: formData.date,
+          next_expected_date: toISO(nextDate),
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'family_id,description_pattern,kind' }
+      )
+    }
+
     closeModal()
     loadExpenses()
   }
@@ -437,10 +517,12 @@ export default function Expenses() {
         categoryId: expense.category_id || findCategoryIdByStoredName(categories, expense.category_name) || '',
         amount: (expense.amount_cents / 100).toFixed(2),
         date: expense.date,
-        status: expense.status,
+        status: expense.status === 'paid' ? 'paid' : 'open',
         notes: cleanNotes || '',
         paymentMethod: expense.payment_method || 'PIX',
         installments: expense.installments || 1,
+        isRecurring: false,
+        recurrenceFrequency: 'monthly',
       })
     } else {
       setEditingExpense(null)
@@ -454,6 +536,8 @@ export default function Expenses() {
         notes: '',
         paymentMethod: 'PIX',
         installments: 1,
+        isRecurring: false,
+        recurrenceFrequency: 'monthly',
       })
     }
     setIsModalOpen(true)
@@ -490,12 +574,9 @@ export default function Expenses() {
     if (selectedMonth === ALL_MONTHS_VALUE || selectedMonth === 1 || selectedYear === ALL_YEARS_VALUE) return null
     const prevM = selectedMonth - 1
     return rawYearExpenses
-      .filter((e) => {
-        const d = new Date(e.date)
-        return d.getFullYear() === selectedYear && d.getMonth() + 1 === prevM
-      })
+      .filter((e) => isDateInBillingPeriod(e.date, prevM, selectedYear, billingCycleDay))
       .reduce((s, e) => s + e.amount_cents, 0)
-  }, [rawYearExpenses, selectedMonth, selectedYear])
+  }, [rawYearExpenses, selectedMonth, selectedYear, billingCycleDay])
 
   const prevMonthLabel = useMemo(() => {
     if (selectedMonth === ALL_MONTHS_VALUE || selectedMonth === 1) return null
@@ -721,7 +802,7 @@ export default function Expenses() {
         formatDate(expense.date),
         expense.description,
         getCategoryLabel(expense.category_id, expense.category_name),
-        expense.status === 'paid' ? 'Pago' : 'Em aberto',
+        expense.status === 'paid' ? 'Pago' : expense.status === 'pending_confirmation' ? 'Aguardando confirmação' : 'Em aberto',
         formatPaymentLabel(expense.payment_method, expense.installments),
         expense.installments && expense.installments > 1 ? `${expense.installments}x` : '',
         formatBRL(expense.amount_cents),
@@ -1207,6 +1288,18 @@ export default function Expenses() {
               />
             ) : (
               <div className="space-y-5">
+                {/* Pending confirmation banner */}
+                {filteredExpenses.some(e => e.status === 'pending_confirmation') && (
+                  <div className="flex items-start gap-3 p-3.5 bg-petrol/5 border border-petrol/25 rounded-xl">
+                    <span className="text-base shrink-0">📅</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-petrol">Despesas recorrentes para confirmar</p>
+                      <p className="text-xs text-ink/55 mt-0.5">
+                        Algumas despesas recorrentes foram pré-registradas. Abra cada uma para confirmar se aconteceu ou excluir.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 {groupedExpenses.map((group) => (
                   <div key={group.label} className="space-y-3">
                     {groupedExpenses.length > 1 && (
@@ -1225,6 +1318,7 @@ export default function Expenses() {
                         const catParts = catLabel ? catLabel.split(' / ') : []
                         const catIcon = expense.category_id ? categoryIconMap.get(expense.category_id) : null
                         const isPaid = expense.status === 'paid'
+                        const isPending = expense.status === 'pending_confirmation'
                         return (
                           <div
                             id={`expense-${expense.id}`}
@@ -1232,8 +1326,8 @@ export default function Expenses() {
                             className={`transition-vintage ${isUpdating ? 'opacity-60' : ''}`}
                           >
                             {/* ── MOBILE card ── */}
-                            <div className="md:hidden rounded-xl overflow-hidden border border-border bg-offWhite shadow-sm flex">
-                              <div className={`w-[3px] shrink-0 ${isPaid ? 'bg-olive' : 'bg-amber-400'}`} />
+                            <div className={`md:hidden rounded-xl overflow-hidden border shadow-sm flex ${isPending ? 'border-petrol/40 bg-petrol/5' : 'border-border bg-offWhite'}`}>
+                              <div className={`w-[3px] shrink-0 ${isPaid ? 'bg-olive' : isPending ? 'bg-petrol' : 'bg-amber-400'}`} />
                               <div className="flex-1 p-3 min-w-0 space-y-2">
                                 {/* Row 1: checkbox + icon + title + menu */}
                                 <div className="flex items-center gap-2">
@@ -1267,6 +1361,8 @@ export default function Expenses() {
                                 <div className="flex items-center justify-between">
                                   {isPaid ? (
                                     <span className="rounded-full bg-olive/15 px-2.5 py-0.5 text-[11px] font-semibold text-olive">Pago</span>
+                                  ) : isPending ? (
+                                    <span className="rounded-full bg-petrol/10 border border-petrol/30 px-2.5 py-0.5 text-[11px] font-semibold text-petrol">Aguardando confirmação</span>
                                   ) : (
                                     <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600">Em aberto</span>
                                   )}
@@ -1343,6 +1439,11 @@ export default function Expenses() {
                                   {isPaid && (
                                     <span className="rounded-full bg-olive/15 px-2.5 py-0.5 text-[11px] font-semibold text-olive">
                                       Pago
+                                    </span>
+                                  )}
+                                  {isPending && (
+                                    <span className="rounded-full bg-petrol/10 border border-petrol/30 px-2.5 py-0.5 text-[11px] font-semibold text-petrol">
+                                      Aguardando confirmação
                                     </span>
                                   )}
                                 </div>
@@ -1450,10 +1551,21 @@ export default function Expenses() {
               type="text"
               required
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value, categoryId: '' })}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder="Ex: Conta de luz"
             />
+            {suggestedCategoryId && !formData.categoryId && categoryLabelMap.get(suggestedCategoryId) && (
+              <button
+                type="button"
+                onClick={() => { setFormData(f => ({ ...f, categoryId: suggestedCategoryId })); setSuggestedCategoryId(null) }}
+                className="mt-1.5 flex items-center gap-1.5 text-xs text-petrol border border-petrol/30 rounded-full px-2.5 py-1 hover:bg-petrol/5 transition-vintage"
+              >
+                <span className="text-ink/40">Sugestão:</span>
+                <span className="font-medium">{categoryLabelMap.get(suggestedCategoryId)}</span>
+                <Check className="w-3 h-3 ml-0.5" />
+              </button>
+            )}
           </div>
 
           <div>
@@ -1563,6 +1675,30 @@ export default function Expenses() {
             </label>
           </div>
 
+          {!editingExpense && (
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.isRecurring}
+                  onChange={(e) => setFormData({ ...formData, isRecurring: e.target.checked })}
+                  className="w-5 h-5 rounded border-border"
+                />
+                <span className="text-sm font-body text-ink">Despesa recorrente</span>
+              </label>
+              {formData.isRecurring && (
+                <Select
+                  label="Recorrência"
+                  value={formData.recurrenceFrequency}
+                  onChange={(v) => setFormData({ ...formData, recurrenceFrequency: v })}
+                  options={RECURRENCE_OPTIONS}
+                  required
+                  variant="modal"
+                />
+              )}
+            </div>
+          )}
+
           <div className="flex gap-3 pt-2">
             <button
               type="button"
@@ -1609,7 +1745,7 @@ export default function Expenses() {
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-ink/50">Status</p>
-                  <p>{detailExpense.status === 'paid' ? 'Pago' : 'Em aberto'}</p>
+                  <p>{detailExpense.status === 'paid' ? 'Pago' : detailExpense.status === 'pending_confirmation' ? 'Aguardando confirmação' : 'Em aberto'}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-ink/50">Método</p>

@@ -180,6 +180,51 @@ export async function sendWelcomeEmail({
   })
 }
 
+export async function sendInsightsEmail({
+  to,
+  name,
+  insights,
+  period,
+}: {
+  to: string
+  name: string
+  insights: string[]
+  period: string
+}) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://florim.app'
+  const safeName = escapeHtml(name || 'você')
+  const safePeriod = escapeHtml(period)
+
+  const insightBlocks = insights
+    .map(
+      (insight, i) => `
+        <div style="background:#F5F1EB;border-radius:8px;padding:16px 20px;margin-bottom:12px;">
+          <p style="margin:0;color:#2F3B33;font-size:15px;line-height:1.6;font-family:Arial,sans-serif;">
+            ${escapeHtml(insight)}
+          </p>
+        </div>`
+    )
+    .join('')
+
+  const body = `
+    <p style="margin:0 0 20px;">Olá, <strong>${safeName}</strong>! Aqui estão seus insights financeiros de <strong>${safePeriod}</strong>.</p>
+    ${insightBlocks}
+    ${ctaButton(`${appUrl}/insights`, 'Ver todos os insights')}
+    <p style="margin:20px 0 0;font-size:13px;color:#8C7B6B;">Você pode desativar esses emails nas <a href="${appUrl}/settings/profile" style="color:#3E5F4B;">configurações do perfil</a>.</p>
+  `
+
+  await resend.emails.send({
+    from,
+    to,
+    subject: `Seus insights financeiros — ${safePeriod} — Florim`,
+    html: emailShell(
+      `Insights de ${safePeriod}`,
+      body,
+      'Conhecimento sobre o dinheiro é o primeiro passo para a liberdade financeira.'
+    ),
+  })
+}
+
 export async function sendAccountDeletionEmail({
   to,
   name,

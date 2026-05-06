@@ -38,4 +38,7 @@ export const FREE_TIER_LIMITS = {
   aiQueriesPerMonth: 15,
   exportImportPerMonth: 3,
   comparativeHistoryMonths: 2,
+  onDemandInsightsFreePerMonth: 3,
+  onDemandInsightsPaidPerMonth: 10,
+  proactiveInsightsFreePerMonth: 2,
 } as const

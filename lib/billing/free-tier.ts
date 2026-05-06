@@ -10,13 +10,14 @@ type UsageCounters = {
   whatsappRecordings: number
   aiQueries: number
   exportImportCount: number
+  onDemandInsights: number
 }
 
 export async function getUsageCounters(familyId: string): Promise<UsageCounters> {
   const period = getCurrentPeriod()
   const { data } = await supabaseAdmin
     .from('usage_counters')
-    .select('whatsapp_recordings, ai_queries, export_import_count')
+    .select('whatsapp_recordings, ai_queries, export_import_count, on_demand_insights')
     .eq('family_id', familyId)
     .eq('period', period)
     .maybeSingle()
@@ -25,6 +26,7 @@ export async function getUsageCounters(familyId: string): Promise<UsageCounters>
     whatsappRecordings: data?.whatsapp_recordings ?? 0,
     aiQueries: data?.ai_queries ?? 0,
     exportImportCount: data?.export_import_count ?? 0,
+    onDemandInsights: data?.on_demand_insights ?? 0,
   }
 }
 
@@ -89,4 +91,30 @@ export async function checkAndIncrementExportImport(
 
   await upsertExportImport(familyId, getCurrentPeriod(), exportImportCount + 1)
   return { allowed: true, remaining: limit - (exportImportCount + 1) }
+}
+
+async function upsertOnDemandInsights(familyId: string, period: string, value: number) {
+  await supabaseAdmin.from('usage_counters').upsert(
+    { family_id: familyId, period, on_demand_insights: value },
+    { onConflict: 'family_id,period' }
+  )
+}
+
+export async function checkAndIncrementOnDemandInsight(
+  familyId: string,
+  isPaidTier: boolean
+): Promise<{ allowed: boolean; remaining: number }> {
+  if (isPaidTier) {
+    return { allowed: true, remaining: 999 }
+  }
+
+  const { onDemandInsights } = await getUsageCounters(familyId)
+  const limit = FREE_TIER_LIMITS.onDemandInsightsFreePerMonth
+
+  if (onDemandInsights >= limit) {
+    return { allowed: false, remaining: 0 }
+  }
+
+  await upsertOnDemandInsights(familyId, getCurrentPeriod(), onDemandInsights + 1)
+  return { allowed: true, remaining: limit - (onDemandInsights + 1) }
 }

@@ -63,11 +63,11 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
 
   const candidates = buildPhoneCandidates(fromPhone)
 
-  let userRow: { id: string; family_id: string } | null = null
+  let userRow: { id: string; family_id: string; billing_cycle_day: number | null } | null = null
   for (const candidate of candidates) {
     const { data } = await supabaseAdmin
       .from('users')
-      .select('id,family_id')
+      .select('id,family_id,billing_cycle_day')
       .like('phone_number', `%${candidate}`)
       .maybeSingle()
     if (data) { userRow = data; break }
@@ -79,6 +79,7 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
   }
 
   const { family_id: familyId } = userRow
+  const billingCycleDay = userRow.billing_cycle_day ?? 7
 
   const todayISO = new Date().toISOString().slice(0, 10)
 
@@ -108,7 +109,7 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
       }
     }
     try {
-      const reply = await whatsAppQueryHandler.handle(text, intent, familyId, todayISO, fromPhone)
+      const reply = await whatsAppQueryHandler.handle(text, intent, familyId, todayISO, fromPhone, billingCycleDay)
       await whatsAppService.sendTextMessage(fromPhone, reply + FEEDBACK_LINE)
     } catch {
       await whatsAppService.sendTextMessage(fromPhone, 'Não consegui buscar seus dados agora. Tente novamente em instantes. 🔄')
@@ -145,7 +146,7 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
       time_range: 'current_month', focus: null, status_filter: null,
     }
     try {
-      const reply = await whatsAppQueryHandler.handle(text, fallbackIntent, familyId, todayISO, fromPhone)
+      const reply = await whatsAppQueryHandler.handle(text, fallbackIntent, familyId, todayISO, fromPhone, billingCycleDay)
       await whatsAppService.sendTextMessage(fromPhone, reply + FEEDBACK_LINE)
     } catch {
       await whatsAppService.sendTextMessage(fromPhone, USAGE_HINT)

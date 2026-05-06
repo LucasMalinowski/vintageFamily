@@ -22,7 +22,7 @@ export default function MonthYearPicker({
   const [open, setOpen] = useState(false)
   const [pickerYear, setPickerYear] = useState(year > 0 ? year : getCurrentYear())
   const ref = useRef<HTMLDivElement>(null)
-  const maxYear = getCurrentYear()
+  const maxYear = getCurrentYear() + 2
 
   useEffect(() => {
     if (open) setPickerYear(year > 0 ? year : getCurrentYear())
@@ -39,7 +39,7 @@ export default function MonthYearPicker({
 
   const isAll = month === ALL_MONTHS_VALUE
   const canPrev = !isAll && !(month === 1 && year <= minYear)
-  const canNext = !isAll && !(month === getCurrentMonth() && year >= maxYear)
+  const canNext = !isAll && !(month === 12 && year >= maxYear)
 
   const goPrev = () => {
     if (!canPrev) return
@@ -113,19 +113,13 @@ export default function MonthYearPicker({
           <div className="grid grid-cols-3 gap-1 mb-2">
             {MONTHS.map((m) => {
               const active = !isAll && month === m.value && year === pickerYear
-              const future = pickerYear === maxYear && m.value > getCurrentMonth()
               return (
                 <button
                   key={m.value}
                   type="button"
-                  disabled={future}
                   onClick={() => { onChange(m.value, pickerYear); setOpen(false) }}
                   className={`py-2 rounded-[8px] text-xs font-medium transition-vintage ${
-                    active
-                      ? 'bg-coffee text-paper'
-                      : future
-                      ? 'text-ink/20 cursor-not-allowed'
-                      : 'text-ink hover:bg-paper'
+                    active ? 'bg-coffee text-paper' : 'text-ink hover:bg-paper'
                   }`}
                 >
                   {m.label.slice(0, 3)}

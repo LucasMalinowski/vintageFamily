@@ -788,6 +788,7 @@ export type Database = {
           ai_queries: number
           export_import_count: number
           family_id: string
+          on_demand_insights: number
           period: string
           whatsapp_recordings: number
         }
@@ -795,6 +796,7 @@ export type Database = {
           ai_queries?: number
           export_import_count?: number
           family_id: string
+          on_demand_insights?: number
           period: string
           whatsapp_recordings?: number
         }
@@ -802,6 +804,7 @@ export type Database = {
           ai_queries?: number
           export_import_count?: number
           family_id?: string
+          on_demand_insights?: number
           period?: string
           whatsapp_recordings?: number
         }
@@ -818,10 +821,14 @@ export type Database = {
       users: {
         Row: {
           avatar_url: string | null
+          billing_cycle_day: number
           created_at: string
           email: string
           family_id: string
           id: string
+          insight_channels: string[]
+          insight_interval_days: number
+          insights_enabled: boolean
           name: string
           password_hash: string | null
           phone_number: string | null
@@ -837,10 +844,14 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          billing_cycle_day?: number
           created_at?: string
           email: string
           family_id: string
           id?: string
+          insight_channels?: string[]
+          insight_interval_days?: number
+          insights_enabled?: boolean
           name: string
           password_hash?: string | null
           phone_number?: string | null
@@ -856,10 +867,14 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          billing_cycle_day?: number
           created_at?: string
           email?: string
           family_id?: string
           id?: string
+          insight_channels?: string[]
+          insight_interval_days?: number
+          insights_enabled?: boolean
           name?: string
           password_hash?: string | null
           phone_number?: string | null
@@ -926,6 +941,112 @@ export type Database = {
           message_id?: string
         }
         Relationships: []
+      }
+      insights: {
+        Row: {
+          id: string
+          family_id: string
+          user_id: string | null
+          period: string | null
+          type: string
+          prompt_question: string | null
+          content: string
+          sent_channels: string[]
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          family_id: string
+          user_id?: string | null
+          period?: string | null
+          type: string
+          prompt_question?: string | null
+          content: string
+          sent_channels?: string[]
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          family_id?: string
+          user_id?: string | null
+          period?: string | null
+          type?: string
+          prompt_question?: string | null
+          content?: string
+          sent_channels?: string[]
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insights_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_patterns: {
+        Row: {
+          id: string
+          family_id: string
+          description_pattern: string
+          kind: string
+          category_id: string | null
+          estimated_amount_cents: number | null
+          frequency: string
+          source: string
+          day_of_month: number | null
+          tolerance_days: number
+          last_occurrence_date: string | null
+          next_expected_date: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          family_id: string
+          description_pattern: string
+          kind?: string
+          category_id?: string | null
+          estimated_amount_cents?: number | null
+          frequency?: string
+          source?: string
+          day_of_month?: number | null
+          tolerance_days?: number
+          last_occurrence_date?: string | null
+          next_expected_date?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          family_id?: string
+          description_pattern?: string
+          kind?: string
+          category_id?: string | null
+          estimated_amount_cents?: number | null
+          frequency?: string
+          source?: string
+          day_of_month?: number | null
+          tolerance_days?: number
+          last_occurrence_date?: string | null
+          next_expected_date?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_patterns_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -380,6 +380,75 @@ export class NvidiaAIService {
       return []
     }
   }
+
+  async suggestCategory(
+    description: string,
+    categoryLabels: Map<string, string>
+  ): Promise<string | null> {
+    if (!description.trim() || categoryLabels.size === 0) return null
+
+    const categoriesText = Array.from(categoryLabels.values()).sort().join('\n')
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5_000)
+
+    let response: Response
+    try {
+      response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [
+            {
+              role: 'system',
+              content: `Você é um classificador de categorias financeiras para um app de finanças pessoais brasileiro. Dada uma descrição de despesa ou receita, responda APENAS com o nome exato de uma categoria da lista, sem texto adicional. Se nenhuma categoria se encaixa bem, responda com "null".
+
+Dicas de contexto financeiro brasileiro:
+- "tênis", "tenis", "sapato", "sandália", "chinelo" → categoria de Roupas/Calçados (não esporte)
+- "academia", "natação", "futebol" → Hobbies/Esportes
+- "uber", "99", "ifood", "rappi" → Transporte ou Alimentação conforme o contexto
+- "netflix", "spotify", "amazon prime" → Assinaturas/Streaming
+
+Categorias disponíveis:
+${categoriesText}`,
+            },
+            { role: 'user', content: description.trim() },
+          ],
+          temperature: 0,
+          max_tokens: 60,
+        }),
+      })
+    } catch {
+      return null
+    } finally {
+      clearTimeout(timeout)
+    }
+
+    if (!response.ok) return null
+
+    try {
+      const data = await response.json()
+      const content = (data.choices?.[0]?.message?.content ?? '').trim()
+      if (!content || content === 'null') return null
+
+      // Find the category name in the label map
+      for (const [id, label] of categoryLabels) {
+        if (label.toLowerCase() === content.toLowerCase()) return id
+      }
+      // Partial match fallback
+      for (const [id, label] of categoryLabels) {
+        if (label.toLowerCase().includes(content.toLowerCase()) || content.toLowerCase().includes(label.toLowerCase())) return id
+      }
+      return null
+    } catch {
+      return null
+    }
+  }
 }
 
 export const nvidiaAIService = new NvidiaAIService()
