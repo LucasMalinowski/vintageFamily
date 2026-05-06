@@ -5,9 +5,11 @@ type OtlpAttribute = {
   value: OtlpValue
 }
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error'
+export type PostHogLogAttributes = Record<string, string | number | boolean>
 
-const severityByLevel: Record<LogLevel, number> = {
+export type PostHogLogLevel = 'debug' | 'info' | 'warn' | 'error'
+
+const severityByLevel: Record<PostHogLogLevel, number> = {
   debug: 5,
   info: 9,
   warn: 13,
@@ -20,7 +22,7 @@ function toOtlpValue(value: string | number | boolean): OtlpValue {
   return { stringValue: value }
 }
 
-function toOtlpAttributes(attributes: Record<string, string | number | boolean>): OtlpAttribute[] {
+function toOtlpAttributes(attributes: PostHogLogAttributes): OtlpAttribute[] {
   return Object.entries(attributes).map(([key, value]) => ({
     key,
     value: toOtlpValue(value),
@@ -28,9 +30,10 @@ function toOtlpAttributes(attributes: Record<string, string | number | boolean>)
 }
 
 export async function sendPostHogOtlpLog(
-  level: LogLevel,
+  level: PostHogLogLevel,
   message: string,
-  attributes: Record<string, string | number | boolean> = {}
+  attributes: PostHogLogAttributes = {},
+  scope = 'florim'
 ) {
   const posthogToken = process.env.NEXT_PUBLIC_POSTHOG_KEY
   if (!posthogToken) return
@@ -56,7 +59,7 @@ export async function sendPostHogOtlpLog(
           },
           scopeLogs: [
             {
-              scope: { name: 'florim-middleware' },
+              scope: { name: scope },
               logRecords: [
                 {
                   timeUnixNano: String(now * 1_000_000),

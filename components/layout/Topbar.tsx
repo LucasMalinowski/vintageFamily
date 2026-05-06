@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { useEffect, useRef, useState } from 'react'
-import { getAuthBearerToken } from '@/lib/billing/client'
+import { getAuthBearerToken, getBillingMe } from '@/lib/billing/client'
 import ProfileSheet from '@/components/layout/ProfileSheet'
 import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
 
@@ -150,24 +150,13 @@ export default function Topbar({
     const loadTrialStatus = async () => {
       if (!familyId) return
 
-      const token = await getAuthBearerToken()
-      if (!token) {
-        setTrialDaysLeft(null)
-        return
-      }
-
-      const response = await fetch('/api/billing/me', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      const payload = await response.json().catch(() => null)
+      const result = await getBillingMe({ ttlMs: 60_000 })
+      const payload = result?.payload
 
       const access = payload?.access
 
       if (
-        !response.ok ||
+        !result?.ok ||
         !access?.trialExpiresAt ||
         !access?.hasActiveTrial ||
         access?.hasValidSubscription ||

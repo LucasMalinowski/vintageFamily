@@ -5,6 +5,8 @@ import { hasBillingAccess } from '@/lib/billing/access'
 import { getPlanCodeByPriceId, stripe } from '@/lib/billing/stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   try {
     const accessToken = getAccessTokenFromAuthHeader(request)

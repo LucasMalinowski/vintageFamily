@@ -5,6 +5,8 @@ import { ACTIVE_SUBSCRIPTION_STATUSES } from '@/lib/billing/constants'
 import { getPlanCodeByPriceId, stripe } from '@/lib/billing/stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
 
+export const dynamic = 'force-dynamic'
+
 function toIso(timestamp?: number | null) {
   if (!timestamp) return null
   return new Date(timestamp * 1000).toISOString()

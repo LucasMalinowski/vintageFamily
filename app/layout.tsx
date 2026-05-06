@@ -1,5 +1,5 @@
 import './globals.css'
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import Providers from '@/components/Providers'
 import PwaInstallPrompt from '@/components/PwaInstallPrompt'
@@ -9,8 +9,6 @@ export const metadata: Metadata = {
   title: 'Florim',
   description: 'Gestão financeira familiar com alma vintage',
   manifest: '/manifest.json',
-  themeColor: '#f5f1eb',
-  viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
   icons: {
     icon: [
       { url: '/logo-small.png', sizes: '500x500', type: 'image/png' },
@@ -30,6 +28,13 @@ export const metadata: Metadata = {
     url: 'https://florim.app',
     type: 'website',
   },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#f5f1eb',
 }
 
 export default function RootLayout({

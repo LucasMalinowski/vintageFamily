@@ -1,55 +1,42 @@
-import { SeverityNumber, type LogAttributes } from '@opentelemetry/api-logs'
-import { loggerProvider } from '@/instrumentation'
+import { sendPostHogOtlpLog, type PostHogLogAttributes } from '@/lib/posthog-otlp'
 
-const logger = loggerProvider.getLogger('florim')
-
-type LogLevel = 'debug' | 'info' | 'warn' | 'error'
-
-const severityByLevel: Record<LogLevel, SeverityNumber> = {
-  debug: SeverityNumber.DEBUG,
-  info: SeverityNumber.INFO,
-  warn: SeverityNumber.WARN,
-  error: SeverityNumber.ERROR,
-}
-
-function serializeError(error: unknown): LogAttributes {
+function serializeError(error: unknown): PostHogLogAttributes {
   if (!(error instanceof Error)) return {}
 
-  return {
+  const attributes: PostHogLogAttributes = {
     'error.name': error.name,
     'error.message': error.message,
-    'error.stack': error.stack,
   }
+
+  if (error.stack) attributes['error.stack'] = error.stack
+
+  return attributes
 }
 
 export function posthogLog(
-  level: LogLevel,
+  level: 'debug' | 'info' | 'warn' | 'error',
   message: string,
-  attributes: LogAttributes = {},
+  attributes: PostHogLogAttributes = {},
   error?: unknown
 ) {
-  logger.emit({
-    body: message,
-    severityNumber: severityByLevel[level],
-    severityText: level.toUpperCase(),
-    attributes: {
+  return sendPostHogOtlpLog(
+    level,
+    message,
+    {
       ...attributes,
       ...serializeError(error),
     },
-  })
+    'florim-route-handlers'
+  )
 }
 
 export const posthogLogs = {
-  debug: (message: string, attributes?: LogAttributes) => posthogLog('debug', message, attributes),
-  info: (message: string, attributes?: LogAttributes) => posthogLog('info', message, attributes),
-  warn: (message: string, attributes?: LogAttributes, error?: unknown) => posthogLog('warn', message, attributes, error),
-  error: (message: string, attributes?: LogAttributes, error?: unknown) => posthogLog('error', message, attributes, error),
+  debug: (message: string, attributes?: PostHogLogAttributes) => posthogLog('debug', message, attributes),
+  info: (message: string, attributes?: PostHogLogAttributes) => posthogLog('info', message, attributes),
+  warn: (message: string, attributes?: PostHogLogAttributes, error?: unknown) => posthogLog('warn', message, attributes, error),
+  error: (message: string, attributes?: PostHogLogAttributes, error?: unknown) => posthogLog('error', message, attributes, error),
 }
 
 export async function flushPostHogLogs() {
-  try {
-    await loggerProvider.forceFlush()
-  } catch (error) {
-    console.error('[posthog-logs] forceFlush failed:', error)
-  }
+  // Logs are sent immediately by sendPostHogOtlpLog. Keep this as a stable route-handler API.
 }

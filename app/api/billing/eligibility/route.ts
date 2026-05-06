@@ -3,6 +3,8 @@ import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
 import { supabaseService } from '@/lib/billing/supabase-service'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   try {
     const accessToken = getAccessTokenFromAuthHeader(request)
