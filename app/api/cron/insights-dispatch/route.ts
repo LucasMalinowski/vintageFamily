@@ -48,16 +48,17 @@ export async function GET(request: NextRequest) {
 
       if (!members?.length) continue
 
-      const { isPaidTier } = await hasBillingAccess({ familyId: family.id })
+      const access = await hasBillingAccess({ familyId: family.id })
+      const hasFullInsightAccess = access.isPaidTier || access.hasActiveTrial
 
       // Free tier: monthly dispatch only (run on 1st of month, dayOfWeek check skipped)
-      // Paid tier: weekly dispatch (every Monday)
+      // Paid/trial tier: weekly dispatch (every Monday)
       const isFirstOfMonth = today.getDate() === 1
-      if (!isPaidTier && !isFirstOfMonth) continue
-      if (isPaidTier && dayOfWeek !== 1) continue
+      if (!hasFullInsightAccess && !isFirstOfMonth) continue
+      if (hasFullInsightAccess && dayOfWeek !== 1) continue
 
-      // Check interval preference (paid-tier user-configurable)
-      if (isPaidTier && members[0]) {
+      // Check interval preference (paid/trial-tier user-configurable)
+      if (hasFullInsightAccess && members[0]) {
         const intervalDays = members[0].insight_interval_days ?? 30
         const { data: lastInsight } = await supabaseAdmin
           .from('insights')

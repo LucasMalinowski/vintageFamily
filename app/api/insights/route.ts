@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
   const profile = await getProfileByUserId(user.id)
   if (!profile) return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 404 })
 
-  const { isPaidTier } = await hasBillingAccess({ familyId: profile.family_id })
+  const access = await hasBillingAccess({ familyId: profile.family_id })
+  const hasFullInsightAccess = access.isPaidTier || access.hasActiveTrial
 
   let query = supabaseAdmin
     .from('insights')
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
-  if (!isPaidTier) {
+  if (!hasFullInsightAccess) {
     query = query.limit(5) // free tier: last 5 insights (2 proactive + 3 on-demand)
   } else {
     query = query.limit(100)
@@ -33,13 +34,15 @@ export async function GET(request: NextRequest) {
   const { data: insights } = await query
 
   const counters = await getUsageCounters(profile.family_id)
-  const onDemandLimit = isPaidTier
+  const onDemandLimit = hasFullInsightAccess
     ? FREE_TIER_LIMITS.onDemandInsightsPaidPerMonth
     : FREE_TIER_LIMITS.onDemandInsightsFreePerMonth
 
   return NextResponse.json({
     insights: insights ?? [],
-    isPaidTier,
+    isPaidTier: access.isPaidTier,
+    hasActiveTrial: access.hasActiveTrial,
+    hasFullInsightAccess,
     onDemandUsed: counters.onDemandInsights,
     onDemandLimit,
   })

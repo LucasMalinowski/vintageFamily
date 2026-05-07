@@ -49,7 +49,7 @@ export default function TermsPage() {
 
           <Section title="4. Planos e pagamento">
             <p>
-              O Florim oferece um período de teste gratuito de 14 dias. Após o término do trial, é necessária a contratação de um plano pago. Os valores e condições dos planos estão disponíveis em{' '}
+              O Florim oferece um período de teste gratuito de 30 dias com recursos do plano Pro. Após o término do trial, a conta continua no plano gratuito com limites mensais, salvo contratação de um plano pago. Os valores e condições dos planos estão disponíveis em{' '}
               <a href="/plans" className="text-coffee underline underline-offset-2 hover:text-coffee/80">florim.app/plans</a>.
             </p>
             <p>

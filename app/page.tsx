@@ -14,6 +14,10 @@ import {
   Check,
   ArrowRight,
   MessageCircle,
+  Lightbulb,
+  Repeat2,
+  WandSparkles,
+  Tags,
 } from 'lucide-react'
 import PublicNavbar from '@/components/layout/PublicNavbar'
 import PublicFooter from '@/components/layout/PublicFooter'
@@ -63,7 +67,22 @@ const FEATURES = [
   {
     icon: ChartColumnBig,
     title: 'Comparativos',
-    copy: 'Gráficos de barras e pizza com histórico mensal e anual. Sem pressão.',
+    copy: 'Gráficos de barras e pizza com histórico mensal e anual para entender padrões.',
+  },
+  {
+    icon: Lightbulb,
+    title: 'Insights com IA',
+    copy: 'Pergunte sobre seus gastos e receba análises úteis, além de insights automáticos.',
+  },
+  {
+    icon: Tags,
+    title: 'Sugestão de Categorias',
+    copy: 'A IA sugere categorias para despesas e receitas conforme seu histórico.',
+  },
+  {
+    icon: Repeat2,
+    title: 'Registros Recorrentes',
+    copy: 'O Florim detecta contas que se repetem e cria pendências para confirmação.',
   },
   {
     icon: Bell,
@@ -77,8 +96,13 @@ const FEATURES = [
   },
   {
     icon: FileUp,
-    title: 'Importação de Extrato',
-    copy: 'Importe extratos em OFX direto do banco. Menos digitação, mais agilidade.',
+    title: 'Importação de Extratos',
+    copy: 'Importe extratos em CSV e OFX direto do banco. Menos digitação, mais agilidade.',
+  },
+  {
+    icon: WandSparkles,
+    title: 'WhatsApp Inteligente',
+    copy: 'Registre, consulte, edite e apague lançamentos por mensagem, em linguagem natural.',
   },
 ]
 
@@ -102,31 +126,47 @@ const STEPS = [
 
 const PLANS = [
   {
-    name: 'Plano Mensal',
-    tag: 'Para começar com flexibilidade.',
-    price: '29,90',
+    name: 'Plano Gratuito',
+    tag: 'Para organizar a casa sem compromisso.',
+    price: '0',
     per: '/ mês',
     featured: false,
     savingsBadge: null,
     bullets: [
       'Contas a pagar e a receber',
       'Poupança e sonhos',
-      'Comparativos e gráficos',
-      'WhatsApp com IA',
-      'Família compartilhada',
-      'Acesso completo',
+      '75 registros por WhatsApp/mês',
+      '15 consultas com IA/mês',
+      '3 insights sob demanda/mês',
+      '3 importações ou exportações/mês',
     ],
   },
   {
-    name: 'Plano Anual',
-    tag: 'Compromisso e economia.',
-    price: '299,00',
+    name: 'Florim Pro',
+    tag: 'Para famílias que querem automação sem limite.',
+    price: '19,90',
+    per: '/ mês',
+    featured: false,
+    savingsBadge: 'Também disponível no anual',
+    bullets: [
+      'Tudo do gratuito',
+      'WhatsApp e IA sem limite prático',
+      'Importação e exportação ilimitadas',
+      'Histórico comparativo completo',
+      'Insights e recorrências inteligentes',
+      'Família compartilhada',
+    ],
+  },
+  {
+    name: 'Pro Anual',
+    tag: 'O mesmo Pro, com economia.',
+    price: '189,00',
     per: '/ ano',
     featured: true,
-    savingsBadge: 'R$ 24,90/mês · 2 meses grátis',
+    savingsBadge: 'R$ 15,75/mês · mais de 2 meses grátis',
     bullets: [
-      'Tudo do plano mensal',
-      'Economia de R$ 59,80 no ano',
+      'Tudo do Florim Pro',
+      'Economia de R$ 49,80 no ano',
       'Preço fixo durante o contrato',
       'Prioridade em novas funcionalidades',
     ],
@@ -242,7 +282,7 @@ export default function Home() {
               Cuide das finanças da família, juntos.
             </h1>
             <p className="text-paper/80 text-[14px] leading-relaxed mb-6">
-              Despesas, sonhos e combinados — num só lugar. Sem pressão, sem cartão no teste.
+              Despesas, sonhos, combinados e insights — num só lugar. Plano gratuito, sem cartão.
             </p>
             <div className="flex gap-[10px]">
               <Link href="/signup" className="px-5 py-3 rounded-full bg-gold text-paper font-bold text-[14px] hover:opacity-90 transition-vintage">
@@ -266,19 +306,19 @@ export default function Home() {
                 Cuide das finanças<br />da família, juntos.
               </h1>
               <p className="text-sidebar/70 font-light text-[17px] leading-relaxed mb-7 max-w-[440px]">
-                O Florim organiza contas, receitas, poupanças e lembretes — com dados
-                compartilhados em tempo real. Para que a família decida com clareza.
+                O Florim organiza contas, receitas, poupanças, lembretes e insights com IA —
+                com dados compartilhados em tempo real. Comece grátis e evolua quando fizer sentido.
               </p>
               <div className="flex gap-3 mb-7">
                 <Link href="/signup" className="px-7 py-3.5 rounded-full bg-gold text-coffee font-semibold text-[15px] hover:opacity-90 transition-vintage">
-                  14 dias grátis
+                  Criar conta grátis
                 </Link>
                 <Link href="/plans" className="px-7 py-3.5 rounded-full bg-sidebar text-paper font-semibold text-[15px] hover:bg-sidebar/80 transition-vintage">
                   Ver planos
                 </Link>
               </div>
               <div className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-sidebar/50">
-                <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" />Sem cartão de crédito</span>
+                <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" />Plano gratuito disponível</span>
                 <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" />Cancele quando quiser</span>
                 <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" />Para toda a família</span>
               </div>
@@ -331,8 +371,8 @@ export default function Home() {
               </h2>
               <p className="text-[14px] md:text-[16px] font-light text-ink/65 leading-relaxed mb-7">
                 Sem precisar abrir o app. É só mandar uma mensagem como você falaria com alguém.
-                O Florim entende — e lança despesas, receitas, parcelas, poupanças e lembretes
-                automaticamente para toda a família.
+                O Florim entende — e lança despesas, receitas, parcelas, poupanças e lembretes,
+                sugere categorias e responde perguntas sobre os números da família.
               </p>
               <ul className="space-y-3">
                 {WA_EXAMPLES.map(({ msg, result }) => (
@@ -346,7 +386,8 @@ export default function Home() {
                 ))}
               </ul>
               <p className="mt-6 text-[12px] text-ink/40 leading-relaxed">
-                Também dá para consultar saldos, editar e apagar registros — tudo pelo WhatsApp.
+                Também dá para consultar saldos, editar e apagar registros. No gratuito há limites mensais;
+                no Pro, a rotina fica livre para usar sem travar.
               </p>
             </div>
 
@@ -363,7 +404,7 @@ export default function Home() {
             Tudo em um só lugar.
           </h2>
           <p className="text-center text-paper/50 text-[13px] md:text-[17px] font-light mb-8 md:mb-14">
-            Sete ferramentas conectadas para o dia a dia da sua casa.
+            Ferramentas conectadas para registrar, entender e antecipar a rotina financeira da casa.
           </p>
           <div className="flex flex-col gap-3 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-5">
             {FEATURES.map((f) => (
@@ -393,7 +434,7 @@ export default function Home() {
             Simples de começar.
           </h2>
           <p className="text-center text-ink/50 text-[13px] md:text-[17px] font-light mb-8 md:mb-14">
-            Três passos. Cinco minutos. Clareza para toda a família.
+            Três passos. Cinco minutos. O plano gratuito já deixa a família em movimento.
           </p>
           <div className="grid gap-8 md:grid-cols-3 md:gap-10">
             {STEPS.map((s) => (
@@ -413,7 +454,7 @@ export default function Home() {
             >
               Começar grátis <ArrowRight size={16} />
             </Link>
-            <p className="mt-3 text-[12px] text-ink/40">14 dias grátis. Sem cartão de crédito.</p>
+            <p className="mt-3 text-[12px] text-ink/40">Plano gratuito disponível. Sem cartão de crédito.</p>
           </div>
         </div>
       </section>
@@ -427,7 +468,7 @@ export default function Home() {
           <p className="text-center text-paper/50 text-[13px] md:text-[16px] font-light mb-8 md:mb-12">
             Menos do que um jantar fora. Mais do que uma planilha.
           </p>
-          <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-5 md:max-w-2xl md:mx-auto">
+          <div className="flex flex-col gap-3 md:grid md:grid-cols-3 md:gap-5">
             {PLANS.map((p) => (
               <div
                 key={p.name}
@@ -470,7 +511,7 @@ export default function Home() {
                   className="block text-center py-3 px-4 rounded-full text-[13px] md:text-sm font-bold hover:opacity-90 transition-vintage"
                   style={{ background: p.featured ? '#3E5F4B' : '#C2A45D', color: '#F5F1EB' }}
                 >
-                  Começar 14 dias grátis
+                  Criar conta grátis
                 </Link>
               </div>
             ))}
@@ -528,7 +569,7 @@ export default function Home() {
             Comece hoje.<br className="md:hidden" /> A família agradece.
           </h2>
           <p className="text-paper/55 text-[14px] md:text-[16px] font-light leading-relaxed mb-8">
-            14 dias grátis. Sem cartão de crédito. Cancele quando quiser.
+            Plano gratuito disponível. Sem cartão de crédito. Cancele quando quiser.
           </p>
           <Link
             href="/signup"

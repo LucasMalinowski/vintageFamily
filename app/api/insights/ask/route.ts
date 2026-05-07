@@ -23,12 +23,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Pergunta muito curta.' }, { status: 400 })
   }
 
-  const { isPaidTier } = await hasBillingAccess({ familyId: profile.family_id })
+  const access = await hasBillingAccess({ familyId: profile.family_id })
+  const hasFullInsightAccess = access.isPaidTier || access.hasActiveTrial
 
-  const { allowed, remaining } = await checkAndIncrementOnDemandInsight(profile.family_id, isPaidTier)
+  const { allowed, remaining } = await checkAndIncrementOnDemandInsight(profile.family_id, hasFullInsightAccess)
   if (!allowed) {
     return NextResponse.json(
-      { error: `Você atingiu o limite de ${FREE_TIER_LIMITS.onDemandInsightsFreePerMonth} insights sob demanda este mês. Assine o plano Premium para perguntas ilimitadas.` },
+      { error: `Você atingiu o limite de ${FREE_TIER_LIMITS.onDemandInsightsFreePerMonth} insights sob demanda este mês. Assine o plano Pro para perguntas ilimitadas.` },
       { status: 429 }
     )
   }

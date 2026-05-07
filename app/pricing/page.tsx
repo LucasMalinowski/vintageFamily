@@ -50,7 +50,7 @@ const PLAN_CONTENT: Record<PlanSetting['plan_code'], PlanContent> = {
     benefitsTitle: 'Benefícios:',
     benefits: [
       'Equivalente a R$ 15,75/mês',
-      'Economia de 4 meses',
+      'Economia de R$ 49,80 no ano',
       'Prioridade em novas funcionalidades',
       'Atualizações contínuas',
       'Estabilidade no valor durante o contrato',
@@ -60,7 +60,7 @@ const PLAN_CONTENT: Record<PlanSetting['plan_code'], PlanContent> = {
   founders_monthly: {
     name: 'Plano Fundadores Mensal',
     teaser: 'Exclusivo para famílias selecionadas.',
-    price: '19,90',
+    price: '14,90',
     period: '/ mês',
     benefitsTitle: 'Benefícios especiais:',
     benefits: [
@@ -74,7 +74,7 @@ const PLAN_CONTENT: Record<PlanSetting['plan_code'], PlanContent> = {
   founders_yearly: {
     name: 'Plano Fundadores Anual',
     teaser: 'Exclusivo para famílias selecionadas.',
-    price: '199,00',
+    price: '149,00',
     period: '/ ano',
     benefitsTitle: 'Benefícios especiais:',
     benefits: [
@@ -244,7 +244,7 @@ export default function PricingPage() {
                           <span className="ml-2 text-base">{content.period}</span>
                         </div>
                         <p className="mt-4 min-h-[28px] text-center text-sm text-ink/60">
-                          {plan.is_active ? '14 dias grátis. Cancele quando quiser.' : 'Plano indisponível no momento.'}
+                          {plan.is_active ? '30 dias grátis. Cancele quando quiser.' : 'Plano indisponível no momento.'}
                         </p>
                       </div>
                       <button

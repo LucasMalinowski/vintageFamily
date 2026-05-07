@@ -54,7 +54,7 @@ async function shareInsight(content: string) {
 export default function InsightsPage() {
   const { familyId } = useAuth()
   const { tier } = usePlan()
-  const isPaid = tier === 'paid'
+  const hasFullInsightAccess = tier === 'paid' || tier === 'trial'
 
   const [insights, setInsights] = useState<InsightRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -130,7 +130,7 @@ export default function InsightsPage() {
             <MessageCircleQuestion className="w-5 h-5 text-petrol" />
             <h2 className="font-serif text-base text-ink">Perguntar sobre minhas finanças</h2>
           </div>
-          {!isPaid && (
+          {!hasFullInsightAccess && (
             <p className="text-xs text-ink/50">
               {onDemandRemaining} pergunta{onDemandRemaining !== 1 ? 's' : ''} restante{onDemandRemaining !== 1 ? 's' : ''} este mês
               {` (plano gratuito: ${onDemandLimit}/mês)`}
@@ -144,24 +144,24 @@ export default function InsightsPage() {
               rows={2}
               placeholder="Ex: Como posso economizar em alimentação? Qual meu maior gasto esse mês?"
               className="w-full px-4 py-3 bg-paper border border-border rounded-lg text-sm text-ink focus:outline-none focus:ring-2 focus:ring-paper-2/50 resize-none transition-vintage"
-              disabled={asking || (!isPaid && onDemandRemaining === 0)}
+              disabled={asking || (!hasFullInsightAccess && onDemandRemaining === 0)}
             />
             {askError && <p className="text-xs text-terracotta">{askError}</p>}
             <button
               type="submit"
-              disabled={asking || !question.trim() || (!isPaid && onDemandRemaining === 0)}
+              disabled={asking || !question.trim() || (!hasFullInsightAccess && onDemandRemaining === 0)}
               className="w-full py-2.5 bg-coffee text-paper rounded-lg text-sm font-semibold hover:bg-coffee/90 transition-vintage disabled:opacity-50"
             >
               {asking ? 'Analisando...' : 'Gerar insight'}
             </button>
           </form>
-          {onDemandRemaining === 0 && !isPaid && (
+          {onDemandRemaining === 0 && !hasFullInsightAccess && (
             <div className="flex items-start gap-2 p-3 bg-gold/10 border border-gold/30 rounded-lg">
               <Lock className="w-4 h-4 text-gold shrink-0 mt-0.5" />
               <p className="text-xs text-ink/70">
                 Você atingiu o limite mensal do plano gratuito.{' '}
                 <a href="/settings/billing" className="text-coffee font-medium underline">
-                  Assine o plano Premium
+                  Assine o plano Pro
                 </a>{' '}
                 para perguntas ilimitadas.
               </p>
@@ -248,11 +248,11 @@ export default function InsightsPage() {
               </div>
             ))}
 
-            {!isPaid && (
+            {!hasFullInsightAccess && (
               <div className="text-center py-3">
                 <p className="text-xs text-ink/40">
                   Histórico completo disponível no{' '}
-                  <a href="/settings/billing" className="text-coffee underline">plano Premium</a>.
+                  <a href="/settings/billing" className="text-coffee underline">plano Pro</a>.
                 </p>
               </div>
             )}

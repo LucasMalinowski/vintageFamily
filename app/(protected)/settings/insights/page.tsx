@@ -10,7 +10,7 @@ import { Lock } from 'lucide-react'
 export default function InsightsSettingsPage() {
   const { user } = useAuth()
   const { tier } = usePlan()
-  const isPaid = tier === 'paid'
+  const hasFullInsightAccess = tier === 'paid' || tier === 'trial'
 
   const [insightsEnabled, setInsightsEnabled] = useState(true)
   const [intervalDays, setIntervalDays] = useState(30)
@@ -51,7 +51,7 @@ export default function InsightsSettingsPage() {
       .from('users')
       .update({
         insights_enabled: insightsEnabled,
-        insight_interval_days: isPaid ? Math.max(3, intervalDays) : 30,
+        insight_interval_days: hasFullInsightAccess ? Math.max(3, intervalDays) : 30,
         insight_channels: channels,
       })
       .eq('id', user.id)
@@ -106,10 +106,10 @@ export default function InsightsSettingsPage() {
           <div>
             <div className="flex items-center gap-1.5">
               <p className="text-sm font-medium text-ink">Frequência</p>
-              {!isPaid && <Lock className="w-3.5 h-3.5 text-gold" />}
+              {!hasFullInsightAccess && <Lock className="w-3.5 h-3.5 text-gold" />}
             </div>
             <p className="text-xs text-ink/50 mt-0.5">
-              {isPaid ? 'Dias mínimos entre insights (mín. 3)' : 'Disponível no plano Premium'}
+              {hasFullInsightAccess ? 'Dias mínimos entre insights (mín. 3)' : 'Disponível no plano Pro'}
             </p>
           </div>
           <input
@@ -118,20 +118,20 @@ export default function InsightsSettingsPage() {
             max={365}
             value={intervalDays}
             onChange={(e) => {
-              if (!isPaid) { setUpsellOpen(true); return }
+              if (!hasFullInsightAccess) { setUpsellOpen(true); return }
               setIntervalDays(Math.max(3, Number(e.target.value)))
             }}
-            onFocus={() => { if (!isPaid) setUpsellOpen(true) }}
+            onFocus={() => { if (!hasFullInsightAccess) setUpsellOpen(true) }}
             className={`w-20 px-3 py-2 border rounded-lg text-sm text-center transition-vintage focus:outline-none ${
-              isPaid
+              hasFullInsightAccess
                 ? 'border-border bg-paper text-ink focus:ring-2 focus:ring-paper-2/50'
                 : 'border-border bg-paper/60 text-ink/40 cursor-not-allowed'
             }`}
-            readOnly={!isPaid}
+            readOnly={!hasFullInsightAccess}
           />
         </div>
         <p className="text-xs text-ink/30">
-          {isPaid ? `Insights a cada ${intervalDays} dia${intervalDays !== 1 ? 's' : ''} no mínimo.` : 'Plano gratuito: 1 insight automático por mês.'}
+          {hasFullInsightAccess ? `Insights a cada ${intervalDays} dia${intervalDays !== 1 ? 's' : ''} no mínimo.` : 'Plano gratuito: 2 insights automáticos por mês.'}
         </p>
       </div>
 
@@ -169,13 +169,13 @@ export default function InsightsSettingsPage() {
       </button>
 
       {/* Upsell modal */}
-      <Modal isOpen={upsellOpen} onClose={() => setUpsellOpen(false)} title="Recurso Premium">
+      <Modal isOpen={upsellOpen} onClose={() => setUpsellOpen(false)} title="Recurso Pro">
         <div className="space-y-4">
           <p className="text-sm text-ink/70">
-            A configuração de frequência de insights é exclusiva do plano <strong>Florim Premium</strong>. Com ele você pode receber análises com a frequência que quiser — a partir de 3 dias.
+            A configuração de frequência de insights é exclusiva do teste gratuito e do plano <strong>Florim Pro</strong>. Com ele você pode receber análises com a frequência que quiser — a partir de 3 dias.
           </p>
           <p className="text-sm text-ink/70">
-            No plano gratuito, você recebe 1 insight automático por mês.
+            No plano gratuito, você recebe 2 insights automáticos por mês.
           </p>
           <a
             href="/settings/billing"

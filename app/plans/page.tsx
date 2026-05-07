@@ -9,32 +9,34 @@ import PublicFooter from '@/components/layout/PublicFooter'
 // ── Data ─────────────────────────────────────────────────────────────────────
 
 const COMPARISON_ROWS = [
-  { label: 'Contas a pagar c/ parcelamento', monthly: true, annual: true },
-  { label: 'Contas a receber', monthly: true, annual: true },
-  { label: 'Poupança e sonhos', monthly: true, annual: true },
-  { label: 'Lembretes e vencimento', monthly: true, annual: true },
-  { label: 'Comparativos e gráficos', monthly: true, annual: true },
-  { label: 'Família compartilhada', monthly: true, annual: true },
-  { label: 'Importação de extrato (OFX)', monthly: true, annual: true },
-  { label: 'Exportação PDF e CSV', monthly: true, annual: true },
-  { label: 'Categorias personalizadas', monthly: true, annual: true },
-  { label: 'Acesso em qualquer dispositivo', monthly: true, annual: true },
-  { label: 'Preço fixo no contrato', monthly: false, annual: true },
-  { label: 'Prioridade em novidades', monthly: false, annual: true },
+  { label: 'Contas a pagar c/ parcelamento', free: true, pro: true },
+  { label: 'Contas a receber', free: true, pro: true },
+  { label: 'Poupança e sonhos', free: true, pro: true },
+  { label: 'Lembretes e vencimento', free: true, pro: true },
+  { label: 'Família compartilhada', free: true, pro: true },
+  { label: 'WhatsApp para registrar lançamentos', free: '75/mês', pro: 'Ilimitado' },
+  { label: 'Consultas com IA pelo WhatsApp', free: '15/mês', pro: 'Ilimitado' },
+  { label: 'Insights sob demanda', free: '3/mês', pro: 'Ilimitado' },
+  { label: 'Insights automáticos', free: '2/mês', pro: 'Frequência ajustável' },
+  { label: 'Sugestão de categorias com IA', free: true, pro: true },
+  { label: 'Detecção de registros recorrentes', free: true, pro: true },
+  { label: 'Importação e exportação', free: '3/mês', pro: 'Ilimitado' },
+  { label: 'Histórico nos comparativos', free: '2 meses', pro: 'Completo' },
+  { label: 'Prioridade em novidades', free: false, pro: true },
 ]
 
 const FAQ_ITEMS = [
   {
-    q: 'Preciso de cartão de crédito para testar?',
-    a: 'Não. Os 14 dias de teste são completamente gratuitos e sem necessidade de cartão. Você só será cobrado se decidir continuar após o período de teste.',
+    q: 'Existe plano gratuito?',
+    a: 'Sim. O plano gratuito continua disponível depois do cadastro, com limites mensais para WhatsApp, consultas com IA, insights e importações/exportações. Você pode assinar o Pro quando precisar de uso ilimitado.',
   },
   {
     q: 'Quantas pessoas podem usar a mesma conta?',
-    a: 'Você pode convidar quantos membros quiser para a sua família. Todos compartilham os mesmos dados em tempo real com uma única assinatura.',
+    a: 'Você pode convidar membros da sua família. Todos compartilham os mesmos dados em tempo real, tanto no gratuito quanto no Pro.',
   },
   {
     q: 'Posso cancelar a qualquer momento?',
-    a: 'Sim. No plano mensal, você cancela quando quiser e o acesso continua até o fim do período pago. No plano anual, o cancelamento encerra a renovação automática no próximo ciclo anual.',
+    a: 'Sim. No Pro mensal, você cancela quando quiser e o acesso continua até o fim do período pago. No Pro anual, o cancelamento encerra a renovação automática no próximo ciclo anual.',
   },
   {
     q: 'Meus dados financeiros estão seguros?',
@@ -42,11 +44,11 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Posso trocar do plano mensal para o anual depois?',
-    a: 'Sim. Você pode migrar do plano mensal para o anual a qualquer momento pela área de configurações da sua conta, sem perder nenhum dado.',
+    a: 'Sim. Você pode migrar do Pro mensal para o Pro anual a qualquer momento pela área de configurações da sua conta, sem perder nenhum dado.',
   },
   {
-    q: 'O que acontece depois dos 14 dias de teste?',
-    a: 'Você recebe um aviso e pode escolher o plano que preferir para continuar. Se não assinar, o acesso fica suspenso, mas seus dados ficam salvos por 30 dias.',
+    q: 'O que muda do gratuito para o Pro?',
+    a: 'O Pro remove os limites mensais das rotinas principais, libera histórico comparativo completo, importação/exportação ilimitada, WhatsApp e IA para uso contínuo, além de configuração avançada de insights.',
   },
 ]
 
@@ -90,8 +92,14 @@ function PlanToggle({
   )
 }
 
-function ComparisonTable({ billing }: { billing: 'monthly' | 'annual' }) {
-  const COL = 'grid-cols-[1fr_48px_48px]'
+function ComparisonValue({ value }: { value: string | boolean }) {
+  if (value === true) return <Check size={16} className="inline text-olive" />
+  if (value === false) return <X size={15} className="inline text-border" />
+  return <span className="text-[11px] md:text-[13px] text-ink/65">{value}</span>
+}
+
+function ComparisonTable() {
+  const COL = 'grid-cols-[1fr_76px_82px]'
 
   return (
     <>
@@ -99,8 +107,8 @@ function ComparisonTable({ billing }: { billing: 'monthly' | 'annual' }) {
       <div className="md:hidden rounded-[18px] border border-border shadow-soft overflow-hidden">
         <div className={`grid ${COL} items-center bg-offWhite border-b border-border px-4 py-3 gap-x-2`}>
           <span className="text-[10px] font-semibold text-ink/40 uppercase tracking-wide">Funcionalidade</span>
-          <span className="text-[10px] font-semibold text-coffee text-center leading-tight">Mensal</span>
-          <span className="text-[10px] font-semibold text-coffee text-center leading-tight">Anual</span>
+          <span className="text-[10px] font-semibold text-coffee text-center leading-tight">Grátis</span>
+          <span className="text-[10px] font-semibold text-coffee text-center leading-tight">Pro</span>
         </div>
         {COMPARISON_ROWS.map((row, i) => (
           <div
@@ -109,26 +117,26 @@ function ComparisonTable({ billing }: { billing: 'monthly' | 'annual' }) {
           >
             <span className="text-[12px] text-ink/70 leading-snug">{row.label}</span>
             <span className="flex justify-center">
-              {row.monthly ? <Check size={14} className="text-olive" /> : <X size={13} className="text-border" />}
+              <ComparisonValue value={row.free} />
             </span>
             <span className="flex justify-center">
-              {row.annual ? <Check size={14} className="text-olive" /> : <X size={13} className="text-border" />}
+              <ComparisonValue value={row.pro} />
             </span>
           </div>
         ))}
         <div className={`grid ${COL} items-center bg-sidebar px-4 py-4 gap-x-2`}>
           <span className="text-[13px] font-semibold text-paper/70">Preço</span>
           <div className="text-center">
-            <p className="font-numbers text-[15px] font-normal text-gold leading-tight">29,90</p>
+            <p className="font-numbers text-[15px] font-normal text-gold leading-tight">0</p>
             <p className="text-paper/45 text-[9px]">/mês</p>
           </div>
           <div className="text-center">
-            <p className="font-numbers text-[15px] font-normal text-gold leading-tight">24,90</p>
-            <p className="text-paper/45 text-[9px]">/mês*</p>
+            <p className="font-numbers text-[15px] font-normal text-gold leading-tight">19,90</p>
+            <p className="text-paper/45 text-[9px]">/mês</p>
           </div>
         </div>
         <p className="px-4 py-2.5 text-[10px] text-ink/40 bg-offWhite">
-          * Cobrado como R$ 299,00/ano. 2 meses grátis em relação ao mensal.
+          Pro anual: R$ 189,00/ano, equivalente a R$ 15,75/mês.
         </p>
       </div>
 
@@ -141,10 +149,10 @@ function ComparisonTable({ billing }: { billing: 'monthly' | 'annual' }) {
                 Funcionalidade
               </th>
               <th className="px-5 py-4 text-center text-[13px] font-semibold text-coffee font-body">
-                Plano Mensal
+                Gratuito
               </th>
               <th className="px-5 py-4 text-center text-[13px] font-semibold text-coffee font-body">
-                Plano Anual
+                Florim Pro
               </th>
             </tr>
           </thead>
@@ -156,28 +164,28 @@ function ComparisonTable({ billing }: { billing: 'monthly' | 'annual' }) {
               >
                 <td className="px-5 py-3.5 text-[13px] text-ink/75 font-body">{row.label}</td>
                 <td className="px-5 py-3.5 text-center">
-                  {row.monthly ? <Check size={16} className="inline text-olive" /> : <X size={15} className="inline text-border" />}
+                  <ComparisonValue value={row.free} />
                 </td>
                 <td className="px-5 py-3.5 text-center">
-                  {row.annual ? <Check size={16} className="inline text-olive" /> : <X size={15} className="inline text-border" />}
+                  <ComparisonValue value={row.pro} />
                 </td>
               </tr>
             ))}
             <tr className="bg-sidebar">
               <td className="px-5 py-4 text-[13px] font-semibold text-paper/80 font-body">Preço</td>
               <td className="px-5 py-4 text-center">
-                <span className="font-numbers text-[22px] font-normal text-gold leading-none">29,90</span>
+                <span className="font-numbers text-[22px] font-normal text-gold leading-none">0</span>
                 <span className="text-paper/60 text-xs ml-1">/mês</span>
               </td>
               <td className="px-5 py-4 text-center">
-                <span className="font-numbers text-[22px] font-normal text-gold leading-none">24,90</span>
-                <span className="text-paper/60 text-xs ml-1">/mês*</span>
+                <span className="font-numbers text-[22px] font-normal text-gold leading-none">19,90</span>
+                <span className="text-paper/60 text-xs ml-1">/mês</span>
               </td>
             </tr>
           </tbody>
         </table>
         <p className="px-5 py-3 text-[11px] text-ink/40 bg-offWhite rounded-b-[18px]">
-          * Cobrado como R$ 299,00/ano. Equivalente a 2 meses grátis em relação ao plano mensal.
+          Pro anual: R$ 189,00/ano. Equivalente a R$ 15,75/mês e mais de 2 meses grátis em relação ao mensal.
         </p>
       </div>
     </>
@@ -211,9 +219,9 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 export default function PlansPage() {
   const [billing, setBilling] = useState<'monthly' | 'annual'>('annual')
 
-  const monthlyPrice = '29,90'
-  const annualMonthly = '24,90'
-  const annualTotal = '299,00'
+  const monthlyPrice = '19,90'
+  const annualMonthly = '15,75'
+  const annualTotal = '189,00'
 
   return (
     <div className="flex flex-col bg-paper min-h-screen">
@@ -228,35 +236,32 @@ export default function PlansPage() {
           Simples, transparente e justo.
         </h1>
         <p className="text-ink/55 text-[15px] md:text-[18px] font-light leading-relaxed mb-8 max-w-lg mx-auto">
-          14 dias grátis sem cartão. Uma assinatura para toda a família.
+          Comece no plano gratuito. Assine o Pro quando quiser liberar automações e IA sem limites mensais.
+        </p>
+        <p className="text-[11px] tracking-[0.18em] uppercase text-ink/35 font-semibold mb-3">
+          Cobrança do Pro
         </p>
         <PlanToggle value={billing} onChange={setBilling} />
       </section>
 
       {/* ── Plan cards ───────────────────────────────────────────── */}
       <section className="px-5 pb-16 md:px-12">
-        <div className="max-w-3xl mx-auto grid gap-4 md:grid-cols-2 md:gap-6">
+        <div className="max-w-5xl mx-auto grid gap-4 md:grid-cols-3 md:gap-6">
 
-          {/* Monthly */}
-          <div
-            className={`flex flex-col rounded-[22px] border p-6 md:p-8 shadow-soft transition-vintage ${
-              billing === 'monthly'
-                ? 'border-sidebar/30 bg-offWhite'
-                : 'border-border bg-offWhite opacity-70'
-            }`}
-          >
-            <h2 className="font-serif text-[24px] text-coffee mb-1">Plano Mensal</h2>
-            <p className="text-sm text-ink/55 mb-5">Flexibilidade para começar sem compromisso.</p>
+          {/* Free */}
+          <div className="flex flex-col rounded-[22px] border border-border bg-offWhite p-6 md:p-8 shadow-soft">
+            <h2 className="font-serif text-[24px] text-coffee mb-1">Gratuito</h2>
+            <p className="text-sm text-ink/55 mb-5">Para começar e manter a casa organizada.</p>
             <div className="flex items-baseline gap-1.5 mb-2">
               <span className="text-base text-coffee/60">R$</span>
               <span className="font-numbers text-[48px] font-normal leading-none text-coffee" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                {monthlyPrice}
+                0
               </span>
               <span className="text-base text-coffee/60">/mês</span>
             </div>
-            <p className="text-[13px] text-ink/45 mb-6">Cobrado mensalmente. Cancele quando quiser.</p>
+            <p className="text-[13px] text-ink/45 mb-6">Sem cartão. Seus dados continuam disponíveis.</p>
             <ul className="flex flex-col gap-2 text-sm text-ink/70 mb-7 flex-1">
-              {['Contas a pagar e a receber', 'Poupança e sonhos', 'Comparativos e gráficos', 'Lembretes', 'Família compartilhada', 'Importação de extrato (OFX)', 'Exportação PDF e CSV'].map((b) => (
+              {['Registro ilimitado de contas, receitas, poupanças e lembretes', 'Família compartilhada', '75 registros por WhatsApp/mês', '15 consultas com IA/mês', '3 insights sob demanda/mês', '3 importações/exportações/mês', 'Histórico comparativo de 2 meses'].map((b) => (
                 <li key={b} className="flex items-center gap-2">
                   <Check size={14} className="text-olive shrink-0" />
                   <span>{b}</span>
@@ -267,11 +272,45 @@ export default function PlansPage() {
               href="/signup"
               className="block text-center py-3.5 px-4 rounded-full bg-sidebar text-paper text-sm font-semibold hover:bg-sidebar/80 transition-vintage"
             >
-              Começar grátis por 14 dias
+              Criar conta grátis
             </Link>
           </div>
 
-          {/* Annual */}
+          {/* Monthly Pro */}
+          <div
+            className={`flex flex-col rounded-[22px] border p-6 md:p-8 shadow-soft transition-vintage ${
+              billing === 'monthly'
+                ? 'border-sidebar/30 bg-offWhite'
+                : 'border-border bg-offWhite opacity-70'
+            }`}
+          >
+            <h2 className="font-serif text-[24px] text-coffee mb-1">Pro Mensal</h2>
+            <p className="text-sm text-ink/55 mb-5">Para usar WhatsApp, IA e importações sem travar.</p>
+            <div className="flex items-baseline gap-1.5 mb-2">
+              <span className="text-base text-coffee/60">R$</span>
+              <span className="font-numbers text-[48px] font-normal leading-none text-coffee" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {monthlyPrice}
+              </span>
+              <span className="text-base text-coffee/60">/mês</span>
+            </div>
+            <p className="text-[13px] text-ink/45 mb-6">Cobrado mensalmente. Cancele quando quiser.</p>
+            <ul className="flex flex-col gap-2 text-sm text-ink/70 mb-7 flex-1">
+              {['Tudo do gratuito', 'WhatsApp e consultas com IA ilimitadas', 'Insights sob demanda ilimitados', 'Importação e exportação ilimitadas', 'Histórico comparativo completo', 'Frequência de insights ajustável', 'Prioridade em novas funcionalidades'].map((b) => (
+                <li key={b} className="flex items-center gap-2">
+                  <Check size={14} className="text-olive shrink-0" />
+                  <span>{b}</span>
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/signup"
+              className="block text-center py-3.5 px-4 rounded-full bg-sidebar text-paper text-sm font-semibold hover:bg-sidebar/80 transition-vintage"
+            >
+              Assinar Pro mensal
+            </Link>
+          </div>
+
+          {/* Annual Pro */}
           <div
             className={`flex flex-col rounded-[22px] border p-6 md:p-8 shadow-vintage relative transition-vintage ${
               billing === 'annual'
@@ -283,10 +322,10 @@ export default function PlansPage() {
               Mais escolhido
             </div>
             <h2 className={`font-serif text-[24px] mb-1 ${billing === 'annual' ? 'text-gold' : 'text-coffee'}`}>
-              Plano Anual
+              Pro Anual
             </h2>
             <p className={`text-sm mb-5 ${billing === 'annual' ? 'text-paper/55' : 'text-ink/55'}`}>
-              Compromisso e economia. Equivale a 2 meses grátis.
+              O mesmo Pro, com 2 meses grátis.
             </p>
             <div className="flex items-baseline gap-1.5 mb-1">
               <span className={`text-base ${billing === 'annual' ? 'text-paper/60' : 'text-coffee/60'}`}>R$</span>
@@ -303,8 +342,8 @@ export default function PlansPage() {
             </p>
             <ul className={`flex flex-col gap-2 text-sm mb-7 flex-1 ${billing === 'annual' ? 'text-paper/75' : 'text-ink/70'}`}>
               {[
-                'Tudo do plano mensal',
-                'Economia de R$ 59,80 no ano',
+                'Tudo do Pro mensal',
+                'Economia de R$ 49,80 no ano',
                 'Preço fixo durante o contrato',
                 'Prioridade em novas funcionalidades',
               ].map((b) => (
@@ -318,14 +357,14 @@ export default function PlansPage() {
               href="/signup"
               className="block text-center py-3.5 px-4 rounded-full bg-gold text-sidebar text-sm font-semibold hover:opacity-90 transition-vintage"
             >
-              Começar grátis por 14 dias
+              Assinar Pro anual
             </Link>
           </div>
         </div>
 
         {/* Trust strip */}
         <div className="max-w-3xl mx-auto mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-[13px] text-ink/50">
-          <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" /> Sem cartão no teste</span>
+          <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" /> Gratuito sem cartão</span>
           <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" /> Cancele quando quiser</span>
           <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" /> Membros ilimitados</span>
           <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" /> Dados seguros</span>
@@ -339,9 +378,9 @@ export default function PlansPage() {
             O que está incluído
           </h2>
           <p className="text-center text-ink/50 text-[14px] md:text-[16px] font-light mb-8 md:mb-10">
-            Ambos os planos incluem acesso completo ao sistema.
+            O gratuito cobre o essencial. O Pro remove limites e aprofunda automações.
           </p>
-          <ComparisonTable billing={billing} />
+          <ComparisonTable />
         </div>
       </section>
 
@@ -378,7 +417,7 @@ export default function PlansPage() {
             Comece hoje. A família agradece.
           </h2>
           <p className="text-paper/55 text-[14px] md:text-[16px] font-light mb-8">
-            14 dias grátis. Sem cartão. Cancele quando quiser.
+            Plano gratuito disponível. Sem cartão. Cancele o Pro quando quiser.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link

@@ -30,7 +30,7 @@ const PLAN_CONTENT: Record<PlanSetting['plan_code'], PlanContent> = {
     name: 'Plano Mensal',
     teaser: 'Ideal para quem quer começar com flexibilidade.',
     pricePrefix: 'R$',
-    price: '29,90',
+    price: '19,90',
     period: '/ mês',
     benefitsTitle: 'Benefícios:',
     benefits: [
@@ -47,12 +47,12 @@ const PLAN_CONTENT: Record<PlanSetting['plan_code'], PlanContent> = {
     name: 'Plano Anual',
     teaser: 'Para famílias que desejam compromisso e continuidade.',
     pricePrefix: 'R$',
-    price: '299,00',
+    price: '189,00',
     period: '/ ano',
     benefitsTitle: 'Benefícios:',
     benefits: [
-      'Equivalente a R$ 24,90/mês',
-      'Economia de dois meses',
+      'Equivalente a R$ 15,75/mês',
+      'Economia de R$ 49,80 no ano',
       'Prioridade em novas funcionalidades',
       'Atualizações contínuas',
       'Estabilidade no valor durante o contrato',
@@ -63,7 +63,7 @@ const PLAN_CONTENT: Record<PlanSetting['plan_code'], PlanContent> = {
     name: 'Plano Fundadores Mensal',
     teaser: 'Exclusivo para famílias selecionadas.',
     pricePrefix: 'R$',
-    price: '19,90',
+    price: '14,90',
     period: '/ mês',
     benefitsTitle: 'Benefícios especiais:',
     benefits: [
@@ -78,7 +78,7 @@ const PLAN_CONTENT: Record<PlanSetting['plan_code'], PlanContent> = {
     name: 'Plano Fundadores Anual',
     teaser: 'Exclusivo para famílias selecionadas.',
     pricePrefix: 'R$',
-    price: '199,00',
+    price: '149,00',
     period: '/ ano',
     benefitsTitle: 'Benefícios especiais:',
     benefits: [
@@ -290,7 +290,7 @@ export default function PricingExperience({
                       <span className="ml-2 text-base text-coffee/60">{content.period}</span>
                     </div>
                     <p className="mt-4 text-center text-sm text-coffee/60">
-                      {!plan.is_active ? 'Plano indisponível no momento.' : '14 dias grátis. Cancele quando quiser.'}
+                      {!plan.is_active ? 'Plano indisponível no momento.' : '30 dias grátis. Cancele quando quiser.'}
                     </p>
                     <button
                       disabled={!plan.is_active}
