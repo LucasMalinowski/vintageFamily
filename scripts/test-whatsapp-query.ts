@@ -39,6 +39,7 @@ const MESSAGES = [
 
 whatsAppService.sendTextMessage = async (to: string, text: string) => {
   console.log(`\n📲 Reply to ${to}:\n${'─'.repeat(50)}\n${text}\n${'─'.repeat(50)}`)
+  return { messageId: 'local-test' }
 }
 
 async function main() {

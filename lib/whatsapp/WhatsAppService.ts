@@ -7,7 +7,9 @@ export class WhatsAppService {
     this.apiUrl = `https://graph.facebook.com/v25.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`
   }
 
-  async sendTextMessage(to: string, text: string): Promise<void> {
+  async sendTextMessage(to: string, text: string): Promise<{ messageId: string | null }> {
+    const recipient = to.replace(/\D/g, '')
+
     const response = await fetch(this.apiUrl, {
       method: 'POST',
       headers: {
@@ -16,7 +18,7 @@ export class WhatsAppService {
       },
       body: JSON.stringify({
         messaging_product: 'whatsapp',
-        to,
+        to: recipient,
         type: 'text',
         text: { body: text },
       }),
@@ -26,6 +28,9 @@ export class WhatsAppService {
       const body = await response.text()
       throw new Error(`WhatsApp API error ${response.status}: ${body}`)
     }
+
+    const body = await response.json().catch(() => null) as { messages?: { id?: string }[] } | null
+    return { messageId: body?.messages?.[0]?.id ?? null }
   }
 
   async sendPrivacyNotice(to: string): Promise<void> {
@@ -53,7 +58,9 @@ export class WhatsAppService {
     )
   }
 
-  async sendAuthOtp(to: string, code: string): Promise<void> {
+  async sendAuthOtp(to: string, code: string): Promise<{ messageId: string | null }> {
+    const recipient = to.replace(/\D/g, '')
+
     const response = await fetch(this.apiUrl, {
       method: 'POST',
       headers: {
@@ -62,7 +69,7 @@ export class WhatsAppService {
       },
       body: JSON.stringify({
         messaging_product: 'whatsapp',
-        to,
+        to: recipient,
         type: 'template',
         template: {
           name: 'florim_otp',
@@ -87,14 +94,16 @@ export class WhatsAppService {
       const errorBody = await response.json().catch(() => ({}))
       // Fall back to plain text if template fails (e.g., during dev without approved template)
       if (errorBody?.error?.code === 132001 || errorBody?.error?.code === 132000) {
-        await this.sendTextMessage(
+        return this.sendTextMessage(
           to,
           `Seu código de verificação do Florim é: *${code}*\nVálido por 10 minutos. Não compartilhe este código.`
         )
-        return
       }
       throw new Error(`WhatsApp API error ${response.status}: ${JSON.stringify(errorBody)}`)
     }
+
+    const body = await response.json().catch(() => null) as { messages?: { id?: string }[] } | null
+    return { messageId: body?.messages?.[0]?.id ?? null }
   }
 }
 

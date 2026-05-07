@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
 import { sendInsightsEmail } from '@/lib/mailer'
+import { posthogLogs } from '@/lib/posthog-logs'
 
 export async function dispatchInsights(
   familyId: string,
@@ -41,16 +42,51 @@ export async function dispatchInsights(
     if (channels.includes('whatsapp') && member.phone_number) {
       try {
         const header = type === 'proactive' ? '💡 *Insights do mês — Florim*\n\n' : '💡 *Insight sob demanda — Florim*\n\n'
-        await whatsAppService.sendTextMessage(member.phone_number, header + content)
+        const result = await whatsAppService.sendTextMessage(member.phone_number, header + content)
         sentChannels.push('whatsapp')
-      } catch { /* non-critical */ }
+        await posthogLogs.info('Insights WhatsApp message accepted by Meta', {
+          family_id: familyId,
+          user_id: member.id,
+          type,
+          meta_message_id: result.messageId ?? 'unknown',
+          recipient_last4: member.phone_number.replace(/\D/g, '').slice(-4),
+        })
+      } catch (err) {
+        console.warn('[insights-dispatch] whatsapp delivery failed', member.id, err)
+        await posthogLogs.warn(
+          'Insights WhatsApp delivery failed',
+          {
+            family_id: familyId,
+            user_id: member.id,
+            type,
+            recipient_last4: member.phone_number.replace(/\D/g, '').slice(-4),
+          },
+          err
+        )
+      }
     }
 
     if (channels.includes('email') && member.email) {
       try {
         await sendInsightsEmail({ to: member.email, name: member.name ?? '', insights, period })
         sentChannels.push('email')
-      } catch { /* non-critical */ }
+        await posthogLogs.info('Insights email accepted by provider', {
+          family_id: familyId,
+          user_id: member.id,
+          type,
+        })
+      } catch (err) {
+        console.warn('[insights-dispatch] email delivery failed', member.id, err)
+        await posthogLogs.warn(
+          'Insights email delivery failed',
+          {
+            family_id: familyId,
+            user_id: member.id,
+            type,
+          },
+          err
+        )
+      }
     }
 
     if (sentChannels.length > 0) {

@@ -22,13 +22,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const isLocalOverrideAllowed = process.env.NODE_ENV !== 'production'
+  const force = isLocalOverrideAllowed && request.nextUrl.searchParams.get('force') === '1'
+  const familyId = isLocalOverrideAllowed ? request.nextUrl.searchParams.get('family_id') : null
   const today = new Date()
   const dayOfWeek = today.getDay() // 1 = Monday
 
-  const { data: families } = await supabaseAdmin
+  let familiesQuery = supabaseAdmin
     .from('families')
     .select('id')
     .is('deleted_at', null)
+
+  if (familyId) {
+    familiesQuery = familiesQuery.eq('id', familyId)
+  }
+
+  const { data: families } = await familiesQuery
 
   if (!families?.length) return NextResponse.json({ ok: true, dispatched: 0 })
 
@@ -54,11 +63,11 @@ export async function GET(request: NextRequest) {
       // Free tier: monthly dispatch only (run on 1st of month, dayOfWeek check skipped)
       // Paid/trial tier: weekly dispatch (every Monday)
       const isFirstOfMonth = today.getDate() === 1
-      if (!hasFullInsightAccess && !isFirstOfMonth) continue
-      if (hasFullInsightAccess && dayOfWeek !== 1) continue
+      if (!force && !hasFullInsightAccess && !isFirstOfMonth) continue
+      if (!force && hasFullInsightAccess && dayOfWeek !== 1) continue
 
       // Check interval preference (paid/trial-tier user-configurable)
-      if (hasFullInsightAccess && members[0]) {
+      if (!force && hasFullInsightAccess && members[0]) {
         const intervalDays = members[0].insight_interval_days ?? 30
         const { data: lastInsight } = await supabaseAdmin
           .from('insights')
@@ -82,7 +91,7 @@ export async function GET(request: NextRequest) {
       dispatched++
     } catch (err) {
       console.error('[insights-dispatch] error for family', family.id, err)
-      posthogLogs.error(
+      await posthogLogs.error(
         'Insights dispatch failed for family',
         {
           endpoint: '/api/cron/insights-dispatch',
@@ -93,7 +102,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  posthogLogs.info('Insights dispatch completed', {
+  await posthogLogs.info('Insights dispatch completed', {
     endpoint: '/api/cron/insights-dispatch',
     family_count: families.length,
     dispatched,
