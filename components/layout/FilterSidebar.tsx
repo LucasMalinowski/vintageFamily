@@ -15,6 +15,8 @@ interface FilterSidebarProps {
   clearLabel?: string
 }
 
+const STORAGE_KEY = 'filters-sidebar-open'
+
 export default function FilterSidebar({
   children,
   open: controlledOpen,
@@ -27,7 +29,6 @@ export default function FilterSidebar({
   clearLabel = 'Limpar filtros',
 }: FilterSidebarProps) {
   const [internalOpen, setInternalOpen] = useState(true)
-  const storageKey = 'filters-sidebar-open'
   const isControlled = typeof controlledOpen === 'boolean'
   const open = isControlled ? controlledOpen : internalOpen
   const setOpen = (next: boolean) => {
@@ -40,19 +41,19 @@ export default function FilterSidebar({
 
   useEffect(() => {
     if (isControlled) return
-    const stored = window.localStorage.getItem(storageKey)
-    if (stored === '0') setOpen(false)
-    if (stored === '1') setOpen(true)
+    const stored = window.localStorage.getItem(STORAGE_KEY)
+    if (stored !== '0' && stored !== '1') return
+    queueMicrotask(() => setInternalOpen(stored === '1'))
   }, [isControlled])
 
   useEffect(() => {
     if (isControlled) return
-    window.localStorage.setItem(storageKey, open ? '1' : '0')
+    window.localStorage.setItem(STORAGE_KEY, open ? '1' : '0')
   }, [open, isControlled])
 
   return (
-    <aside className={`${open ? expandedWidthClass : collapsedWidthClass} shrink-0 transition-all duration-300 overflow-hidden ${open ? 'h-full' : ''}`}>
-      <div className="sticky top-4 flex flex-col max-h-[calc(100vh-210px)]">
+    <aside className={`${open ? `${expandedWidthClass} overflow-visible` : `${collapsedWidthClass} overflow-hidden`} shrink-0 transition-all duration-300 ${open ? 'h-full' : ''}`}>
+      <div className="sticky top-4 flex flex-col">
         {showToggle ? (
           <button
             type="button"
@@ -66,7 +67,7 @@ export default function FilterSidebar({
         ) : null}
 
         {open ? (
-          <div className={`${showToggle ? 'mt-3' : ''} rounded-[18px] border-2 border-border/40 bg-offWhite p-3 overflow-y-auto`}>
+          <div className={`${showToggle ? 'mt-3' : ''} rounded-[18px] border-2 border-border/40 bg-offWhite p-3 overflow-visible`}>
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="text-sm leading-none font-semibold text-ink/60">
                 Filtros <span className="text-ink/40 text-xs">({activeFiltersCount})</span>
