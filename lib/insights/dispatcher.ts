@@ -42,12 +42,17 @@ export async function dispatchInsights(
     if (channels.includes('whatsapp') && member.phone_number) {
       try {
         const header = type === 'proactive' ? '💡 *Insights do mês — Florim*\n\n' : '💡 *Insight sob demanda — Florim*\n\n'
-        const result = await whatsAppService.sendTextMessage(member.phone_number, header + content)
+        const templateName = process.env.WHATSAPP_INSIGHTS_TEMPLATE_NAME
+        const result = templateName
+          ? await whatsAppService.sendTemplateMessage(member.phone_number, templateName, [period, content])
+          : await whatsAppService.sendTextMessage(member.phone_number, header + content)
         sentChannels.push('whatsapp')
         await posthogLogs.info('Insights WhatsApp message accepted by Meta', {
           family_id: familyId,
           user_id: member.id,
           type,
+          whatsapp_message_kind: templateName ? 'template' : 'text',
+          whatsapp_template_name: templateName ?? 'none',
           meta_message_id: result.messageId ?? 'unknown',
           recipient_last4: member.phone_number.replace(/\D/g, '').slice(-4),
         })

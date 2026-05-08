@@ -33,6 +33,53 @@ export class WhatsAppService {
     return { messageId: body?.messages?.[0]?.id ?? null }
   }
 
+  private sanitizeTemplateParameter(text: string): string {
+    return text.replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' ').trim()
+  }
+
+  async sendTemplateMessage(
+    to: string,
+    templateName: string,
+    bodyParameters: string[],
+    languageCode = 'pt_BR'
+  ): Promise<{ messageId: string | null }> {
+    const recipient = to.replace(/\D/g, '')
+
+    const response = await fetch(this.apiUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: recipient,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: { code: languageCode },
+          components: [
+            {
+              type: 'body',
+              parameters: bodyParameters.map((text) => ({
+                type: 'text',
+                text: this.sanitizeTemplateParameter(text),
+              })),
+            },
+          ],
+        },
+      }),
+    })
+
+    if (!response.ok) {
+      const body = await response.text()
+      throw new Error(`WhatsApp API error ${response.status}: ${body}`)
+    }
+
+    const body = await response.json().catch(() => null) as { messages?: { id?: string }[] } | null
+    return { messageId: body?.messages?.[0]?.id ?? null }
+  }
+
   async sendPrivacyNotice(to: string): Promise<void> {
     const appUrl = 'https://florim.app'
     await this.sendTextMessage(
