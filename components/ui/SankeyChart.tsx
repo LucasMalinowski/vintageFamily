@@ -40,7 +40,7 @@ type LayoutNode = D3SankeyNode<{ id: string; label: string; color: string; pct?:
 type LayoutLink = D3SankeyLink<{ id: string; label: string; color: string; pct?: string }, { color: string }>
 
 const NODE_WIDTH = 110
-const NODE_PADDING = 16
+const NODE_PADDING = 20
 const H_PADDING = 8
 const MIN_HEIGHT = 260
 const PREVIEW_HEIGHT = 200
@@ -81,7 +81,20 @@ function computeLayout(nodes: SankeyNode[], links: SankeyLink[], svgW: number, s
     .nodeId((d) => d.id)
     .nodeWidth(NODE_WIDTH)
     .nodePadding(NODE_PADDING)
+    .iterations(32)
     .extent([[H_PADDING, H_PADDING], [svgW - H_PADDING, svgH - H_PADDING]])(graph)
+}
+
+// Count nodes per actual d3-sankey column (by x0 position) to handle sink nodes
+// that get placed in the rightmost column regardless of their col metadata.
+function maxNodesPerColumn(layoutNodes: LayoutNode[]): number {
+  if (layoutNodes.length === 0) return 1
+  const countMap = new Map<number, number>()
+  for (const n of layoutNodes) {
+    const x = Math.round(n.x0 ?? 0)
+    countMap.set(x, (countMap.get(x) ?? 0) + 1)
+  }
+  return Math.max(...countMap.values())
 }
 
 const pathGen = sankeyLinkHorizontal()
@@ -282,18 +295,19 @@ function SankeyModal({
     setTransform({ x, y, zoom })
   }, [])
 
-  // Modal uses more vertical room so even small-value nodes have readable text
-  const maxNodesInCol = Math.max(...[0, 1, 2].map(c => nodes.filter(n => n.col === c).length))
-  const modalSvgHeight = Math.max(500, maxNodesInCol * 110 + Math.max(0, maxNodesInCol - 1) * NODE_PADDING + 32)
-
-  const { layoutNodes, layoutLinks } = useMemo(() => {
-    if (nodes.length === 0) return { layoutNodes: [], layoutLinks: [] }
-    const computed = computeLayout(nodes, links, MODAL_SVG_WIDTH, modalSvgHeight)
+  const { layoutNodes, layoutLinks, modalSvgHeight } = useMemo(() => {
+    if (nodes.length === 0) return { layoutNodes: [], layoutLinks: [], modalSvgHeight: 500 }
+    // Probe with generous height to determine actual column occupancy
+    const probe = computeLayout(nodes, links, MODAL_SVG_WIDTH, 4000)
+    const actualMax = maxNodesPerColumn(probe.nodes as LayoutNode[])
+    const svgH = Math.max(500, actualMax * 130 + Math.max(0, actualMax - 1) * NODE_PADDING + 32)
+    const computed = computeLayout(nodes, links, MODAL_SVG_WIDTH, svgH)
     return {
       layoutNodes: computed.nodes as LayoutNode[],
       layoutLinks: computed.links as LayoutLink[],
+      modalSvgHeight: svgH,
     }
-  }, [nodes, links, modalSvgHeight])
+  }, [nodes, links])
 
   const focusedNode = focusedNodeId ? layoutNodes.find(n => n.id === focusedNodeId) : null
 
@@ -515,9 +529,13 @@ export default function SankeyChart({ nodes, links, currency = true, height: _he
 
   const { svgWidth, svgHeight, layoutNodes, layoutLinks } = useMemo(() => {
     if (nodes.length === 0) return { svgWidth: 0, svgHeight: 0, layoutNodes: [], layoutLinks: [] }
-    const maxNodesInCol = Math.max(...[0, 1, 2].map(c => nodes.filter(n => n.col === c).length))
-    const svgH = Math.max(MIN_HEIGHT, maxNodesInCol * 64 + Math.max(0, maxNodesInCol - 1) * NODE_PADDING)
     const svgW = Math.max(300, containerWidth - 4)
+    // Probe with generous height to get actual d3-sankey column placement
+    // (sink nodes with no outgoing links get placed in the rightmost column
+    // regardless of their col metadata, so we can't rely on col counts alone)
+    const probe = computeLayout(nodes, links, svgW, 4000)
+    const actualMax = maxNodesPerColumn(probe.nodes as LayoutNode[])
+    const svgH = Math.max(MIN_HEIGHT, actualMax * 72 + Math.max(0, actualMax - 1) * NODE_PADDING)
     const computed = computeLayout(nodes, links, svgW, svgH)
     return {
       svgWidth: svgW,
