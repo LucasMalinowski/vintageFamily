@@ -1,10 +1,11 @@
 export class WhatsAppService {
   private token: string
   private apiUrl: string
+  private graphBaseUrl = 'https://graph.facebook.com/v25.0'
 
   constructor() {
     this.token = process.env.WHATSAPP_API_TOKEN!
-    this.apiUrl = `https://graph.facebook.com/v25.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`
+    this.apiUrl = `${this.graphBaseUrl}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`
   }
 
   async sendTextMessage(to: string, text: string): Promise<{ messageId: string | null }> {
@@ -41,9 +42,25 @@ export class WhatsAppService {
     to: string,
     templateName: string,
     bodyParameters: string[],
-    languageCode = 'pt_BR'
+    languageCode = 'pt_BR',
+    buttons: { index: string; payload: string }[] = []
   ): Promise<{ messageId: string | null }> {
     const recipient = to.replace(/\D/g, '')
+    const components = [
+      {
+        type: 'body',
+        parameters: bodyParameters.map((text) => ({
+          type: 'text',
+          text: this.sanitizeTemplateParameter(text),
+        })),
+      },
+      ...buttons.map((button) => ({
+        type: 'button',
+        sub_type: 'quick_reply',
+        index: button.index,
+        parameters: [{ type: 'payload', payload: button.payload }],
+      })),
+    ]
 
     const response = await fetch(this.apiUrl, {
       method: 'POST',
@@ -58,15 +75,7 @@ export class WhatsAppService {
         template: {
           name: templateName,
           language: { code: languageCode },
-          components: [
-            {
-              type: 'body',
-              parameters: bodyParameters.map((text) => ({
-                type: 'text',
-                text: this.sanitizeTemplateParameter(text),
-              })),
-            },
-          ],
+          components,
         },
       }),
     })
@@ -78,6 +87,58 @@ export class WhatsAppService {
 
     const body = await response.json().catch(() => null) as { messages?: { id?: string }[] } | null
     return { messageId: body?.messages?.[0]?.id ?? null }
+  }
+
+  async markMessageReadWithTyping(messageId: string): Promise<void> {
+    const response = await fetch(this.apiUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        status: 'read',
+        message_id: messageId,
+        typing_indicator: { type: 'text' },
+      }),
+    })
+
+    if (!response.ok) {
+      const body = await response.text()
+      throw new Error(`WhatsApp read/typing API error ${response.status}: ${body}`)
+    }
+  }
+
+  async getMediaUrl(mediaId: string): Promise<{ url: string; mimeType: string | null }> {
+    const response = await fetch(`${this.graphBaseUrl}/${mediaId}`, {
+      headers: { Authorization: `Bearer ${this.token}` },
+    })
+
+    if (!response.ok) {
+      const body = await response.text()
+      throw new Error(`WhatsApp media metadata API error ${response.status}: ${body}`)
+    }
+
+    const body = await response.json() as { url?: string; mime_type?: string }
+    if (!body.url) throw new Error('WhatsApp media metadata response missing url')
+
+    return { url: body.url, mimeType: body.mime_type ?? null }
+  }
+
+  async downloadMedia(mediaUrl: string): Promise<{ buffer: Buffer; mimeType: string }> {
+    const response = await fetch(mediaUrl, {
+      headers: { Authorization: `Bearer ${this.token}` },
+    })
+
+    if (!response.ok) {
+      const body = await response.text()
+      throw new Error(`WhatsApp media download API error ${response.status}: ${body}`)
+    }
+
+    const mimeType = response.headers.get('content-type') ?? 'application/octet-stream'
+    const buffer = Buffer.from(await response.arrayBuffer())
+    return { buffer, mimeType }
   }
 
   async sendPrivacyNotice(to: string): Promise<void> {

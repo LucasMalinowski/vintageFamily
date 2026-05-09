@@ -8,6 +8,7 @@ function getCurrentPeriod(): string {
 
 type UsageCounters = {
   whatsappRecordings: number
+  audioMessages: number
   aiQueries: number
   exportImportCount: number
   onDemandInsights: number
@@ -17,13 +18,14 @@ export async function getUsageCounters(familyId: string): Promise<UsageCounters>
   const period = getCurrentPeriod()
   const { data } = await supabaseAdmin
     .from('usage_counters')
-    .select('whatsapp_recordings, ai_queries, export_import_count, on_demand_insights')
+    .select('whatsapp_recordings, audio_messages, ai_queries, export_import_count, on_demand_insights')
     .eq('family_id', familyId)
     .eq('period', period)
     .maybeSingle()
 
   return {
     whatsappRecordings: data?.whatsapp_recordings ?? 0,
+    audioMessages: data?.audio_messages ?? 0,
     aiQueries: data?.ai_queries ?? 0,
     exportImportCount: data?.export_import_count ?? 0,
     onDemandInsights: data?.on_demand_insights ?? 0,
@@ -40,6 +42,13 @@ async function upsertRecordings(familyId: string, period: string, value: number)
 async function upsertAIQueries(familyId: string, period: string, value: number) {
   await supabaseAdmin.from('usage_counters').upsert(
     { family_id: familyId, period, ai_queries: value },
+    { onConflict: 'family_id,period' }
+  )
+}
+
+async function upsertAudioMessages(familyId: string, period: string, value: number) {
+  await supabaseAdmin.from('usage_counters').upsert(
+    { family_id: familyId, period, audio_messages: value },
     { onConflict: 'family_id,period' }
   )
 }
@@ -77,6 +86,20 @@ export async function checkAndIncrementAIQuery(
 
   await upsertAIQueries(familyId, getCurrentPeriod(), aiQueries + 1)
   return { allowed: true, remaining: limit - (aiQueries + 1) }
+}
+
+export async function checkAndIncrementAudioMessage(
+  familyId: string
+): Promise<{ allowed: boolean; remaining: number }> {
+  const { audioMessages } = await getUsageCounters(familyId)
+  const limit = FREE_TIER_LIMITS.audioMessagesPerMonth
+
+  if (audioMessages >= limit) {
+    return { allowed: false, remaining: 0 }
+  }
+
+  await upsertAudioMessages(familyId, getCurrentPeriod(), audioMessages + 1)
+  return { allowed: true, remaining: limit - (audioMessages + 1) }
 }
 
 export async function checkAndIncrementExportImport(

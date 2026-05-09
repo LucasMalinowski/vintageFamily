@@ -24,6 +24,24 @@ type SaveResult =
   | { ok: true; line: string }
   | { ok: false; line: string }
 
+type WhatsAppUserRow = {
+  id: string
+  family_id: string
+  billing_cycle_day: number | null
+}
+
+type ProcessOptions = {
+  skipMessageLog?: boolean
+  messageType?: 'text' | 'audio'
+  sourceMessageId?: string
+  requireConfirmation?: boolean
+  transcript?: string
+}
+
+type PendingActionPayload =
+  | { records: AIExtractedRecord[] }
+  | { intent: IntentClassification }
+
 function buildPhoneCandidates(phone: string): string[] {
   const digits = phone.replace(/\D/g, '')
   const candidates = new Set<string>([digits])
@@ -48,30 +66,114 @@ function getFallbackCategory(
 }
 
 const MAX_MESSAGE_LENGTH = 1000
+const PENDING_ACTION_TTL_MS = 30 * 60 * 1000
 
-export async function processWhatsAppMessage(fromPhone: string, messageText: string, messageId?: string): Promise<void> {
-  if (messageId) {
-    const { error } = await supabaseAdmin
-      .from('whatsapp_message_log')
-      .insert({ message_id: messageId })
-    if (error) return // duplicate key → already processed
+export async function logInboundWhatsAppMessage(
+  messageId: string,
+  messageType: 'text' | 'audio' | 'button',
+  mediaId?: string | null
+): Promise<boolean> {
+  const { error } = await supabaseAdmin
+    .from('whatsapp_message_log')
+    .insert({ message_id: messageId, message_type: messageType, media_id: mediaId ?? null })
+
+  return !error
+}
+
+export async function updateWhatsAppMessageLog(
+  messageId: string,
+  values: {
+    family_id?: string | null
+    user_id?: string | null
+    transcript?: string | null
+    transcription_model?: string | null
+    transcription_status?: string | null
+    transcription_error?: string | null
   }
+): Promise<void> {
+  await supabaseAdmin
+    .from('whatsapp_message_log')
+    .update(values)
+    .eq('message_id', messageId)
+}
 
-  const text = messageText.length > MAX_MESSAGE_LENGTH
-    ? messageText.slice(0, MAX_MESSAGE_LENGTH)
-    : messageText
-
+export async function findWhatsAppUser(fromPhone: string): Promise<WhatsAppUserRow | null> {
   const candidates = buildPhoneCandidates(fromPhone)
 
-  let userRow: { id: string; family_id: string; billing_cycle_day: number | null } | null = null
   for (const candidate of candidates) {
     const { data } = await supabaseAdmin
       .from('users')
       .select('id,family_id,billing_cycle_day')
       .like('phone_number', `%${candidate}`)
       .maybeSingle()
-    if (data) { userRow = data; break }
+    if (data) return data
   }
+
+  return null
+}
+
+function formatRecordSummary(record: AIExtractedRecord): string {
+  if (record.type === 'reminder') {
+    return `Lembrete: ${record.description} (${record.date})`
+  }
+
+  if (record.type === 'savings_contribution') {
+    return `${formatBRL(Math.round((record.amount ?? 0) * 100))} para ${record.saving_name ?? record.description} (Poupança)`
+  }
+
+  const category = record.category_name ? ` (${record.category_name})` : ''
+  return `${formatBRL(Math.round((record.amount ?? 0) * 100))} com ${record.description}${category}`
+}
+
+function buildPendingSummary(actionType: 'record' | 'edit' | 'delete', payload: PendingActionPayload): string {
+  if ('records' in payload) {
+    return payload.records.map(formatRecordSummary).join(' • ')
+  }
+
+  const intent = payload.intent
+  if (actionType === 'delete') return `Remover o item ${intent.item_index ?? '?'} da última lista`
+  return `Editar o item ${intent.item_index ?? '?'} para ${formatBRL(Math.round((intent.edit_amount ?? 0) * 100))}`
+}
+
+async function sendAudioConfirmationTemplate(fromPhone: string, summaryText: string): Promise<void> {
+  const templateName = process.env.WHATSAPP_AUDIO_CONFIRM_TEMPLATE_NAME
+
+  if (!templateName) {
+    await whatsAppService.sendTextMessage(
+      fromPhone,
+      `Confirmando o que você disse:\n\n${summaryText}\n\nResponda "Sim, criar" para confirmar ou envie outro áudio/texto para corrigir.`
+    )
+    return
+  }
+
+  await whatsAppService.sendTemplateMessage(
+    fromPhone,
+    templateName,
+    [summaryText],
+    'pt_BR',
+    [
+      { index: '0', payload: 'audio_confirm_yes' },
+      { index: '1', payload: 'audio_confirm_no' },
+    ]
+  )
+}
+
+export async function processWhatsAppMessage(
+  fromPhone: string,
+  messageText: string,
+  messageId?: string,
+  options: ProcessOptions = {}
+): Promise<void> {
+  if (messageId && !options.skipMessageLog) {
+    const inserted = await logInboundWhatsAppMessage(messageId, options.messageType ?? 'text')
+    if (!inserted) return // duplicate key -> already processed
+  }
+
+  const text = messageText.length > MAX_MESSAGE_LENGTH
+    ? messageText.slice(0, MAX_MESSAGE_LENGTH)
+    : messageText
+
+  const userRow = await findWhatsAppUser(fromPhone)
 
   if (!userRow) {
     await whatsAppService.sendTextMessage(fromPhone, 'Número não cadastrado no Florim. Acesse o app para vincular seu WhatsApp.')
@@ -79,6 +181,15 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
   }
 
   const { family_id: familyId } = userRow
+  if (messageId) {
+    await updateWhatsAppMessageLog(messageId, {
+      family_id: familyId,
+      user_id: userRow.id,
+      transcript: options.transcript ?? null,
+      transcription_status: options.messageType === 'audio' ? 'completed' : null,
+    })
+  }
+
   const billingCycleDay = userRow.billing_cycle_day ?? 7
 
   const todayISO = new Date().toISOString().slice(0, 10)
@@ -91,6 +202,19 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
   }
 
   if (intent.type === 'delete' || intent.type === 'edit') {
+    if (options.requireConfirmation && options.sourceMessageId) {
+      await createPendingWhatsAppAction({
+        familyId,
+        userId: userRow.id,
+        fromPhone,
+        sourceMessageId: options.sourceMessageId,
+        transcript: options.transcript ?? text,
+        actionType: intent.type,
+        payload: { intent },
+      })
+      return
+    }
+
     const reply = await handleMutation(fromPhone, familyId, intent)
     await whatsAppService.sendTextMessage(fromPhone, reply)
     return
@@ -110,7 +234,10 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
     }
     try {
       const reply = await whatsAppQueryHandler.handle(text, intent, familyId, todayISO, fromPhone, billingCycleDay)
-      await whatsAppService.sendTextMessage(fromPhone, reply + FEEDBACK_LINE)
+      const transcriptNote = options.messageType === 'audio'
+        ? `Transcrevi seu áudio como: "${text}"\n\nSe eu entendi errado, tente enviar de novo.\n\n`
+        : ''
+      await whatsAppService.sendTextMessage(fromPhone, transcriptNote + reply + FEEDBACK_LINE)
     } catch {
       await whatsAppService.sendTextMessage(fromPhone, 'Não consegui buscar seus dados agora. Tente novamente em instantes. 🔄')
     }
@@ -147,7 +274,10 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
     }
     try {
       const reply = await whatsAppQueryHandler.handle(text, fallbackIntent, familyId, todayISO, fromPhone, billingCycleDay)
-      await whatsAppService.sendTextMessage(fromPhone, reply + FEEDBACK_LINE)
+      const transcriptNote = options.messageType === 'audio'
+        ? `Transcrevi seu áudio como: "${text}"\n\nSe eu entendi errado, tente enviar de novo.\n\n`
+        : ''
+      await whatsAppService.sendTextMessage(fromPhone, transcriptNote + reply + FEEDBACK_LINE)
     } catch {
       await whatsAppService.sendTextMessage(fromPhone, USAGE_HINT)
     }
@@ -156,6 +286,19 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
 
   if (!records.length) {
     await whatsAppService.sendTextMessage(fromPhone, USAGE_HINT)
+    return
+  }
+
+  if (options.requireConfirmation && options.sourceMessageId) {
+    await createPendingWhatsAppAction({
+      familyId,
+      userId: userRow.id,
+      fromPhone,
+      sourceMessageId: options.sourceMessageId,
+      transcript: options.transcript ?? text,
+      actionType: 'record',
+      payload: { records },
+    })
     return
   }
 
@@ -193,6 +336,198 @@ export async function processWhatsAppMessage(fromPhone: string, messageText: str
   }
 
   await whatsAppService.sendTextMessage(fromPhone, parts.join('\n\n') + FEEDBACK_LINE)
+}
+
+async function saveRecordsAndReply(
+  fromPhone: string,
+  familyId: string,
+  records: AIExtractedRecord[],
+  todayISO: string
+): Promise<void> {
+  const { data: categories } = await supabaseAdmin
+    .from('categories')
+    .select('id,name,kind,parent_id,is_system,icon')
+    .eq('family_id', familyId)
+
+  const categoryList = (categories ?? []) as CategoryRecord[]
+  const labelMap = buildCategoryLabelMap(categoryList)
+  const results: SaveResult[] = []
+
+  for (const record of records) {
+    const result = await saveRecord(record, familyId, categoryList, labelMap, todayISO)
+    results.push(result)
+  }
+
+  const succeeded = results.filter((r) => r.ok)
+  const failed = results.filter((r) => !r.ok)
+  const parts: string[] = []
+
+  if (succeeded.length) {
+    parts.push(`✅ Criados:\n${succeeded.map((r) => r.line).join('\n')}`)
+  }
+
+  if (failed.length) {
+    parts.push(`⚠️ Não foi possível criar:\n${failed.map((r) => r.line).join('\n')}`)
+  }
+
+  await whatsAppService.sendTextMessage(fromPhone, parts.join('\n\n') + FEEDBACK_LINE)
+}
+
+async function createPendingWhatsAppAction({
+  familyId,
+  userId,
+  fromPhone,
+  sourceMessageId,
+  transcript,
+  actionType,
+  payload,
+}: {
+  familyId: string
+  userId: string
+  fromPhone: string
+  sourceMessageId: string
+  transcript: string
+  actionType: 'record' | 'edit' | 'delete'
+  payload: PendingActionPayload
+}): Promise<void> {
+  const summaryText = buildPendingSummary(actionType, payload)
+  const { error } = await supabaseAdmin
+    .from('pending_whatsapp_actions')
+    .insert({
+      family_id: familyId,
+      user_id: userId,
+      phone: fromPhone,
+      source_message_id: sourceMessageId,
+      transcript,
+      action_type: actionType,
+      payload: payload as any,
+      summary_text: summaryText,
+      expires_at: new Date(Date.now() + PENDING_ACTION_TTL_MS).toISOString(),
+    })
+
+  if (error) {
+    console.error('[WA] pending action insert error:', error.message)
+    await whatsAppService.sendTextMessage(fromPhone, 'Não consegui preparar a confirmação do áudio. Tente novamente. 🔄')
+    return
+  }
+
+  await sendAudioConfirmationTemplate(fromPhone, summaryText)
+}
+
+export async function processWhatsAppButtonReply(
+  fromPhone: string,
+  payload: string,
+  messageId?: string
+): Promise<void> {
+  if (messageId) {
+    const inserted = await logInboundWhatsAppMessage(messageId, 'button')
+    if (!inserted) return
+  }
+
+  if (payload !== 'audio_confirm_yes' && payload !== 'audio_confirm_no') {
+    await whatsAppService.sendTextMessage(fromPhone, 'Não reconheci essa resposta. Envie uma mensagem de texto ou áudio para continuar.')
+    return
+  }
+
+  const userRow = await findWhatsAppUser(fromPhone)
+  if (!userRow) {
+    await whatsAppService.sendTextMessage(fromPhone, 'Número não cadastrado no Florim. Acesse o app para vincular seu WhatsApp.')
+    return
+  }
+
+  const { data: pending } = await supabaseAdmin
+    .from('pending_whatsapp_actions')
+    .select('id,family_id,user_id,phone,source_message_id,transcript,action_type,payload,summary_text,status,expires_at')
+    .eq('family_id', userRow.family_id)
+    .eq('phone', fromPhone)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!pending) {
+    await whatsAppService.sendTextMessage(fromPhone, 'Não encontrei uma confirmação pendente. Envie um novo áudio ou mensagem de texto.')
+    return
+  }
+
+  if (new Date(pending.expires_at).getTime() <= Date.now()) {
+    await supabaseAdmin
+      .from('pending_whatsapp_actions')
+      .update({ status: 'expired' })
+      .eq('id', pending.id)
+    await whatsAppService.sendTextMessage(
+      fromPhone,
+      'Essa confirmação expirou. Envie o áudio ou mensagem novamente para eu processar com segurança.'
+    )
+    return
+  }
+
+  if (payload === 'audio_confirm_no') {
+    await supabaseAdmin
+      .from('pending_whatsapp_actions')
+      .update({ status: 'rejected', rejected_at: new Date().toISOString() })
+      .eq('id', pending.id)
+
+    await supabaseAdmin.from('feedback').insert({
+      family_id: pending.family_id,
+      type: 'feedback',
+      location: 'whatsapp_audio_confirmation',
+      phone: fromPhone,
+      description: JSON.stringify({
+        reason: 'audio_confirmation_rejected',
+        user_id: pending.user_id,
+        source_message_id: pending.source_message_id,
+        transcript: pending.transcript,
+        action_type: pending.action_type,
+        summary_text: pending.summary_text,
+        payload: pending.payload,
+      }, null, 2),
+    })
+
+    await whatsAppService.sendTextMessage(
+      fromPhone,
+      'Tudo bem, estarei aguardando seu novo áudio ou mensagem de texto.'
+    )
+    return
+  }
+
+  const { data: claimed } = await supabaseAdmin
+    .from('pending_whatsapp_actions')
+    .update({ status: 'confirmed', confirmed_at: new Date().toISOString() })
+    .eq('id', pending.id)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle()
+
+  if (!claimed?.id) {
+    await whatsAppService.sendTextMessage(fromPhone, 'Essa confirmação já foi processada. Envie um novo áudio ou mensagem se precisar registrar outra coisa.')
+    return
+  }
+
+  const access = await hasBillingAccess({ familyId: pending.family_id })
+  if (access.isFreeTier && pending.action_type === 'record') {
+    const usage = await checkAndIncrementWhatsAppRecording(pending.family_id)
+    if (!usage.allowed) {
+      await supabaseAdmin
+        .from('pending_whatsapp_actions')
+        .update({ status: 'rejected', rejected_at: new Date().toISOString() })
+        .eq('id', pending.id)
+      await whatsAppService.sendTextMessage(
+        fromPhone,
+        'Você usou todas as 75 mensagens gratuitas deste mês. 🎯\n\nAssine o Florim Pro para mensagens ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.'
+      )
+      return
+    }
+  }
+
+  if (pending.action_type === 'record') {
+    const records = ((pending.payload as any).records ?? []) as AIExtractedRecord[]
+    await saveRecordsAndReply(fromPhone, pending.family_id, records, new Date().toISOString().slice(0, 10))
+  } else {
+    const intent = (pending.payload as any).intent as IntentClassification
+    const reply = await handleMutation(fromPhone, pending.family_id, intent)
+    await whatsAppService.sendTextMessage(fromPhone, reply)
+  }
 }
 
 const MAX_AMOUNT_CENTS = 100_000_000_00  // R$100 million

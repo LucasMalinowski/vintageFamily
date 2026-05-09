@@ -786,6 +786,7 @@ export type Database = {
       usage_counters: {
         Row: {
           ai_queries: number
+          audio_messages: number
           export_import_count: number
           family_id: string
           on_demand_insights: number
@@ -794,6 +795,7 @@ export type Database = {
         }
         Insert: {
           ai_queries?: number
+          audio_messages?: number
           export_import_count?: number
           family_id: string
           on_demand_insights?: number
@@ -802,6 +804,7 @@ export type Database = {
         }
         Update: {
           ai_queries?: number
+          audio_messages?: number
           export_import_count?: number
           family_id?: string
           on_demand_insights?: number
@@ -930,17 +933,129 @@ export type Database = {
       whatsapp_message_log: {
         Row: {
           created_at: string | null
+          family_id: string | null
+          media_id: string | null
           message_id: string
+          message_type: string
+          transcript: string | null
+          transcription_error: string | null
+          transcription_model: string | null
+          transcription_status: string | null
+          user_id: string | null
         }
         Insert: {
           created_at?: string | null
+          family_id?: string | null
+          media_id?: string | null
           message_id: string
+          message_type?: string
+          transcript?: string | null
+          transcription_error?: string | null
+          transcription_model?: string | null
+          transcription_status?: string | null
+          user_id?: string | null
         }
         Update: {
           created_at?: string | null
+          family_id?: string | null
+          media_id?: string | null
           message_id?: string
+          message_type?: string
+          transcript?: string | null
+          transcription_error?: string | null
+          transcription_model?: string | null
+          transcription_status?: string | null
+          user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_message_log_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_message_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pending_whatsapp_actions: {
+        Row: {
+          action_type: string
+          confirmed_at: string | null
+          created_at: string
+          expires_at: string
+          family_id: string
+          id: string
+          payload: Json
+          phone: string
+          rejected_at: string | null
+          source_message_id: string
+          status: string
+          summary_text: string
+          transcript: string
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          confirmed_at?: string | null
+          created_at?: string
+          expires_at: string
+          family_id: string
+          id?: string
+          payload: Json
+          phone: string
+          rejected_at?: string | null
+          source_message_id: string
+          status?: string
+          summary_text: string
+          transcript: string
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          confirmed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          family_id?: string
+          id?: string
+          payload?: Json
+          phone?: string
+          rejected_at?: string | null
+          source_message_id?: string
+          status?: string
+          summary_text?: string
+          transcript?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_whatsapp_actions_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_whatsapp_actions_source_message_id_fkey"
+            columns: ["source_message_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_message_log"
+            referencedColumns: ["message_id"]
+          },
+          {
+            foreignKeyName: "pending_whatsapp_actions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       insights: {
         Row: {
