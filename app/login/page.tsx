@@ -3,11 +3,21 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/components/AuthProvider'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+
+const HANDOFF_ERROR_MESSAGES: Record<string, string> = {
+  'link-invalido': 'O link de acesso é inválido. Solicite um novo link ao acessar o app.',
+  'link-ja-usado': 'Este link já foi utilizado. Abra o app e tente novamente.',
+  'link-expirado': 'O link expirou (válido por 5 minutos). Abra o app e tente novamente.',
+  'convite-invalido': 'Nenhum link de acesso encontrado.',
+}
 
 export default function LoginPage() {
   const { signIn, user } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const handoffError = searchParams.get('error')
+  const handoffMessage = handoffError ? HANDOFF_ERROR_MESSAGES[handoffError] : null
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -52,6 +62,11 @@ export default function LoginPage() {
         {/* Form card — flex-1 so it fills all remaining space */}
         <div className="flex-1 bg-paper rounded-t-[28px] px-7 pt-8 pb-10">
           <h2 className="font-serif text-[24px] text-coffee mb-5">Entre na sua conta</h2>
+          {handoffMessage && (
+            <div className="bg-amber-50 border border-amber-300 text-amber-800 px-4 py-3 rounded-lg text-sm mb-4">
+              {handoffMessage}
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="flex flex-col gap-[14px]">
             {error && (
               <div className="bg-gold/10 border border-gold/30 text-gold px-4 py-3 rounded-lg text-sm">
@@ -119,6 +134,12 @@ export default function LoginPage() {
 
           <div className="bg-paper backdrop-blur-sm rounded-[28px] border border-border/70 shadow-vintage p-12 w-full md:max-w-xl md:-translate-y-6">
             <h2 className="text-2xl font-serif text-coffee mb-6">Entre na sua conta</h2>
+
+            {handoffMessage && (
+              <div className="bg-amber-50 border border-amber-300 text-amber-800 px-4 py-3 rounded-lg text-sm mb-4">
+                {handoffMessage}
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
