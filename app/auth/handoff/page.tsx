@@ -4,21 +4,28 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
+import { parseAuthHandoffLocation } from '@/lib/billing/auth-handoff'
 
 export default function AuthHandoffPage() {
   const router = useRouter()
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    const hash = window.location.hash
-    if (!hash) {
-      setFailed(true)
+    const { tokenHash, accessToken, refreshToken } = parseAuthHandoffLocation(
+      window.location.search,
+      window.location.hash
+    )
+
+    if (tokenHash) {
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'magiclink' }).then(({ error }) => {
+        if (error) {
+          setFailed(true)
+        } else {
+          router.replace('/settings/billing')
+        }
+      })
       return
     }
-
-    const params = new URLSearchParams(hash.slice(1))
-    const accessToken = params.get('access_token')
-    const refreshToken = params.get('refresh_token')
 
     if (!accessToken || !refreshToken) {
       setFailed(true)
