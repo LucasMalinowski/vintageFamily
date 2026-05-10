@@ -55,6 +55,7 @@ interface Contribution {
   date: string
   notes: string | null
   type: string
+  created_by?: string | null
 }
 
 const buildSavingTree = (savings: Saving[]): SavingNode[] => {
@@ -108,7 +109,7 @@ const emptyTxForm = () => ({
 })
 
 export default function Savings() {
-  const { familyId } = useAuth()
+  const { familyId, user } = useAuth()
   const [savings, setSavings] = useState<Saving[]>([])
   const [contributions, setContributions] = useState<Contribution[]>([])
   const [allTimeContributions, setAllTimeContributions] = useState<Contribution[]>([])
@@ -132,6 +133,7 @@ export default function Savings() {
   const [editingSaving, setEditingSaving] = useState<Saving | null>(null)
   const [detailsContributions, setDetailsContributions] = useState<Contribution[]>([])
   const [detailsLoading, setDetailsLoading] = useState(false)
+  const [familyMembers, setFamilyMembers] = useState<Map<string, string>>(new Map())
   const [exportingFormat, setExportingFormat] = useState<'csv' | 'pdf' | null>(null)
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false)
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
@@ -225,6 +227,17 @@ export default function Savings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [familyId, selectedMonth, selectedYear, selectedSavingId])
 
+  useEffect(() => {
+    if (!familyId) return
+    supabase
+      .from('users')
+      .select('id,name')
+      .eq('family_id', familyId)
+      .then(({ data }) => {
+        if (data) setFamilyMembers(new Map(data.map((u) => [u.id, u.name])))
+      })
+  }, [familyId])
+
   async function loadDetailsContributions(savingId: string) {
     setDetailsLoading(true)
     const { data } = await supabase
@@ -249,6 +262,7 @@ export default function Savings() {
       date: depositForm.date,
       notes: depositForm.notes || null,
       type: 'deposit',
+      created_by: user?.id ?? null,
     })
 
     setIsDepositOpen(false)
@@ -269,6 +283,7 @@ export default function Savings() {
       date: withdrawalForm.date,
       notes: withdrawalForm.notes || null,
       type: 'withdrawal',
+      created_by: user?.id ?? null,
     })
 
     setIsWithdrawalOpen(false)
@@ -1161,6 +1176,9 @@ export default function Savings() {
                   <div>
                     <p className="text-xs text-ink/50">{formatDate(c.date)}</p>
                     {c.notes ? <p className="text-xs text-ink/40 truncate max-w-[180px]">{c.notes}</p> : null}
+                    {c.created_by && (
+                      <p className="text-xs text-ink/30">{familyMembers.get(c.created_by) ?? '—'}</p>
+                    )}
                   </div>
                 </div>
                 <span className={`font-numbers font-semibold text-sm ${c.type === 'withdrawal' ? 'text-terracotta' : 'text-olive'}`}>

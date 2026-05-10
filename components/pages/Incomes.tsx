@@ -62,6 +62,7 @@ interface Income {
   date: string
   status: IncomeStatus
   notes: string | null
+  created_by: string | null
 }
 
 const buildAttachmentPath = (familyId: string, incomeId: string, fileName: string) => {
@@ -105,6 +106,7 @@ export default function Incomes() {
   const [editingIncome, setEditingIncome] = useState<Income | null>(null)
   const [detailIncome, setDetailIncome] = useState<Income | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [familyMembers, setFamilyMembers] = useState<Map<string, string>>(new Map())
   const [currentAttachmentUrl, setCurrentAttachmentUrl] = useState<string | null>(null)
   const [updatingIds, setUpdatingIds] = useState<string[]>([])
   const [exportingFormat, setExportingFormat] = useState<'csv' | 'pdf' | null>(null)
@@ -196,6 +198,7 @@ export default function Incomes() {
       const normalized = data.map((row) => ({
         ...row,
         status: (row.status === 'pending' ? 'pending' : 'received') as IncomeStatus,
+        created_by: row.created_by ?? null,
       }))
       setRawYearIncomes(normalized)
       setIncomes(normalized.filter((income) => isDateInBillingPeriod(income.date, selectedMonth, selectedYear, billingCycleDay)))
@@ -220,6 +223,17 @@ export default function Incomes() {
         if (data?.billing_cycle_day) setBillingCycleDay(data.billing_cycle_day)
       })
   }, [user?.id])
+
+  useEffect(() => {
+    if (!familyId) return
+    supabase
+      .from('users')
+      .select('id,name')
+      .eq('family_id', familyId)
+      .then(({ data }) => {
+        if (data) setFamilyMembers(new Map(data.map((u) => [u.id, u.name])))
+      })
+  }, [familyId])
 
   useEffect(() => {
     if (familyId) {
@@ -342,7 +356,7 @@ export default function Incomes() {
         .update({ ...incomeData, updated_at: new Date().toISOString() })
         .eq('id', editingIncome.id)
     } else {
-      await supabase.from('incomes').insert(incomeData)
+      await supabase.from('incomes').insert({ ...incomeData, created_by: user?.id ?? null })
     }
 
     if (!editingIncome && incomes.length === 0) posthog.capture(EVENTS.FIRST_INCOME_CREATED)
@@ -1435,6 +1449,12 @@ export default function Incomes() {
                   <p>Sem arquivo anexado</p>
                 )}
               </div>
+              {detailIncome.created_by && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">Criado por</p>
+                  <p>{familyMembers.get(detailIncome.created_by) ?? '—'}</p>
+                </div>
+              )}
             </div>
           )
         })()}

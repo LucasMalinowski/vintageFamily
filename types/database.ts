@@ -177,6 +177,7 @@ export type Database = {
         Row: {
           amount_cents: number
           created_at: string
+          created_by: string | null
           date: string
           family_id: string
           id: string
@@ -187,6 +188,7 @@ export type Database = {
         Insert: {
           amount_cents: number
           created_at?: string
+          created_by?: string | null
           date: string
           family_id: string
           id?: string
@@ -197,6 +199,7 @@ export type Database = {
         Update: {
           amount_cents?: number
           created_at?: string
+          created_by?: string | null
           date?: string
           family_id?: string
           id?: string
@@ -278,6 +281,7 @@ export type Database = {
           category_id: string | null
           category_name: string
           created_at: string
+          created_by: string | null
           date: string
           description: string
           family_id: string
@@ -306,6 +310,7 @@ export type Database = {
           category_id?: string | null
           category_name: string
           created_at?: string
+          created_by?: string | null
           date: string
           description: string
           family_id: string
@@ -334,6 +339,7 @@ export type Database = {
           category_id?: string | null
           category_name?: string
           created_at?: string
+          created_by?: string | null
           date?: string
           description?: string
           family_id?: string
@@ -438,6 +444,7 @@ export type Database = {
           category_id: string | null
           category_name: string
           created_at: string
+          created_by: string | null
           date: string
           description: string
           family_id: string
@@ -461,6 +468,7 @@ export type Database = {
           category_id?: string | null
           category_name: string
           created_at?: string
+          created_by?: string | null
           date: string
           description: string
           family_id: string
@@ -484,6 +492,7 @@ export type Database = {
           category_id?: string | null
           category_name?: string
           created_at?: string
+          created_by?: string | null
           date?: string
           description?: string
           family_id?: string

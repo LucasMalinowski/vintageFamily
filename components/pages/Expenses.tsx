@@ -79,6 +79,7 @@ interface Expense {
   installments: number | null
   installment_group_id: string | null
   installment_index: number | null
+  created_by: string | null
 }
 
 const formatPaymentLabel = (method: PaymentMethod | null, installments: number | null) => {
@@ -131,6 +132,7 @@ export default function Expenses() {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [detailExpense, setDetailExpense] = useState<Expense | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [familyMembers, setFamilyMembers] = useState<Map<string, string>>(new Map())
   const [currentAttachmentUrl, setCurrentAttachmentUrl] = useState<string | null>(null)
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false)
   const [pdfUrl, setPdfUrl] = useState('')
@@ -199,6 +201,17 @@ export default function Expenses() {
         if (data?.billing_cycle_day) setBillingCycleDay(data.billing_cycle_day)
       })
   }, [user?.id])
+
+  useEffect(() => {
+    if (!familyId) return
+    supabase
+      .from('users')
+      .select('id,name')
+      .eq('family_id', familyId)
+      .then(({ data }) => {
+        if (data) setFamilyMembers(new Map(data.map((u) => [u.id, u.name])))
+      })
+  }, [familyId])
 
   useEffect(() => {
     if (familyId) {
@@ -316,6 +329,7 @@ export default function Expenses() {
         installments: row.installments || 1,
         installment_group_id: row.installment_group_id,
         installment_index: row.installment_index,
+        created_by: row.created_by ?? null,
       }))
       setRawYearExpenses(normalized)
       setExpenses(normalized.filter((expense) => isDateInBillingPeriod(expense.date, selectedMonth, selectedYear, billingCycleDay)))
@@ -378,6 +392,7 @@ export default function Expenses() {
           date: dates[index],
           installment_group_id: groupId,
           installment_index: index + 1,
+          created_by: user?.id ?? null,
         }))
         await supabase.from('expenses').insert(rows)
       } else {
@@ -408,6 +423,7 @@ export default function Expenses() {
           date: dates[index],
           installment_group_id: groupId,
           installment_index: index + 1,
+          created_by: user?.id ?? null,
         }))
         await supabase.from('expenses').insert(rows)
       } else {
@@ -415,7 +431,7 @@ export default function Expenses() {
           expenseData.installment_group_id = crypto.randomUUID()
           expenseData.installment_index = 1
         }
-        await supabase.from('expenses').insert(expenseData)
+        await supabase.from('expenses').insert({ ...expenseData, created_by: user?.id ?? null })
       }
     }
 
@@ -1771,6 +1787,12 @@ export default function Expenses() {
                   <p>Sem arquivo anexado</p>
                 )}
               </div>
+              {detailExpense.created_by && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">Criado por</p>
+                  <p>{familyMembers.get(detailExpense.created_by) ?? '—'}</p>
+                </div>
+              )}
             </div>
           )
         })()}
