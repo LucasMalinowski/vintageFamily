@@ -1,7 +1,5 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   BanknoteArrowDown,
@@ -253,15 +251,6 @@ function WhatsAppMockup() {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const router = useRouter()
-
-  useEffect(() => {
-    // Existing installs have start_url: "/" — redirect them to /signup in standalone mode
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      router.replace('/signup')
-    }
-  }, [router])
-
   return (
     <div className="flex flex-col">
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronRight, User, Info, Bell, Settings, LogOut, Smartphone } from 'lucide-react'
+import { ChevronRight, User, Info, Bell, Settings, LogOut } from 'lucide-react'
 import { useAuth } from '@/components/AuthProvider'
 import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
 
@@ -11,21 +11,6 @@ interface ProfileSheetProps {
   onClose: () => void
   userName?: string
   familyName?: string
-}
-
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
-}
-
-const isIosDevice = () => {
-  if (typeof navigator === 'undefined') return false
-  return /iphone|ipad|ipod/i.test(navigator.userAgent)
-}
-
-const isStandaloneMode = () => {
-  if (typeof window === 'undefined') return false
-  return window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
 }
 
 const menuItems = [
@@ -40,8 +25,6 @@ export default function ProfileSheet({ open, onClose, userName = '', familyName 
   const { signOut } = useAuth()
   const [mounted, setMounted] = useState(false)
   const [animated, setAnimated] = useState(false)
-  const [hasPwaPrompt, setHasPwaPrompt] = useState(false)
-  const [showPwaCard, setShowPwaCard] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -50,19 +33,6 @@ export default function ProfileSheet({ open, onClose, userName = '', familyName 
       }
     }
   }, [familyName])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    setHasPwaPrompt(!!(window as Window & { __pwaInstallPrompt?: BeforeInstallPromptEvent }).__pwaInstallPrompt)
-    setShowPwaCard(!isStandaloneMode())
-
-    const handler = () => {
-      setHasPwaPrompt(true)
-      setShowPwaCard(true)
-    }
-    window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
-  }, [])
 
   useEffect(() => {
     if (open) {
@@ -91,25 +61,6 @@ export default function ProfileSheet({ open, onClose, userName = '', familyName 
   const handleSignOut = async () => {
     onClose()
     await signOut()
-  }
-
-  const handlePwaInstall = async () => {
-    const prompt = (window as Window & { __pwaInstallPrompt?: BeforeInstallPromptEvent }).__pwaInstallPrompt
-    if (!prompt) {
-      if (isIosDevice()) {
-        window.alert('Para instalar no iPhone/iPad, toque em Compartilhar e depois em Adicionar à Tela de Início.')
-        return
-      }
-      window.alert('O prompt de instalação ainda não está disponível neste navegador.')
-      return
-    }
-    await prompt.prompt()
-    const choice = await prompt.userChoice
-    ;(window as Window & { __pwaInstallPrompt?: BeforeInstallPromptEvent | null }).__pwaInstallPrompt = null
-    setHasPwaPrompt(false)
-    if (choice.outcome === 'accepted') {
-      setShowPwaCard(false)
-    }
   }
 
   if (!mounted) return null
@@ -186,24 +137,6 @@ export default function ProfileSheet({ open, onClose, userName = '', familyName 
             <p className="text-xs text-terracotta/60">Encerrar sessão</p>
           </div>
         </button>
-
-        {/* PWA install card */}
-        {showPwaCard && (
-          <div className="mx-5 mb-4 mt-3">
-            <button
-              onClick={handlePwaInstall}
-              className="w-full flex items-center gap-3 px-4 py-3.5 bg-coffee/[0.07] border border-coffee/20 rounded-[12px] text-left hover:bg-coffee/[0.12] transition-vintage"
-            >
-              <Smartphone className="w-5 h-5 text-coffee shrink-0" />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-coffee">Instalar como app</p>
-                <p className="text-xs text-ink/50">
-                  Adicione o Florim à sua tela inicial para acesso rápido, mesmo offline.
-                </p>
-              </div>
-            </button>
-          </div>
-        )}
       </div>
     </div>
   )

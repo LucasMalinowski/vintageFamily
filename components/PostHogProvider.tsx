@@ -36,31 +36,7 @@ export const EVENTS = {
   // Churn
   CANCELLATION_STARTED: 'cancellation_started',
   TRIAL_EXPIRED_NO_UPGRADE: 'trial_expired_no_upgrade',
-
-  // PWA
-  PWA_SESSION_STARTED: 'pwa_session_started',
 } as const
-
-function usePostHogPWA() {
-  useEffect(() => {
-    const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true
-
-    if (!isStandalone) return
-
-    // Tag every event from this session as coming from the PWA
-    posthog.register({ is_pwa: true })
-
-    // Fire once per PWA session (not per page view)
-    if (!sessionStorage.getItem('pwa_session_tracked')) {
-      posthog.capture(EVENTS.PWA_SESSION_STARTED, {
-        start_url: window.location.pathname,
-      })
-      sessionStorage.setItem('pwa_session_tracked', '1')
-    }
-  }, [])
-}
 
 function usePostHogPageView() {
   const pathname = usePathname()
@@ -100,7 +76,6 @@ function usePostHogIdentify() {
 }
 
 export default function PostHogProvider({ children }: { children: React.ReactNode }) {
-  usePostHogPWA()
   usePostHogPageView()
   usePostHogIdentify()
   return <>{children}</>
