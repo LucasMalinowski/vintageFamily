@@ -51,12 +51,12 @@ const WA_EXAMPLES = [
 const FEATURES = [
   {
     icon: BanknoteArrowDown,
-    title: 'Contas a Pagar',
+    title: 'Despesas',
     copy: 'Despesas com parcelamento automático, controle de status e histórico claro.',
   },
   {
     icon: BanknoteArrowUp,
-    title: 'Contas a Receber',
+    title: 'Receitas',
     copy: 'Salários, rendas extras e entradas previstas — visíveis para toda a família.',
   },
   {
@@ -133,7 +133,7 @@ const PLANS = [
     featured: false,
     savingsBadge: null,
     bullets: [
-      'Contas a pagar e a receber',
+      'Despesas e Receitas',
       'Poupança e sonhos',
       '75 registros por WhatsApp/mês',
       '15 consultas com IA/mês',

@@ -9,8 +9,8 @@ import PublicFooter from '@/components/layout/PublicFooter'
 // ── Data ─────────────────────────────────────────────────────────────────────
 
 const COMPARISON_ROWS = [
-  { label: 'Contas a pagar c/ parcelamento', free: true, pro: true },
-  { label: 'Contas a receber', free: true, pro: true },
+  { label: 'Despesas c/ parcelamento', free: true, pro: true },
+  { label: 'Receitas', free: true, pro: true },
   { label: 'Poupança e sonhos', free: true, pro: true },
   { label: 'Lembretes e vencimento', free: true, pro: true },
   { label: 'Família compartilhada', free: true, pro: true },

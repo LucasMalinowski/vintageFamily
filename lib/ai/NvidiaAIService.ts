@@ -50,7 +50,7 @@ Campos:
 - time_range: "current_month" (padrão), "last_month", "current_year", "last_7_days", "next_7_days", "all"
   Use "next_7_days" para lembretes futuros ("essa semana", "próximos dias")
 - focus: palavra-chave de filtro ou null
-- status_filter: null (padrão). Use "open" quando o usuário perguntar sobre despesas pendentes/a pagar ("pendente pra pagar", "contas a pagar", "o que tenho pra pagar", "tenho que pagar")
+- status_filter: null (padrão). Use "open" quando o usuário perguntar sobre despesas pendentes/a pagar ("pendente pra pagar", "contas a pagar", "o que tenho pra pagar", "tenho que pagar", "despesas")
 - item_index: número do item (1-based) para "delete" e "edit". null nos demais casos.
 - edit_amount: novo valor em reais para "edit". null nos demais casos.
 

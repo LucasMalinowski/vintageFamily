@@ -6,8 +6,8 @@ import { Home, BanknoteArrowUp, BanknoteArrowDown, PiggyBank, ChartColumnBig } f
 
 const tabs = [
   { icon: Home, label: 'Início', href: '/inicio' },
-  { icon: BanknoteArrowUp, label: 'A Pagar', href: '/expenses' },
-  { icon: BanknoteArrowDown, label: 'A Receber', href: '/incomes' },
+  { icon: BanknoteArrowUp, label: 'Despesas', href: '/expenses' },
+  { icon: BanknoteArrowDown, label: 'Receitas', href: '/incomes' },
   { icon: PiggyBank, label: 'Poupança', href: '/savings' },
   { icon: ChartColumnBig, label: 'Comparativos', href: '/comparatives' },
 ]

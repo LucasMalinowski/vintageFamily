@@ -761,8 +761,8 @@ export default function Expenses() {
     .join(' • ')
 
   const exportTable = {
-    filename: `contas-a-pagar-${format(new Date(), 'yyyy-MM-dd')}`,
-    title: 'Contas a Pagar',
+    filename: `despesas-${format(new Date(), 'yyyy-MM-dd')}`,
+    title: 'Despesas',
     subtitle: exportSubtitle,
     headers: ['Data', 'Descrição', 'Categoria', 'Status', 'Método', 'Parcelas', 'Valor', 'Pago em', 'Observações'],
     rows: exportRows,
@@ -903,7 +903,7 @@ export default function Expenses() {
   return (
     <div className="flex flex-col h-full md:min-h-screen">
       <Topbar
-        title="Contas a Pagar"
+        title="Despesas"
         subtitle="Compromissos honrados constroem segurança."
         variant="textured"
       />

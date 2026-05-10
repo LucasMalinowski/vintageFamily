@@ -595,8 +595,8 @@ export default function Incomes() {
     .join(' • ')
 
   const exportTable = {
-    filename: `contas-a-receber-${format(new Date(), 'yyyy-MM-dd')}`,
-    title: 'Contas a Receber',
+    filename: `receitas-${format(new Date(), 'yyyy-MM-dd')}`,
+    title: 'Receitas',
     subtitle: exportSubtitle,
     headers: ['Data', 'Descrição', 'Categoria', 'Status', 'Valor', 'Observações'],
     rows: exportRows,
@@ -607,7 +607,7 @@ export default function Incomes() {
       .filter((i) => i.status === 'received')
       .reduce((sum, i) => sum + i.amount_cents, 0)
     return buildBrandedPdfBlob({
-      title: 'Contas a Receber',
+      title: 'Receitas',
       filterSummary: exportSubtitle || 'Sem filtros ativos',
       headers: ['Data', 'Descricao', 'Categoria', 'Status', 'Valor', 'Observacao'],
       rows: exportRows,
@@ -706,7 +706,7 @@ export default function Incomes() {
     <>
       <div className="flex flex-col h-full md:min-h-screen">
         <Topbar
-          title="Contas a Receber"
+          title="Receitas"
           subtitle="O fruto do trabalho em forma de números."
           variant="textured"
         />

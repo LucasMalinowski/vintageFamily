@@ -33,7 +33,7 @@ const PLAN_CONTENT: Record<PlanSetting['plan_code'], PlanContent> = {
     period: '/ mês',
     benefitsTitle: 'Benefícios:',
     benefits: [
-      'Controle ilimitado de contas a pagar e a receber',
+      'Controle ilimitado de Despesas e receitas',
       'Organização de sonhos e poupanças',
       'Visão clara de saldo mensal',
       'Comparativos históricos completos',
