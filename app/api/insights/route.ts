@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { getAccessTokenFromCookieStore, requireUserByAccessToken, getProfileByUserId } from '@/lib/billing/auth'
+import { getAccessTokenFromCookieStore, getAccessTokenFromAuthHeader, requireUserByAccessToken, getProfileByUserId } from '@/lib/billing/auth'
 import { hasBillingAccess } from '@/lib/billing/access'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { getUsageCounters } from '@/lib/billing/free-tier'
@@ -8,7 +8,7 @@ import { FREE_TIER_LIMITS } from '@/lib/billing/constants'
 
 export async function GET(request: NextRequest) {
   const cookieStore = await cookies()
-  const token = getAccessTokenFromCookieStore(cookieStore)
+  const token = getAccessTokenFromCookieStore(cookieStore) ?? getAccessTokenFromAuthHeader(request)
   const { error, user } = await requireUserByAccessToken(token)
   if (error || !user) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
 
