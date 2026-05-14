@@ -532,10 +532,11 @@ export default function Comparatives() {
 
   const checkExportLimit = async (): Promise<boolean> => {
     if (!isFreeTier) return true
-    const token = document.cookie.match(/app_access_token=([^;]+)/)?.[1]
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
     const res = await fetch('/api/billing/usage/export-import', {
       method: 'POST',
-      headers: token ? { Authorization: `Bearer ${decodeURIComponent(token)}` } : {},
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
     const data = await res.json()
     if (!data.allowed) {

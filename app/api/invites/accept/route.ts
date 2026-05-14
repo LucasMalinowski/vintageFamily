@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { sendWelcomeEmail } from '@/lib/mailer'
+import { getAccessTokenFromAuthHeader } from '@/lib/billing/auth'
+import { sha256Hex } from '@/lib/security/tokens'
 
 function getAccessToken(request: Request) {
-  const header = request.headers.get('authorization')
-  if (!header) return null
-  const [, token] = header.split(' ')
-  return token || null
+  return getAccessTokenFromAuthHeader(request)
 }
 
 export async function POST(request: Request) {
@@ -24,11 +23,13 @@ export async function POST(request: Request) {
   if (!token || !name || !email) {
     return NextResponse.json({ error: 'Dados incompletos.' }, { status: 400 })
   }
+  const normalizedEmail = String(email).trim().toLowerCase()
+  const tokenHash = sha256Hex(String(token))
 
   const { data: invite, error: inviteError } = await supabaseAdmin
     .from('invites')
     .select('id,family_id,email,accepted,expires_at,families(name)')
-    .eq('token', token)
+    .eq('token_hash', tokenHash)
     .maybeSingle()
 
   if (inviteError || !invite) {
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Convite já utilizado.' }, { status: 410 })
   }
 
-  if (invite.email !== email) {
+  if (invite.email !== normalizedEmail) {
     return NextResponse.json({ error: 'Email não corresponde ao convite.' }, { status: 400 })
   }
 
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
       id: authData.user.id,
       family_id: invite.family_id,
       name,
-      email,
+      email: normalizedEmail,
       password_hash: null,
       role: 'member',
     })
@@ -82,6 +83,6 @@ export async function POST(request: Request) {
   }
 
   const familyName = (invite.families as { name: string } | null)?.name ?? ''
-  void sendWelcomeEmail({ to: email, name, familyName })
+  void sendWelcomeEmail({ to: normalizedEmail, name, familyName })
   return NextResponse.json({ familyId: invite.family_id })
 }

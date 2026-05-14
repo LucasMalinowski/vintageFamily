@@ -27,12 +27,18 @@ export async function POST(request: Request) {
     if (!familyName || !name || !email) {
       return NextResponse.json({ error: 'Campos obrigatórios ausentes.' }, { status: 400 })
     }
+    const cleanFamilyName = familyName.trim().slice(0, 120)
+    const cleanName = name.trim().slice(0, 120)
+    const cleanEmail = email.trim().toLowerCase()
+    if (cleanFamilyName.length < 2 || cleanName.length < 2 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) {
+      return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 })
+    }
 
     const trialExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
     const { data: family, error: familyError } = await supabaseAdmin
       .from('families')
       .insert({
-        name: familyName,
+        name: cleanFamilyName,
         trial_expires_at: trialExpiresAt,
         created_by: authData.user.id,
       })
@@ -46,8 +52,8 @@ export async function POST(request: Request) {
     const { error: userError } = await supabaseAdmin.from('users').insert({
       id: authData.user.id,
       family_id: family.id,
-      name,
-      email,
+      name: cleanName,
+      email: cleanEmail,
       password_hash: null,
       role: 'admin',
     })
@@ -107,7 +113,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Não foi possível criar os sonhos padrão.' }, { status: 500 })
     }
 
-    void sendWelcomeEmail({ to: email, name, familyName })
+    void sendWelcomeEmail({ to: cleanEmail, name: cleanName, familyName: cleanFamilyName })
     return NextResponse.json({ familyId: family.id })
   } catch {
     return NextResponse.json({ error: 'Erro inesperado ao criar família.' }, { status: 500 })

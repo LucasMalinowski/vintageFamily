@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { getAccessTokenFromCookieStore, requireUserByAccessToken, getProfileByUserId } from '@/lib/billing/auth'
+import {
+  getAccessTokenFromAuthHeader,
+  getAccessTokenFromCookieStore,
+  requireUserByAccessToken,
+  getProfileByUserId,
+} from '@/lib/billing/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { buildCategoryLabelMap } from '@/lib/categories'
 import { nvidiaAIService } from '@/lib/ai/NvidiaAIService'
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies()
-  const token = getAccessTokenFromCookieStore(cookieStore)
+  const token = getAccessTokenFromAuthHeader(request) ?? getAccessTokenFromCookieStore(cookieStore)
   const { error, user } = await requireUserByAccessToken(token)
   if (error || !user) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
 

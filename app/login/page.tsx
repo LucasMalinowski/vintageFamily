@@ -13,7 +13,7 @@ const HANDOFF_ERROR_MESSAGES: Record<string, string> = {
 }
 
 export default function LoginPage() {
-  const { signIn, user } = useAuth()
+  const { signIn, user, authStatus } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const handoffError = searchParams.get('error')
@@ -24,10 +24,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (user) {
-      router.push('/inicio')
+    if (!loading && user && authStatus === 'authenticated') {
+      router.replace('/inicio')
     }
-  }, [user, router])
+  }, [authStatus, loading, user, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

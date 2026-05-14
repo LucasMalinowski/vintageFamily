@@ -6,12 +6,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function SignUpPage() {
-  const { signUp, user } = useAuth()
+  const { signUp, user, authStatus } = useAuth()
   const router = useRouter()
 
-  useEffect(() => {
-    if (user) router.replace('/inicio')
-  }, [user, router])
   const [name, setName] = useState('')
   const [familyName, setFamilyName] = useState('')
   const [email, setEmail] = useState('')
@@ -21,11 +18,30 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false)
   const [agreed, setAgreed] = useState(false)
 
+  useEffect(() => {
+    if (!loading && user && authStatus === 'authenticated') router.replace('/inicio')
+  }, [authStatus, loading, user, router])
+
+  const cleanName = name.trim()
+  const cleanFamilyName = familyName.trim()
+  const cleanEmail = email.trim()
+  const passwordsMatch = password === confirmPassword
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
-    if (password !== confirmPassword) {
+    if (!cleanName || !cleanFamilyName || !cleanEmail) {
+      setError('Preencha todos os campos obrigatórios')
+      return
+    }
+
+    if (!agreed) {
+      setError('Você precisa concordar com os termos para continuar')
+      return
+    }
+
+    if (!passwordsMatch) {
       setError('As senhas não coincidem')
       return
     }
@@ -38,7 +54,7 @@ export default function SignUpPage() {
     setLoading(true)
 
     try {
-      await signUp(email, password, name, familyName)
+      await signUp(cleanEmail, password, cleanName, cleanFamilyName)
     } catch (err: any) {
       setError(err.message || 'Erro ao criar conta')
     } finally {
@@ -173,8 +189,8 @@ export default function SignUpPage() {
 
             <button
               type="submit"
-              disabled={loading || !agreed}
-              className="w-full bg-coffee text-paper py-[14px] rounded-[10px] font-body font-bold text-[15px] hover:bg-coffee/90 transition-vintage disabled:opacity-50"
+              disabled={loading}
+              className="w-full bg-coffee text-paper py-[14px] rounded-[10px] font-body font-bold text-[15px] hover:bg-coffee/90 transition-vintage disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? 'Criando...' : 'Criar família'}
             </button>

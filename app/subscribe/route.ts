@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseService } from '@/lib/billing/supabase-service'
 import { buildAuthHandoffUrl, getMagicLinkTokenHash } from '@/lib/billing/web-handoff'
+import { sha256Hex } from '@/lib/security/tokens'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,22 +13,13 @@ export async function GET(request: NextRequest) {
     redirect('/login?error=convite-invalido')
   }
 
-  const { data: tokenRow, error } = await supabaseService
-    .from('web_handoff_tokens')
-    .select('id, user_id, access_token, used, expires_at')
-    .eq('token', handoff)
-    .maybeSingle()
+  const { data: consumedRows, error } = await supabaseService.rpc('consume_web_handoff_token', {
+    p_token_hash: sha256Hex(handoff),
+  })
+  const tokenRow = Array.isArray(consumedRows) ? consumedRows[0] : null
 
   if (error || !tokenRow) {
     redirect('/login?error=link-invalido')
-  }
-
-  if (tokenRow.used) {
-    redirect('/login?error=link-ja-usado')
-  }
-
-  if (new Date(tokenRow.expires_at) < new Date()) {
-    redirect('/login?error=link-expirado')
   }
 
   const siteUrl = request.nextUrl.origin
@@ -50,16 +42,6 @@ export async function GET(request: NextRequest) {
 
   if (linkError || !tokenHash) {
     console.error('web-handoff generateLink failed', linkError)
-    redirect('/login?error=link-invalido')
-  }
-
-  const { error: markError } = await supabaseService
-    .from('web_handoff_tokens')
-    .update({ used: true })
-    .eq('id', tokenRow.id)
-
-  if (markError) {
-    console.error('web-handoff mark used failed', markError)
     redirect('/login?error=link-invalido')
   }
 

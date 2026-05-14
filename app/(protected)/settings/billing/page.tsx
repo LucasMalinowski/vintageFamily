@@ -25,9 +25,13 @@ type BillingResponse = {
     } | null
   }
   access: {
+    hasLifetimeAccess: boolean
     hasValidSubscription: boolean
     hasActiveTrial: boolean
     hasAccess: boolean
+    isPaidTier: boolean
+    isFreeTier: boolean
+    trialExpiresAt: string | null
   }
 }
 
@@ -43,6 +47,11 @@ type Invoice = {
 }
 
 type PaymentFlow =
+  | {
+      type: 'subscription'
+      clientSecret: string
+      targetPlan: PlanCode
+    }
   | { type: 'payment_method'; clientSecret: string; setupIntentId: string }
   | {
       type: 'plan_change'
@@ -70,6 +79,13 @@ const STATUS_LABELS: Record<string, string> = {
 function formatPlanName(planCode: PlanCode | null | undefined) {
   if (!planCode) return 'Sem assinatura'
   return PLAN_NAME[planCode] ?? planCode
+}
+
+function formatAccessPlanName(access: BillingResponse['access'] | undefined, planCode: PlanCode | null) {
+  if (planCode) return formatPlanName(planCode)
+  if (access?.hasLifetimeAccess) return 'Acesso vitalício'
+  if (access?.hasActiveTrial) return 'Teste gratuito'
+  return 'Plano gratuito'
 }
 
 function formatCurrency(amountInCents: number, currency: string) {
@@ -138,14 +154,20 @@ export default function BillingSettingsPage() {
   } | null>(null)
 
   const currentPlan = data?.subscription?.plan_code ?? null
+  const hasStripeSubscription = Boolean(data?.subscription)
+  const access = data?.access
   const foundersEligible = Boolean(data?.billing?.founders_eligible)
   const canManage = Boolean(data?.billing?.can_manage)
   const scheduledChange = data?.billing?.scheduled_change ?? null
 
   const renewalLabel = useMemo(() => {
-    if (!data?.subscription) return 'Sem assinatura ativa'
+    if (!data?.subscription) {
+      if (data?.access?.hasLifetimeAccess) return 'Sem cobrança recorrente'
+      if (data?.access?.hasActiveTrial) return 'Teste gratuito ativo'
+      return 'Sem assinatura ativa'
+    }
     return data.subscription.cancel_at_period_end ? 'Renovação automática desativada' : 'Renovação automática ativa'
-  }, [data?.subscription])
+  }, [data?.access?.hasActiveTrial, data?.access?.hasLifetimeAccess, data?.subscription])
 
   const load = async () => {
     const token = await getAuthBearerToken()
@@ -222,6 +244,37 @@ export default function BillingSettingsPage() {
       type: 'payment_method',
       clientSecret: payload.client_secret,
       setupIntentId: payload.setup_intent_id,
+    })
+  }
+
+  const createSubscription = async (planCode: PlanCode) => {
+    const token = await withToken()
+    if (!token) return
+
+    setActionLoading(`subscribe:${planCode}`)
+    setMessage(null)
+
+    const response = await fetch('/api/billing/create-subscription', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ plan_code: planCode }),
+    })
+
+    const payload = await response.json().catch(() => null)
+    setActionLoading(null)
+
+    if (!response.ok || !payload?.client_secret) {
+      setMessage(payload?.error || 'Não foi possível iniciar a assinatura.')
+      return
+    }
+
+    setPaymentFlow({
+      type: 'subscription',
+      clientSecret: payload.client_secret,
+      targetPlan: planCode,
     })
   }
 
@@ -351,7 +404,8 @@ export default function BillingSettingsPage() {
   }
 
   const resolvePlanChangeAction = (targetPlan: PlanCode) => {
-    if (!currentPlan || targetPlan === currentPlan) return 'current'
+    if (!currentPlan) return 'subscribe'
+    if (targetPlan === currentPlan) return 'current'
     if (UPGRADE_PATHS[currentPlan]?.includes(targetPlan)) return 'upgrade'
     if (DOWNGRADE_PATHS[currentPlan]?.includes(targetPlan)) return 'downgrade'
     return 'invalid'
@@ -360,8 +414,15 @@ export default function BillingSettingsPage() {
   const selectedPlanAction = selectedPlan ? resolvePlanChangeAction(selectedPlan) : 'invalid'
 
   const availablePlans = useMemo(() => {
+    if (!currentPlan) {
+      return PLAN_CODES.filter((planCode) => {
+        if (planCode.startsWith('founders_') && !foundersEligible) return false
+        return true
+      })
+    }
+
     return PLAN_CODES.filter((planCode) => {
-      if (planCode === 'founders_yearly' && !foundersEligible) return false
+      if (planCode.startsWith('founders_') && !foundersEligible) return false
       const action = resolvePlanChangeAction(planCode)
       return action !== 'invalid' || planCode === currentPlan
     })
@@ -420,6 +481,12 @@ export default function BillingSettingsPage() {
 
   const submitPlanChange = async () => {
     if (!selectedPlan) return
+
+    if (selectedPlanAction === 'subscribe') {
+      await createSubscription(selectedPlan)
+      setPlanPickerOpen(false)
+      return
+    }
 
     if (selectedPlanAction === 'upgrade') {
       await upgrade(selectedPlan as 'standard_yearly' | 'founders_yearly')
@@ -489,6 +556,7 @@ export default function BillingSettingsPage() {
 
   const planActionLabel = (() => {
     if (!selectedPlan) return 'Selecione um plano'
+    if (selectedPlanAction === 'subscribe') return `Assinar ${PLAN_NAME[selectedPlan]}`
     if (selectedPlanAction === 'upgrade') return `Ir para ${PLAN_NAME[selectedPlan]}`
     if (selectedPlanAction === 'downgrade') {
       return changeTiming === 'now'
@@ -515,17 +583,31 @@ export default function BillingSettingsPage() {
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-lg border border-border bg-paper p-4">
             <h2 className="mb-2 text-sm uppercase tracking-wide text-ink/50">Assinatura atual</h2>
-            <p className="text-lg font-semibold text-coffee">{formatPlanName(currentPlan)}</p>
+            <p className="text-lg font-semibold text-coffee">{formatAccessPlanName(access, currentPlan)}</p>
             <p className="mt-1 text-xs text-ink/60">
-              Status: {data?.subscription?.status ? STATUS_LABELS[data.subscription.status] || data.subscription.status : 'n/d'}
+              Status:{' '}
+              {data?.subscription?.status
+                ? STATUS_LABELS[data.subscription.status] || data.subscription.status
+                : access?.hasActiveTrial
+                  ? 'Em teste'
+                  : access?.hasLifetimeAccess
+                    ? 'Vitalício'
+                    : 'Gratuito'}
             </p>
             <p className="mt-1 text-xs text-ink/60">
-              Período atual até:{' '}
+              {data?.subscription?.current_period_end ? 'Período atual até' : access?.hasActiveTrial ? 'Teste gratuito até' : 'Período atual até'}:{' '}
               {data?.subscription?.current_period_end
                 ? new Date(data.subscription.current_period_end).toLocaleDateString('pt-BR')
-                : 'n/d'}
+                : access?.trialExpiresAt
+                  ? new Date(access.trialExpiresAt).toLocaleDateString('pt-BR')
+                  : 'n/d'}
             </p>
             <p className="mt-1 text-xs text-ink/60">{renewalLabel}</p>
+            {!hasStripeSubscription && canManage ? (
+              <p className="mt-3 text-xs text-ink/60">
+                Escolha um plano para ativar uma assinatura recorrente.
+              </p>
+            ) : null}
             {scheduledChange?.target_plan && scheduledChange.effective_at ? (
               <p className="mt-2 text-xs text-ink/60">
                 Alteração agendada: {PLAN_NAME[scheduledChange.target_plan]} em{' '}
@@ -543,13 +625,12 @@ export default function BillingSettingsPage() {
               <div className="flex flex-col gap-2">
                 <button
                   onClick={() => {
-                    setSelectedPlan(currentPlan)
+                    setSelectedPlan(currentPlan ?? 'standard_monthly')
                     setPlanPickerOpen(true)
                   }}
-                  disabled={!data?.subscription}
                   className="rounded-full border border-border bg-bg px-4 py-2 text-sm text-ink/70 hover:bg-offWhite disabled:opacity-60"
                 >
-                  Alterar Plano de Assinatura
+                  {hasStripeSubscription ? 'Alterar Plano de Assinatura' : 'Escolher plano de assinatura'}
                 </button>
                 <button
                   onClick={startPaymentMethodUpdate}
@@ -643,12 +724,16 @@ export default function BillingSettingsPage() {
                   <h3 className="mt-1 text-2xl font-serif text-coffee">
                     {paymentFlow.type === 'payment_method'
                       ? 'Atualizar método de pagamento'
-                      : `Confirmar ${PLAN_NAME[paymentFlow.targetPlan]}`}
+                      : paymentFlow.type === 'subscription'
+                        ? `Assinar ${PLAN_NAME[paymentFlow.targetPlan]}`
+                        : `Confirmar ${PLAN_NAME[paymentFlow.targetPlan]}`}
                   </h3>
                   <p className="mt-2 text-sm text-ink/65">
                     {paymentFlow.type === 'payment_method'
                       ? 'Informe os novos dados do cartão para futuras cobranças.'
-                      : 'Confirme o ajuste de cobrança para concluir a alteração de plano.'}
+                      : paymentFlow.type === 'subscription'
+                        ? 'Informe os dados de pagamento para ativar sua assinatura.'
+                        : 'Confirme o ajuste de cobrança para concluir a alteração de plano.'}
                   </p>
                 </div>
                 <button
@@ -718,7 +803,13 @@ export default function BillingSettingsPage() {
 
               <BillingPaymentElement
                 clientSecret={paymentFlow.clientSecret}
-                submitLabel={paymentFlow.type === 'payment_method' ? 'Salvar cartão' : 'Confirmar mudança de plano'}
+                submitLabel={
+                  paymentFlow.type === 'payment_method'
+                    ? 'Salvar cartão'
+                    : paymentFlow.type === 'subscription'
+                      ? 'Confirmar assinatura'
+                      : 'Confirmar mudança de plano'
+                }
                 onCancel={() => setPaymentFlow(null)}
                 onSuccess={async (result) => {
                   if (paymentFlow.type === 'payment_method') {
@@ -747,7 +838,9 @@ export default function BillingSettingsPage() {
                   setMessage(
                     paymentFlow.type === 'payment_method'
                       ? 'Método de pagamento atualizado com sucesso.'
-                      : `Assinatura atualizada para ${PLAN_NAME[paymentFlow.targetPlan]}.`,
+                      : paymentFlow.type === 'subscription'
+                        ? `Assinatura iniciada no ${PLAN_NAME[paymentFlow.targetPlan]}.`
+                        : `Assinatura atualizada para ${PLAN_NAME[paymentFlow.targetPlan]}.`,
                   )
                   await load()
                 }}
@@ -766,7 +859,9 @@ export default function BillingSettingsPage() {
                   <p className="text-xs uppercase tracking-[0.24em] text-coffee/55">Cobrança</p>
                   <h3 className="mt-1 text-2xl font-serif text-coffee">Alterar Plano de Assinatura</h3>
                   <p className="mt-2 text-sm text-ink/65">
-                    Escolha o plano desejado. Mudanças para planos superiores acontecem agora; mudanças para planos inferiores ficam agendadas para o fim do período.
+                    {currentPlan
+                      ? 'Escolha o plano desejado. Mudanças para planos superiores acontecem agora; mudanças para planos inferiores ficam agendadas para o fim do período.'
+                      : 'Escolha o plano para ativar sua assinatura.'}
                   </p>
                 </div>
                 <button
@@ -801,11 +896,13 @@ export default function BillingSettingsPage() {
                             ? 'Plano atual'
                             : isScheduled
                               ? `Alteração já agendada para ${new Date(scheduledChange!.effective_at!).toLocaleDateString('pt-BR')}`
-                              : resolvePlanChangeAction(planCode) === 'upgrade'
-                                ? 'Mudança imediata'
-                                : resolvePlanChangeAction(planCode) === 'downgrade'
-                                  ? 'Mudança no fim do período'
-                                  : 'Indisponível'}
+                              : resolvePlanChangeAction(planCode) === 'subscribe'
+                                ? 'Iniciar assinatura'
+                                : resolvePlanChangeAction(planCode) === 'upgrade'
+                                  ? 'Mudança imediata'
+                                  : resolvePlanChangeAction(planCode) === 'downgrade'
+                                    ? 'Mudança no fim do período'
+                                    : 'Indisponível'}
                         </div>
                       </div>
                       <div className="text-xs text-ink/60">
@@ -958,7 +1055,7 @@ export default function BillingSettingsPage() {
                 </div>
               ) : null}
 
-              {selectedPlan === 'founders_yearly' && !foundersEligible ? (
+              {selectedPlan?.startsWith('founders_') && !foundersEligible ? (
                 <div className="rounded-[18px] border border-border bg-paper p-4 text-sm text-ink/70">
                   O Plano Fundadores só fica disponível para famílias habilitadas.
                 </div>

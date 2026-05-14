@@ -33,7 +33,7 @@ import { ArrowDown, Calendar, Check, Clock, DollarSign, Download, Edit2, FileDow
 import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
 import FilterSheet from '@/components/layout/FilterSheet'
-import { mergeAttachment, parseAttachment } from '@/lib/attachments'
+import { getAttachmentViewUrl, parseLegacyAttachment } from '@/lib/security/attachments'
 import CategorySettingsModal from '@/components/categories/CategorySettingsModal'
 import BankStatementImportModal from '@/components/bank-statements/BankStatementImportModal'
 import PdfPreviewModal from '@/components/export/PdfPreviewModal'
@@ -62,13 +62,8 @@ interface Income {
   date: string
   status: IncomeStatus
   notes: string | null
+  attachment_path: string | null
   created_by: string | null
-}
-
-const buildAttachmentPath = (familyId: string, incomeId: string, fileName: string) => {
-  const safeName = fileName.replace(/\s+/g, '-')
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-  return `${familyId}/${incomeId}/${timestamp}-${safeName}`
 }
 
 function isDateInBillingPeriod(date: string, month: number, year: number, cycleDay: number): boolean {
@@ -144,9 +139,15 @@ export default function Incomes() {
     if (desc.length < 2) { setSuggestedCategoryId(null); return }
     const timer = setTimeout(async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) return
+
         const res = await fetch('/api/suggest/category', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
           body: JSON.stringify({ description: desc, kind: 'income' }),
         })
         const data = await res.json()
@@ -347,7 +348,8 @@ export default function Incomes() {
       amount_cents: amountCents,
       date: formData.date,
       status,
-      notes: mergeAttachment(formData.notes || null, currentAttachmentUrl),
+      notes: formData.notes || null,
+      attachment_path: editingIncome?.attachment_path ?? currentAttachmentUrl,
     }
 
     if (editingIncome) {
@@ -405,34 +407,35 @@ export default function Incomes() {
 
   const handleAttachIncome = async (income: Income, file: File) => {
     if (!familyId) return
-    const filePath = buildAttachmentPath(familyId, income.id, file.name)
 
-    const { error: uploadError } = await supabase.storage
-      .from('attachments')
-      .upload(filePath, file, { upsert: true })
+    const form = new FormData()
+    form.append('file', file)
+    form.append('recordType', 'income')
+    form.append('recordId', income.id)
 
-    if (uploadError) {
-      alert('Erro ao enviar arquivo.')
+    const { data: sessionData } = await supabase.auth.getSession()
+    const response = await fetch('/api/attachments/upload', {
+      method: 'POST',
+      headers: sessionData.session?.access_token
+        ? { Authorization: `Bearer ${sessionData.session.access_token}` }
+        : undefined,
+      body: form,
+    })
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => null)
+      alert(body?.error ?? 'Erro ao enviar arquivo.')
       return
     }
-
-    const { data: publicUrlData } = supabase.storage.from('attachments').getPublicUrl(filePath)
-    const { cleanNotes } = parseAttachment(income.notes)
-    const mergedNotes = mergeAttachment(cleanNotes || null, publicUrlData.publicUrl)
-
-    await supabase
-      .from('incomes')
-      .update({ notes: mergedNotes, updated_at: new Date().toISOString() })
-      .eq('id', income.id)
 
     loadIncomes()
   }
 
   const openModal = (income?: Income) => {
     if (income) {
-      const { attachmentUrl, cleanNotes } = parseAttachment(income.notes)
+      const { cleanNotes } = parseLegacyAttachment(income.notes)
       setEditingIncome(income)
-      setCurrentAttachmentUrl(attachmentUrl)
+      setCurrentAttachmentUrl(income.attachment_path ?? null)
       setFormData({
         description: income.description,
         categoryId: income.category_id || findCategoryIdByStoredName(categories, income.category_name) || '',
@@ -685,10 +688,11 @@ export default function Incomes() {
 
   const checkExportLimit = async (): Promise<boolean> => {
     if (!isFreeTier) return true
-    const token = document.cookie.match(/app_access_token=([^;]+)/)?.[1]
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
     const res = await fetch('/api/billing/usage/export-import', {
       method: 'POST',
-      headers: token ? { Authorization: `Bearer ${decodeURIComponent(token)}` } : {},
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
     const data = await res.json()
     if (!data.allowed) {
@@ -1401,7 +1405,8 @@ export default function Incomes() {
         title="Detalhes da receita"
       >
         {detailIncome && (() => {
-          const { attachmentUrl, cleanNotes } = parseAttachment(detailIncome.notes)
+          const { attachmentUrl, cleanNotes } = parseLegacyAttachment(detailIncome.notes)
+          const hasAttachment = Boolean(detailIncome.attachment_path || attachmentUrl)
           return (
             <div className="space-y-3 text-sm text-ink/70">
               <div>
@@ -1436,15 +1441,20 @@ export default function Incomes() {
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-ink/50">Arquivo</p>
-                {attachmentUrl ? (
-                  <a
-                    href={attachmentUrl}
-                    target="_blank"
-                    rel="noreferrer"
+                {hasAttachment ? (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        window.open(await getAttachmentViewUrl(detailIncome.attachment_path, attachmentUrl), '_blank', 'noopener,noreferrer')
+                      } catch {
+                        alert('Não foi possível abrir o anexo.')
+                      }
+                    }}
                     className="text-petrol hover:opacity-80 transition-vintage"
                   >
                     Visualizar anexo
-                  </a>
+                  </button>
                 ) : (
                   <p>Sem arquivo anexado</p>
                 )}

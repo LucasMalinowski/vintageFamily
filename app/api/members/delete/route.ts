@@ -28,42 +28,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Não é possível remover o próprio usuário.' }, { status: 400 })
   }
 
-  const { data: requester, error: requesterError } = await supabaseAdmin
-    .from('users')
-    .select('id,family_id,role')
-    .eq('id', authData.user.id)
-    .maybeSingle()
+  const { error: profileDeleteError } = await supabaseAdmin.rpc('remove_family_member_profile', {
+    p_actor_id: authData.user.id,
+    p_member_id: memberId,
+  })
 
-  if (requesterError || !requester) {
-    return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 400 })
-  }
+  if (profileDeleteError) {
+    if (profileDeleteError.message.includes('not_authorized')) {
+      return NextResponse.json({ error: 'Apenas administradores.' }, { status: 403 })
+    }
+    if (profileDeleteError.message.includes('member_not_found')) {
+      return NextResponse.json({ error: 'Membro não encontrado.' }, { status: 404 })
+    }
+    if (profileDeleteError.message.includes('cannot_remove_last_admin')) {
+      return NextResponse.json({ error: 'Não é possível remover o último administrador.' }, { status: 409 })
+    }
 
-  if (requester.role !== 'admin') {
-    return NextResponse.json({ error: 'Apenas administradores.' }, { status: 403 })
-  }
-
-  const { data: member, error: memberError } = await supabaseAdmin
-    .from('users')
-    .select('id,family_id')
-    .eq('id', memberId)
-    .maybeSingle()
-
-  if (memberError || !member) {
-    return NextResponse.json({ error: 'Membro não encontrado.' }, { status: 404 })
-  }
-
-  if (member.family_id !== requester.family_id) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 403 })
+    return NextResponse.json({ error: 'Erro ao remover perfil.' }, { status: 500 })
   }
 
   const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(memberId)
   if (authDeleteError) {
-    return NextResponse.json({ error: 'Erro ao remover usuário.' }, { status: 500 })
-  }
-
-  const { error: profileDeleteError } = await supabaseAdmin.from('users').delete().eq('id', memberId)
-  if (profileDeleteError) {
-    return NextResponse.json({ error: 'Erro ao remover perfil.' }, { status: 500 })
+    return NextResponse.json({ error: 'Perfil removido, mas houve erro ao remover o usuário de autenticação.' }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

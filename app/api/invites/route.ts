@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { sendInviteEmail } from '@/lib/mailer'
 import { getAccessTokenFromAuthHeader, requireUserByAccessToken } from '@/lib/billing/auth'
+import { generateUrlToken, sha256Hex } from '@/lib/security/tokens'
 
 const INVITE_EXPIRY_DAYS = 7
 
@@ -13,7 +14,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null)
-  const email = body?.email
+  const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : null
   if (!email || typeof email !== 'string') {
     return NextResponse.json({ error: 'Email obrigatório.' }, { status: 400 })
   }
@@ -42,20 +43,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Família não encontrada.' }, { status: 400 })
   }
 
-  const { data: existingInvite } = await supabaseAdmin
+  await supabaseAdmin
     .from('invites')
-    .select('id')
+    .delete()
     .eq('family_id', profile.family_id)
     .eq('email', email)
     .eq('accepted', false)
-    .gt('expires_at', new Date().toISOString())
-    .maybeSingle()
+    .lte('expires_at', new Date().toISOString())
 
-  if (existingInvite) {
-    return NextResponse.json({ error: 'Já existe um convite pendente para este email.' }, { status: 409 })
-  }
-
-  const token = crypto.randomUUID()
+  const token = generateUrlToken()
+  const tokenHash = sha256Hex(token)
   const expiresAt = new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString()
 
   const { error: inviteError } = await supabaseAdmin
@@ -64,11 +61,15 @@ export async function POST(request: Request) {
       family_id: profile.family_id,
       email,
       invited_by: auth.user.id,
-      token,
+      token: tokenHash,
+      token_hash: tokenHash,
       expires_at: expiresAt,
     })
 
   if (inviteError) {
+    if (inviteError.code === '23505') {
+      return NextResponse.json({ error: 'Já existe um convite pendente para este email.' }, { status: 409 })
+    }
     return NextResponse.json({ error: 'Erro ao criar convite.' }, { status: 500 })
   }
 

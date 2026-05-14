@@ -117,6 +117,18 @@ export class BankStatementImportService {
     })
 
     if (batchInsertError) {
+      if (
+        batchInsertError.code === '23505' ||
+        batchInsertError.message.includes('bank_statement_import_batches_family_file_hash_unique_idx')
+      ) {
+        throw new BankStatementImportError(
+          'Este arquivo já foi importado para esta família.',
+          409,
+          'duplicate_file',
+          batchInsertError.message
+        )
+      }
+
       throw new BankStatementImportError(
         'Não foi possível criar o lote de importação.',
         500,

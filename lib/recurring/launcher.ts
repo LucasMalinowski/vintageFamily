@@ -22,15 +22,21 @@ const FREQUENCY_DAYS: Record<string, number> = {
   annual: 365,
 }
 
-export async function launchDueRecurringItems(): Promise<number> {
+export async function launchDueRecurringItems(familyId?: string): Promise<number> {
   const today = toISO(new Date())
   const lookAheadDate = toISO(addDays(new Date(), 2))
 
-  const { data: patterns } = await supabaseAdmin
+  let patternsQuery = supabaseAdmin
     .from('recurring_patterns')
     .select('*')
     .eq('is_active', true)
     .lte('next_expected_date', lookAheadDate)
+
+  if (familyId) {
+    patternsQuery = patternsQuery.eq('family_id', familyId)
+  }
+
+  const { data: patterns } = await patternsQuery
 
   if (!patterns?.length) return 0
 

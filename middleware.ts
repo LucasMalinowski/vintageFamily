@@ -2,6 +2,24 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server'
 import { sendPostHogOtlpLog } from '@/lib/posthog-otlp'
 
+function sanitizeUrlForLog(value: string | null) {
+  if (!value) return 'none'
+
+  try {
+    const url = new URL(value)
+    let redacted = false
+    for (const key of ['token', 'handoff', 'code', 'access_token', 'refresh_token', 'token_hash']) {
+      if (url.searchParams.has(key)) {
+        url.searchParams.delete(key)
+        redacted = true
+      }
+    }
+    return `${url.origin}${url.pathname}${redacted ? '?redacted=1' : ''}`
+  } catch {
+    return 'invalid'
+  }
+}
+
 export async function middleware(request: NextRequest, event: NextFetchEvent) {
   let supabaseResponse = NextResponse.next({ request })
   const pathname = request.nextUrl.pathname
@@ -38,7 +56,7 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
         route_type: routeType,
         request_label: requestLabel,
         user_agent: request.headers.get('user-agent') ?? 'unknown',
-        referer: request.headers.get('referer') ?? 'none',
+        referer: sanitizeUrlForLog(request.headers.get('referer')),
         is_prefetch:
           request.headers.get('purpose') === 'prefetch' ||
           request.headers.get('next-router-prefetch') === '1',

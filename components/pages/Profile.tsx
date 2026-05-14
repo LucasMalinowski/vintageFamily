@@ -6,6 +6,22 @@ import { supabase } from '@/lib/supabase'
 import Topbar from '@/components/layout/Topbar'
 import { Camera } from 'lucide-react'
 import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
+import { validateImageFile } from '@/lib/security/images'
+
+function cleanString(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value.trim() : ''
+}
+
+function getAuthDisplayName(user: NonNullable<ReturnType<typeof useAuth>['user']>) {
+  const identityData = user.identities?.[0]?.identity_data as Record<string, unknown> | undefined
+  return cleanString(user.user_metadata?.name) ||
+    cleanString(user.user_metadata?.full_name) ||
+    cleanString(user.user_metadata?.display_name) ||
+    cleanString(identityData?.name) ||
+    cleanString(identityData?.full_name) ||
+    cleanString(identityData?.display_name) ||
+    cleanString(user.email?.split('@')[0])
+}
 
 export default function Profile() {
   const { user, familyId } = useAuth()
@@ -26,17 +42,19 @@ export default function Profile() {
       setLoading(true)
       setError(null)
 
-      const { data: userRow, error: userError } = await supabase
-        .from('users')
-        .select('name,email,avatar_url')
-        .eq('id', user.id)
-        .maybeSingle()
+      const { data: sessionData } = await supabase.auth.getSession()
+      const response = await fetch('/api/profile/me', {
+        headers: sessionData.session?.access_token
+          ? { Authorization: `Bearer ${sessionData.session.access_token}` }
+          : {},
+      })
+      const userRow = response.ok ? await response.json() : null
 
-      if (userError) setError('Erro ao carregar dados.')
+      if (!response.ok) setError('Erro ao carregar dados.')
 
       if (userRow) {
-        setProfileName(userRow.name ?? '')
-        setProfileEmail(userRow.email ?? user.email ?? '')
+        setProfileName(cleanString(userRow.name) || getAuthDisplayName(user))
+        setProfileEmail(user.email ?? userRow.email ?? '')
         setAvatarUrl(userRow.avatar_url ?? '')
         setAvatarPreview(userRow.avatar_url ?? '')
       } else if (user?.email) {
@@ -83,12 +101,20 @@ export default function Profile() {
     let nextAvatarUrl = avatarUrl
 
     if (avatarFile) {
+      let image
+      try {
+        image = await validateImageFile(avatarFile, 2 * 1024 * 1024)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Foto inválida.')
+        setSaving(false)
+        return
+      }
       const safeName = avatarFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-      const filePath = `${user.id}/${Date.now()}-${safeName}`
+      const filePath = `${user.id}/${Date.now()}-${safeName.replace(/\.[^.]+$/, '')}.${image.extension}`
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, avatarFile, { upsert: true })
+        .upload(filePath, avatarFile, { contentType: image.mime, upsert: true })
 
       if (!uploadError) {
         const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(filePath)

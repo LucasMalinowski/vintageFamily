@@ -4,6 +4,7 @@ import { hasBillingAccess } from '@/lib/billing/access'
 import { generateProactiveInsights } from '@/lib/insights/generator'
 import { dispatchInsights } from '@/lib/insights/dispatcher'
 import { flushPostHogLogs, posthogLogs } from '@/lib/posthog-logs'
+import { acquireFamilyJobLock, getDailyJobPeriod } from '@/lib/jobs/locks'
 
 function getCurrentPeriodLabel(): string {
   const now = new Date()
@@ -43,6 +44,7 @@ export async function GET(request: NextRequest) {
 
   const period = getCurrentPeriod()
   const periodLabel = getCurrentPeriodLabel()
+  const lockPeriod = getDailyJobPeriod(today)
   let dispatched = 0
 
   for (const family of families) {
@@ -82,6 +84,10 @@ export async function GET(request: NextRequest) {
           const daysSinceLast = (today.getTime() - new Date(lastInsight.created_at).getTime()) / 86_400_000
           if (daysSinceLast < intervalDays) continue
         }
+      }
+
+      if (!force && !(await acquireFamilyJobLock(family.id, 'insights-dispatch', lockPeriod))) {
+        continue
       }
 
       const insights = await generateProactiveInsights(family.id)

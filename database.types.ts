@@ -192,6 +192,7 @@ export type Database = {
           installments: number
           low_confidence: boolean
           notes: string | null
+          attachment_path: string | null
           paid_at: string | null
           payment_method: string | null
           raw_description: string | null
@@ -221,6 +222,7 @@ export type Database = {
           installments?: number
           low_confidence?: boolean
           notes?: string | null
+          attachment_path?: string | null
           paid_at?: string | null
           payment_method?: string | null
           raw_description?: string | null
@@ -250,6 +252,7 @@ export type Database = {
           installments?: number
           low_confidence?: boolean
           notes?: string | null
+          attachment_path?: string | null
           paid_at?: string | null
           payment_method?: string | null
           raw_description?: string | null
@@ -317,6 +320,35 @@ export type Database = {
           trial_expires_at?: string | null
         }
         Relationships: []
+      }
+      family_job_locks: {
+        Row: {
+          family_id: string
+          job_type: string
+          locked_at: string
+          period: string
+        }
+        Insert: {
+          family_id: string
+          job_type: string
+          locked_at?: string
+          period: string
+        }
+        Update: {
+          family_id?: string
+          job_type?: string
+          locked_at?: string
+          period?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_job_locks_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       feedback: {
         Row: {
@@ -396,6 +428,7 @@ export type Database = {
           imported_at: string | null
           low_confidence: boolean
           notes: string | null
+          attachment_path: string | null
           raw_description: string | null
           raw_line: string | null
           raw_payload: Json | null
@@ -420,6 +453,7 @@ export type Database = {
           imported_at?: string | null
           low_confidence?: boolean
           notes?: string | null
+          attachment_path?: string | null
           raw_description?: string | null
           raw_line?: string | null
           raw_payload?: Json | null
@@ -444,6 +478,7 @@ export type Database = {
           imported_at?: string | null
           low_confidence?: boolean
           notes?: string | null
+          attachment_path?: string | null
           raw_description?: string | null
           raw_line?: string | null
           raw_payload?: Json | null
@@ -487,6 +522,7 @@ export type Database = {
           id: string
           invited_by: string
           token: string
+          token_hash: string | null
         }
         Insert: {
           accepted?: boolean
@@ -496,7 +532,8 @@ export type Database = {
           family_id: string
           id?: string
           invited_by: string
-          token: string
+          token?: string
+          token_hash?: string | null
         }
         Update: {
           accepted?: boolean
@@ -507,6 +544,7 @@ export type Database = {
           id?: string
           invited_by?: string
           token?: string
+          token_hash?: string | null
         }
         Relationships: [
           {
@@ -747,6 +785,7 @@ export type Database = {
           current_period_start: string | null
           family_id: string
           id: string
+          last_stripe_event_created: string | null
           plan_code: string | null
           price_id: string | null
           status: string | null
@@ -761,6 +800,7 @@ export type Database = {
           current_period_start?: string | null
           family_id: string
           id?: string
+          last_stripe_event_created?: string | null
           plan_code?: string | null
           price_id?: string | null
           status?: string | null
@@ -775,6 +815,7 @@ export type Database = {
           current_period_start?: string | null
           family_id?: string
           id?: string
+          last_stripe_event_created?: string | null
           plan_code?: string | null
           price_id?: string | null
           status?: string | null
@@ -1178,7 +1219,34 @@ export type Database = {
     }
     Functions: {
       current_family_id: { Args: never; Returns: string }
+      consume_web_handoff_token: { Args: { p_token_hash: string }; Returns: { id: string; user_id: string }[] }
+      delete_user_profile_for_account_deletion: {
+        Args: { p_user_id: string; p_new_admin_id?: string | null }
+        Returns: { family_id: string; deleted_family: boolean }[]
+      }
+      increment_usage_counter: {
+        Args: { p_family_id: string; p_period: string; p_counter: string; p_limit: number }
+        Returns: { allowed: boolean; new_value: number }[]
+      }
       is_super_admin: { Args: { check_user?: string }; Returns: boolean }
+      remove_family_member_profile: { Args: { p_actor_id: string; p_member_id: string }; Returns: undefined }
+      rename_my_family: { Args: { p_name: string }; Returns: undefined }
+      update_family_member_role: { Args: { p_member_id: string; p_role: string }; Returns: undefined }
+      upsert_subscription_from_stripe: {
+        Args: {
+          p_user_id: string
+          p_family_id: string
+          p_stripe_subscription_id: string | null
+          p_plan_code: string | null
+          p_price_id: string | null
+          p_status: string | null
+          p_current_period_start: string | null
+          p_current_period_end: string | null
+          p_cancel_at_period_end: boolean | null
+          p_event_created: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

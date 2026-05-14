@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { User } from '@supabase/supabase-js'
+import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { getSidebarCollapsedStorageKey, LOCAL_STORAGE_KEYS } from '@/lib/storage'
 import { useRouter } from 'next/navigation'
@@ -23,16 +23,20 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-function setAccessTokenCookie(accessToken: string | null) {
-  if (typeof window === 'undefined') return
+async function syncServerSession(session: Pick<Session, 'access_token' | 'refresh_token'>) {
+  const response = await fetch('/api/auth/sync-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
+    }),
+  })
 
-  if (!accessToken) {
-    document.cookie = 'app_access_token=; Path=/; Max-Age=0; SameSite=Lax'
-    return
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}))
+    throw new Error(payload?.error || 'Não foi possível sincronizar a sessão.')
   }
-
-  const secureFlag = window.location.protocol === 'https:' ? '; Secure' : ''
-  document.cookie = `app_access_token=${encodeURIComponent(accessToken)}; Path=/; Max-Age=2592000; SameSite=Lax${secureFlag}`
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -88,6 +92,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (mountedRef.current) familyLoadInProgressRef.current = null
   }, [])
 
+  const applyAuthenticatedSession = useCallback(async (session: Session) => {
+    setUser(session.user)
+
+    try {
+      await syncServerSession(session)
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[AuthProvider] server session sync failed', error)
+      }
+      if (mountedRef.current) setAuthStatus('error')
+      return
+    }
+
+    if (!mountedRef.current) return
+    setAuthStatus('authenticated')
+    loadFamilyId(session.user.id)
+  }, [loadFamilyId])
+
   useEffect(() => {
     mountedRef.current = true
 
@@ -98,14 +120,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mountedRef.current) return
 
       if (session?.user) {
-        setUser(session.user)
-        setAccessTokenCookie(session.access_token)
-        setAuthStatus('authenticated')
-        loadFamilyId(session.user.id)
+        void applyAuthenticatedSession(session)
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
         setFamilyId(null)
-        setAccessTokenCookie(null)
         setAuthStatus('unauthenticated')
         if (typeof window !== 'undefined') {
           window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
@@ -120,10 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then(async ({ data: { session } }) => {
         if (!mountedRef.current) return
         if (session?.user) {
-          setUser(session.user)
-          setAccessTokenCookie(session.access_token)
-          setAuthStatus('authenticated')
-          loadFamilyId(session.user.id)
+          await applyAuthenticatedSession(session)
         } else {
           // PWA cold-start: localStorage may be empty but cookies (set by SSR middleware)
           // may still hold a valid refresh token — attempt one silent refresh before logout.
@@ -131,10 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const { data: refreshData } = await supabase.auth.refreshSession()
             if (!mountedRef.current) return
             if (refreshData.session?.user) {
-              setUser(refreshData.session.user)
-              setAccessTokenCookie(refreshData.session.access_token)
-              setAuthStatus('authenticated')
-              loadFamilyId(refreshData.session.user.id)
+              await applyAuthenticatedSession(refreshData.session)
               return
             }
           } catch {
@@ -142,7 +154,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           if (!mountedRef.current) return
           setUser(null)
-          setAccessTokenCookie(null)
           setAuthStatus('unauthenticated')
         }
       })
@@ -168,12 +179,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe()
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [loadFamilyId])
+  }, [applyAuthenticatedSession, loadFamilyId])
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
-    router.push('/inicio')
+
+    let session: Session | null = data.session
+    if (!session) {
+      const { data: sessionData } = await supabase.auth.getSession()
+      session = sessionData.session
+    }
+    if (!session) throw new Error('Não foi possível autenticar o usuário.')
+
+    await syncServerSession(session)
+    setUser(session.user)
+    setAuthStatus('authenticated')
+    router.replace('/inicio')
   }
 
   const signUp = async (email: string, password: string, name: string, familyName: string) => {
@@ -199,6 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         access_token: session.access_token,
         refresh_token: session.refresh_token,
       })
+      await syncServerSession(session)
 
       const response = await fetch('/api/families/create', {
         method: 'POST',
@@ -219,8 +242,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!createdFamilyId) throw new Error('Resposta inválida ao criar família.')
 
       setFamilyId(createdFamilyId)
+      setUser(session.user)
+      setAuthStatus('authenticated')
       posthog.capture(EVENTS.SIGNUP_COMPLETED, { family_id: createdFamilyId })
-      router.push('/inicio')
+      router.replace('/inicio')
     } catch (error: any) {
       throw error
     }
@@ -241,6 +266,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session = signInData.session
       }
       if (!session) throw new Error('Não foi possível autenticar o usuário.')
+      await syncServerSession(session)
 
       const response = await fetch('/api/invites/accept', {
         method: 'POST',
@@ -258,15 +284,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const payload = await response.json()
       setFamilyId(payload.familyId)
+      setUser(session.user)
+      setAuthStatus('authenticated')
       posthog.capture(EVENTS.INVITE_ACCEPTED, { family_id: payload.familyId })
-      router.push('/inicio')
+      router.replace('/inicio')
     } catch (error: any) {
       throw error
     }
   }
 
   const signOut = async () => {
-    setAccessTokenCookie(null)
     if (typeof window !== 'undefined') {
       if (user?.id) {
         window.localStorage.removeItem(getSidebarCollapsedStorageKey(user.id))

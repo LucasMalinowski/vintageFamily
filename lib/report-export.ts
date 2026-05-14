@@ -1,4 +1,5 @@
 type ExportValue = string | number | boolean | null | undefined
+const FORMULA_PREFIX = /^[=+\-@\t\r]/
 
 export interface ExportTable {
   filename: string
@@ -9,8 +10,9 @@ export interface ExportTable {
 }
 
 const escapeCsvCell = (value: ExportValue) => {
-  if (value === null || value === undefined) return ''
-  const text = String(value)
+  if (value === null || value === undefined) return '""'
+  let text = String(value)
+  if (FORMULA_PREFIX.test(text)) text = `'${text}`
   return `"${text.replace(/"/g, '""')}"`
 }
 

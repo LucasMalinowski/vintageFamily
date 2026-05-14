@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { detectAndUpsertRecurringPatterns } from '@/lib/recurring/detector'
 import { launchDueRecurringItems } from '@/lib/recurring/launcher'
 import { flushPostHogLogs, posthogLogs } from '@/lib/posthog-logs'
+import { acquireFamilyJobLock, getDailyJobPeriod } from '@/lib/jobs/locks'
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
@@ -20,10 +21,17 @@ export async function GET(request: NextRequest) {
 
   let totalDetected = 0
   let totalLaunched = 0
+  const period = getDailyJobPeriod()
 
   for (const family of families) {
     try {
-      totalDetected += await detectAndUpsertRecurringPatterns(family.id)
+      if (await acquireFamilyJobLock(family.id, 'recurring-detect', period)) {
+        totalDetected += await detectAndUpsertRecurringPatterns(family.id)
+      }
+
+      if (await acquireFamilyJobLock(family.id, 'recurring-launch', period)) {
+        totalLaunched += await launchDueRecurringItems(family.id)
+      }
     } catch (err) {
       console.error('[recurring-check] detect error', family.id, err)
       posthogLogs.error(
@@ -36,8 +44,6 @@ export async function GET(request: NextRequest) {
       )
     }
   }
-
-  totalLaunched = await launchDueRecurringItems()
 
   posthogLogs.info('Recurring check completed', {
     endpoint: '/api/cron/recurring-check',

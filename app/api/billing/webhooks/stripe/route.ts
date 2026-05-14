@@ -9,7 +9,7 @@ function toIso(timestamp?: number | null) {
   return new Date(timestamp * 1000).toISOString()
 }
 
-async function upsertSubscription(subscription: Stripe.Subscription) {
+async function upsertSubscription(subscription: Stripe.Subscription, eventCreated: number) {
   const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id
   const priceId = subscription.items.data[0]?.price?.id ?? null
 
@@ -37,27 +37,32 @@ async function upsertSubscription(subscription: Stripe.Subscription) {
     return
   }
 
-  await supabaseService.from('subscriptions').upsert({
-    user_id: userId,
-    family_id: familyId,
-    stripe_subscription_id: subscription.id,
-    plan_code: getPlanCodeByPriceId(priceId) ?? subscription.metadata?.plan_code ?? null,
-    price_id: priceId,
-    status: subscription.status,
-    current_period_start: toIso(subscription.items.data[0]?.current_period_start),
-    current_period_end: toIso(subscription.items.data[0]?.current_period_end),
-    cancel_at_period_end: subscription.cancel_at_period_end,
-  }, { onConflict: 'family_id' })
+  const { error: upsertError } = await supabaseService.rpc('upsert_subscription_from_stripe', {
+    p_user_id: userId,
+    p_family_id: familyId,
+    p_stripe_subscription_id: subscription.id,
+    p_plan_code: getPlanCodeByPriceId(priceId) ?? subscription.metadata?.plan_code ?? null,
+    p_price_id: priceId,
+    p_status: subscription.status,
+    p_current_period_start: toIso(subscription.items.data[0]?.current_period_start),
+    p_current_period_end: toIso(subscription.items.data[0]?.current_period_end),
+    p_cancel_at_period_end: subscription.cancel_at_period_end,
+    p_event_created: toIso(eventCreated)!,
+  })
+
+  if (upsertError) {
+    throw upsertError
+  }
 }
 
-async function markSubscriptionPastDueByInvoice(invoice: Stripe.Invoice) {
+async function markSubscriptionPastDueByInvoice(invoice: Stripe.Invoice, eventCreated: number) {
   const subscriptionId = typeof invoice.parent?.subscription_details?.subscription === 'string'
     ? invoice.parent.subscription_details.subscription
     : null
   if (!subscriptionId) return
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-  await upsertSubscription(subscription)
+  await upsertSubscription(subscription, eventCreated)
 }
 
 export async function POST(request: Request) {
@@ -123,11 +128,11 @@ export async function POST(request: Request) {
         case 'customer.subscription.created':
         case 'customer.subscription.updated':
         case 'customer.subscription.deleted': {
-          await upsertSubscription(event.data.object as Stripe.Subscription)
+          await upsertSubscription(event.data.object as Stripe.Subscription, event.created)
           break
         }
         case 'invoice.payment_failed': {
-          await markSubscriptionPastDueByInvoice(event.data.object as Stripe.Invoice)
+          await markSubscriptionPastDueByInvoice(event.data.object as Stripe.Invoice, event.created)
           break
         }
         case 'invoice.payment_succeeded': {
@@ -138,7 +143,7 @@ export async function POST(request: Request) {
 
           if (subscriptionId) {
             const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-            await upsertSubscription(subscription)
+            await upsertSubscription(subscription, event.created)
           }
           break
         }

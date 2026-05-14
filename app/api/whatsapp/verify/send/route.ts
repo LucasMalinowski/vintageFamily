@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import crypto from 'crypto'
-import { getAccessTokenFromCookieStore, requireUserByAccessToken } from '@/lib/billing/auth'
+import { getAccessTokenFromAuthHeader, getAccessTokenFromCookieStore, requireUserByAccessToken } from '@/lib/billing/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
 
@@ -23,7 +23,7 @@ function hashOtp(code: string): string {
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies()
-  const token = getAccessTokenFromCookieStore(cookieStore)
+  const token = getAccessTokenFromAuthHeader(request) ?? getAccessTokenFromCookieStore(cookieStore)
   const { error, user } = await requireUserByAccessToken(token)
   if (error || !user) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })

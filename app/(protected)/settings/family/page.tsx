@@ -90,10 +90,7 @@ export default function FamilySettingsPage() {
     setInviteStatus(null)
     setError(null)
 
-    const { error: updateError } = await supabase
-      .from('families')
-      .update({ name: normalizedFamilyName })
-      .eq('id', familyId)
+    const { error: updateError } = await supabase.rpc('rename_my_family', { p_name: normalizedFamilyName })
 
     if (updateError) {
       setError('Erro ao salvar família.')
@@ -153,10 +150,10 @@ export default function FamilySettingsPage() {
     setSavingMemberId(memberId)
     setError(null)
 
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({ role })
-      .eq('id', memberId)
+    const { error: updateError } = await supabase.rpc('update_family_member_role', {
+      p_member_id: memberId,
+      p_role: role,
+    })
 
     if (updateError) {
       setError('Erro ao atualizar o papel do membro.')

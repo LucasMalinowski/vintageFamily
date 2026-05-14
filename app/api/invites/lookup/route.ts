@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { sha256Hex } from '@/lib/security/tokens'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -8,11 +9,12 @@ export async function GET(request: Request) {
   if (!token) {
     return NextResponse.json({ error: 'Token obrigatório.' }, { status: 400 })
   }
+  const tokenHash = sha256Hex(token)
 
   const { data: invite, error: inviteError } = await supabaseAdmin
     .from('invites')
     .select('email,family_id,accepted,expires_at')
-    .eq('token', token)
+    .eq('token_hash', tokenHash)
     .maybeSingle()
 
   if (inviteError || !invite) {

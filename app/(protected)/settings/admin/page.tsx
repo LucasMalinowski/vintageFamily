@@ -81,14 +81,8 @@ export default function SuperAdminSettingsPage() {
     const load = async () => {
       if (!user) return
 
-      const { data: profile } = await supabase
-        .from('users')
-        .select('super_admin')
-        .eq('id', user.id)
-        .maybeSingle()
-
-      const allowed = Boolean(profile?.super_admin)
-      setIsSuperAdmin(allowed)
+      const { data: allowed } = await supabase.rpc('is_super_admin')
+      setIsSuperAdmin(Boolean(allowed))
       setCheckingAdmin(false)
 
       if (!allowed) {

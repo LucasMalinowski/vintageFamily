@@ -8,6 +8,7 @@ import Modal from '@/components/ui/Modal'
 import { useRouter } from 'next/navigation'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
+import { validateImageFile } from '@/lib/security/images'
 
 type PhoneState = 'none' | 'pending' | 'verified'
 
@@ -56,6 +57,21 @@ function countryLabel(country: CountryOption) {
 type DeletionInfo = {
   role: 'admin' | 'member'
   otherMembers: Array<{ id: string; name: string; email: string }>
+}
+
+function cleanString(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value.trim() : ''
+}
+
+function getAuthDisplayName(user: NonNullable<ReturnType<typeof useAuth>['user']>) {
+  const identityData = user.identities?.[0]?.identity_data as Record<string, unknown> | undefined
+  return cleanString(user.user_metadata?.name) ||
+    cleanString(user.user_metadata?.full_name) ||
+    cleanString(user.user_metadata?.display_name) ||
+    cleanString(identityData?.name) ||
+    cleanString(identityData?.full_name) ||
+    cleanString(identityData?.display_name) ||
+    cleanString(user.email?.split('@')[0])
 }
 
 export default function ProfileSettingsPage() {
@@ -128,19 +144,21 @@ export default function ProfileSettingsPage() {
       setLoading(true)
       setError(null)
 
-      const { data: userRow, error: userError } = await supabase
-        .from('users')
-        .select('name,email,avatar_url,phone_number,phone_number_pending,billing_cycle_day')
-        .eq('id', user.id)
-        .maybeSingle()
+      const { data: sessionData } = await supabase.auth.getSession()
+      const response = await fetch('/api/profile/me', {
+        headers: sessionData.session?.access_token
+          ? { Authorization: `Bearer ${sessionData.session.access_token}` }
+          : {},
+      })
+      const userRow = response.ok ? await response.json() : null
 
-      if (userError) {
+      if (!response.ok) {
         setError('Erro ao carregar configurações.')
       }
 
       if (userRow) {
-        setProfileName(userRow.name ?? '')
-        setProfileEmail(userRow.email ?? user.email ?? '')
+        setProfileName(cleanString(userRow.name) || getAuthDisplayName(user))
+        setProfileEmail(user.email ?? userRow.email ?? '')
         setAvatarUrl(userRow.avatar_url ?? '')
         setAvatarPreview(userRow.avatar_url ?? '')
         setBillingCycleDay(userRow.billing_cycle_day ?? 7)
@@ -173,9 +191,13 @@ export default function ProfileSettingsPage() {
     const localDigits = phoneInput.replace(/\D/g, '')
     const fullPhone = `+${selectedCountry.code}${localDigits}`
     try {
+      const { data: sessionData } = await supabase.auth.getSession()
       const res = await fetch('/api/whatsapp/verify/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+        },
         body: JSON.stringify({ phone: fullPhone }),
       })
       const data = await res.json()
@@ -200,9 +222,13 @@ export default function ProfileSettingsPage() {
     setPhoneError(null)
     setPhoneSuccess(null)
     try {
+      const { data: sessionData } = await supabase.auth.getSession()
       const res = await fetch('/api/whatsapp/verify/confirm', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(sessionData.session?.access_token ? { Authorization: `Bearer ${sessionData.session.access_token}` } : {}),
+        },
         body: JSON.stringify({ code: otpInput }),
       })
       const data = await res.json()
@@ -227,10 +253,18 @@ export default function ProfileSettingsPage() {
     setPhoneLoading(true)
     setPhoneError(null)
     setPhoneSuccess(null)
-    await supabase
-      .from('users')
-      .update({ phone_number: null, phone_number_pending: null, phone_verification_code: null, phone_verification_expires_at: null })
-      .eq('id', user.id)
+    const { data: sessionData } = await supabase.auth.getSession()
+    const res = await fetch('/api/whatsapp/verify/remove', {
+      method: 'POST',
+      headers: sessionData.session?.access_token
+        ? { Authorization: `Bearer ${sessionData.session.access_token}` }
+        : {},
+    })
+    if (!res.ok) {
+      setPhoneError('Erro ao remover telefone.')
+      setPhoneLoading(false)
+      return
+    }
     setVerifiedPhone('')
     setPendingPhone('')
     setVerifiedCountrySlug('')
@@ -249,13 +283,20 @@ export default function ProfileSettingsPage() {
     let nextAvatarUrl = avatarUrl
 
     if (avatarFile) {
-      const fileExt = avatarFile.name.split('.').pop() || 'jpg'
+      let image
+      try {
+        image = await validateImageFile(avatarFile, 2 * 1024 * 1024)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Avatar inválido.')
+        setSavingProfile(false)
+        return
+      }
       const safeName = avatarFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-      const filePath = `${user.id}/${Date.now()}-${safeName}`
+      const filePath = `${user.id}/${Date.now()}-${safeName.replace(/\.[^.]+$/, '')}.${image.extension}`
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, avatarFile, { upsert: true })
+        .upload(filePath, avatarFile, { contentType: image.mime, upsert: true })
 
       if (uploadError) {
         setError('Erro ao enviar avatar.')

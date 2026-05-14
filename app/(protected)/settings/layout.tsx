@@ -24,13 +24,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     const loadRole = async () => {
       if (!user) return
 
-      const { data } = await supabase
-        .from('users')
-        .select('super_admin')
-        .eq('id', user.id)
-        .maybeSingle()
-
-      setIsSuperAdmin(Boolean(data?.super_admin))
+      const { data } = await supabase.rpc('is_super_admin')
+      setIsSuperAdmin(Boolean(data))
     }
 
     loadRole()

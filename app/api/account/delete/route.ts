@@ -51,48 +51,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 400 })
   }
 
-  if (profile.role === 'admin') {
-    const { data: otherMembers, error: membersError } = await supabaseAdmin
-      .from('users')
-      .select('id,family_id')
-      .eq('family_id', profile.family_id)
-      .neq('id', userId)
+  const { data: deletionRows, error: deletionError } = await supabaseAdmin.rpc(
+    'delete_user_profile_for_account_deletion',
+    {
+      p_user_id: userId,
+      p_new_admin_id: typeof newAdminId === 'string' ? newAdminId : null,
+    }
+  )
 
-    if (membersError) {
-      return NextResponse.json({ error: 'Erro ao verificar membros.' }, { status: 500 })
+  if (deletionError) {
+    if (deletionError.message.includes('new_admin_required')) {
+      return NextResponse.json({ error: 'Escolha quem assumirá a administração.' }, { status: 400 })
+    }
+    if (deletionError.message.includes('invalid_new_admin')) {
+      return NextResponse.json({ error: 'Novo administrador inválido.' }, { status: 400 })
+    }
+    if (deletionError.message.includes('profile_not_found')) {
+      return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 400 })
     }
 
-    if (otherMembers && otherMembers.length > 0) {
-      if (!newAdminId) {
-        return NextResponse.json({ error: 'Escolha quem assumirá a administração.' }, { status: 400 })
-      }
+    return NextResponse.json({ error: 'Erro ao preparar exclusão da conta.' }, { status: 500 })
+  }
 
-      const newAdmin = otherMembers.find((m) => m.id === newAdminId)
-      if (!newAdmin) {
-        return NextResponse.json({ error: 'Novo administrador inválido.' }, { status: 400 })
-      }
-
-      const { error: promoteError } = await supabaseAdmin
-        .from('users')
-        .update({ role: 'admin' })
-        .eq('id', newAdminId)
-
-      if (promoteError) {
-        return NextResponse.json({ error: 'Erro ao promover novo administrador.' }, { status: 500 })
-      }
-    } else {
-      // Last member — cancel Stripe subscription before soft-deleting family
-      await cancelFamilyStripeSubscription(profile.family_id)
-
-      const { error: softDeleteError } = await supabaseAdmin
-        .from('families')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', profile.family_id)
-
-      if (softDeleteError) {
-        return NextResponse.json({ error: 'Erro ao desativar família.' }, { status: 500 })
-      }
-    }
+  const deletionResult = deletionRows?.[0]
+  if (deletionResult?.deleted_family) {
+    await cancelFamilyStripeSubscription(deletionResult.family_id)
   }
 
   if (profile.email) {
@@ -103,8 +86,6 @@ export async function POST(request: Request) {
   if (authDeleteError) {
     return NextResponse.json({ error: 'Erro ao excluir conta.' }, { status: 500 })
   }
-
-  await supabaseAdmin.from('users').delete().eq('id', userId)
 
   return NextResponse.json({ ok: true })
 }

@@ -56,24 +56,20 @@ export async function DELETE(request: Request) {
     .eq('id', userId)
     .maybeSingle()
 
-  if (profile?.role === 'admin') {
-    const { data: otherMembers } = await supabaseAdmin
-      .from('users')
-      .select('id')
-      .eq('family_id', profile.family_id)
-      .neq('id', userId)
+  const { error: deletionError } = await supabaseAdmin.rpc('delete_user_profile_for_account_deletion', {
+    p_user_id: userId,
+    p_new_admin_id: null,
+  })
 
-    if (otherMembers && otherMembers.length > 0) {
+  if (deletionError) {
+    if (deletionError.message.includes('new_admin_required')) {
       return NextResponse.json(
         { error: 'Você é administrador de uma família com outros membros. Use o fluxo de exclusão de conta no aplicativo para transferir a administração antes de excluir sua conta.' },
         { status: 409 }
       )
     }
 
-    await supabaseAdmin
-      .from('families')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', profile.family_id)
+    return NextResponse.json({ error: 'Erro ao preparar exclusão da conta.' }, { status: 500 })
   }
 
   const userEmail = authData.user.email ?? profile?.email
@@ -81,8 +77,10 @@ export async function DELETE(request: Request) {
     void sendAccountDeletionEmail({ to: userEmail, name: profile?.name ?? '' })
   }
 
-  await supabaseAdmin.auth.admin.deleteUser(userId)
-  await supabaseAdmin.from('users').delete().eq('id', userId)
+  const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
+  if (authDeleteError) {
+    return NextResponse.json({ error: 'Perfil removido, mas houve erro ao remover o usuário de autenticação.' }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true, message: 'Todos os seus dados foram excluídos conforme a LGPD.' })
 }

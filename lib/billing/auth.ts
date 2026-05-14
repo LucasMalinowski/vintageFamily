@@ -8,7 +8,7 @@ type CookieStoreLike = {
 
 export function getAccessTokenFromAuthHeader(request: Request | NextRequest) {
   const header = request.headers.get('authorization') || request.headers.get('Authorization') || ''
-  if (!header.startsWith('Bearer ')) return null
+  if (!header.toLowerCase().startsWith('bearer ')) return null
   return header.slice(7)
 }
 
@@ -21,11 +21,6 @@ function parseMaybeJson(value: string) {
 }
 
 export function getAccessTokenFromCookieStore(cookieStore: CookieStoreLike) {
-  const appCookie = cookieStore.get('app_access_token')?.value
-  if (appCookie) {
-    return decodeURIComponent(appCookie)
-  }
-
   const tokenCookie = cookieStore
     .getAll()
     .find((cookie) => cookie.name.startsWith('sb-') && cookie.name.endsWith('-auth-token'))

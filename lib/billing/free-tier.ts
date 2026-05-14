@@ -32,95 +32,50 @@ export async function getUsageCounters(familyId: string): Promise<UsageCounters>
   }
 }
 
-async function upsertRecordings(familyId: string, period: string, value: number) {
-  await supabaseAdmin.from('usage_counters').upsert(
-    { family_id: familyId, period, whatsapp_recordings: value },
-    { onConflict: 'family_id,period' }
-  )
-}
+async function incrementUsageCounter(
+  familyId: string,
+  counter: 'whatsapp_recordings' | 'ai_queries' | 'audio_messages' | 'export_import_count' | 'on_demand_insights',
+  limit: number
+) {
+  const { data, error } = await supabaseAdmin.rpc('increment_usage_counter', {
+    p_family_id: familyId,
+    p_period: getCurrentPeriod(),
+    p_counter: counter,
+    p_limit: limit,
+  })
 
-async function upsertAIQueries(familyId: string, period: string, value: number) {
-  await supabaseAdmin.from('usage_counters').upsert(
-    { family_id: familyId, period, ai_queries: value },
-    { onConflict: 'family_id,period' }
-  )
-}
-
-async function upsertAudioMessages(familyId: string, period: string, value: number) {
-  await supabaseAdmin.from('usage_counters').upsert(
-    { family_id: familyId, period, audio_messages: value },
-    { onConflict: 'family_id,period' }
-  )
-}
-
-async function upsertExportImport(familyId: string, period: string, value: number) {
-  await supabaseAdmin.from('usage_counters').upsert(
-    { family_id: familyId, period, export_import_count: value },
-    { onConflict: 'family_id,period' }
-  )
+  if (error) throw error
+  const row = Array.isArray(data) ? data[0] as { allowed: boolean; new_value: number } | undefined : null
+  const value = row?.new_value ?? limit
+  return { allowed: Boolean(row?.allowed), remaining: Math.max(0, limit - value) }
 }
 
 export async function checkAndIncrementWhatsAppRecording(
   familyId: string
 ): Promise<{ allowed: boolean; remaining: number }> {
-  const { whatsappRecordings } = await getUsageCounters(familyId)
   const limit = FREE_TIER_LIMITS.whatsappRecordingsPerMonth
-
-  if (whatsappRecordings >= limit) {
-    return { allowed: false, remaining: 0 }
-  }
-
-  await upsertRecordings(familyId, getCurrentPeriod(), whatsappRecordings + 1)
-  return { allowed: true, remaining: limit - (whatsappRecordings + 1) }
+  return incrementUsageCounter(familyId, 'whatsapp_recordings', limit)
 }
 
 export async function checkAndIncrementAIQuery(
   familyId: string
 ): Promise<{ allowed: boolean; remaining: number }> {
-  const { aiQueries } = await getUsageCounters(familyId)
   const limit = FREE_TIER_LIMITS.aiQueriesPerMonth
-
-  if (aiQueries >= limit) {
-    return { allowed: false, remaining: 0 }
-  }
-
-  await upsertAIQueries(familyId, getCurrentPeriod(), aiQueries + 1)
-  return { allowed: true, remaining: limit - (aiQueries + 1) }
+  return incrementUsageCounter(familyId, 'ai_queries', limit)
 }
 
 export async function checkAndIncrementAudioMessage(
   familyId: string
 ): Promise<{ allowed: boolean; remaining: number }> {
-  const { audioMessages } = await getUsageCounters(familyId)
   const limit = FREE_TIER_LIMITS.audioMessagesPerMonth
-
-  if (audioMessages >= limit) {
-    return { allowed: false, remaining: 0 }
-  }
-
-  await upsertAudioMessages(familyId, getCurrentPeriod(), audioMessages + 1)
-  return { allowed: true, remaining: limit - (audioMessages + 1) }
+  return incrementUsageCounter(familyId, 'audio_messages', limit)
 }
 
 export async function checkAndIncrementExportImport(
   familyId: string
 ): Promise<{ allowed: boolean; remaining: number }> {
-  const { exportImportCount } = await getUsageCounters(familyId)
   const limit = FREE_TIER_LIMITS.exportImportPerMonth
-
-  if (exportImportCount >= limit) {
-    return { allowed: false, remaining: 0 }
-  }
-
-  await upsertExportImport(familyId, getCurrentPeriod(), exportImportCount + 1)
-  return { allowed: true, remaining: limit - (exportImportCount + 1) }
-}
-
-async function upsertOnDemandInsights(familyId: string, period: string, value: number) {
-  await supabaseAdmin.from('usage_counters').upsert(
-    { family_id: familyId, period, on_demand_insights: value },
-    { onConflict: 'family_id,period' }
-  )
+  return incrementUsageCounter(familyId, 'export_import_count', limit)
 }
 
 export async function checkAndIncrementOnDemandInsight(
@@ -131,13 +86,6 @@ export async function checkAndIncrementOnDemandInsight(
     return { allowed: true, remaining: 999 }
   }
 
-  const { onDemandInsights } = await getUsageCounters(familyId)
   const limit = FREE_TIER_LIMITS.onDemandInsightsFreePerMonth
-
-  if (onDemandInsights >= limit) {
-    return { allowed: false, remaining: 0 }
-  }
-
-  await upsertOnDemandInsights(familyId, getCurrentPeriod(), onDemandInsights + 1)
-  return { allowed: true, remaining: limit - (onDemandInsights + 1) }
+  return incrementUsageCounter(familyId, 'on_demand_insights', limit)
 }
