@@ -791,6 +791,7 @@ export type Database = {
       }
       users: {
         Row: {
+          analytics_consent: boolean | null
           avatar_url: string | null
           billing_cycle_day: number
           created_at: string
@@ -814,6 +815,7 @@ export type Database = {
           super_admin: boolean
         }
         Insert: {
+          analytics_consent?: boolean | null
           avatar_url?: string | null
           billing_cycle_day?: number
           created_at?: string
@@ -837,6 +839,7 @@ export type Database = {
           super_admin?: boolean
         }
         Update: {
+          analytics_consent?: boolean | null
           avatar_url?: string | null
           billing_cycle_day?: number
           created_at?: string

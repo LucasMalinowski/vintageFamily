@@ -89,8 +89,8 @@ const privacySections = [
     title: '1. Identificação do tratamento',
     paragraphs: [
       'Este Aviso de Privacidade informa, de forma objetiva e transparente, como os dados pessoais tratados no contexto do Florim são coletados, utilizados, armazenados, compartilhados e protegidos.',
-      'Controlador dos dados: LUCAS BRAZAU MALINOWSKI DESENVOLVIMENTO DE SOFTWARE LTDA, inscrita no CNPJ sob o nº 58.804.959/0001-60, com nome fantasia MALINOWSKI SOFTWARES, sediada na Rua Pio XII 1723 Bloco B 05, Neva, Cascavel, Paraná, Brazil.',
-      'Para solicitações relacionadas à privacidade, proteção de dados, exercício de direitos do titular ou dúvidas sobre este aviso, o canal de atendimento disponibilizado é financasflorim@gmail.com.',
+      'Controlador dos dados: LUCAS BRAZAU MALINOWSKI DESENVOLVIMENTO DE SOFTWARE LTDA, inscrita no CNPJ sob o nº 58.804.959/0001-60, sediada na Avenida Paulista, 1106, Sala 01, Andar 16, Bela Vista, São Paulo/SP, CEP 01310-914.',
+      'Para solicitações relacionadas à privacidade, proteção de dados, exercício de direitos do titular ou dúvidas sobre este aviso, o canal de atendimento disponibilizado é privacidade@florim.app.',
     ],
     highlight: true,
   },
@@ -209,7 +209,18 @@ export default function TermsAndServicesPage() {
               legislação brasileira.
             </p>
             <p className="mt-4 text-sm uppercase tracking-[0.22em] text-gold/90">
-              Última atualização: 17/04/2026
+              Última atualização: 14/05/2026
+            </p>
+          </section>
+
+          <section className="py-6 border-b border-border/60">
+            <p className="text-sm text-ink/65 leading-7">
+              Os documentos individuais também estão disponíveis em:{' '}
+              <Link href="/privacy" className="text-coffee underline underline-offset-2">Política de Privacidade</Link>
+              {' · '}
+              <Link href="/terms" className="text-coffee underline underline-offset-2">Termos de Uso</Link>
+              {' · '}
+              <Link href="/cookies" className="text-coffee underline underline-offset-2">Política de Cookies</Link>
             </p>
           </section>
 
@@ -258,7 +269,7 @@ export default function TermsAndServicesPage() {
             <div className="mt-14 border-t border-border/80 pt-8">
               <p className="max-w-3xl text-sm leading-7 text-ink/75 sm:text-base">
                 Para assuntos relacionados a privacidade e proteção de dados, utilize o
-                canal financasflorim@gmail.com. Recomenda-se manter este documento
+                canal privacidade@florim.app. Recomenda-se manter este documento
                 atualizado sempre que houver mudança relevante nas funcionalidades, no
                 tratamento de dados ou na identificação da empresa responsável.
               </p>

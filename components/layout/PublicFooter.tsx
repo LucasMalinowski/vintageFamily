@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import CookiePreferencesLink from './CookiePreferencesLink'
 
 type PublicFooterColor = 'sidebar' | 'paper'
 
@@ -76,11 +77,12 @@ export default function PublicFooter({ color = 'sidebar' }: PublicFooterProps) {
           <img src="/logo.png" alt="Florim" className="w-10 h-10 object-contain" />
           <span className={`font-serif text-lg font-light tracking-widest ${theme.brand}`}>FLORIM</span>
         </div>
-        <div className="flex gap-5">
+        <div className="flex flex-wrap justify-center gap-5">
           <Link href="/about" className={`text-[13px] transition-vintage ${theme.link}`}>Sobre</Link>
           <Link href="/plans" className={`text-[13px] transition-vintage ${theme.link}`}>Planos</Link>
           <Link href="/privacy" className={`text-[13px] transition-vintage ${theme.link}`}>Privacidade</Link>
           <Link href="/terms" className={`text-[13px] transition-vintage ${theme.link}`}>Termos</Link>
+          <Link href="/cookies" className={`text-[13px] transition-vintage ${theme.link}`}>Cookies</Link>
         </div>
         <p className={`text-[12px] ${theme.bottom}`}>© {new Date().getFullYear()} Florim</p>
       </div>
@@ -116,6 +118,11 @@ export default function PublicFooter({ color = 'sidebar' }: PublicFooterProps) {
                     </Link>
                   </li>
                 ))}
+                {col.title === 'Legal' && (
+                  <li>
+                    <CookiePreferencesLink className={`text-sm transition-vintage ${theme.link}`} />
+                  </li>
+                )}
               </ul>
             </div>
           ))}

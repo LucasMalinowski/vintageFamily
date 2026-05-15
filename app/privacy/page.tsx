@@ -21,7 +21,7 @@ export default function PrivacyPage() {
       <main className="bg-paper min-h-screen">
         <div className="max-w-3xl mx-auto px-5 pb-16 pt-24 md:px-6 md:pt-36">
           <h1 className="text-4xl font-serif text-coffee mb-2">Política de Privacidade</h1>
-          <p className="text-sm text-ink/50 font-body mb-12">Vigente a partir de 23 de abril de 2026</p>
+          <p className="text-sm text-ink/50 font-body mb-12">Vigente a partir de 14 de maio de 2026</p>
 
           <Section title="1. Quem somos">
             <p>
@@ -65,6 +65,7 @@ export default function PrivacyPage() {
               <li><strong>Supabase:</strong> banco de dados e autenticação (servidores nos EUA — cláusulas contratuais padrão aplicadas)</li>
               <li><strong>Resend:</strong> envio de e-mails transacionais</li>
               <li><strong>Stripe:</strong> processamento de pagamentos (não recebe dados financeiros do Florim)</li>
+              <li><strong>PostHog, Inc.:</strong> análises de uso e comportamento (servidores nos EUA — cláusulas contratuais padrão aplicadas). Ativados apenas com seu consentimento.</li>
             </ul>
             <p>Não vendemos nem alugamos seus dados a terceiros.</p>
           </Section>
@@ -78,6 +79,8 @@ export default function PrivacyPage() {
               <li><strong>Portabilidade:</strong> receber seus dados em formato estruturado</li>
               <li><strong>Revogação do consentimento:</strong> retirar consentimento a qualquer momento</li>
               <li><strong>Informação:</strong> saber com quem seus dados são compartilhados</li>
+              <li><strong>Oposição:</strong> opor-se a tratamentos realizados com base em legítimo interesse (LGPD, art. 18, II)</li>
+              <li><strong>Reclamação à ANPD:</strong> peticionar à Autoridade Nacional de Proteção de Dados em caso de descumprimento (LGPD, art. 18, VI)</li>
             </ul>
             <p>
               Para exercer seus direitos, entre em contato via{' '}
@@ -95,11 +98,17 @@ export default function PrivacyPage() {
 
           <Section title="8. Segurança">
             <p>
-              Adotamos medidas técnicas e administrativas razoáveis para proteger seus dados contra acessos não autorizados, perda ou destruição, incluindo criptografia em trânsito (HTTPS) e controle de acesso. Nenhum sistema é 100% seguro; agimos com diligência para minimizar riscos e notificaremos você em caso de incidentes relevantes.
+              Adotamos medidas técnicas e administrativas razoáveis para proteger seus dados contra acessos não autorizados, perda ou destruição, incluindo criptografia em trânsito (HTTPS) e controle de acesso. Nenhum sistema é 100% seguro; agimos com diligência para minimizar riscos. Em caso de incidente de segurança com risco ou dano relevante aos titulares, notificaremos a ANPD e os usuários afetados em prazo razoável, adotando como referência de boa prática o prazo de 72 horas (LGPD, art. 48).
             </p>
           </Section>
 
-          <Section title="9. Cookies">
+          <Section title="9. Crianças e adolescentes">
+            <p>
+              O Florim não é destinado a menores de 18 anos. Em conformidade com o art. 14 da LGPD, não coletamos intencionalmente dados pessoais de crianças (menores de 12 anos) sem o consentimento específico e em destaque de pelo menos um dos pais ou responsável legal. Caso identificamos coleta acidental de dados de crianças, os dados serão excluídos imediatamente.
+            </p>
+          </Section>
+
+          <Section title="10. Cookies">
             <p>
               Utilizamos cookies essenciais (necessários ao funcionamento) e cookies analíticos (com seu consentimento). Veja nossa{' '}
               <a href="/cookies" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
@@ -109,13 +118,13 @@ export default function PrivacyPage() {
             </p>
           </Section>
 
-          <Section title="10. Alterações a esta política">
+          <Section title="11. Alterações a esta política">
             <p>
               Podemos atualizar esta política periodicamente. Em caso de alterações materiais, notificaremos por e-mail ou aviso no aplicativo. O uso continuado do serviço após a notificação constitui aceitação das alterações.
             </p>
           </Section>
 
-          <Section title="11. Contato">
+          <Section title="12. Contato">
             <p>
               <strong>Encarregado de Proteção de Dados (DPO):</strong>{' '}
               <a href="mailto:privacidade@florim.app" className="text-coffee underline underline-offset-2 hover:text-coffee/80">

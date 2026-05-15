@@ -52,6 +52,7 @@ function usePostHogPageView() {
 
   useEffect(() => {
     if (!pathname) return
+    if (posthog.has_opted_out_capturing()) return
     const url = `${pathname}${searchParams?.toString() ? `?${searchParams.toString()}` : ''}`
     posthog.capture('$pageview', { $current_url: url })
   }, [pathname, searchParams])
@@ -62,6 +63,7 @@ function usePostHogIdentify() {
 
   useEffect(() => {
     if (!user?.id) return
+    if (posthog.has_opted_out_capturing()) return
     posthog.identify(user.id, {
       email: user.email,
       family_id: familyId,
