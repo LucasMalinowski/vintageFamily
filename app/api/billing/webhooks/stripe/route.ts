@@ -94,6 +94,8 @@ export async function POST(request: Request) {
 
     const { error: insertEventError } = await supabaseService.from('billing_events').insert({
       stripe_event_id: event.id,
+      provider: 'stripe',
+      provider_event_id: event.id,
       type: event.type,
     })
 

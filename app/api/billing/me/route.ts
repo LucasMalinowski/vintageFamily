@@ -4,6 +4,7 @@ import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessTo
 import { hasBillingAccess } from '@/lib/billing/access'
 import { getPlanCodeByPriceId, stripe } from '@/lib/billing/stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
+import { checkRateLimit } from '@/lib/billing/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +15,11 @@ export async function GET(request: Request) {
 
     if (!auth.user) {
       return NextResponse.json({ error: auth.error }, { status: auth.status })
+    }
+
+    const allowed = await checkRateLimit(auth.user.id, 'billing-me', 20)
+    if (!allowed) {
+      return NextResponse.json({ error: 'Muitas tentativas. Aguarde um momento e tente novamente.' }, { status: 429 })
     }
 
     const profile = await getProfileByUserId(auth.user.id)
