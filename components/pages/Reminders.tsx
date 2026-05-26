@@ -120,7 +120,7 @@ export default function Reminders() {
     if (familyId) {
       loadReminders()
     }
-  }, [familyId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [familyId])
 
   const toggleDone = async (id: string, isDone: boolean) => {
     await supabase

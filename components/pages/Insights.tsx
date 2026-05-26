@@ -84,7 +84,7 @@ export default function InsightsPage() {
   useEffect(() => {
     if (!familyId) return
     loadInsights()
-  }, [familyId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [familyId])
 
   async function handleAsk(e: React.FormEvent) {
     e.preventDefault()
