@@ -57,17 +57,6 @@ export async function GET() {
           >
             Gestão financeira familiar
           </div>
-          <div
-            style={{
-              display: 'flex',
-              fontSize: 28,
-              color: '#8C7B6B',
-              fontWeight: 400,
-              letterSpacing: '-0.3px',
-            }}
-          >
-            com alma vintage
-          </div>
         </div>
 
         {/* Bottom row */}
