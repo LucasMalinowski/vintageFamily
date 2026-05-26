@@ -44,6 +44,8 @@ export function SSOButtons({ onError, disabled = false }: SSOButtonsProps) {
   const googleLogin = useGoogleLogin({
     flow: 'auth-code',
     onSuccess: async (codeResponse) => {
+      // Popup just closed — now show spinner while we exchange the code
+      setGoogleLoading(true)
       try {
         const res = await fetch('/api/auth/google-token', {
           method: 'POST',
@@ -56,10 +58,8 @@ export function SSOButtons({ onError, disabled = false }: SSOButtonsProps) {
         }
         const { idToken } = await res.json()
         await signInWithGoogle(idToken)
-        // signInWithGoogle handles navigation (→ /inicio or /signup/sso-complete)
       } catch (err: any) {
         onError?.(err.message ?? 'Erro ao entrar com Google.')
-      } finally {
         setGoogleLoading(false)
       }
     },
@@ -85,7 +85,7 @@ export function SSOButtons({ onError, disabled = false }: SSOButtonsProps) {
       {/* Google */}
       <button
         type="button"
-        onClick={() => { setGoogleLoading(true); googleLogin() }}
+        onClick={() => googleLogin()}
         disabled={isDisabled}
         className="flex items-center justify-center gap-2.5 w-full py-3.5 px-4 bg-offWhite border border-border rounded-full text-[15px] font-body font-medium text-ink hover:bg-border/40 transition-vintage disabled:opacity-50 disabled:cursor-not-allowed"
       >
