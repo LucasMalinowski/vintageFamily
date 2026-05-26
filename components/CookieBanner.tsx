@@ -11,10 +11,13 @@ export function openCookiePreferences() {
 }
 
 export default function CookieBanner() {
-  const [visible, setVisible] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return !localStorage.getItem('florim_cookie_consent')
-  })
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    if (!localStorage.getItem('florim_cookie_consent')) {
+      setVisible(true)
+    }
+  }, [])
   const [showManage, setShowManage] = useState(false)
   const [analyticsEnabled, setAnalyticsEnabled] = useState(true)
 
