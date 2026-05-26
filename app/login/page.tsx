@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/components/AuthProvider'
+import { SSOButtons, SSODivider } from '@/components/SSOButtons'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -13,7 +14,7 @@ const HANDOFF_ERROR_MESSAGES: Record<string, string> = {
 }
 
 export default function LoginPage() {
-  const { signIn, user, authStatus } = useAuth()
+  const { signIn, signInWithGoogle, signInWithApple, user, authStatus } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const handoffError = searchParams.get('error')
@@ -22,6 +23,20 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [ssoLoading, setSsoLoading] = useState(false)
+
+  const handleSSO = async (provider: 'google' | 'apple') => {
+    setError('')
+    setSsoLoading(true)
+    try {
+      if (provider === 'google') await signInWithGoogle()
+      else await signInWithApple()
+      // OAuth redirects away — no further action needed here.
+    } catch (err: any) {
+      setError(err.message || `Erro ao entrar com ${provider === 'google' ? 'Google' : 'Apple'}`)
+      setSsoLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (!loading && user && authStatus === 'authenticated') {
@@ -67,12 +82,15 @@ export default function LoginPage() {
               {handoffMessage}
             </div>
           )}
+          {error && (
+            <div className="bg-gold/10 border border-gold/30 text-gold px-4 py-3 rounded-lg text-sm mb-4">
+              {error}
+            </div>
+          )}
+          {/* SSO */}
+          <SSOButtons onPress={handleSSO} loading={ssoLoading} disabled={loading} />
+          <SSODivider />
           <form onSubmit={handleSubmit} className="flex flex-col gap-[14px]">
-            {error && (
-              <div className="bg-gold/10 border border-gold/30 text-gold px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
             <div>
               <label className="block text-[15px] font-body text-ink mb-2">E-mail</label>
               <input
@@ -102,7 +120,7 @@ export default function LoginPage() {
             </div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || ssoLoading}
               className="w-full bg-sidebar text-paper py-[15px] rounded-full font-bold text-[16px] hover:opacity-90 transition-vintage disabled:opacity-50"
             >
               {loading ? 'Entrando...' : 'Acessar'}
@@ -141,19 +159,23 @@ export default function LoginPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="bg-gold/10 border border-gold/30 text-gold px-4 py-3 rounded-lg text-sm">
-                  {error}
-                </div>
-              )}
+            {error && (
+              <div className="bg-gold/10 border border-gold/30 text-gold px-4 py-3 rounded-lg text-sm mb-4">
+                {error}
+              </div>
+            )}
 
+            {/* SSO */}
+            <SSOButtons onPress={handleSSO} loading={ssoLoading} disabled={loading} />
+            <SSODivider />
+
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="email" className="block text-sm font-body text-ink mb-2">
+                <label htmlFor="email-desktop" className="block text-sm font-body text-ink mb-2">
                   E-mail
                 </label>
                 <input
-                  id="email"
+                  id="email-desktop"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -164,11 +186,11 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-body text-ink mb-2">
+                <label htmlFor="password-desktop" className="block text-sm font-body text-ink mb-2">
                   Senha
                 </label>
                 <input
-                  id="password"
+                  id="password-desktop"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -189,7 +211,7 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || ssoLoading}
                 className="w-full bg-sidebar/90 text-paper py-3 rounded-full font-semibold hover:opacity-90 transition-vintage disabled:opacity-50"
               >
                 {loading ? 'Entrando...' : 'Acessar'}

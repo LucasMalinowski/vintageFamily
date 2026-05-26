@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/components/AuthProvider'
+import { SSOButtons, SSODivider } from '@/components/SSOButtons'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function SignUpPage() {
-  const { signUp, user, authStatus } = useAuth()
+  const { signUp, signInWithGoogle, signInWithApple, user, authStatus } = useAuth()
   const router = useRouter()
 
   const [name, setName] = useState('')
@@ -16,7 +17,20 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [ssoLoading, setSsoLoading] = useState(false)
   const [agreed, setAgreed] = useState(false)
+
+  const handleSSO = async (provider: 'google' | 'apple') => {
+    setError('')
+    setSsoLoading(true)
+    try {
+      if (provider === 'google') await signInWithGoogle()
+      else await signInWithApple()
+    } catch (err: any) {
+      setError(err.message || `Erro ao entrar com ${provider === 'google' ? 'Google' : 'Apple'}`)
+      setSsoLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (!loading && user && authStatus === 'authenticated') router.replace('/inicio')
@@ -83,13 +97,16 @@ export default function SignUpPage() {
       {/* Form - flat on mobile, card on desktop */}
       <div className="flex-1 md:flex-none w-full md:max-w-md md:bg-offWhite md:rounded-vintage md:border md:border-border md:shadow-vintage md:p-8 overflow-y-auto">
         <div className="px-7 pb-10 md:px-0 md:pb-0">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {error && (
-              <div className="bg-terracotta/10 border border-terracotta/30 text-terracotta px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
+          {/* SSO */}
+          {error && (
+            <div className="bg-terracotta/10 border border-terracotta/30 text-terracotta px-4 py-3 rounded-lg text-sm mb-4">
+              {error}
+            </div>
+          )}
+          <SSOButtons onPress={handleSSO} loading={ssoLoading} disabled={loading} />
+          <SSODivider />
 
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
               <label htmlFor="name" className="block text-sm font-body text-ink mb-2">
                 Seu nome
@@ -189,7 +206,7 @@ export default function SignUpPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || ssoLoading}
               className="w-full bg-coffee text-paper py-[14px] rounded-[10px] font-body font-bold text-[15px] hover:bg-coffee/90 transition-vintage disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? 'Criando...' : 'Criar família'}

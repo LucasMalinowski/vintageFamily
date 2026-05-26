@@ -17,6 +17,8 @@ interface AuthContextType {
   authStatus: AuthStatus
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, name: string, familyName: string) => Promise<void>
+  signInWithGoogle: () => Promise<void>
+  signInWithApple: () => Promise<void>
   acceptInvite: (token: string, email: string, name: string, password: string) => Promise<void>
   signOut: () => Promise<void>
 }
@@ -251,6 +253,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: { access_type: 'offline', prompt: 'select_account' },
+      },
+    })
+    if (error) throw error
+  }
+
+  const signInWithApple = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'apple',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+    if (error) throw error
+  }
+
   const acceptInvite = async (token: string, email: string, name: string, password: string) => {
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({ email, password })
@@ -307,7 +330,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, familyId, loading, authStatus, signIn, signUp, acceptInvite, signOut }}>
+    <AuthContext.Provider value={{ user, familyId, loading, authStatus, signIn, signUp, signInWithGoogle, signInWithApple, acceptInvite, signOut }}>
       {children}
     </AuthContext.Provider>
   )
