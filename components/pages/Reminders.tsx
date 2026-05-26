@@ -92,12 +92,6 @@ export default function Reminders() {
     category: 'Outros',
   })
 
-  useEffect(() => {
-    if (familyId) {
-      loadReminders()
-    }
-  }, [familyId])
-
   const pendingReminders = reminders.filter((reminder) => !reminder.is_done)
   const completedReminders = reminders.filter((reminder) => reminder.is_done)
   const filteredReminders =
@@ -121,6 +115,12 @@ export default function Reminders() {
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    if (familyId) {
+      loadReminders()
+    }
+  }, [familyId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleDone = async (id: string, isDone: boolean) => {
     await supabase

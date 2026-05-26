@@ -47,7 +47,7 @@ export default function Typewriter({
 
   const containerRef = useRef<HTMLSpanElement>(null)
   const onCompleteRef = useRef(onComplete)
-  onCompleteRef.current = onComplete
+  useEffect(() => { onCompleteRef.current = onComplete })
 
   // Respect prefers-reduced-motion
   const reducedRef = useRef(

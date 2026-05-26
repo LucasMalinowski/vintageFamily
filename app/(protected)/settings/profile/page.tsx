@@ -675,7 +675,7 @@ export default function ProfileSettingsPage() {
             <div>
               <h2 className="text-lg font-serif text-ink">Dia do ciclo financeiro</h2>
               <p className="text-sm text-ink/60 font-body mt-1">
-                Informe o dia do mês em que você recebe seu salário. O filtro de "mês" vai usar esse dia como início do período.
+                Informe o dia do mês em que você recebe seu salário. O filtro de &ldquo;mês&rdquo; vai usar esse dia como início do período.
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -698,7 +698,7 @@ export default function ProfileSettingsPage() {
               </button>
             </div>
             <p className="text-xs text-ink/40">
-              Ex.: se você recebe no dia 21, o "mês de maio" vai de 21 de abril até 20 de maio.
+              Ex.: se você recebe no dia 21, o &ldquo;mês de maio&rdquo; vai de 21 de abril até 20 de maio.
             </p>
           </div>
 

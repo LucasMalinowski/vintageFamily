@@ -69,11 +69,6 @@ export default function InsightsPage() {
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  useEffect(() => {
-    if (!familyId) return
-    loadInsights()
-  }, [familyId])
-
   async function loadInsights() {
     setLoading(true)
     const res = await fetch('/api/insights')
@@ -85,6 +80,11 @@ export default function InsightsPage() {
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    if (!familyId) return
+    loadInsights()
+  }, [familyId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleAsk(e: React.FormEvent) {
     e.preventDefault()
@@ -207,7 +207,7 @@ export default function InsightsPage() {
                 {/* Question (on-demand only) */}
                 {insight.prompt_question && (
                   <p className="text-xs text-ink/50 italic border-l-2 border-petrol/30 pl-2">
-                    "{insight.prompt_question}"
+                    &ldquo;{insight.prompt_question}&rdquo;
                   </p>
                 )}
 
