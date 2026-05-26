@@ -17,7 +17,7 @@ interface AuthContextType {
   authStatus: AuthStatus
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, name: string, familyName: string) => Promise<void>
-  signInWithGoogle: () => Promise<void>
+  signInWithGoogle: (idToken: string) => Promise<void>
   signInWithApple: () => Promise<void>
   acceptInvite: (token: string, email: string, name: string, password: string) => Promise<void>
   signOut: () => Promise<void>
@@ -253,27 +253,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const signInWithGoogle = async () => {
-    // Use Google Identity Services popup — users stay on florim.app,
-    // no Supabase URL ever shown. Returns an ID token we pass directly to Supabase.
-    const { googleSignInPopup } = await import('@/lib/googleAuth')
-
-    let idToken: string
-    try {
-      idToken = await googleSignInPopup()
-    } catch (err: any) {
-      if (err?.message === '__USE_REDIRECT__') {
-        // One Tap suppressed — fall back to redirect flow
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: { redirectTo: `${window.location.origin}/auth/callback` },
-        })
-        if (error) throw error
-        return // redirect happening, nothing more to do
-      }
-      throw err
-    }
-
+  const signInWithGoogle = async (idToken: string) => {
     const { data, error } = await supabase.auth.signInWithIdToken({
       provider: 'google',
       token: idToken,
@@ -285,18 +265,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(data.session.user)
     setAuthStatus('authenticated')
 
-    // Detect new user (no family yet) → send to SSO onboarding
+    // Detect new user (no family yet) → SSO onboarding
     const { data: userData } = await supabase
       .from('users')
       .select('family_id')
       .eq('id', data.session.user.id)
       .maybeSingle()
 
-    if (!userData?.family_id) {
-      router.replace('/signup/sso-complete')
-    } else {
-      router.replace('/inicio')
-    }
+    router.replace(userData?.family_id ? '/inicio' : '/signup/sso-complete')
   }
 
   const signInWithApple = async () => {
