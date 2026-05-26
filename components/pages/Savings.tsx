@@ -804,7 +804,7 @@ export default function Savings() {
           />
         </div>
 
-        {/* Scrollable cards area — mobile only internal scroll */}
+        {/* Scrollable cards area - mobile only internal scroll */}
         <div className="flex-1 min-h-0 overflow-y-auto md:overflow-visible">
           <div className={`w-full flex flex-col md:flex-row md:px-6 md:pb-4 ${filtersOpen ? 'md:gap-4' : 'md:gap-0'} md:items-stretch`}>
             <div className="hidden md:contents">
@@ -884,7 +884,7 @@ export default function Savings() {
                   {savingsSankeyData.nodes.length >= 2 && savingsSankeyData.links.length > 0 && (
                     <div className="bg-white rounded-xl border border-border shadow-soft p-4 md:p-5">
                       <h3 className="text-sm font-semibold text-ink font-serif mb-3">
-                        Fluxo da poupança — {monthLabelSav}/{selectedYear !== ALL_YEARS_VALUE ? selectedYear : '—'}
+                        Fluxo da poupança - {monthLabelSav}/{selectedYear !== ALL_YEARS_VALUE ? selectedYear : '-'}
                       </h3>
                       <SankeyChart
                         nodes={savingsSankeyData.nodes}
@@ -923,12 +923,12 @@ export default function Savings() {
                               <tr key={saving.id} className="border-b border-border/50 hover:bg-paper/50 transition-colors">
                                 <td className="px-4 py-2.5 text-ink font-medium">{saving.name}</td>
                                 <td className="px-4 py-2.5 text-right text-ink/70 tabular-nums">{formatBRL(prevBalance)}</td>
-                                <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#3E9E6A' }}>{periodDep > 0 ? `+${formatBRL(periodDep)}` : '—'}</td>
-                                <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#C06060' }}>{periodWit > 0 ? formatBRL(periodWit) : '—'}</td>
+                                <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#3E9E6A' }}>{periodDep > 0 ? `+${formatBRL(periodDep)}` : '-'}</td>
+                                <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#C06060' }}>{periodWit > 0 ? formatBRL(periodWit) : '-'}</td>
                                 <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-ink">{formatBRL(balance)}</td>
                                 <td className="px-4 py-2.5">
                                   <div className="flex items-center justify-end gap-1.5">
-                                    <span className="tabular-nums text-ink/60">{saving.target_cents ? formatBRL(saving.target_cents) : '—'}</span>
+                                    <span className="tabular-nums text-ink/60">{saving.target_cents ? formatBRL(saving.target_cents) : '-'}</span>
                                     <button
                                       type="button"
                                       onClick={() => openEdit(saving)}
@@ -945,9 +945,9 @@ export default function Savings() {
                               <td className="px-4 py-2.5 font-bold text-ink">Total</td>
                               <td className="px-4 py-2.5 text-right font-bold tabular-nums text-ink">{formatBRL(totalBalance - periodDeposits + periodWithdrawals)}</td>
                               <td className="px-4 py-2.5 text-right font-bold tabular-nums" style={{ color: '#3E9E6A' }}>{formatBRL(periodDeposits)}</td>
-                              <td className="px-4 py-2.5 text-right font-bold tabular-nums" style={{ color: '#C06060' }}>{periodWithdrawals > 0 ? formatBRL(periodWithdrawals) : '—'}</td>
+                              <td className="px-4 py-2.5 text-right font-bold tabular-nums" style={{ color: '#C06060' }}>{periodWithdrawals > 0 ? formatBRL(periodWithdrawals) : '-'}</td>
                               <td className="px-4 py-2.5 text-right font-bold tabular-nums text-ink">{formatBRL(totalBalance)}</td>
-                              <td className="px-4 py-2.5 text-right font-bold tabular-nums text-ink/60">{perSavingAnalytics.reduce((s, { saving: sv }) => s + (sv.target_cents ?? 0), 0) > 0 ? formatBRL(perSavingAnalytics.reduce((s, { saving: sv }) => s + (sv.target_cents ?? 0), 0)) : '—'}</td>
+                              <td className="px-4 py-2.5 text-right font-bold tabular-nums text-ink/60">{perSavingAnalytics.reduce((s, { saving: sv }) => s + (sv.target_cents ?? 0), 0) > 0 ? formatBRL(perSavingAnalytics.reduce((s, { saving: sv }) => s + (sv.target_cents ?? 0), 0)) : '-'}</td>
                             </tr>
                           </tbody>
                         </table>
@@ -957,7 +957,7 @@ export default function Savings() {
                 </div>
               )}
 
-              {/* Mobile per-saving cards — desktop has the table above */}
+              {/* Mobile per-saving cards - desktop has the table above */}
               {!loading && perSavingAnalytics.length > 0 && (
                 <div className="md:hidden space-y-2.5">
                   <h3 className="text-sm font-semibold text-ink font-serif">Poupanças</h3>
@@ -1014,7 +1014,7 @@ export default function Savings() {
           </div>
         </div>
 
-        {/* Mobile footer — sticky outside scroll */}
+        {/* Mobile footer - sticky outside scroll */}
         <div className="md:hidden shrink-0 h-[42px] flex items-center justify-center border-t border-border bg-offWhite">
           <p className="text-center text-[13px] text-gold italic">
             Poupança é um abraço longo no amanhã.
@@ -1177,7 +1177,7 @@ export default function Savings() {
                     <p className="text-xs text-ink/50">{formatDate(c.date)}</p>
                     {c.notes ? <p className="text-xs text-ink/40 truncate max-w-[180px]">{c.notes}</p> : null}
                     {c.created_by && (
-                      <p className="text-xs text-ink/30">{familyMembers.get(c.created_by) ?? '—'}</p>
+                      <p className="text-xs text-ink/30">{familyMembers.get(c.created_by) ?? '-'}</p>
                     )}
                   </div>
                 </div>

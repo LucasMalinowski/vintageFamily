@@ -28,7 +28,7 @@ function dateInputToISO(date: string): string | null {
 }
 
 function formatTrialExpiry(iso: string | null): string {
-  if (!iso) return '—'
+  if (!iso) return '-'
   const d = new Date(iso)
   const days = Math.ceil((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
   const formatted = d.toLocaleDateString('pt-BR')

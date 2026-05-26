@@ -95,7 +95,7 @@ export default function ProfileSheet({ open, onClose, userName = '', familyName 
           <div className="min-w-0">
             <p className="text-base font-semibold text-ink truncate">{userName || 'Usuário'}</p>
             <p className="text-sm text-ink/50 truncate">
-              Família {familyName || '—'}
+              Família {familyName || '-'}
             </p>
           </div>
         </div>

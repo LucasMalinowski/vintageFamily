@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto'
 import { NextResponse } from 'next/server'
 import { supabaseService } from '@/lib/billing/supabase-service'
 import { flushPostHogLogs, posthogLogs } from '@/lib/posthog-logs'
@@ -8,7 +9,7 @@ const CANCELLATION_EVENT_TYPES = new Set(['CANCELLATION'])
 const TERMINAL_EVENT_TYPES = new Set(['EXPIRATION'])
 const ISSUE_EVENT_TYPES = new Set(['BILLING_ISSUE'])
 const PAUSED_EVENT_TYPES = new Set(['SUBSCRIPTION_PAUSED'])
-// These are informational only — no subscription upsert needed
+// These are informational only - no subscription upsert needed
 const SKIP_EVENT_TYPES = new Set([
   'TRANSFER',
   'PRODUCT_CHANGE',
@@ -47,7 +48,7 @@ function mapEventToStatus(eventType: string): {
     return { status: 'active', cancelAtPeriodEnd: false }
   }
   if (CANCELLATION_EVENT_TYPES.has(eventType)) {
-    // Access continues until expiration_at_ms — keep 'active' with cancel flag
+    // Access continues until expiration_at_ms - keep 'active' with cancel flag
     return { status: 'active', cancelAtPeriodEnd: true }
   }
   if (TERMINAL_EVENT_TYPES.has(eventType)) {
@@ -77,7 +78,12 @@ export async function POST(request: Request) {
     }
 
     const expectedAuth = `Bearer ${webhookSecret}`
-    if (authHeader !== expectedAuth) {
+    const authBuf = Buffer.from(authHeader)
+    const expectedBuf = Buffer.from(expectedAuth)
+    const isValid =
+      authBuf.length === expectedBuf.length &&
+      timingSafeEqual(authBuf, expectedBuf)
+    if (!isValid) {
       posthogLogs.warn('RevenueCat webhook rejected: invalid authorization header', {
         endpoint: '/api/billing/webhooks/revenuecat',
       })
@@ -98,7 +104,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Evento RevenueCat malformado.' }, { status: 400 })
     }
 
-    // 3. Idempotency: insert event record — duplicate returns 200 immediately
+    // 3. Idempotency: insert event record - duplicate returns 200 immediately
     const { error: insertEventError } = await supabaseService.from('billing_events').insert({
       stripe_event_id: rcEvent.id,   // kept for schema compat (NOT NULL constraint)
       provider: 'revenuecat',

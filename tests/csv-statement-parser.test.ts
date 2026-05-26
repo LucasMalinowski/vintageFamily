@@ -6,7 +6,7 @@ import { CsvStatementParser } from '@/lib/bank-statements/CsvStatementParser'
 const nubankFixture = readFileSync(join(process.cwd(), 'tests/fixtures/bank-statements/synthetic-nubank.csv'), 'utf-8')
 const interFixture = readFileSync(join(process.cwd(), 'tests/fixtures/bank-statements/synthetic-inter.csv'), 'utf-8')
 
-describe('CsvStatementParser — Nubank format (signed amount, EN decimal, comma delimiter)', () => {
+describe('CsvStatementParser - Nubank format (signed amount, EN decimal, comma delimiter)', () => {
   it('parses all 10 transactions from the fixture', () => {
     const { items, warnings } = new CsvStatementParser('nubank').parse(nubankFixture)
     expect(items).toHaveLength(10)
@@ -55,7 +55,7 @@ describe('CsvStatementParser — Nubank format (signed amount, EN decimal, comma
   })
 })
 
-describe('CsvStatementParser — Inter format (signed amount, BR decimal, semicolon, two description columns)', () => {
+describe('CsvStatementParser - Inter format (signed amount, BR decimal, semicolon, two description columns)', () => {
   it('parses all 10 transactions from the Inter fixture', () => {
     const { items, warnings } = new CsvStatementParser('inter').parse(interFixture)
     expect(items).toHaveLength(10)
@@ -81,7 +81,7 @@ describe('CsvStatementParser — Inter format (signed amount, BR decimal, semico
   })
 })
 
-describe('CsvStatementParser — debit/credit column format', () => {
+describe('CsvStatementParser - debit/credit column format', () => {
   // Traditional bank format: separate Crédito (income) and Débito (expense) columns
   // Crédito = money coming INTO your account (income); Débito = money going OUT (expense)
   const debitCreditCsv = `
@@ -115,7 +115,7 @@ Data;Histórico;Docto.;Crédito;Débito;Saldo
   })
 })
 
-describe('CsvStatementParser — edge cases and resilience', () => {
+describe('CsvStatementParser - edge cases and resilience', () => {
   it('strips UTF-8 BOM from the beginning of the file', () => {
     const withBom = '\uFEFFData,Lançamento,Valor\n01/03/2026,PIX RECEBIDO,500.00\n'
     const { items } = new CsvStatementParser('nubank').parse(withBom)

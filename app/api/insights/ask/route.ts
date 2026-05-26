@@ -22,6 +22,10 @@ export async function POST(request: NextRequest) {
   if (!question || question.length < 5) {
     return NextResponse.json({ error: 'Pergunta muito curta.' }, { status: 400 })
   }
+  // Cap input length to prevent prompt-injection via long crafted inputs
+  if (question.length > 300) {
+    return NextResponse.json({ error: 'Pergunta muito longa. Máximo 300 caracteres.' }, { status: 400 })
+  }
 
   const access = await hasBillingAccess({ familyId: profile.family_id })
   const hasFullInsightAccess = access.isPaidTier || access.hasActiveTrial

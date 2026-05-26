@@ -18,20 +18,20 @@ const styles: Record<
   sidebar: {
     wrapper: 'bg-sidebar text-paper',
     title: 'text-gold',
-    link: 'text-paper/75 hover:text-paper',
-    muted: 'text-paper/75',
+    link: 'text-paper/90 hover:text-paper',
+    muted: 'text-paper/90',
     border: 'border-paper/10',
     brand: 'text-gold',
-    bottom: 'text-paper/55',
+    bottom: 'text-paper/80',
   },
   paper: {
     wrapper: 'bg-paper text-coffee',
     title: 'text-gold',
-    link: 'text-coffee/75 hover:text-coffee',
-    muted: 'text-coffee/75',
+    link: 'text-coffee/90 hover:text-coffee',
+    muted: 'text-coffee/90',
     border: 'border-border/80',
     brand: 'text-gold',
-    bottom: 'text-coffee/55',
+    bottom: 'text-coffee/70',
   },
 }
 
@@ -47,6 +47,7 @@ const columns = [
   {
     title: 'Suporte',
     items: [
+      { label: 'Central de ajuda', href: '/support' },
       { label: 'Contato', href: 'mailto:contato@florim.app' },
       { label: 'Privacidade', href: 'mailto:privacidade@florim.app' },
     ],

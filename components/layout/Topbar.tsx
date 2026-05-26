@@ -218,7 +218,7 @@ export default function Topbar({
                 <Bell className="w-6 h-6" />
               </button>
 
-              {/* Mobile avatar — opens ProfileSheet */}
+              {/* Mobile avatar - opens ProfileSheet */}
               <button
                 onClick={() => setProfileSheetOpen(true)}
                 className="flex md:hidden w-8 h-8 rounded-full bg-[#B05C3A] items-center justify-center shrink-0"

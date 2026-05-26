@@ -93,7 +93,7 @@ function buildInsightPrompt(data: SpendingData, question?: string): string {
       const prev = data.previousMonth.find(p => p.category_name === c.category_name)
       const delta = prev ? ((c.total_cents - prev.total_cents) / prev.total_cents) * 100 : null
       const deltaStr = delta !== null ? ` (${delta > 0 ? '+' : ''}${Math.round(delta)}% vs ${data.previousPeriodLabel})` : ' (sem comparativo)'
-      return `${i + 1}. ${c.category_name}: ${formatBRL(c.total_cents)}${deltaStr} — ${c.count} lançamentos`
+      return `${i + 1}. ${c.category_name}: ${formatBRL(c.total_cents)}${deltaStr} - ${c.count} lançamentos`
     })
     .join('\n')
 
@@ -107,10 +107,10 @@ function buildInsightPrompt(data: SpendingData, question?: string): string {
 
   const base = `Dados financeiros da família:
 
-Mês atual (${data.currentPeriodLabel}) — Total: ${formatBRL(data.currentTotal)}${totalDelta}
+Mês atual (${data.currentPeriodLabel}) - Total: ${formatBRL(data.currentTotal)}${totalDelta}
 ${currentLines}
 
-Mês anterior (${data.previousPeriodLabel}) — Total: ${formatBRL(data.previousTotal)}
+Mês anterior (${data.previousPeriodLabel}) - Total: ${formatBRL(data.previousTotal)}
 ${previousLines}`
 
   if (question) {
@@ -126,7 +126,7 @@ Responda em português, de forma direta e específica, citando valores reais dos
 Gere exatamente 2 insights financeiros em português para essa família. Regras:
 - Cada insight deve ter no máximo 2 frases
 - Cite valores reais (ex: R$ 820,00, 30%, 4 lançamentos)
-- Seja específico — nunca genérico como "você gastou muito"
+- Seja específico, nunca genérico como "você gastou muito"
 - Foque em variações, tendências, ou situações que merecem atenção
 - Se os dados são positivos, também diga (ex: você gastou 15% menos em X)
 - Formato: retorne um JSON array com 2 strings: ["insight 1", "insight 2"]`

@@ -2,7 +2,7 @@ import PublicNavbar from '@/components/layout/PublicNavbar'
 import PublicFooter from '@/components/layout/PublicFooter'
 
 export const metadata = {
-  title: 'Política de Cookies — Florim',
+  title: 'Política de Cookies Florim',
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -96,7 +96,7 @@ export default function CookiesPage() {
 
           <Section title="4. Cookies de terceiros">
             <p>
-              O Florim utiliza os seguintes serviços de terceiros que podem definir seus próprios cookies: <strong>Supabase</strong> (autenticação e banco de dados), <strong>Stripe</strong> (processamento de pagamentos) e <strong>PostHog, Inc.</strong> (análises de uso — apenas com consentimento). Esses cookies são regidos pelas políticas de privacidade dos respectivos serviços.
+              O Florim utiliza os seguintes serviços de terceiros que podem definir seus próprios cookies: <strong>Supabase</strong> (autenticação e banco de dados), <strong>Stripe</strong> (processamento de pagamentos) e <strong>PostHog, Inc.</strong> (análises de uso apenas com consentimento). Esses cookies são regidos pelas políticas de privacidade dos respectivos serviços.
             </p>
           </Section>
 

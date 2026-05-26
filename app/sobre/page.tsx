@@ -48,7 +48,7 @@ export default function InternalAboutPage() {
                     style={{ borderRadius: '50%' }}
                 >
                   <img
-                      src="/founders_photo.png"
+                      src="/founders_photo.jpg"
                       alt="Família Florim"
                       className="h-full w-full object-cover"
                   />

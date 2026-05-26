@@ -55,7 +55,7 @@ const MAX_AUDIO_BYTES = Number(process.env.WHATSAPP_AUDIO_MAX_BYTES ?? 10_000_00
 function verifyMetaSignature(rawBody: string, signatureHeader: string | null): boolean {
   const secret = process.env.WHATSAPP_APP_SECRET
   if (!secret) {
-    console.error('[webhook] WHATSAPP_APP_SECRET not configured — rejecting all requests')
+    console.error('[webhook] WHATSAPP_APP_SECRET not configured - rejecting all requests')
     return false
   }
   if (!signatureHeader?.startsWith('sha256=')) return false
@@ -177,7 +177,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'ok' }, { status: 200 })
     }
 
-    await processWhatsAppMessage(from, text, messageId)
+    // Handle opt-out requests (Meta WhatsApp Business policy requirement).
+    // Meta's platform also honors opt-outs at the account level, but we acknowledge
+    // them here explicitly. A future migration should store whatsapp_opted_out=true
+    // in the users table and check it before sending outbound messages.
+    const OPT_OUT_KEYWORDS = new Set(['stop', 'parar', 'cancelar', 'descadastrar', 'sair', 'sair da lista'])
+    if (OPT_OUT_KEYWORDS.has(normalizedText)) {
+      await whatsAppService.sendTextMessage(
+        from,
+        'Sua preferência foi registrada. Você não receberá mais mensagens automáticas do Florim. Para reativar, envie "oi" ou acesse o app. 👋'
+      )
+      await posthogLogs.info('WhatsApp opt-out received', { endpoint: '/api/whatsapp/webhook' })
+      await flushPostHogLogs()
+      return NextResponse.json({ status: 'ok' }, { status: 200 })
+    }
+
+    // Cap text length to limit prompt-injection surface area
+    const cappedText = text.length > 500 ? text.slice(0, 500) : text
+
+    await processWhatsAppMessage(from, cappedText, messageId)
     await posthogLogs.info('WhatsApp text message processed', { endpoint: '/api/whatsapp/webhook' })
   } catch (error) {
     await posthogLogs.error('WhatsApp webhook processing failed', { endpoint: '/api/whatsapp/webhook' }, error)

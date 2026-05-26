@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { FAMILY_CATEGORY_SEEDS } from '@/lib/families/categorySeeds'
 import { sendWelcomeEmail } from '@/lib/mailer'
+import { checkRateLimit } from '@/lib/billing/rate-limit'
 
 type CreateFamilyBody = {
   familyName: string
@@ -21,6 +22,12 @@ export async function POST(request: Request) {
     const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken)
     if (authError || !authData.user) {
       return NextResponse.json({ error: 'Sessão inválida.' }, { status: 401 })
+    }
+
+    // Rate limit: max 3 family creation attempts per user per hour
+    const allowed = await checkRateLimit(authData.user.id, 'families-create', 3, 3600)
+    if (!allowed) {
+      return NextResponse.json({ error: 'Muitas tentativas. Aguarde antes de tentar novamente.' }, { status: 429 })
     }
 
     const { familyName, name, email } = (await request.json()) as CreateFamilyBody

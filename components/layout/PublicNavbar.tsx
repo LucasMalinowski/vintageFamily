@@ -93,7 +93,7 @@ export default function PublicNavbar({ color = 'sidebar', showWordmark = true }:
         </nav>
 
         <div className="flex items-center gap-2">
-          {/* "Teste grátis" hidden on mobile — too tight */}
+          {/* "Teste grátis" hidden on mobile - too tight */}
           <Link
             href="/signup"
             className={`hidden md:inline-flex px-5 py-2 rounded-full text-sm font-semibold hover:opacity-90 transition-vintage ${theme.primary}`}

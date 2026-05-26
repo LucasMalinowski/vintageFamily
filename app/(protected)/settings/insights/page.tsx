@@ -172,7 +172,7 @@ export default function InsightsSettingsPage() {
       <Modal isOpen={upsellOpen} onClose={() => setUpsellOpen(false)} title="Recurso Pro">
         <div className="space-y-4">
           <p className="text-sm text-ink/70">
-            A configuração de frequência de insights é exclusiva do teste gratuito e do plano <strong>Florim Pro</strong>. Com ele você pode receber análises com a frequência que quiser — a partir de 3 dias.
+            A configuração de frequência de insights é exclusiva do teste gratuito e do plano <strong>Florim Pro</strong>. Com ele você pode receber análises com a frequência que quiser, a partir de 3 dias.
           </p>
           <p className="text-sm text-ink/70">
             No plano gratuito, você recebe 2 insights automáticos por mês.
@@ -181,7 +181,7 @@ export default function InsightsSettingsPage() {
             href="/settings/billing"
             className="block w-full text-center py-3 bg-coffee text-paper rounded-lg text-sm font-semibold hover:bg-coffee/90 transition-vintage"
           >
-            Ver planos — a partir de R$19,90/mês
+            Ver planos - a partir de R$19,90/mês
           </a>
           <button
             type="button"

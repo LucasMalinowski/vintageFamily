@@ -17,7 +17,7 @@ type TypewriterProps = {
   betweenMs?: number
   /** Delay (ms) before the first character is typed. Default 0. */
   startDelay?: number
-  /** Whether to loop forever. Default true. Has no effect for single strings — use loop=false to type once. */
+  /** Whether to loop forever. Default true. Has no effect for single strings - use loop=false to type once. */
   loop?: boolean
   /** className applied to the outer <span>. */
   className?: string
@@ -137,7 +137,7 @@ export default function Typewriter({
   const displayed = currentText.slice(0, charIndex)
 
   return (
-    <span ref={containerRef} aria-label={currentText} className={className}>
+    <span ref={containerRef} role="status" aria-label={currentText} className={className}>
       {/* Preserve whitespace and newlines */}
       {displayed.split('\n').map((line, i, arr) => (
         <span key={i}>
@@ -145,7 +145,7 @@ export default function Typewriter({
           {i < arr.length - 1 && <br />}
         </span>
       ))}
-      {/* Caret — always visible, uses global .typewriter-caret keyframe */}
+      {/* Caret - always visible, uses global .typewriter-caret keyframe */}
       <span aria-hidden="true" className="typewriter-caret">|</span>
     </span>
   )

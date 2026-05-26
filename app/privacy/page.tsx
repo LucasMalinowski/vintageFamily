@@ -2,7 +2,7 @@ import PublicNavbar from '@/components/layout/PublicNavbar'
 import PublicFooter from '@/components/layout/PublicFooter'
 
 export const metadata = {
-  title: 'Política de Privacidade — Florim',
+  title: 'Política de Privacidade - Florim',
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -62,10 +62,10 @@ export default function PrivacyPage() {
           <Section title="5. Compartilhamento de dados">
             <p>Seus dados são compartilhados apenas com:</p>
             <ul className="list-disc list-inside space-y-1">
-              <li><strong>Supabase:</strong> banco de dados e autenticação (servidores nos EUA — cláusulas contratuais padrão aplicadas)</li>
+              <li><strong>Supabase:</strong> banco de dados e autenticação (servidores nos EUA, cláusulas contratuais padrão aplicadas)</li>
               <li><strong>Resend:</strong> envio de e-mails transacionais</li>
               <li><strong>Stripe:</strong> processamento de pagamentos (não recebe dados financeiros do Florim)</li>
-              <li><strong>PostHog, Inc.:</strong> análises de uso e comportamento (servidores nos EUA — cláusulas contratuais padrão aplicadas). Ativados apenas com seu consentimento.</li>
+              <li><strong>PostHog, Inc.:</strong> análises de uso e comportamento (servidores nos EUA, cláusulas contratuais padrão aplicadas). Ativados apenas com seu consentimento.</li>
             </ul>
             <p>Não vendemos nem alugamos seus dados a terceiros.</p>
           </Section>

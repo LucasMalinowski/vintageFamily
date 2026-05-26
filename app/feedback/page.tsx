@@ -5,15 +5,15 @@ import PublicNavbar from '@/components/layout/PublicNavbar'
 import PublicFooter from '@/components/layout/PublicFooter'
 
 const LOCATIONS = [
-  'WhatsApp — Criar registro',
-  'WhatsApp — Consultar dados',
-  'WhatsApp — Editar/Apagar registro',
-  'App — Despesas',
-  'App — Receitas',
-  'App — Poupanças',
-  'App — Lembretes',
-  'App — Importar Extrato',
-  'App — Configurações',
+  'WhatsApp - Criar registro',
+  'WhatsApp - Consultar dados',
+  'WhatsApp - Editar/Apagar registro',
+  'App - Despesas',
+  'App - Receitas',
+  'App - Poupanças',
+  'App - Lembretes',
+  'App - Importar Extrato',
+  'App - Configurações',
   'Outro',
 ]
 
@@ -64,7 +64,7 @@ export default function FeedbackPage() {
         <div className="max-w-xl mx-auto px-5 pb-16 pt-24 md:px-6 md:pt-36">
           <h1 className="text-4xl font-serif text-coffee mb-2">Feedback</h1>
           <p className="text-sm text-ink/60 font-body mb-10">
-            Encontrou um problema ou tem uma sugestão? Conta pra gente — cada feedback nos ajuda a melhorar.
+            Encontrou um problema ou tem uma sugestão? Conta pra gente, cada feedback nos ajuda a melhorar.
           </p>
 
           {success ? (
@@ -131,7 +131,7 @@ export default function FeedbackPage() {
               </div>
 
               <div className="border-t border-border pt-5">
-                <p className="text-xs text-ink/50 font-body mb-4">Dados de contato (opcionais) — preencha se quiser que a gente entre em contato:</p>
+                <p className="text-xs text-ink/50 font-body mb-4">Dados de contato (opcionais), preencha se quiser que a gente entre em contato:</p>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <div>
                     <label htmlFor="name" className="block text-xs font-medium text-ink/70 mb-1">Nome</label>

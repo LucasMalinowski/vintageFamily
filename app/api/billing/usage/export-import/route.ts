@@ -4,7 +4,7 @@ import { hasBillingAccess } from '@/lib/billing/access'
 import { checkAndIncrementExportImport, getUsageCounters } from '@/lib/billing/free-tier'
 import { FREE_TIER_LIMITS } from '@/lib/billing/constants'
 
-// GET — check remaining without consuming
+// GET - check remaining without consuming
 export async function GET(request: Request) {
   try {
     const accessToken = getAccessTokenFromAuthHeader(request)
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
   }
 }
 
-// POST — check and consume one unit
+// POST - check and consume one unit
 export async function POST(request: Request) {
   try {
     const accessToken = getAccessTokenFromAuthHeader(request)

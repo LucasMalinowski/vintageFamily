@@ -116,12 +116,12 @@ export class WhatsAppQueryHandler {
       }
     }
 
-    // Dreams — no classification needed, just list
+    // Dreams - no classification needed, just list
     if (payload.savings?.length) {
       parts.push(WhatsAppQueryHandler.buildSavingsMessage(payload.savings, period))
     }
 
-    // Reminders — no classification needed, just list
+    // Reminders - no classification needed, just list
     if (payload.reminders?.length) {
       parts.push(WhatsAppQueryHandler.buildRemindersMessage(payload.reminders, period))
     }
@@ -168,7 +168,7 @@ export class WhatsAppQueryHandler {
       const ctxRows = allRows.filter(r => ctxSet.has(r.idx))
       if (ctxRows.length) {
         const ctxTotal = ctxRows.reduce((s, r) => s + r.amount_cents, 0)
-        msg += `\n\n_Relacionado — ${result.context_label}: *${formatBRL(ctxTotal)}*_`
+        msg += `\n\n_Relacionado - ${result.context_label}: *${formatBRL(ctxTotal)}*_`
       }
     }
 
@@ -188,7 +188,7 @@ export class WhatsAppQueryHandler {
 
     const display = rows.slice(0, 10)
     display.forEach((r, i) => {
-      lines.push(`${i + 1}. ${dateBR(r.date)}: ${r.description} (${r.category}) — *${formatBRL(r.amount_cents)}*`)
+      lines.push(`${i + 1}. ${dateBR(r.date)}: ${r.description} (${r.category}) - *${formatBRL(r.amount_cents)}*`)
     })
 
     lines.push(`\n_Para editar ou apagar: "edita o 2 para 60" ou "apaga o 1"_`)
@@ -221,7 +221,7 @@ export class WhatsAppQueryHandler {
     const periodStr = period ? ` ${period}` : ''
     if (topRows.length === 1) {
       const r = topRows[0]
-      return `Seu maior gasto${periodStr}: *${r.description}* em ${dateBR(r.date)} — *${formatBRL(r.amount_cents)}*`
+      return `Seu maior gasto${periodStr}: *${r.description}* em ${dateBR(r.date)} - *${formatBRL(r.amount_cents)}*`
     }
 
     const lines = [
@@ -238,7 +238,7 @@ export class WhatsAppQueryHandler {
       .sort((a, b) => b.total - a.total)
 
     if (sorted.length > 1) {
-      lines.push(`\n2º lugar: *${sorted[1].cat}* — *${formatBRL(sorted[1].total)}*`)
+      lines.push(`\n2º lugar: *${sorted[1].cat}* - *${formatBRL(sorted[1].total)}*`)
     }
 
     return lines.join('\n')
@@ -271,7 +271,7 @@ export class WhatsAppQueryHandler {
     const lines = [`Seus ${label}${periodStr}:\n`]
 
     rows.slice(0, 10).forEach((r, i) => {
-      lines.push(`${i + 1}. ${dateBR(r.date)}: ${r.description} (${r.category}) — *${formatBRL(r.amount_cents)}*`)
+      lines.push(`${i + 1}. ${dateBR(r.date)}: ${r.description} (${r.category}) - *${formatBRL(r.amount_cents)}*`)
     })
 
     lines.push(`\n_Para editar ou apagar: "edita o 2 para 60" ou "apaga o 1"_`)
@@ -310,7 +310,7 @@ export class WhatsAppQueryHandler {
     if (pending.length) {
       lines.push('_Pendentes:_')
       pending.forEach(r => {
-        const due = r.due_date ? ` — vence ${dateBR(r.due_date)}` : ''
+        const due = r.due_date ? ` - vence ${dateBR(r.due_date)}` : ''
         lines.push(`- ${r.title}${due}`)
       })
     }

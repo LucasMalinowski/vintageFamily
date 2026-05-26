@@ -7,15 +7,15 @@ import { getAuthBearerToken } from '@/lib/billing/client'
 import { supabase } from '@/lib/supabase'
 
 const LOCATIONS = [
-  'WhatsApp — Criar registro',
-  'WhatsApp — Consultar dados',
-  'WhatsApp — Editar/Apagar registro',
-  'App — Despesas',
-  'App — Receitas',
-  'App — Poupanças',
-  'App — Lembretes',
-  'App — Importar Extrato',
-  'App — Configurações',
+  'WhatsApp - Criar registro',
+  'WhatsApp - Consultar dados',
+  'WhatsApp - Editar/Apagar registro',
+  'App - Despesas',
+  'App - Receitas',
+  'App - Poupanças',
+  'App - Lembretes',
+  'App - Importar Extrato',
+  'App - Configurações',
   'Outro',
 ]
 
@@ -177,7 +177,7 @@ export default function AdminFeedbackPage() {
                         {TYPE_LABELS[fb.type] ?? fb.type}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-ink/70">{fb.location ?? <span className="text-ink/30">—</span>}</td>
+                    <td className="px-4 py-3 text-xs text-ink/70">{fb.location ?? <span className="text-ink/30">-</span>}</td>
                     <td className="px-4 py-3 max-w-xs">
                       {expanded === fb.id ? (
                         <div>
@@ -198,7 +198,7 @@ export default function AdminFeedbackPage() {
                         {fb.name && <p className="font-medium">{fb.name}</p>}
                         {fb.email && <a href={`mailto:${fb.email}`} className="text-coffee underline">{fb.email}</a>}
                         {fb.phone && <p>{fb.phone}</p>}
-                        {!fb.name && !fb.email && !fb.phone && <span className="text-ink/30">—</span>}
+                        {!fb.name && !fb.email && !fb.phone && <span className="text-ink/30">-</span>}
                       </div>
                     </td>
                   </tr>

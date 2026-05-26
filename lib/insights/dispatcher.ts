@@ -41,7 +41,7 @@ export async function dispatchInsights(
 
     if (channels.includes('whatsapp') && member.phone_number) {
       try {
-        const header = type === 'proactive' ? '💡 *Insights do mês — Florim*\n\n' : '💡 *Insight sob demanda — Florim*\n\n'
+        const header = type === 'proactive' ? '💡 *Insights do mês - Florim*\n\n' : '💡 *Insight sob demanda - Florim*\n\n'
         const templateName = process.env.WHATSAPP_INSIGHTS_TEMPLATE_NAME
         const result = templateName
           ? await whatsAppService.sendTemplateMessage(member.phone_number, templateName, [period, content])

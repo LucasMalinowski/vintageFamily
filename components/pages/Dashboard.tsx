@@ -129,7 +129,7 @@ export default function Dashboard() {
       loadReminders()
       loadPendingPayables()
     } else {
-      // familyId not yet available — clear loading state so cards don't spin forever
+      // familyId not yet available - clear loading state so cards don't spin forever
       setLoading(false)
       setLoadingPayables(false)
     }
@@ -332,22 +332,22 @@ export default function Dashboard() {
         variant="textured"
       />
       <div className="bg-paper">
-        {/* Mobile hero — full-width, no rounded corners */}
+        {/* Mobile hero - full-width, no rounded corners */}
         <div className="md:hidden bg-[url('/texture-green.png')] bg-cover bg-center py-8 text-center text-paper">
           <p className="text-[10px] tracking-[0.22em] uppercase text-paper/60 mb-3 font-medium">
-            Família {familyName || '—'}
+            Família {familyName || '-'}
           </p>
           <h1 className="text-3xl font-serif font-thin text-paper leading-snug px-6">
-            Livro de Finanças<br/>da Família {familyName || '—'}
+            Livro de Finanças<br/>da Família {familyName || '-'}
           </h1>
           <div className="w-10 h-px bg-gold/60 mx-auto mt-5" />
         </div>
 
         <div className="max-w-7xl mx-auto px-6 pb-8">
-          {/* Desktop hero — inside container with rounded corners */}
+          {/* Desktop hero - inside container with rounded corners */}
           <div className="hidden md:block rounded-[20px] overflow-hidden mb-8 bg-[url('/texture-green.png')] bg-cover bg-center py-8 text-center text-paper">
             <h1 className="text-4xl font-serif font-thin text-paper leading-snug px-6">
-              Livro de Finanças<br/>da Família {familyName || '—'}
+              Livro de Finanças<br/>da Família {familyName || '-'}
             </h1>
             <div className="w-10 h-px bg-gold/60 mx-auto mt-5" />
           </div>

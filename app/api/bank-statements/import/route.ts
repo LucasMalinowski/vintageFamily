@@ -26,7 +26,7 @@ const detectFormat = (fileName: string, mimeType: string): StatementFileFormat |
 function detectFormatFromBuffer(buf: Buffer): StatementFileFormat | null {
   const head = buf.slice(0, 128).toString('utf8', 0, 128)
   if (head.startsWith('OFXHEADER') || head.startsWith('<OFX')) return 'ofx'
-  // CSV: must be printable text — reject if high-density non-printable bytes found
+  // CSV: must be printable text - reject if high-density non-printable bytes found
   const nonPrintable = buf.slice(0, 512).filter((b) => b < 9 || (b > 13 && b < 32)).length
   if (nonPrintable > 2) return null
   return 'csv'

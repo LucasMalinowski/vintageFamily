@@ -13,4 +13,4 @@ CREATE INDEX IF NOT EXISTS web_handoff_tokens_expires_idx ON web_handoff_tokens(
 
 -- RLS: this table is only ever touched by service-role key (backend), never by client JWT
 ALTER TABLE web_handoff_tokens ENABLE ROW LEVEL SECURITY;
--- No policies needed — all access is via supabaseService (service role bypasses RLS)
+-- No policies needed - all access is via supabaseService (service role bypasses RLS)

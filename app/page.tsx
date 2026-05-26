@@ -26,7 +26,7 @@ import Typewriter from '@/components/Typewriter'
 const PROBLEMS = [
   {
     headline: 'O dinheiro vai embora. Ninguém sabe para onde.',
-    body: 'Sem uma visão compartilhada, cada membro da família enxerga metade — e as decisões acontecem no escuro.',
+    body: 'Sem uma visão compartilhada, cada membro da família enxerga metade, e as decisões acontecem no escuro.',
   },
   {
     headline: 'Os sonhos ficam sempre para o próximo mês.',
@@ -55,7 +55,7 @@ const FEATURES = [
   {
     icon: BanknoteArrowUp,
     title: 'Receitas',
-    copy: 'Salários, rendas extras e entradas previstas — visíveis para toda a família.',
+    copy: 'Salários, rendas extras e entradas previstas, visíveis para toda a família.',
   },
   {
     icon: PiggyBank,
@@ -108,17 +108,17 @@ const STEPS = [
   {
     number: '01',
     title: 'Cadastre sua família',
-    body: 'Crie uma conta, dê um nome para a família e convide quem quiser — cônjuge, filhos, pais.',
+    body: 'Crie uma conta, dê um nome para a família e convide quem quiser, cônjuge, filhos, pais.',
   },
   {
     number: '02',
     title: 'Registre receitas e despesas',
-    body: 'Lance contas, parcelas e poupanças no app — ou mande uma mensagem no WhatsApp.',
+    body: 'Lance contas, parcelas e poupanças no app, ou mande uma mensagem no WhatsApp.',
   },
   {
     number: '03',
     title: 'Acompanhe juntos',
-    body: 'Gráficos, comparativos mensais e saldo da família em tempo real — de qualquer dispositivo.',
+    body: 'Gráficos, comparativos mensais e saldo da família em tempo real, de qualquer dispositivo.',
   },
 ]
 
@@ -219,7 +219,7 @@ function WhatsAppMockup() {
           />
           <WaMessage
             from="bot"
-            text={`✅ Criados:\n💸 R$ 50,00 — mercado\n   (Alimentação) · pago`}
+            text={`✅ Criados:\n💸 R$ 50,00 - mercado\n   (Alimentação) · pago`}
             time="09:41"
           />
           <WaMessage
@@ -229,7 +229,7 @@ function WhatsAppMockup() {
           />
           <WaMessage
             from="bot"
-            text={`✅ Criados:\n💸 R$ 150,00 — tênis\n   (R$ 50,00 × 3 — 1ª paga)`}
+            text={`✅ Criados:\n💸 R$ 150,00 - tênis\n   (R$ 50,00 × 3 - 1ª paga)`}
             time="09:43"
           />
           <WaMessage
@@ -252,13 +252,13 @@ function WhatsAppMockup() {
 
 export default function Home() {
   return (
-    <div className="flex flex-col">
+    <main className="flex flex-col">
 
       {/* ── 1. Hero ────────────────────────── bg-paper ────────── */}
       <div className="relative overflow-hidden bg-paper h-[440px] md:h-[88vh]">
         <PublicNavbar color="sidebar" showWordmark={false} />
 
-        {/* Mobile — full-bleed video */}
+        {/* Mobile - full-bleed video */}
         <div className="md:hidden absolute inset-0 flex flex-col justify-end px-7 pb-10">
           <video
             className="absolute inset-0 w-full h-full object-cover"
@@ -271,7 +271,7 @@ export default function Home() {
               Cuide das finanças da família, juntos.
             </h1>
             <p className="text-paper/80 text-[14px] leading-relaxed mb-6">
-              Despesas, sonhos, combinados e insights — num só lugar. Plano gratuito, sem cartão.
+              Despesas, sonhos, combinados e insights num só lugar. Plano gratuito, sem cartão.
             </p>
             <div className="flex gap-[10px]">
               <Link href="/signup" className="px-5 py-3 rounded-full bg-gold text-paper font-bold text-[14px] hover:opacity-90 transition-vintage">
@@ -284,7 +284,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Desktop — two-column */}
+        {/* Desktop - two-column */}
         <div className="hidden md:grid h-full lg:grid-cols-[2fr,1fr]">
           <section className="bg-paper flex flex-col justify-center pt-[52px] pb-12 pl-24 pr-12 lg:pl-32 lg:pr-16">
             <div className="max-w-[560px]">
@@ -295,7 +295,7 @@ export default function Home() {
                 Cuide das finanças<br />da família, juntos.
               </h1>
               <p className="text-sidebar/70 font-light text-[17px] leading-relaxed mb-7 max-w-[440px]">
-                O Florim organiza contas, receitas, poupanças, lembretes e insights com IA —
+                O Florim organiza contas, receitas, poupanças, lembretes e insights com IA
                 com dados compartilhados em tempo real. Comece grátis e evolua quando fizer sentido.
               </p>
               <div className="flex gap-3 mb-7">
@@ -326,7 +326,7 @@ export default function Home() {
             Todo mês a mesma história.
           </h2>
           <p className="text-center text-paper/50 text-[13px] md:text-[17px] font-light mb-8 md:mb-12">
-            Três problemas que toda família conhece — e que o Florim resolve.
+            Três problemas que toda família conhece e que o Florim resolve.
           </p>
           <div className="grid gap-4 md:grid-cols-3 md:gap-6">
             {PROBLEMS.map((p) => (
@@ -360,7 +360,7 @@ export default function Home() {
               </h2>
               <p className="text-[14px] md:text-[16px] font-light text-ink/65 leading-relaxed mb-7">
                 Sem precisar abrir o app. É só mandar uma mensagem como você falaria com alguém.
-                O Florim entende — e lança despesas, receitas, parcelas, poupanças e lembretes,
+                O Florim entende e lança despesas, receitas, parcelas, poupanças e lembretes,
                 sugere categorias e responde perguntas sobre os números da família.
               </p>
               <ul className="space-y-3">
@@ -532,7 +532,7 @@ export default function Home() {
                 o que elas são: uma conversa entre pessoas que constroem algo juntas.
               </p>
               <p className="text-[14px] md:text-[16px] font-light text-ink/60 leading-relaxed mb-6">
-                O nome vem do <em>fiorino d&apos;oro</em> — a moeda dourada das famílias florentinas do
+                O nome vem do <em>fiorino d&apos;oro</em>, a moeda dourada das famílias florentinas do
                 século XIII. Valor sólido, baseado em confiança. Essa é a nossa referência.
               </p>
               <p className="font-ptSerif italic text-[16px] md:text-[20px] text-gold leading-relaxed min-h-[3em]">
@@ -557,7 +557,7 @@ export default function Home() {
           <h2 className="font-serif font-light text-[30px] md:text-[44px] text-paper mb-4 leading-[1.1]">
             Comece hoje.<br className="md:hidden" /> A família agradece.
           </h2>
-          <p className="text-paper/55 text-[14px] md:text-[16px] font-light leading-relaxed mb-8">
+          <p className="text-paper/80 text-[14px] md:text-[16px] font-light leading-relaxed mb-8">
             Plano gratuito disponível. Sem cartão de crédito. Cancele quando quiser.
           </p>
           <Link
@@ -570,6 +570,6 @@ export default function Home() {
       </section>
 
       <PublicFooter color="sidebar" />
-    </div>
+    </main>
   )
 }

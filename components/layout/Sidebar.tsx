@@ -293,7 +293,7 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile menu button — hidden since BottomNav handles navigation */}
+      {/* Mobile menu button - hidden since BottomNav handles navigation */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="fixed top-4 left-4 z-50 hidden w-10 h-10 bg-sidebar rounded-lg flex items-center justify-center text-white shadow-vintage"

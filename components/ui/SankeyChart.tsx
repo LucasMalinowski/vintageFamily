@@ -32,7 +32,7 @@ interface SankeyChartProps {
   nodes: SankeyNode[]
   links: SankeyLink[]
   width?: number
-  height?: number  // ignored — auto-computed
+  height?: number  // ignored - auto-computed
   currency?: boolean
 }
 
@@ -153,7 +153,7 @@ function SvgContent({
             </linearGradient>
           )
         })}
-        {/* Per-node clip paths — 1px inset so text is always contained inside the pill */}
+        {/* Per-node clip paths - 1px inset so text is always contained inside the pill */}
         {layoutNodes.map((n) => {
           const x0 = n.x0 ?? 0, x1 = n.x1 ?? 0, y0 = n.y0 ?? 0, y1 = n.y1 ?? 0
           return (
@@ -194,7 +194,7 @@ function SvgContent({
         const cx = x0 + w / 2
         const cy = y0 + h / 2
         const label = n.label ?? ''
-        // Dynamic font size — shrink for very short nodes so text fits
+        // Dynamic font size - shrink for very short nodes so text fits
         const fs = h < 22 ? 8 : w < 90 ? 9 : 10
         const maxChars = Math.floor(w / 6.5)
         const displayLabel = label.length > maxChars ? label.slice(0, maxChars - 1) + '…' : label
@@ -204,7 +204,7 @@ function SvgContent({
         const dimmed      = hasFocus && !isConnected
         const clickable   = interactive && !!onNodeClick
 
-        // Lines to show — thresholds based on actual font size so small nodes still get labels
+        // Lines to show - thresholds based on actual font size so small nodes still get labels
         // Using dominantBaseline="middle": text glyph is centered on the given y
         // Gap between two lines: fs * 0.65 above/below center
         const gap = fs * 0.65
@@ -278,7 +278,7 @@ function SankeyModal({
 }) {
   const canvasRef = useRef<HTMLDivElement>(null)
 
-  // Refs for synchronous access in event handlers — avoids stale closure issues
+  // Refs for synchronous access in event handlers - avoids stale closure issues
   const panRef  = useRef({ x: 0, y: 0 })
   const zoomRef = useRef(1)
   const dragRef = useRef({ active: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0 })
@@ -549,7 +549,7 @@ export default function SankeyChart({ nodes, links, currency = true, height: _he
 
   return (
     <div ref={wrapperRef} className="relative w-full">
-      {/* Static preview — non-interactive, scaled to fit card height */}
+      {/* Static preview - non-interactive, scaled to fit card height */}
       <div className="relative overflow-hidden rounded-lg" style={{ height: PREVIEW_HEIGHT }}>
         <svg
           width="100%"

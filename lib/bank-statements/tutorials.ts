@@ -55,7 +55,7 @@ export const BANK_TUTORIALS: BankTutorial[] = [
       { title: 'Salve o arquivo e importe aqui', detail: 'Aguarde o arquivo CSV ser gerado e use-o nesta tela.' },
     ],
     observations: [
-      'O C6 envia PDFs protegidos por senha que não podem ser lidos automaticamente — use CSV.',
+      'O C6 envia PDFs protegidos por senha que não podem ser lidos automaticamente, use CSV.',
       'O limite máximo do C6 é de 180 dias por exportação.',
       'As telas do banco podem mudar com o tempo.',
     ],

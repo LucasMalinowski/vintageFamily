@@ -660,7 +660,7 @@ export default function Comparatives() {
           />
         </div>
 
-        {/* Scrollable content area — mobile only internal scroll */}
+        {/* Scrollable content area - mobile only internal scroll */}
         <div className={`flex-1 min-h-0 overflow-y-auto md:overflow-visible w-full flex flex-col md:flex-row md:px-6 md:pb-4 ${filtersOpen ? 'md:gap-4' : 'md:gap-0'} md:items-stretch`}>
           <div className="hidden md:contents">
           <FilterSidebar
@@ -886,7 +886,7 @@ export default function Comparatives() {
           </div>
         </div>
 
-        {/* Mobile footer — sticky outside scroll */}
+        {/* Mobile footer - sticky outside scroll */}
         <div className="md:hidden shrink-0 h-[44px] border-t border-border bg-offWhite flex items-center justify-center px-6">
           <p className="text-center text-[13px] text-gold italic">
             O equilíbrio financeiro nasce quando cada número encontra seu lugar.

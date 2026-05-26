@@ -4,8 +4,20 @@ import Providers from '@/components/Providers'
 import CookieBanner from '@/components/CookieBanner'
 
 export const metadata: Metadata = {
-  title: 'Florim',
-  description: 'Gestão financeira familiar com alma vintage',
+  title: {
+    default: 'Florim - Gestão financeira familiar',
+    template: '%s | Florim',
+  },
+  description: 'Gestão financeira familiar com alma vintage. Controle suas finanças em família, com despesas, receitas, metas de poupança e insights semanais.',
+  metadataBase: new URL('https://florim.app'),
+  alternates: {
+    canonical: '/',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
   icons: {
     icon: [
       { url: '/logo-small.png', sizes: '500x500', type: 'image/png' },
@@ -15,10 +27,25 @@ export const metadata: Metadata = {
   },
   openGraph: {
     siteName: 'Florim',
-    title: 'Florim — Gestão financeira familiar',
-    description: 'Gestão financeira familiar com alma vintage',
+    title: 'Florim - Gestão financeira familiar',
+    description: 'Gestão financeira familiar com alma vintage. Controle suas finanças em família, com despesas, receitas, metas de poupança e insights semanais.',
     url: 'https://florim.app',
     type: 'website',
+    locale: 'pt_BR',
+    images: [
+      {
+        url: '/og',
+        width: 1200,
+        height: 630,
+        alt: 'Florim - Gestão financeira familiar',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Florim - Gestão financeira familiar',
+    description: 'Gestão financeira familiar com alma vintage.',
+    images: ['/og'],
   },
 }
 

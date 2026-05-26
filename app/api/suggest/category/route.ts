@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ categoryId: null })
   }
 
-  // Step 1: heuristic — check last 2 months of transactions for matching description
+  // Step 1: heuristic - check last 2 months of transactions for matching description
   const twoMonthsAgo = new Date()
   twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2)
   const sinceDate = twoMonthsAgo.toISOString().slice(0, 10)

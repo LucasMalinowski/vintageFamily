@@ -141,7 +141,7 @@ export async function sendInviteEmail({
   await resend.emails.send({
     from,
     to,
-    subject: `Convite para a família ${safeFamilyName} — Florim`,
+    subject: `Convite para a família ${safeFamilyName} - Florim`,
     html: emailShell(
       `Você foi convidado para a família ${safeFamilyName}`,
       body,
@@ -210,13 +210,16 @@ export async function sendInsightsEmail({
     <p style="margin:0 0 20px;">Olá, <strong>${safeName}</strong>! Aqui estão seus insights financeiros de <strong>${safePeriod}</strong>.</p>
     ${insightBlocks}
     ${ctaButton(`${appUrl}/insights`, 'Ver todos os insights')}
-    <p style="margin:20px 0 0;font-size:13px;color:#8C7B6B;">Você pode desativar esses emails nas <a href="${appUrl}/settings/profile" style="color:#3E5F4B;">configurações do perfil</a>.</p>
+    <p style="margin:20px 0 0;font-size:13px;color:#8C7B6B;border-top:1px solid #e8e2d9;padding-top:16px;">
+      Recebeu este email porque você tem insights ativados no Florim.
+      <a href="${appUrl}/settings/insights" style="color:#3E5F4B;text-decoration:underline;">Desativar insights por email</a>.
+    </p>
   `
 
   await resend.emails.send({
     from,
     to,
-    subject: `Seus insights financeiros — ${safePeriod} — Florim`,
+    subject: `Seus insights financeiros - ${safePeriod} - Florim`,
     html: emailShell(
       `Insights de ${safePeriod}`,
       body,
@@ -241,7 +244,7 @@ export async function sendAccountDeletionEmail({
   await resend.emails.send({
     from,
     to,
-    subject: 'Sua conta foi excluída — Florim',
+    subject: 'Sua conta foi excluída - Florim',
     html: emailShell(
       'Conta excluída',
       body,

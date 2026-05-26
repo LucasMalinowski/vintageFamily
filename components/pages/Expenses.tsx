@@ -1156,7 +1156,7 @@ export default function Expenses() {
         />
       </div>
 
-      {/* Scrollable cards area — mobile only internal scroll */}
+      {/* Scrollable cards area - mobile only internal scroll */}
       <div className="flex-1 min-h-0 overflow-y-auto md:overflow-visible">
         <div className={`w-full flex flex-col md:flex-row md:px-6 md:pb-4 ${filtersOpen ? 'md:gap-4' : 'md:gap-0'} md:items-stretch`}>
           <div className="hidden md:contents">
@@ -1254,7 +1254,7 @@ export default function Expenses() {
                 {total > 0 && (expenseSankeyData.nodes.length > 1) && (
                   <div className="bg-white rounded-xl border border-border shadow-soft p-4 md:p-5">
                     <h3 className="text-sm font-semibold text-ink font-serif mb-3">
-                      Fluxo de despesas ({monthLabel}/{selectedYear !== ALL_YEARS_VALUE ? selectedYear : '—'})
+                      Fluxo de despesas ({monthLabel}/{selectedYear !== ALL_YEARS_VALUE ? selectedYear : '-'})
                     </h3>
                     {/* Desktop: 3-col sankey + legend */}
                     <div className="hidden md:flex gap-6 items-start">
@@ -1512,7 +1512,7 @@ export default function Expenses() {
         </div>
       </div>
 
-      {/* Mobile footer — sticky outside scroll */}
+      {/* Mobile footer - sticky outside scroll */}
       <div className="md:hidden shrink-0 px-[18px] pt-3 pb-2 border-t border-border bg-offWhite">
         <div className="flex flex-row gap-3">
           <div className="flex-1 rounded-[16px] px-4 py-4 bg-petrol text-white text-center shadow-soft">
@@ -1776,7 +1776,7 @@ export default function Expenses() {
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-ink/50">Observação</p>
-                <p>{cleanNotes || '—'}</p>
+                <p>{cleanNotes || '-'}</p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-ink/50">Arquivo</p>
@@ -1801,7 +1801,7 @@ export default function Expenses() {
               {detailExpense.created_by && (
                 <div>
                   <p className="text-xs uppercase tracking-wide text-ink/50">Criado por</p>
-                  <p>{familyMembers.get(detailExpense.created_by) ?? '—'}</p>
+                  <p>{familyMembers.get(detailExpense.created_by) ?? '-'}</p>
                 </div>
               )}
             </div>

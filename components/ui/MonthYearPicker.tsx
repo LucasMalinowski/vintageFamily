@@ -54,7 +54,7 @@ export default function MonthYearPicker({
   }
 
   const monthName = MONTHS.find((m) => m.value === month)?.label.slice(0, 3) ?? ''
-  const label = isAll ? `Todos / ${year > 0 ? year : '—'}` : `${monthName} ${year > 0 ? year : ''}`
+  const label = isAll ? `Todos / ${year > 0 ? year : '-'}` : `${monthName} ${year > 0 ? year : ''}`
 
   return (
     <div className="relative" ref={ref}>

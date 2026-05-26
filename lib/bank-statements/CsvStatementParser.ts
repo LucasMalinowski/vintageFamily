@@ -311,7 +311,7 @@ export class CsvStatementParser {
       const line = rawLines[i]
       const row = parseCsvRow(line, delimiter)
 
-      // Rows shorter than two fields are spacers or section dividers — skip
+      // Rows shorter than two fields are spacers or section dividers - skip
       if (row.length < 2) continue
 
       // Skip rows whose date cell doesn't parse (totals, footnotes, etc.)
@@ -359,7 +359,7 @@ export class CsvStatementParser {
         } else if (creditAmt === 0 && debitAmt === 0) {
           continue // zero-amount row (e.g. waived fee)
         } else {
-          // Both columns populated — shouldn't happen in real bank exports;
+          // Both columns populated - shouldn't happen in real bank exports;
           // fall back to keyword detection with reduced confidence
           amount = Math.max(debitAmt, creditAmt)
           const fallback = detectTransactionType(rawDescription, line)

@@ -192,7 +192,7 @@ function InvitePageContent() {
           </p>
         </div>
 
-        {/* Form card — bottom sheet */}
+        {/* Form card - bottom sheet */}
         <div className="bg-paper rounded-t-[28px] px-7 pt-8 pb-10 shrink-0 overflow-y-auto max-h-[72vh]">
           <h2 className="font-serif text-[22px] text-coffee mb-5">Aceitar convite</h2>
           {formBody}

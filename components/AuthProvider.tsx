@@ -80,12 +80,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
       } catch {
-        // network error — retry
+        // network error - retry
       }
       if (attempt < 2) await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)))
     }
 
-    // All retries exhausted — do NOT sign out; user stays authenticated
+    // All retries exhausted - do NOT sign out; user stays authenticated
     if (process.env.NODE_ENV === 'development') {
       console.warn('[AuthProvider] familyId lookup failed after retries; keeping user session')
     }
@@ -129,11 +129,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           window.localStorage.removeItem(LOCAL_STORAGE_KEYS.familyName)
         }
       }
-      // Other events without a session (e.g. TOKEN_REFRESHED failure) are ignored —
+      // Other events without a session (e.g. TOKEN_REFRESHED failure) are ignored -
       // Supabase will emit SIGNED_OUT if the session is truly gone
     })
 
-    // Initial session check — no timeout, no false logout on slow networks
+    // Initial session check - no timeout, no false logout on slow networks
     supabase.auth.getSession()
       .then(async ({ data: { session } }) => {
         if (!mountedRef.current) return
@@ -141,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await applyAuthenticatedSession(session)
         } else {
           // PWA cold-start: localStorage may be empty but cookies (set by SSR middleware)
-          // may still hold a valid refresh token — attempt one silent refresh before logout.
+          // may still hold a valid refresh token - attempt one silent refresh before logout.
           try {
             const { data: refreshData } = await supabase.auth.refreshSession()
             if (!mountedRef.current) return
@@ -150,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               return
             }
           } catch {
-            // refresh failed — fall through to unauthenticated
+            // refresh failed - fall through to unauthenticated
           }
           if (!mountedRef.current) return
           setUser(null)
@@ -159,7 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {
         if (!mountedRef.current) return
-        // Transient error — do not clear user or cookies; show error state
+        // Transient error - do not clear user or cookies; show error state
         if (process.env.NODE_ENV === 'development') {
           console.warn('[AuthProvider] getSession failed; preserving existing auth state')
         }

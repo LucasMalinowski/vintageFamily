@@ -430,8 +430,10 @@ export default function PricingExperience({
               muted
               loop
               playsInline
-              src="/plans-video.mp4"
-            />
+            >
+              <source src="/plans-video.webm" type="video/webm" />
+              <source src="/plans-video.mp4" type="video/mp4" />
+            </video>
           </section>
 
           <section className="relative min-h-[60vh] bg-sidebar px-8 text-paper sm:px-12 lg:px-14">

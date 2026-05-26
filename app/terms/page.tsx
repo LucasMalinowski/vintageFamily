@@ -2,7 +2,7 @@ import PublicNavbar from '@/components/layout/PublicNavbar'
 import PublicFooter from '@/components/layout/PublicFooter'
 
 export const metadata = {
-  title: 'Termos de Uso — Florim',
+  title: 'Termos de Uso - Florim',
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -57,7 +57,24 @@ export default function TermsPage() {
             </p>
           </Section>
 
-          <Section title="5. Responsabilidades do usuário">
+          <Section title="5. Política de reembolso">
+            <p>
+              O Florim aceita pedidos de reembolso nas seguintes condições:
+            </p>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Solicitação realizada em até <strong>7 (sete) dias corridos</strong> após a data da cobrança;</li>
+              <li>O pedido deve ser enviado para <a href="mailto:contato@florim.app" className="text-coffee underline underline-offset-2 hover:text-coffee/80">contato@florim.app</a> com o assunto &quot;Reembolso&quot;, informando o e-mail da conta e o motivo;</li>
+              <li>Reembolsos são processados pelo mesmo método de pagamento original em até 10 dias úteis, conforme as políticas da Stripe, Inc.</li>
+            </ul>
+            <p>
+              Após o prazo de 7 dias, não são concedidos reembolsos proporcionais por período não utilizado. O cancelamento da assinatura interrompe futuras cobranças e o acesso ao plano Pro é mantido até o fim do período vigente.
+            </p>
+            <p>
+              Compras realizadas via App Store (Apple) ou Google Play estão sujeitas às políticas de reembolso da respectiva loja, que se sobrepõem a esta política para compras realizadas nesses canais.
+            </p>
+          </Section>
+
+          <Section title="6. Responsabilidades do usuário">
             <p>O Usuário concorda em:</p>
             <ul className="list-disc list-inside space-y-1">
               <li>Inserir apenas informações verídicas</li>
@@ -68,13 +85,13 @@ export default function TermsPage() {
             </ul>
           </Section>
 
-          <Section title="6. Propriedade intelectual">
+          <Section title="7. Propriedade intelectual">
             <p>
               Todo o conteúdo do Florim (marca, design, código, textos) é propriedade da LUCAS BRAZAU MALINOWSKI DESENVOLVIMENTO DE SOFTWARE LTDA, protegido pela legislação brasileira de propriedade intelectual. O Usuário recebe uma licença limitada, não exclusiva e intransferível para uso pessoal do serviço.
             </p>
           </Section>
 
-          <Section title="7. Dados do usuário">
+          <Section title="8. Dados do usuário">
             <p>
               O Usuário é titular dos dados financeiros que insere no Florim. O Florim trata esses dados exclusivamente para prestação do serviço, conforme a{' '}
               <a href="/privacy" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
@@ -83,13 +100,13 @@ export default function TermsPage() {
             </p>
           </Section>
 
-          <Section title="8. Disponibilidade e manutenção">
+          <Section title="9. Disponibilidade e manutenção">
             <p>
               O Florim emprega esforços razoáveis para manter o serviço disponível 24/7, mas não garante disponibilidade ininterrupta. Podemos realizar manutenções programadas com aviso prévio e responder a incidentes imprevistos sem prévia notificação.
             </p>
           </Section>
 
-          <Section title="9. Limitação de responsabilidade">
+          <Section title="10. Limitação de responsabilidade">
             <p>
               O Florim não se responsabiliza por:
             </p>
@@ -103,25 +120,25 @@ export default function TermsPage() {
             </p>
           </Section>
 
-          <Section title="10. Rescisão">
+          <Section title="11. Rescisão">
             <p>
               O Usuário pode encerrar sua conta a qualquer momento pelo aplicativo. O Florim pode suspender ou encerrar contas que violem estes Termos, com ou sem aviso prévio dependendo da gravidade da violação.
             </p>
           </Section>
 
-          <Section title="11. Alterações nos termos">
+          <Section title="12. Alterações nos termos">
             <p>
               Podemos modificar estes Termos periodicamente. Em caso de alterações materiais, notificaremos por e-mail com antecedência mínima de 15 dias. O uso continuado do serviço após a data de vigência constitui aceitação dos novos termos.
             </p>
           </Section>
 
-          <Section title="12. Lei aplicável e foro">
+          <Section title="13. Lei aplicável e foro">
             <p>
               Estes Termos são regidos pelas leis da República Federativa do Brasil. Fica eleito o foro da Comarca de São Paulo/SP para resolução de quaisquer disputas, com renúncia a qualquer outro, por mais privilegiado que seja.
             </p>
           </Section>
 
-          <Section title="13. Contato">
+          <Section title="14. Contato">
             <p>
               <a href="mailto:contato@florim.app" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
                 contato@florim.app

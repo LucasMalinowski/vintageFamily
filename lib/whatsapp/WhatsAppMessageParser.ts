@@ -616,7 +616,7 @@ async function saveRecord(
 
       const { error } = await supabaseAdmin.from('expenses').insert(rows)
       const catStr = resolvedLabel ? ` (${resolvedLabel})` : ''
-      const line = `💸 ${formatBRL(amount_cents)} — ${record.description}${catStr} _(${formatBRL(perInstallment)} × ${installmentCount} — 1ª parcela paga)_`
+      const line = `💸 ${formatBRL(amount_cents)} - ${record.description}${catStr} _(${formatBRL(perInstallment)} × ${installmentCount} - 1ª parcela paga)_`
       if (error) {
         console.error('[WA] installment insert error:', error.message)
         return { ok: false, line }
@@ -645,7 +645,7 @@ async function saveRecord(
 
     const statusLabel = status === 'paid' ? '_(pago)_' : '_(pendente)_'
     const catStr = resolvedLabel ? ` (${resolvedLabel})` : ''
-    const line = `💸 ${formatBRL(amount_cents)} — ${record.description}${catStr} ${statusLabel}`
+    const line = `💸 ${formatBRL(amount_cents)} - ${record.description}${catStr} ${statusLabel}`
     if (error || !data?.id) {
       console.error('[WA] expense insert error:', error?.message)
       return { ok: false, line }
@@ -673,7 +673,7 @@ async function saveRecord(
       .single()
 
     const catStr = resolvedLabel ? ` (${resolvedLabel})` : ''
-    const line = `💰 ${formatBRL(amount_cents)} — ${record.description}${catStr} _(${status === 'received' ? 'recebido' : 'a receber'})_`
+    const line = `💰 ${formatBRL(amount_cents)} - ${record.description}${catStr} _(${status === 'received' ? 'recebido' : 'a receber'})_`
     if (error || !data?.id) {
       console.error('[WA] income insert error:', error?.message)
       return { ok: false, line }
@@ -706,7 +706,7 @@ async function saveRecord(
   const saving = exactMatches?.[0] ?? partialMatches?.[0] ?? null
 
   if (!saving) {
-    return { ok: false, line: `⭐ ${formatBRL(amount_cents)} — Poupança "${savingName}" não encontrada no Florim` }
+    return { ok: false, line: `⭐ ${formatBRL(amount_cents)} - Poupança "${savingName}" não encontrada no Florim` }
   }
 
   const { data, error } = await supabaseAdmin
@@ -722,7 +722,7 @@ async function saveRecord(
     .select('id')
     .single()
 
-  const line = `⭐ ${formatBRL(amount_cents)} — ${saving.name} (Poupança)`
+  const line = `⭐ ${formatBRL(amount_cents)} - ${saving.name} (Poupança)`
   if (error || !data?.id) {
     console.error('[WA] savings insert error:', error?.message)
     return { ok: false, line }
@@ -787,7 +787,7 @@ async function handleMutation(
       return 'Não foi possível apagar o item. Tente novamente.'
     }
 
-    const amountStr = targetItem.amount_cents > 0 ? ` — ${formatBRL(targetItem.amount_cents)}` : ''
+    const amountStr = targetItem.amount_cents > 0 ? ` - ${formatBRL(targetItem.amount_cents)}` : ''
     return `✅ Removido: ${targetItem.description}${amountStr}`
   }
 
@@ -808,7 +808,7 @@ async function handleMutation(
     return 'Não foi possível editar o item. Tente novamente.'
   }
 
-  return `✅ Atualizado: ${targetItem.description} — ${formatBRL(newAmountCents)}`
+  return `✅ Atualizado: ${targetItem.description} - ${formatBRL(newAmountCents)}`
 }
 
 function findCategoryIdByLabel(

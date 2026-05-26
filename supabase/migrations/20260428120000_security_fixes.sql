@@ -15,7 +15,7 @@ CREATE POLICY "families_select_own"
   FOR SELECT TO authenticated
   USING (created_by = auth.uid() AND deleted_at IS NULL);
 
--- whatsapp_context: no authenticated-role policy — service role only
+-- whatsapp_context: no authenticated-role policy - service role only
 -- (RLS already enabled in 20260426120000; this makes the deny explicit)
 DROP POLICY IF EXISTS "whatsapp_context_deny_clients" ON public.whatsapp_context;
 CREATE POLICY "whatsapp_context_deny_clients"
@@ -24,7 +24,7 @@ CREATE POLICY "whatsapp_context_deny_clients"
   USING (false)
   WITH CHECK (false);
 
--- feedback: no authenticated-role policy — inserts go through service role in API
+-- feedback: no authenticated-role policy - inserts go through service role in API
 DROP POLICY IF EXISTS "feedback_deny_clients" ON public.feedback;
 CREATE POLICY "feedback_deny_clients"
   ON public.feedback

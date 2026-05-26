@@ -47,19 +47,19 @@ export default function LoginPage() {
 
       {/* ── Mobile layout ──────────────────────────────────────── */}
       <div className="flex flex-col min-h-screen md:hidden">
-        {/* Logo — bigger and more prominent */}
+        {/* Logo - bigger and more prominent */}
         <div className="flex flex-col items-center pt-10 pb-2 shrink-0">
           <img src="/logo-florim.png" alt="Florim" className="h-24 object-contain" />
         </div>
 
-        {/* Quote — fixed padding, not flex-1 */}
+        {/* Quote - fixed padding, not flex-1 */}
         <div className="px-10 pt-5 pb-7 text-center shrink-0">
           <p className="font-serif italic text-[20px] text-gold text-center leading-[1.55]">
             &ldquo;Organizar o dinheiro é cuidar do tempo que ainda vamos viver.&rdquo;
           </p>
         </div>
 
-        {/* Form card — flex-1 so it fills all remaining space */}
+        {/* Form card - flex-1 so it fills all remaining space */}
         <div className="flex-1 bg-paper rounded-t-[28px] px-7 pt-8 pb-10">
           <h2 className="font-serif text-[24px] text-coffee mb-5">Entre na sua conta</h2>
           {handoffMessage && (

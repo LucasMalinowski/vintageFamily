@@ -65,7 +65,7 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen bg-paper flex flex-col md:items-center md:justify-center md:p-4">
 
-      {/* Header — logo + title (always visible, adjusts sizing per breakpoint) */}
+      {/* Header - logo + title (always visible, adjusts sizing per breakpoint) */}
       <div className="pt-12 pb-2 px-7 text-center md:mb-8 md:pt-0 shrink-0">
         <img
           src="/logo.png"
@@ -80,7 +80,7 @@ export default function SignUpPage() {
         </p>
       </div>
 
-      {/* Form — flat on mobile, card on desktop */}
+      {/* Form - flat on mobile, card on desktop */}
       <div className="flex-1 md:flex-none w-full md:max-w-md md:bg-offWhite md:rounded-vintage md:border md:border-border md:shadow-vintage md:p-8 overflow-y-auto">
         <div className="px-7 pb-10 md:px-0 md:pb-0">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">

@@ -11,7 +11,7 @@ export default function AboutPage() {
         <PublicNavbar color="paper" showWordmark={false} />
 
         <div className="grid lg:h-full lg:grid-cols-[2fr,1fr]">
-          {/* Content — full page on mobile, left column on desktop */}
+          {/* Content - full page on mobile, left column on desktop */}
           <section className="bg-sidebar px-6 pt-24 pb-12 sm:px-8 lg:px-10 lg:pb-12 lg:pt-24 text-paper">
             <div className="pt-4 lg:px-24 lg:pt-14 max-w-2xl lg:max-w-none mx-auto">
               <h1 className="text-[24px] sm:text-[28px] lg:text-[34px] leading-[1.15] font-normal font-serif text-paper mb-5">
@@ -51,7 +51,7 @@ export default function AboutPage() {
             </div>
           </section>
 
-          {/* Video — desktop only */}
+          {/* Video - desktop only */}
           <section className="hidden lg:block relative h-full">
             <video
               className="h-full w-full object-cover"

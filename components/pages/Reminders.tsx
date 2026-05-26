@@ -192,7 +192,7 @@ export default function Reminders() {
           }
         />
 
-        {/* Scrollable cards area — mobile only internal scroll */}
+        {/* Scrollable cards area - mobile only internal scroll */}
         <div className="flex-1 min-h-0 overflow-y-auto md:overflow-visible px-[18px] pt-3 pb-4 md:px-6 md:pt-0">
           {loading ? (
             <div className="py-12 text-center text-ink/60">Carregando...</div>
@@ -294,7 +294,7 @@ export default function Reminders() {
           )}
         </div>
 
-        {/* Mobile footer — sticky outside scroll */}
+        {/* Mobile footer - sticky outside scroll */}
         <div className="md:hidden shrink-0 px-[18px] pt-2 pb-2 border-t border-border bg-offWhite">
           <button
             onClick={() => setIsModalOpen(true)}

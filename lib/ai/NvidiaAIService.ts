@@ -20,7 +20,7 @@ export interface IntentClassification {
   edit_amount?: number | null
 }
 
-// Used to send items to the classifier — no amounts (AI doesn't need them)
+// Used to send items to the classifier - no amounts (AI doesn't need them)
 export interface ClassifyItem {
   idx: number
   date: string
@@ -38,7 +38,7 @@ export interface ClassifyResult {
 
 const DEFAULT_INTENT: IntentClassification = { type: 'record', data_needed: [], time_range: 'current_month', focus: null, status_filter: null, item_index: null, edit_amount: null }
 
-// Static — date is injected into the user message instead so Groq can cache this prefix globally
+// Static - date is injected into the user message instead so Groq can cache this prefix globally
 const ROUTER_SYSTEM_PROMPT = `Você é um classificador de intenção para um app financeiro. Responda APENAS com JSON válido, sem texto adicional.
 
 Formato obrigatório:
@@ -73,7 +73,7 @@ Exemplos:
 "muda o 1 para R$ 30,50" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":1,"edit_amount":30.5}
 "altera o 3 para 25 reais" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":3,"edit_amount":25}`
 
-// Static — focus is injected into the user message instead so Groq can cache this prefix globally
+// Static - focus is injected into the user message instead so Groq can cache this prefix globally
 const CLASSIFIER_SYSTEM_PROMPT = `Você é um classificador de consultas financeiras. Responda APENAS com JSON válido, sem texto adicional.
 
 Dado uma pergunta, um filtro (ou "nenhum") e uma lista de itens financeiros, retorne:
@@ -94,7 +94,7 @@ focus_label: nome curto que descreve os itens que foram SELECIONADOS. Derive da 
 context_selected: itens secundários relacionados. Use [] por padrão.
 context_label: null por padrão.
 
-Exemplos (ilustrativos — o focus_label deve refletir o que foi encontrado, não um template fixo):
+Exemplos (ilustrativos, o focus_label deve refletir o que foi encontrado, não um template fixo):
 
 Filtro "comida", itens: [{idx:0,description:"Mercado",category:"Alimentação"},{idx:1,description:"Farmácia",category:"Saúde / Farmácia"}]
 → {"query_type":"sum","selected":[0],"focus_label":"alimentação","context_selected":[],"context_label":null}
@@ -107,7 +107,7 @@ Filtro "carro", apenas combustível disponível: selected = itens de combustíve
 
 Filtro "nenhum", query_type "max": selected = todos os itens, focus_label = null`
 
-// Per-family static — only categories vary between families; date is injected into the user message
+// Per-family static - only categories vary between families; date is injected into the user message
 // so Groq caches this prefix for all messages from the same family until categories change
 const EXTRACTION_SYSTEM_PROMPT = (categoriesText: string) => `Você é um assistente financeiro. Extraia registros de mensagens em português.
 
@@ -122,27 +122,27 @@ Regras gerais:
 
 Tipos de registro:
 
-"expense" — gastos, compras, pagamentos ("gastei", "paguei", "comprei"):
+"expense" - gastos, compras, pagamentos ("gastei", "paguei", "comprei"):
   - amount: valor em reais exatamente como mencionado pelo usuário (ex: "50" → 50, "10,50" → 10.5, "1500" → 1500). NUNCA converta para centavos.
   - payment_method: "PIX" | "Credito" | "Debito" | null. Use "Credito" para parcelado.
-  - status: "paid" (padrão — já pagou/comprou) | "open" (ainda precisa pagar: "tenho que pagar", "vou pagar")
+  - status: "paid" (padrão - já pagou/comprou) | "open" (ainda precisa pagar: "tenho que pagar", "vou pagar")
   - installments: número de parcelas. Padrão 1. "2x"→2, "3x"→3.
     IMPORTANTE: amount é o valor TOTAL em reais (ex: "150 em 3x" → amount:150, installments:3)
 
-"income" — recebimentos ("recebi", "entrou", "salário"):
+"income" - recebimentos ("recebi", "entrou", "salário"):
   - amount: valor em reais exatamente como mencionado (ex: "100" → 100, "1500" → 1500)
   - payment_method: null
 
-"savings_contribution" — poupança para objetivo ("guardei para", "pousei para"):
+"savings_contribution" - poupança para objetivo ("guardei para", "pousei para"):
   - saving_name: nome da poupança mencionada
   - amount: valor em reais
 
-"reminder" — lembretes e tarefas ("me lembra de", "não esquecer de", "lembrete para", "preciso lembrar de"):
+"reminder" - lembretes e tarefas ("me lembra de", "não esquecer de", "lembrete para", "preciso lembrar de"):
   - description: título do lembrete
   - date: data do lembrete (calcule datas futuras como "na sexta", "semana que vem")
   - amount: 0, category_name: null, payment_method: null
 
-Exemplos (datas ilustrativas — use as datas reais do contexto fornecido):
+Exemplos (datas ilustrativas - use as datas reais do contexto fornecido):
 "gastei 50 reais no mercado no pix"
 → {"records":[{"type":"expense","description":"Mercado","amount":50,"date":"2025-06-10","category_name":"Mercado","payment_method":"PIX","status":"paid","installments":1}]}
 
@@ -299,7 +299,7 @@ export class NvidiaAIService {
     }
 
     if (response.status === 429) {
-      console.warn('[AI] classifyQueryData rate limited — falling back to list-all')
+      console.warn('[AI] classifyQueryData rate limited - falling back to list-all')
       return fallback
     }
 

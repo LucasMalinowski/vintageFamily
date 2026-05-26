@@ -189,7 +189,7 @@ export default function Profile() {
               />
               <div className="text-center">
                 <p className="font-serif text-xl text-coffee">{profileName || 'Usuário'}</p>
-                <p className="text-sm text-ink/50">Família {familyName || '—'}</p>
+                <p className="text-sm text-ink/50">Família {familyName || '-'}</p>
               </div>
             </div>
 

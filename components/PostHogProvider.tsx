@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import { initPostHog, posthog } from '@/lib/posthog'
 
-// All trackable events — import and call posthog.capture() anywhere in the app
+// All trackable events - import and call posthog.capture() anywhere in the app
 export const EVENTS = {
   // Acquisition
   SIGNUP_COMPLETED: 'signup_completed',
