@@ -4,8 +4,10 @@ const scriptSrc = [
   "'self'",
   "'unsafe-inline'",
   'https://js.stripe.com',
-  'https://accounts.google.com',      // GIS (Google Identity Services)
-  'https://us-assets.i.posthog.com',  // PostHog lazy chunks
+  'https://accounts.google.com',              // GIS (Google Identity Services)
+  'https://us-assets.i.posthog.com',          // PostHog lazy chunks
+  'https://static.cloudflareinsights.com',    // Cloudflare Web Analytics beacon
+  'https://vercel.live',                       // Vercel toolbar (preview + prod)
 ]
 const connectSrc = [
   "'self'",
@@ -13,8 +15,9 @@ const connectSrc = [
   'https://api.stripe.com',
   'https://*.posthog.com',
   'https://*.i.posthog.com',
-  'https://oauth2.googleapis.com',    // GIS token exchange
-  'https://accounts.google.com',      // GIS requests
+  'https://oauth2.googleapis.com',            // GIS token exchange
+  'https://accounts.google.com',              // GIS requests
+  'https://cloudflareinsights.com',           // Cloudflare beacon reporting endpoint
 ]
 
 if (isDev) {
