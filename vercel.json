@@ -8,6 +8,9 @@
     },
     "app/api/cron/insights-dispatch/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/cron/due-notifications/route.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -18,6 +21,10 @@
     {
       "path": "/api/cron/insights-dispatch",
       "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/cron/due-notifications",
+      "schedule": "0 12 * * *"
     }
   ]
 }
