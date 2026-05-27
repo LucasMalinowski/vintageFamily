@@ -17,6 +17,9 @@ export interface ExpoPushMessage {
   sound?: 'default' | null
   data?: Record<string, unknown>
   badge?: number
+  /** Android only — must match the channel created by expo-notifications plugin.
+   *  The 'default' channel uses the custom notification icon + brand colour from app.json. */
+  channelId?: string
 }
 
 export interface PushResult {

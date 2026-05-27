@@ -107,6 +107,7 @@ export async function GET(request: NextRequest) {
           title: '💸 Despesa a vencer',
           body: `"${expense.description}" vence em 2 dias.`,
           sound: 'default',
+          channelId: 'default', // uses expo-notifications channel with custom icon + #3E5F4B colour
           data: { type: 'expense' },
         })
       }
@@ -119,6 +120,7 @@ export async function GET(request: NextRequest) {
           title: '🔔 Lembrete do Florim',
           body: reminder.title,
           sound: 'default',
+          channelId: 'default',
           data: { type: 'reminder' },
         })
       }
