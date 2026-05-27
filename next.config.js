@@ -1,12 +1,20 @@
 const isDev = process.env.NODE_ENV !== 'production'
 
-const scriptSrc = ["'self'", "'unsafe-inline'", 'https://js.stripe.com']
+const scriptSrc = [
+  "'self'",
+  "'unsafe-inline'",
+  'https://js.stripe.com',
+  'https://accounts.google.com',      // GIS (Google Identity Services)
+  'https://us-assets.i.posthog.com',  // PostHog lazy chunks
+]
 const connectSrc = [
   "'self'",
   'https://*.supabase.co',
   'https://api.stripe.com',
   'https://*.posthog.com',
   'https://*.i.posthog.com',
+  'https://oauth2.googleapis.com',    // GIS token exchange
+  'https://accounts.google.com',      // GIS requests
 ]
 
 if (isDev) {
@@ -24,7 +32,7 @@ const contentSecurityPolicy = [
   `script-src ${scriptSrc.join(' ')}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
-  'frame-src https://js.stripe.com https://hooks.stripe.com',
+  'frame-src https://js.stripe.com https://hooks.stripe.com https://accounts.google.com',
 ].join('; ')
 
 /** @type {import('next').NextConfig} */

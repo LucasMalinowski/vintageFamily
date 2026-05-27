@@ -1,5 +1,6 @@
 import './globals.css'
 import type { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 import Providers from '@/components/Providers'
 import CookieBanner from '@/components/CookieBanner'
 
@@ -87,6 +88,7 @@ export default function RootLayout({
             }),
           }}
         />
+        <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
         <Providers>
           {children}
         </Providers>
