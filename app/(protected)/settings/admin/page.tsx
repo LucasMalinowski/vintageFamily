@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Trash2 } from 'lucide-react'
 import { useAuth } from '@/components/AuthProvider'
 import { getAuthBearerToken } from '@/lib/billing/client'
 import { supabase } from '@/lib/supabase'
@@ -75,6 +76,7 @@ export default function SuperAdminSettingsPage() {
   const [families, setFamilies] = useState<FamilyRow[]>([])
   const [message, setMessage] = useState<string | null>(null)
   const [savingFamilyId, setSavingFamilyId] = useState<string | null>(null)
+  const [deletingFamilyId, setDeletingFamilyId] = useState<string | null>(null)
   const [trialInputs, setTrialInputs] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -161,6 +163,47 @@ export default function SuperAdminSettingsPage() {
     setSavingFamilyId(null)
   }
 
+  const deleteFamily = async (family: FamilyRow) => {
+    const confirmed = window.confirm(
+      `Excluir a família "${family.name}" e todos os dados vinculados a ela? Esta ação não pode ser desfeita.`
+    )
+    if (!confirmed) return
+
+    setDeletingFamilyId(family.id)
+    setMessage(null)
+
+    const token = await getAuthBearerToken()
+    if (!token) {
+      setMessage('Sessão inválida. Faça login novamente.')
+      setDeletingFamilyId(null)
+      return
+    }
+
+    const response = await fetch('/api/admin/family-access', {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ family_id: family.id }),
+    })
+
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) {
+      setMessage(payload?.error || 'Falha ao excluir família.')
+      setDeletingFamilyId(null)
+      return
+    }
+
+    setFamilies((current) => current.filter((f) => f.id !== family.id))
+    setTrialInputs((prev) => {
+      const next = { ...prev }
+      delete next[family.id]
+      return next
+    })
+    setDeletingFamilyId(null)
+  }
+
   if (checkingAdmin) {
     return (
       <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
@@ -197,18 +240,21 @@ export default function SuperAdminSettingsPage() {
                 <th className="px-4 py-3 font-medium min-w-[260px]">Trial até</th>
                 <th className="px-4 py-3 font-medium">Fundadores</th>
                 <th className="px-4 py-3 font-medium">Permanente</th>
+                <th className="px-4 py-3 font-medium text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
               {families.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-ink/50">
+                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-ink/50">
                     Nenhuma família cadastrada.
                   </td>
                 </tr>
               ) : null}
               {families.map((family) => {
                 const isSaving = savingFamilyId === family.id
+                const isDeleting = deletingFamilyId === family.id
+                const isBusy = isSaving || isDeleting
                 const storedDateStr = family.trial_expires_at
                   ? family.trial_expires_at.slice(0, 10)
                   : ''
@@ -248,7 +294,7 @@ export default function SuperAdminSettingsPage() {
                         <input
                           type="date"
                           value={inputDateStr}
-                          disabled={isSaving}
+                          disabled={isBusy}
                           onChange={(e) =>
                             setTrialInputs((prev) => ({ ...prev, [family.id]: e.target.value }))
                           }
@@ -261,7 +307,7 @@ export default function SuperAdminSettingsPage() {
                                 trial_expires_at: dateInputToISO(inputDateStr),
                               })
                             }
-                            disabled={isSaving}
+                            disabled={isBusy}
                             className="px-2.5 py-1 text-xs bg-coffee text-paper rounded-lg hover:bg-coffee/90 transition-vintage disabled:opacity-50 whitespace-nowrap"
                           >
                             {isSaving ? '...' : 'Salvar'}
@@ -272,7 +318,7 @@ export default function SuperAdminSettingsPage() {
                         {[30, 60, 90, 180].map((n) => (
                           <button
                             key={n}
-                            disabled={isSaving}
+                            disabled={isBusy}
                             onClick={() =>
                               setTrialInputs((prev) => ({
                                 ...prev,
@@ -292,7 +338,7 @@ export default function SuperAdminSettingsPage() {
                         <input
                           type="checkbox"
                           checked={family.founders_enabled}
-                          disabled={isSaving}
+                          disabled={isBusy}
                           onChange={() =>
                             updateFamily(family.id, { founders_enabled: !family.founders_enabled })
                           }
@@ -309,7 +355,7 @@ export default function SuperAdminSettingsPage() {
                         <input
                           type="checkbox"
                           checked={family.lifetime_access}
-                          disabled={isSaving}
+                          disabled={isBusy}
                           onChange={() =>
                             updateFamily(family.id, { lifetime_access: !family.lifetime_access })
                           }
@@ -319,6 +365,19 @@ export default function SuperAdminSettingsPage() {
                           {family.lifetime_access ? 'Ativo' : 'Inativo'}
                         </span>
                       </label>
+                    </td>
+
+                    <td className="px-4 py-4 text-right">
+                      <button
+                        type="button"
+                        title="Excluir família"
+                        aria-label={`Excluir família ${family.name}`}
+                        disabled={isBusy}
+                        onClick={() => deleteFamily(family)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-terracotta/30 text-terracotta hover:bg-terracotta/10 transition-vintage disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </td>
                   </tr>
                 )

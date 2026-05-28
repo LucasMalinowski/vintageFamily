@@ -18,6 +18,75 @@ async function requireSuperAdmin(request: Request) {
   return { ok: true as const, profile }
 }
 
+async function cancelFamilyStripeSubscriptions(familyId: string) {
+  try {
+    const { data: customerRow } = await supabaseService
+      .from('stripe_customers')
+      .select('stripe_customer_id')
+      .eq('family_id', familyId)
+      .maybeSingle()
+
+    if (!customerRow?.stripe_customer_id) return
+
+    const { stripe } = await import('@/lib/billing/stripe')
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customerRow.stripe_customer_id,
+      status: 'all',
+      limit: 10,
+    })
+
+    await Promise.all(
+      subscriptions.data
+        .filter((sub) => ['active', 'trialing', 'past_due'].includes(sub.status))
+        .map((sub) => stripe.subscriptions.cancel(sub.id))
+    )
+  } catch (err) {
+    console.error('[admin-family-delete] stripe subscription cancel failed', err)
+  }
+}
+
+async function deleteFamilyAttachments(familyId: string, userIds: string[]) {
+  const [{ data: expenses }, { data: incomes }] = await Promise.all([
+    supabaseService.from('expenses').select('attachment_path').eq('family_id', familyId),
+    supabaseService.from('incomes').select('attachment_path').eq('family_id', familyId),
+  ])
+
+  const attachmentPaths = [...(expenses ?? []), ...(incomes ?? [])]
+    .map((row) => row.attachment_path)
+    .filter((path): path is string => Boolean(path))
+
+  if (attachmentPaths.length > 0) {
+    const { error } = await supabaseService.storage.from('attachments').remove(attachmentPaths)
+    if (error) console.error('[admin-family-delete] attachment cleanup failed', error)
+  }
+
+  const avatarPaths = (
+    await Promise.all(
+      userIds.map(async (userId) => {
+        const { data, error } = await supabaseService.storage.from('avatars').list(userId, { limit: 1000 })
+        if (error || !data?.length) return []
+        return data.map((file) => `${userId}/${file.name}`)
+      })
+    )
+  ).flat()
+
+  if (avatarPaths.length > 0) {
+    const { error } = await supabaseService.storage.from('avatars').remove(avatarPaths)
+    if (error) console.error('[admin-family-delete] avatar cleanup failed', error)
+  }
+}
+
+async function deleteByFamilyId(table: string, familyId: string) {
+  const { error } = await supabaseService.from(table).delete().eq('family_id', familyId)
+  if (error) throw new Error(`${table}: ${error.message}`)
+}
+
+async function deleteByUserIds(table: string, userIds: string[]) {
+  if (userIds.length === 0) return
+  const { error } = await supabaseService.from(table).delete().in('user_id', userIds)
+  if (error) throw new Error(`${table}: ${error.message}`)
+}
+
 export async function GET(request: Request) {
   const admin = await requireSuperAdmin(request)
   if (!admin.ok) return admin.response
@@ -139,4 +208,133 @@ export async function PATCH(request: Request) {
       })),
     },
   })
+}
+
+export async function DELETE(request: Request) {
+  const admin = await requireSuperAdmin(request)
+  if (!admin.ok) return admin.response
+
+  const body = (await request.json().catch(() => null)) as { family_id?: string } | null
+
+  if (!body?.family_id) {
+    return NextResponse.json({ error: 'Família inválida.' }, { status: 400 })
+  }
+
+  if (admin.profile.family_id === body.family_id) {
+    return NextResponse.json({ error: 'Não é possível excluir a própria família por este painel.' }, { status: 400 })
+  }
+
+  const [{ data: family, error: familyError }, { data: familyUsers, error: usersError }] = await Promise.all([
+    supabaseService
+      .from('families')
+      .select('id')
+      .eq('id', body.family_id)
+      .maybeSingle(),
+    supabaseService
+      .from('users')
+      .select('id')
+      .eq('family_id', body.family_id),
+  ])
+
+  if (familyError || usersError) {
+    return NextResponse.json({ error: familyError?.message || usersError?.message || 'Não foi possível carregar a família.' }, { status: 500 })
+  }
+
+  if (!family) {
+    return NextResponse.json({ error: 'Família não encontrada.' }, { status: 404 })
+  }
+
+  const userIds = (familyUsers ?? []).map((user) => user.id)
+
+  await cancelFamilyStripeSubscriptions(body.family_id)
+  await deleteFamilyAttachments(body.family_id, userIds)
+
+  try {
+    await Promise.all([
+      deleteByFamilyId('pending_whatsapp_actions', body.family_id),
+      deleteByFamilyId('whatsapp_context', body.family_id),
+      deleteByFamilyId('feedback', body.family_id),
+      deleteByFamilyId('insights', body.family_id),
+      deleteByFamilyId('recurring_patterns', body.family_id),
+      deleteByFamilyId('family_job_locks', body.family_id),
+      deleteByFamilyId('usage_counters', body.family_id),
+      deleteByFamilyId('bank_statement_import_batches', body.family_id),
+      deleteByFamilyId('subscriptions', body.family_id),
+      deleteByFamilyId('stripe_customers', body.family_id),
+      deleteByUserIds('web_handoff_tokens', userIds),
+      deleteByUserIds('push_tokens', userIds),
+      deleteByUserIds('rate_limit_counters', userIds),
+    ])
+
+    await Promise.all([
+      deleteByFamilyId('expenses', body.family_id),
+      deleteByFamilyId('incomes', body.family_id),
+      deleteByFamilyId('reminders', body.family_id),
+      deleteByFamilyId('invites', body.family_id),
+      deleteByFamilyId('whatsapp_message_log', body.family_id),
+    ])
+
+    const { error: savingsContributionsError } = await supabaseService
+      .from('savings_contributions')
+      .delete()
+      .eq('family_id', body.family_id)
+    if (savingsContributionsError) throw new Error(`savings_contributions: ${savingsContributionsError.message}`)
+
+    const { error: childSavingsError } = await supabaseService
+      .from('savings')
+      .delete()
+      .eq('family_id', body.family_id)
+      .not('parent_id', 'is', null)
+    if (childSavingsError) throw new Error(`savings: ${childSavingsError.message}`)
+
+    const { error: parentSavingsError } = await supabaseService
+      .from('savings')
+      .delete()
+      .eq('family_id', body.family_id)
+    if (parentSavingsError) throw new Error(`savings: ${parentSavingsError.message}`)
+
+    const { error: childCategoriesError } = await supabaseService
+      .from('categories')
+      .delete()
+      .eq('family_id', body.family_id)
+      .not('parent_id', 'is', null)
+    if (childCategoriesError) throw new Error(`categories: ${childCategoriesError.message}`)
+
+    const { error: parentCategoriesError } = await supabaseService
+      .from('categories')
+      .delete()
+      .eq('family_id', body.family_id)
+    if (parentCategoriesError) throw new Error(`categories: ${parentCategoriesError.message}`)
+
+    const { error: usersDeleteError } = await supabaseService
+      .from('users')
+      .delete()
+      .eq('family_id', body.family_id)
+    if (usersDeleteError) throw new Error(`users: ${usersDeleteError.message}`)
+
+    const { error: familyDeleteError } = await supabaseService
+      .from('families')
+      .delete()
+      .eq('id', body.family_id)
+    if (familyDeleteError) throw new Error(`families: ${familyDeleteError.message}`)
+  } catch (error) {
+    console.error('[admin-family-delete] database cleanup failed', error)
+    return NextResponse.json({ error: 'Erro ao excluir os dados da família.' }, { status: 500 })
+  }
+
+  const authDeleteErrors = (
+    await Promise.all(
+      userIds.map(async (userId) => {
+        const { error } = await supabaseService.auth.admin.deleteUser(userId)
+        return error
+      })
+    )
+  ).filter(Boolean)
+
+  if (authDeleteErrors.length > 0) {
+    console.error('[admin-family-delete] auth cleanup failed', authDeleteErrors)
+    return NextResponse.json({ error: 'Família removida, mas houve erro ao remover alguns usuários de autenticação.' }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true })
 }

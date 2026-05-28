@@ -134,7 +134,7 @@ export default function TermsPage() {
 
           <Section title="13. Lei aplicável e foro">
             <p>
-              Estes Termos são regidos pelas leis da República Federativa do Brasil. Fica eleito o foro da Comarca de São Paulo/SP para resolução de quaisquer disputas, com renúncia a qualquer outro, por mais privilegiado que seja.
+              Estes Termos são regidos pelas leis da República Federativa do Brasil. Fica eleito o foro da Comarca de São Paulo/SP para dirimir quaisquer controvérsias, ressalvado ao consumidor o direito de optar pelo foro de seu domicílio, nos termos do art. 101, I, do Código de Defesa do Consumidor.
             </p>
           </Section>
 

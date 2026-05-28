@@ -79,7 +79,7 @@ const termsSections = [
     title: '10. Atualizações e legislação aplicável',
     paragraphs: [
       'Estes Termos poderão ser alterados periodicamente. A versão vigente será aquela disponibilizada nesta rota, com indicação da última atualização.',
-      'Este documento será regido pelas leis da República Federativa do Brasil, especialmente pelo Código Civil, pelo Marco Civil da Internet, pelo Código de Defesa do Consumidor, quando aplicável, e pela Lei Geral de Proteção de Dados Pessoais.',
+      'Este documento será regido pelas leis da República Federativa do Brasil, especialmente pelo Código Civil, pelo Marco Civil da Internet, pelo Código de Defesa do Consumidor, quando aplicável, e pela Lei Geral de Proteção de Dados Pessoais. Fica eleito o foro da Comarca de São Paulo/SP para dirimir quaisquer controvérsias, ressalvado ao consumidor o direito de optar pelo foro de seu domicílio, nos termos do art. 101, I, do Código de Defesa do Consumidor.',
     ],
   },
 ]
