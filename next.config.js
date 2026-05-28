@@ -35,7 +35,7 @@ const contentSecurityPolicy = [
   `script-src ${scriptSrc.join(' ')}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
-  'frame-src https://js.stripe.com https://hooks.stripe.com https://accounts.google.com',
+  'frame-src https://js.stripe.com https://hooks.stripe.com https://accounts.google.com https://vercel.live',
 ].join('; ')
 
 /** @type {import('next').NextConfig} */

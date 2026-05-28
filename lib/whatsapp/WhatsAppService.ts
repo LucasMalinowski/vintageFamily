@@ -151,19 +151,7 @@ export class WhatsAppService {
   }
 
   async sendWelcomeTips(to: string): Promise<void> {
-    await this.sendTextMessage(
-      to,
-      `✅ *Número verificado! Bem-vindo ao Florim.*\n\n` +
-      `Aqui vão algumas dicas rápidas:\n\n` +
-      `📌 *Fixe esta conversa* - Toque e segure este chat e selecione "Fixar" para ter acesso fácil sempre que precisar registrar algo.\n\n` +
-      `💬 *O que você pode fazer:*\n` +
-      `• "Gastei 50 no mercado" → registra despesa\n` +
-      `• "Recebi 3000 de salário" → registra receita\n` +
-      `• "Quanto gastei esse mês?" → consulta de gastos\n` +
-      `• "Mostre despesas de alimentação" → filtra por categoria\n\n` +
-      `É só mandar uma mensagem como se fosse falar com um amigo! 😊\n\n` +
-      `_Este serviço utiliza inteligência artificial. Sempre que possível, confira os registros no app e, se algo não estiver certo, nos conte - sua família merece precisão._`
-    )
+    await this.sendTemplateMessage(to, 'florim_welcome_tips', [])
   }
 
   async sendAuthOtp(to: string, code: string): Promise<{ messageId: string | null }> {
