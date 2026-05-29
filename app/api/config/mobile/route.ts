@@ -13,6 +13,8 @@ export async function GET() {
     return NextResponse.json({ error: 'Falha ao carregar configuração.' }, { status: 500 })
   }
 
+  console.log('[config/mobile] raw data from Supabase:', JSON.stringify(data))
+
   const config = Object.fromEntries(data.map(({ key, value }) => [key, value]))
 
   return NextResponse.json(
