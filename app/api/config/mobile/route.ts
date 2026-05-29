@@ -15,8 +15,11 @@ export async function GET() {
 
   const config = Object.fromEntries(data.map(({ key, value }) => [key, value]))
 
-  return NextResponse.json({
-    min_android_version: config['min_android_version'] ?? '0.0.0',
-    min_ios_version: config['min_ios_version'] ?? '0.0.0',
-  })
+  return NextResponse.json(
+    {
+      min_android_version: config['min_android_version'] ?? '0.0.0',
+      min_ios_version: config['min_ios_version'] ?? '0.0.0',
+    },
+    { headers: { 'Cache-Control': 'no-store' } }
+  )
 }
