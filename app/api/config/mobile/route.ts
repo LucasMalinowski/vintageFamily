@@ -18,8 +18,6 @@ export async function GET() {
   )
 
   const data = await res.json()
-  console.log('[config/mobile] url:', supabaseUrl)
-  console.log('[config/mobile] raw:', JSON.stringify(data))
 
   if (!res.ok) {
     return NextResponse.json({ error: 'Falha ao carregar configuração.' }, { status: 500 })
