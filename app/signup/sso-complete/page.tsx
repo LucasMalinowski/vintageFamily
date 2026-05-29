@@ -168,7 +168,7 @@ export default function SSOCompletePage() {
                 onChange={(e) => setFamilyName(e.target.value)}
                 required
                 className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
-                placeholder="Família Silva"
+                placeholder="Ex: Silva, Santos, Araujo"
               />
             </div>
 
