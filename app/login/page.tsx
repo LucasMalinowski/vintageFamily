@@ -5,6 +5,7 @@ import { useAuth } from '@/components/AuthProvider'
 import { SSOButtons, SSODivider } from '@/components/SSOButtons'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Eye, EyeOff } from 'lucide-react'
 
 const HANDOFF_ERROR_MESSAGES: Record<string, string> = {
   'link-invalido': 'O link de acesso é inválido. Solicite um novo link ao acessar o app.',
@@ -21,6 +22,7 @@ export default function LoginPage() {
   const handoffMessage = handoffError ? HANDOFF_ERROR_MESSAGES[handoffError] : null
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -90,14 +92,24 @@ export default function LoginPage() {
             </div>
             <div>
               <label className="block text-[15px] font-body text-ink mb-2">Senha</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-3.5 bg-offWhite text-ink/80 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage text-[15px]"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-3.5 pr-12 bg-offWhite text-ink/80 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage text-[15px]"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  tabIndex={-1}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink/70 transition-vintage"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             <div className="text-right">
               <button type="button" className="text-[14px] text-gold hover:opacity-80 transition-vintage">
@@ -175,15 +187,25 @@ export default function LoginPage() {
                 <label htmlFor="password-desktop" className="block text-sm font-body text-ink mb-2">
                   Senha
                 </label>
-                <input
-                  id="password-desktop"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 bg-white/70 text-ink/80 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
-                  placeholder="••••••••"
-                />
+                <div className="relative">
+                  <input
+                    id="password-desktop"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="w-full px-4 py-3 pr-12 bg-white/70 text-ink/80 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    tabIndex={-1}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink/70 transition-vintage"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-between">
