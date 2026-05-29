@@ -15,6 +15,10 @@ interface AuthContextType {
   familyId: string | null
   loading: boolean
   authStatus: AuthStatus
+  isSuperAdmin: boolean
+  familyPickerVisible: boolean
+  switchFamily: (newFamilyId: string) => Promise<void>
+  hideFamilyPicker: () => void
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, name: string, familyName: string) => Promise<void>
   signInWithGoogle: (idToken: string) => Promise<void>
@@ -45,6 +49,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [familyId, setFamilyId] = useState<string | null>(null)
   const [authStatus, setAuthStatus] = useState<AuthStatus>('loading')
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [familyPickerVisible, setFamilyPickerVisible] = useState(false)
+  const familyPickerDismissedRef = useRef(false)
   const router = useRouter()
   const mountedRef = useRef(true)
   const familyLoadInProgressRef = useRef<string | null>(null)
@@ -66,17 +73,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     for (let attempt = 0; attempt < 3; attempt++) {
       if (!mountedRef.current) return
       try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('family_id')
-          .eq('id', userId)
-          .maybeSingle()
+        const [{ data, error }, { data: isAdmin }] = await Promise.all([
+          supabase.from('users').select('family_id').eq('id', userId).maybeSingle(),
+          supabase.rpc('is_super_admin'),
+        ])
 
         if (!mountedRef.current) return
 
         if (!error) {
           if (familyLoadInProgressRef.current === userId) {
             setFamilyId(data?.family_id ?? null)
+            const admin = Boolean(isAdmin)
+            setIsSuperAdmin(admin)
+            if (admin && !familyPickerDismissedRef.current) {
+              setFamilyPickerVisible(true)
+            }
             familyLoadInProgressRef.current = null
           }
           return
@@ -327,7 +338,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const switchFamily = async (newFamilyId: string) => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) throw new Error('Sessão inválida.')
+
+    const res = await fetch('/api/admin/switch-family', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ family_id: newFamilyId }),
+    })
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}))
+      throw new Error(payload?.error || 'Falha ao trocar família.')
+    }
+    setFamilyId(newFamilyId)
+  }
+
+  const hideFamilyPicker = () => {
+    familyPickerDismissedRef.current = true
+    setFamilyPickerVisible(false)
+  }
+
   const signOut = async () => {
+    familyPickerDismissedRef.current = false
     if (typeof window !== 'undefined') {
       if (user?.id) {
         window.localStorage.removeItem(getSidebarCollapsedStorageKey(user.id))
@@ -337,11 +370,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       delete document.documentElement.dataset.sidebarCollapsed
     }
     await supabase.auth.signOut()
+    setIsSuperAdmin(false)
+    setFamilyPickerVisible(false)
     router.push('/login')
   }
 
   return (
-    <AuthContext.Provider value={{ user, familyId, loading, authStatus, signIn, signUp, signInWithGoogle, signInWithApple, acceptInvite, signOut }}>
+    <AuthContext.Provider value={{ user, familyId, loading, authStatus, isSuperAdmin, familyPickerVisible, switchFamily, hideFamilyPicker, signIn, signUp, signInWithGoogle, signInWithApple, acceptInvite, signOut }}>
       {children}
     </AuthContext.Provider>
   )

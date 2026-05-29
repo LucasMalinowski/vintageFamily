@@ -1,0 +1,122 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useAuth } from '@/components/AuthProvider'
+import { supabase } from '@/lib/supabase'
+
+type FamilyOption = {
+  id: string
+  name: string
+  members: Array<{ name: string; email: string }>
+}
+
+export function FamilyPickerOverlay() {
+  const { familyPickerVisible, familyId, switchFamily, hideFamilyPicker } = useAuth()
+  const [families, setFamilies] = useState<FamilyOption[]>([])
+  const [loading, setLoading] = useState(false)
+  const [switching, setSwitching] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!familyPickerVisible) return
+
+    const load = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+        if (!token) { setError('Sessão inválida.'); return }
+
+        const res = await fetch('/api/admin/family-access', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const payload = await res.json().catch(() => null)
+        if (!res.ok) { setError(payload?.error || 'Falha ao carregar famílias.'); return }
+        setFamilies(payload.families ?? [])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    load()
+  }, [familyPickerVisible])
+
+  if (!familyPickerVisible) return null
+
+  const handlePick = async (id: string) => {
+    setSwitching(id)
+    setError(null)
+    try {
+      await switchFamily(id)
+      hideFamilyPicker()
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao trocar família.')
+    } finally {
+      setSwitching(null)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/95 backdrop-blur-sm">
+      <div className="w-full max-w-lg mx-4 bg-bg border border-border rounded-vintage shadow-vintage overflow-hidden">
+        <div className="px-6 py-5 border-b border-border bg-paper">
+          <h2 className="text-xl font-serif text-coffee">Entrar como família</h2>
+          <p className="text-sm text-ink/55 mt-1">Escolha qual família deseja acessar.</p>
+        </div>
+
+        {error && (
+          <div className="mx-6 mt-4 px-3 py-2 bg-terracotta/10 border border-terracotta/30 text-terracotta text-sm rounded-lg">
+            {error}
+          </div>
+        )}
+
+        <div className="overflow-y-auto max-h-[60vh]">
+          {loading ? (
+            <div className="px-6 py-8 text-center text-sm text-ink/50">Carregando famílias...</div>
+          ) : families.length === 0 ? (
+            <div className="px-6 py-8 text-center text-sm text-ink/50">Nenhuma família encontrada.</div>
+          ) : (
+            families.map((family) => {
+              const isActive = family.id === familyId
+              const isBusy = switching === family.id
+              return (
+                <button
+                  key={family.id}
+                  onClick={() => handlePick(family.id)}
+                  disabled={!!switching}
+                  className={`w-full text-left px-6 py-4 border-b border-border last:border-b-0 hover:bg-paper transition-vintage disabled:opacity-60 ${isActive ? 'bg-coffee/5' : ''}`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-coffee truncate">
+                        {family.name}
+                        {isActive && <span className="ml-2 text-[10px] text-coffee/50 font-mono">atual</span>}
+                      </p>
+                      <p className="text-xs text-ink/50 mt-0.5 truncate">
+                        {family.members.map((m) => m.name).join(', ') || 'Sem membros'}
+                      </p>
+                    </div>
+                    <span className="text-xs text-coffee/70 whitespace-nowrap">
+                      {isBusy ? 'Entrando...' : 'Entrar →'}
+                    </span>
+                  </div>
+                </button>
+              )
+            })
+          )}
+        </div>
+
+        <div className="px-6 py-4 border-t border-border bg-paper">
+          <button
+            onClick={hideFamilyPicker}
+            disabled={!!switching}
+            className="text-sm text-ink/50 hover:text-ink/80 transition-vintage disabled:opacity-40"
+          >
+            Usar família atual
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2 } from 'lucide-react'
+import { LogIn, Trash2 } from 'lucide-react'
 import { useAuth } from '@/components/AuthProvider'
 import { getAuthBearerToken } from '@/lib/billing/client'
 import { supabase } from '@/lib/supabase'
@@ -69,7 +69,7 @@ function StatusBadge({ family }: { family: FamilyRow }) {
 }
 
 export default function SuperAdminSettingsPage() {
-  const { user } = useAuth()
+  const { user, familyId: activeFamilyId, switchFamily } = useAuth()
   const router = useRouter()
   const [checkingAdmin, setCheckingAdmin] = useState(true)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
@@ -77,6 +77,7 @@ export default function SuperAdminSettingsPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [savingFamilyId, setSavingFamilyId] = useState<string | null>(null)
   const [deletingFamilyId, setDeletingFamilyId] = useState<string | null>(null)
+  const [switchingFamilyId, setSwitchingFamilyId] = useState<string | null>(null)
   const [trialInputs, setTrialInputs] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -161,6 +162,18 @@ export default function SuperAdminSettingsPage() {
     }
 
     setSavingFamilyId(null)
+  }
+
+  const enterFamily = async (familyId: string) => {
+    setSwitchingFamilyId(familyId)
+    setMessage(null)
+    try {
+      await switchFamily(familyId)
+    } catch (err: any) {
+      setMessage(err?.message || 'Falha ao entrar na família.')
+    } finally {
+      setSwitchingFamilyId(null)
+    }
   }
 
   const deleteFamily = async (family: FamilyRow) => {
@@ -254,7 +267,9 @@ export default function SuperAdminSettingsPage() {
               {families.map((family) => {
                 const isSaving = savingFamilyId === family.id
                 const isDeleting = deletingFamilyId === family.id
-                const isBusy = isSaving || isDeleting
+                const isSwitching = switchingFamilyId === family.id
+                const isBusy = isSaving || isDeleting || isSwitching
+                const isActive = activeFamilyId === family.id
                 const storedDateStr = family.trial_expires_at
                   ? family.trial_expires_at.slice(0, 10)
                   : ''
@@ -368,16 +383,32 @@ export default function SuperAdminSettingsPage() {
                     </td>
 
                     <td className="px-4 py-4 text-right">
-                      <button
-                        type="button"
-                        title="Excluir família"
-                        aria-label={`Excluir família ${family.name}`}
-                        disabled={isBusy}
-                        onClick={() => deleteFamily(family)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-terracotta/30 text-terracotta hover:bg-terracotta/10 transition-vintage disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="inline-flex items-center gap-2">
+                        <button
+                          type="button"
+                          title={isActive ? 'Família atual' : 'Entrar nesta família'}
+                          aria-label={`Entrar na família ${family.name}`}
+                          disabled={isBusy || isActive}
+                          onClick={() => enterFamily(family.id)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-coffee/30 text-coffee hover:bg-coffee/10 transition-vintage disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {isSwitching ? (
+                            <span className="text-[10px]">...</span>
+                          ) : (
+                            <LogIn className="h-4 w-4" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          title="Excluir família"
+                          aria-label={`Excluir família ${family.name}`}
+                          disabled={isBusy}
+                          onClick={() => deleteFamily(family)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-terracotta/30 text-terracotta hover:bg-terracotta/10 transition-vintage disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )

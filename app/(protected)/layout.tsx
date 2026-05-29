@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getProfileByUserId } from '@/lib/billing/auth'
 import { hasBillingAccess } from '@/lib/billing/access'
 import { PlanProvider, type PlanTier } from '@/lib/billing/plan-context'
+import { FamilyPickerOverlay } from '@/components/FamilyPickerOverlay'
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -28,6 +29,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   return (
     <PlanProvider tier={tier} trialExpiresAt={access.trialExpiresAt ?? null}>
+      <FamilyPickerOverlay />
       {children}
     </PlanProvider>
   )
