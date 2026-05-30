@@ -41,13 +41,13 @@ export async function dispatchInsights(
 
     if (channels.includes('whatsapp') && member.phone_number) {
       try {
-        // limit_alert: always plain text — the insights template expects an image header
-        // and should not be used for transactional alerts
-        const isLimitAlert = type === 'limit_alert'
+        // Always use the approved template when configured — required to reach users
+        // outside the 24h customer service window (error 131047 otherwise).
+        // The image header is always passed so the template format matches.
         const header = type === 'proactive' ? '💡 *Insights do mês - Florim*\n\n' : type === 'on_demand' ? '💡 *Insight sob demanda - Florim*\n\n' : ''
-        const templateName = !isLimitAlert ? process.env.WHATSAPP_INSIGHTS_TEMPLATE_NAME : undefined
+        const templateName = process.env.WHATSAPP_INSIGHTS_TEMPLATE_NAME
         const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://florim.app'
-        const headerImageUrl = templateName ? `${appUrl}/insights_whatsapp.png` : undefined
+        const headerImageUrl = `${appUrl}/insights_whatsapp.png`
         const result = templateName
           ? await whatsAppService.sendTemplateMessage(member.phone_number, templateName, [period, content], 'pt_BR', [], headerImageUrl)
           : await whatsAppService.sendTextMessage(member.phone_number, header + content)
