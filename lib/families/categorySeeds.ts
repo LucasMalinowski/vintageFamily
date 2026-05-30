@@ -53,6 +53,7 @@ export const FAMILY_CATEGORY_SEEDS: CategorySeed[] = [
       { name: 'Cinema' },
       { name: 'Passeios' },
       { name: 'Eventos' },
+      { name: 'Presentes/Festas' },
     ],
   },
   {
