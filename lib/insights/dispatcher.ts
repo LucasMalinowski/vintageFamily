@@ -40,29 +40,45 @@ export async function dispatchInsights(
     const sentChannels: string[] = []
 
     if (channels.includes('whatsapp') && member.phone_number) {
+      const header = type === 'proactive' ? '💡 *Insights do mês - Florim*\n\n' : type === 'on_demand' ? '💡 *Insight sob demanda - Florim*\n\n' : ''
+      const templateName = process.env.WHATSAPP_INSIGHTS_TEMPLATE_NAME
+      const headerImageId = process.env.WHATSAPP_INSIGHTS_IMAGE_ID
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://florim.app'
+      const headerImageUrl = headerImageId ? undefined : `${appUrl}/insights_whatsapp.png`
+      let result: { messageId: string | null } | null = null
+      let messageKind = 'none'
+
       try {
-        // Always use the approved template when configured — required to reach users
-        // outside the 24h customer service window (error 131047 otherwise).
-        // The image header is always passed so the template format matches.
-        const header = type === 'proactive' ? '💡 *Insights do mês - Florim*\n\n' : type === 'on_demand' ? '💡 *Insight sob demanda - Florim*\n\n' : ''
-        const templateName = process.env.WHATSAPP_INSIGHTS_TEMPLATE_NAME
-        // Prefer pre-uploaded media_id (set WHATSAPP_INSIGHTS_IMAGE_ID after running the upload endpoint)
-        // over URL — Meta fetches URLs on every send which is unreliable (error 131053)
-        const headerImageId = process.env.WHATSAPP_INSIGHTS_IMAGE_ID
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://florim.app'
-        const headerImageUrl = headerImageId ? undefined : `${appUrl}/insights_whatsapp.png`
-        const result = templateName
-          ? await whatsAppService.sendTemplateMessage(member.phone_number, templateName, [period, content], 'pt_BR', [], headerImageUrl, headerImageId)
-          : await whatsAppService.sendTextMessage(member.phone_number, header + content)
+        if (type === 'limit_alert') {
+          // Use a dedicated text-only template (no image header = no 131053 errors,
+          // always works outside the 24h window).
+          // Set WHATSAPP_LIMIT_ALERT_TEMPLATE_NAME in env after approval.
+          const limitTemplateName = process.env.WHATSAPP_LIMIT_ALERT_TEMPLATE_NAME
+          if (limitTemplateName) {
+            result = await whatsAppService.sendTemplateMessage(member.phone_number, limitTemplateName, [content])
+            messageKind = 'limit-template'
+          } else {
+            // No template yet — try plain text (works within 24h window)
+            result = await whatsAppService.sendTextMessage(member.phone_number, content)
+            messageKind = 'text'
+          }
+        } else {
+          // Proactive / on-demand insights always use the template when configured
+          result = templateName
+            ? await whatsAppService.sendTemplateMessage(member.phone_number, templateName, [period, content], 'pt_BR', [], headerImageUrl, headerImageId)
+            : await whatsAppService.sendTextMessage(member.phone_number, header + content)
+          messageKind = templateName ? 'template' : 'text'
+        }
+
         sentChannels.push('whatsapp')
-        console.log(`[insights-dispatch] WhatsApp sent to ...${member.phone_number.replace(/\D/g, '').slice(-4)} msgId=${result.messageId}`)
+        console.log(`[insights-dispatch] WhatsApp ${messageKind} sent to ...${member.phone_number.replace(/\D/g, '').slice(-4)} msgId=${result?.messageId}`)
         await posthogLogs.info('Insights WhatsApp message accepted by Meta', {
           family_id: familyId,
           user_id: member.id,
           type,
-          whatsapp_message_kind: templateName ? 'template' : 'text',
+          whatsapp_message_kind: messageKind,
           whatsapp_template_name: templateName ?? 'none',
-          meta_message_id: result.messageId ?? 'unknown',
+          meta_message_id: result?.messageId ?? 'unknown',
           recipient_last4: member.phone_number.replace(/\D/g, '').slice(-4),
         })
       } catch (err) {
