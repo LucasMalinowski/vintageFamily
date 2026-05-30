@@ -49,7 +49,8 @@ Campos:
 - data_needed: vazio para "record"/"delete"/"edit". Para "query": ["expenses"], ["incomes"], ["savings"], ["reminders"]
 - time_range: "current_month" (padrão), "last_month", "current_year", "last_7_days", "next_7_days", "all"
   Use "next_7_days" para lembretes futuros ("essa semana", "próximos dias")
-- focus: palavra-chave de filtro ou null
+  Para "record"/"delete"/"edit": sempre "current_month" (campo irrelevante nesses casos)
+- focus: palavra-chave do filtro para "query". Sempre null para "record"/"delete"/"edit".
 - status_filter: null (padrão). Use "open" quando o usuário perguntar sobre despesas pendentes/a pagar ("pendente pra pagar", "contas a pagar", "o que tenho pra pagar", "tenho que pagar", "despesas")
 - item_index: número do item (1-based) para "delete" e "edit". null nos demais casos.
 - edit_amount: novo valor em reais para "edit". null nos demais casos.
@@ -102,10 +103,14 @@ Filtro "comida", itens: [{idx:0,description:"Mercado",category:"Alimentação"},
 Filtro "comida", itens: [{idx:0,description:"Farmácia",category:"Saúde"},{idx:1,description:"Gasolina",category:"Combustível"}]
 → {"query_type":"sum","selected":[],"focus_label":null,"context_selected":[],"context_label":null}
 
-Filtro "carro", itens com manutenção e combustível: selected = itens de manutenção, focus_label = categoria real desses itens, context_selected = itens de combustível
-Filtro "carro", apenas combustível disponível: selected = itens de combustível, focus_label = categoria real, context_selected = []
+Filtro "carro", itens: [{idx:0,description:"Troca de óleo",category:"Manutenção Veicular"},{idx:1,description:"Gasolina",category:"Transporte / Combustível"}]
+→ {"query_type":"list","selected":[0],"focus_label":"manutenção veicular","context_selected":[1],"context_label":"combustível"}
 
-Filtro "nenhum", query_type "max": selected = todos os itens, focus_label = null`
+Filtro "carro", itens: [{idx:0,description:"Gasolina",category:"Transporte / Combustível"},{idx:1,description:"Mercado",category:"Alimentação"}]
+→ {"query_type":"list","selected":[0],"focus_label":"combustível","context_selected":[],"context_label":null}
+
+Filtro "nenhum", pergunta "qual meu maior gasto?", itens: [{idx:0,...},{idx:1,...},{idx:2,...}]
+→ {"query_type":"max","selected":[0,1,2],"focus_label":null,"context_selected":[],"context_label":null}`
 
 // Per-family static - only categories vary between families; date is injected into the user message
 // so Groq caches this prefix for all messages from the same family until categories change
@@ -129,15 +134,15 @@ Tipos de registro:
   - installments: número de parcelas. Padrão 1. "2x"→2, "3x"→3.
     IMPORTANTE: amount é o valor TOTAL em reais (ex: "150 em 3x" → amount:150, installments:3)
 
-"income" - recebimentos ("recebi", "entrou", "salário"):
+"income" - recebimentos ("recebi", "entrou", "salário", "me pagaram", "cai na conta"):
   - amount: valor em reais exatamente como mencionado (ex: "100" → 100, "1500" → 1500)
-  - payment_method: null
+  - payment_method: sempre null (método de recebimento não é rastreado)
 
-"savings_contribution" - poupança para objetivo ("guardei para", "pousei para"):
+"savings_contribution" - poupança para objetivo ("guardei para", "poupei para", "separei para", "reservei para"):
   - saving_name: nome da poupança mencionada
   - amount: valor em reais
 
-"reminder" - lembretes e tarefas ("me lembra de", "não esquecer de", "lembrete para", "preciso lembrar de"):
+"reminder" - lembretes e tarefas ("me lembra de", "não esquecer de", "lembrete para", "preciso lembrar de", "tenho que lembrar de", "não posso esquecer de", "coloca um lembrete", "me avisa de"):
   - description: título do lembrete
   - date: data do lembrete (calcule datas futuras como "na sexta", "semana que vem")
   - amount: 0, category_name: null, payment_method: null
@@ -267,7 +272,7 @@ export class NvidiaAIService {
     if (items.length === 0) return fallback
 
     const itemsText = items
-      .map(i => `{idx:${i.idx},date:"${i.date}",description:"${i.description}",category:"${i.category}"}`)
+      .map(i => JSON.stringify({ idx: i.idx, date: i.date, description: i.description, category: i.category }))
       .join('\n')
 
     const controller = new AbortController()
@@ -383,7 +388,8 @@ export class NvidiaAIService {
 
   async suggestCategory(
     description: string,
-    categoryLabels: Map<string, string>
+    categoryLabels: Map<string, string>,
+    type?: 'expense' | 'income'
   ): Promise<string | null> {
     if (!description.trim() || categoryLabels.size === 0) return null
 
@@ -406,13 +412,19 @@ export class NvidiaAIService {
           messages: [
             {
               role: 'system',
-              content: `Você é um classificador de categorias financeiras para um app de finanças pessoais brasileiro. Dada uma descrição de despesa ou receita, responda APENAS com o nome exato de uma categoria da lista, sem texto adicional. Se nenhuma categoria se encaixa bem, responda com "null".
+              content: `Você é um classificador de categorias financeiras para um app de finanças pessoais brasileiro. Dada uma descrição${type ? ` de ${type === 'income' ? 'receita' : 'despesa'}` : ''}, responda APENAS com o nome exato de uma categoria da lista, sem texto adicional. Se nenhuma categoria se encaixa bem, responda com "null".
 
-Dicas de contexto financeiro brasileiro:
-- "tênis", "tenis", "sapato", "sandália", "chinelo" → categoria de Roupas/Calçados (não esporte)
-- "academia", "natação", "futebol" → Hobbies/Esportes
-- "uber", "99", "ifood", "rappi" → Transporte ou Alimentação conforme o contexto
-- "netflix", "spotify", "amazon prime" → Assinaturas/Streaming
+Contexto para itens ambíguos:
+- Calçados ("tênis", "sapato", "sandália", "chinelo") → vestuário/calçado, não esporte
+- Atividades físicas ("academia", "natação", "futebol", "musculação") → esporte/lazer
+- "uber", "99" → serviço de transporte por aplicativo
+- "ifood", "rappi", "delivery" → delivery de comida/alimentação
+- "netflix", "spotify", "amazon prime", "youtube premium" → streaming/assinatura digital
+- Lojas de moda ("Renner", "C&A", "Riachuelo", "Marisa") → vestuário/roupas
+- Lojas de varejo ("Magazine Luiza", "Magalu", "Casas Bahia", "Americanas", "Havan") → compras/eletrônicos/casa
+- Lojas de construção/decoração ("Leroy Merlin", "Tok&Stok") → casa/decoração
+- Descrição contém "presente" ou nome de pessoa entre parênteses → presente/lazer, não alimentação
+- Datas comemorativas no contexto ("natal", "páscoa", "aniversário", "dia das mães", "dia dos pais") → presente/lazer
 
 Categorias disponíveis:
 ${categoriesText}`,

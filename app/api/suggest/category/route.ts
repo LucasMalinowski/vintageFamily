@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
   if (!cats?.length) return NextResponse.json({ categoryId: null })
 
   const labelMap = buildCategoryLabelMap(cats as Parameters<typeof buildCategoryLabelMap>[0])
-  const categoryId = await nvidiaAIService.suggestCategory(description, labelMap)
+  const categoryId = await nvidiaAIService.suggestCategory(description, labelMap, kind)
 
   return NextResponse.json({ categoryId })
 }

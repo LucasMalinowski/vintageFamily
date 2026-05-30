@@ -105,7 +105,7 @@ function buildInsightPrompt(data: SpendingData, question?: string): string {
     ? ` (${data.currentTotal > data.previousTotal ? '+' : ''}${Math.round(((data.currentTotal - data.previousTotal) / data.previousTotal) * 100)}% vs mês anterior)`
     : ''
 
-  const base = `Dados financeiros da família:
+  const base = `Dados financeiros da família (top 5 categorias por gasto — outras categorias menores não estão listadas):
 
 Mês atual (${data.currentPeriodLabel}) - Total: ${formatBRL(data.currentTotal)}${totalDelta}
 ${currentLines}
@@ -118,18 +118,23 @@ ${previousLines}`
 
 Pergunta do usuário: ${question}
 
-Responda em português, de forma direta e específica, citando valores reais dos dados acima. Máximo 3 parágrafos curtos.`
+Responda em português, de forma direta e específica, citando valores reais dos dados acima. Máximo 2 sentenças curtas. Se a pergunta não puder ser respondida com os dados disponíveis, diga "Não tenho dados suficientes para responder isso."`
   }
 
-  return `${base}
+  const currentMonthEntries = data.currentMonth.reduce((s, c) => s + c.count, 0)
+  const sparseDataNote = currentMonthEntries < 10
+    ? `\nObs: o mês atual tem poucos lançamentos (${currentMonthEntries}). Se os dados forem insuficientes para um insight útil, priorize comparações com o mês anterior.`
+    : ''
 
+  return `${base}
+${sparseDataNote}
 Gere exatamente 2 insights financeiros em português para essa família. Regras:
-- Cada insight deve ter no máximo 2 frases
+- Cada insight deve ter no máximo 2 sentenças curtas
 - Cite valores reais (ex: R$ 820,00, 30%, 4 lançamentos)
 - Seja específico, nunca genérico como "você gastou muito"
 - Foque em variações, tendências, ou situações que merecem atenção
-- Se os dados são positivos, também diga (ex: você gastou 15% menos em X)
-- Formato: retorne um JSON array com 2 strings: ["insight 1", "insight 2"]`
+- Se os dados são positivos, também mencione (ex: você gastou 15% menos em X)
+- Formato: retorne um JSON array com exatamente 2 strings: ["insight 1", "insight 2"]`
 }
 
 export async function generateProactiveInsights(familyId: string): Promise<string[]> {
@@ -153,7 +158,7 @@ export async function generateProactiveInsights(familyId: string): Promise<strin
       body: JSON.stringify({
         model: 'llama-3.1-8b-instant',
         messages: [
-          { role: 'system', content: 'Você é um consultor financeiro pessoal que gera insights específicos e úteis baseados em dados reais. Nunca seja genérico.' },
+          { role: 'system', content: 'Você é um consultor financeiro pessoal. Gere insights APENAS com base nos dados fornecidos. Cite valores exatos. Nunca invente dados ou faça afirmações genéricas. Responda somente em português.' },
           { role: 'user', content: prompt },
         ],
         temperature: 0.4,
@@ -172,7 +177,7 @@ export async function generateProactiveInsights(familyId: string): Promise<strin
     const json = await response.json()
     const content: string = json.choices?.[0]?.message?.content ?? ''
     const match = content.match(/\[[\s\S]*\]/)
-    if (!match) return [content.trim()].filter(Boolean)
+    if (!match) { console.warn('[AI] proactive insights: expected JSON array, got raw text'); return [] }
     const parsed = JSON.parse(match[0])
     return Array.isArray(parsed) ? parsed.filter((s): s is string => typeof s === 'string') : []
   } catch {
@@ -198,7 +203,7 @@ export async function generateOnDemandInsight(familyId: string, question: string
       body: JSON.stringify({
         model: 'llama-3.1-8b-instant',
         messages: [
-          { role: 'system', content: 'Você é um consultor financeiro pessoal que responde perguntas com base em dados reais. Seja direto, específico e cite valores.' },
+          { role: 'system', content: 'Você é um consultor financeiro pessoal. Responda APENAS com base nos dados fornecidos. Cite valores exatos. Se a pergunta não puder ser respondida com os dados disponíveis, diga isso claramente. Responda somente em português.' },
           { role: 'user', content: prompt },
         ],
         temperature: 0.4,

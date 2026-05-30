@@ -35,13 +35,16 @@ async function generateInsight(
   const apiKey = process.env.GROQ_API_KEY
   if (!apiKey) return header
 
+  // Use leaf name for natural-sounding tips ("Combustível" instead of "Transporte / Combustível")
+  const leafName = categoryName.includes('/') ? categoryName.split('/').pop()!.trim() : categoryName
+
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 3_000)
 
     const prompt = level === 'over'
-      ? `A família ultrapassou o limite de ${categoryName} em ${excess} (gasto ${spent}, limite ${limit}). Escreva UMA dica prática e curta (máx 15 palavras, português informal) sobre como controlar gastos com ${categoryName} nos próximos dias. Apenas a dica, sem introdução.`
-      : `A família usou ${pct}% do limite de ${categoryName} (${spent} de ${limit}). Escreva UMA dica prática e curta (máx 15 palavras, português informal) para não ultrapassar o limite de ${categoryName}. Apenas a dica, sem introdução.`
+      ? `A família ultrapassou o limite de ${leafName} em ${excess} (gasto ${spent}, limite ${limit}). Escreva UMA dica prática e curta (máx 15 palavras) sobre como controlar gastos com ${leafName} nos próximos dias. Apenas a dica, sem introdução.`
+      : `A família usou ${pct}% do limite de ${leafName} (${spent} de ${limit}). Escreva UMA dica prática e curta (máx 15 palavras) para não ultrapassar o limite de ${leafName}. Apenas a dica, sem introdução.`
 
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -49,8 +52,11 @@ async function generateInsight(
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'llama-3.1-8b-instant',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.6,
+        messages: [
+          { role: 'system', content: 'Você é um consultor financeiro. Responda em português informal e direto.' },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.3,
         max_tokens: 40,
       }),
     })
