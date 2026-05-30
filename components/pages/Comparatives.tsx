@@ -37,6 +37,8 @@ import {
 import { matchesSearch } from '@/lib/filterSearch'
 import { formatBRL } from '@/lib/money'
 import { buildPdfBlob, downloadBlob, downloadCsv } from '@/lib/report-export'
+import { loadCategoryLimitsForMonth, type CategoryLimitRow, limitBarColor, formatLimitBadge } from '@/lib/categoryLimits'
+import CategorySettingsModal from '@/components/categories/CategorySettingsModal'
 
 interface Totals {
   income: number
@@ -133,6 +135,8 @@ export default function Comparatives() {
   const [hoveredBar, setHoveredBar] = useState<MetricKey | null>(null)
   const [exportingFormat, setExportingFormat] = useState<'csv' | 'pdf' | null>(null)
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false)
+  const [limitRows, setLimitRows] = useState<CategoryLimitRow[]>([])
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
   const [pdfUrl, setPdfUrl] = useState('')
   const [pdfGenerating, setPdfGenerating] = useState(false)
@@ -349,6 +353,13 @@ export default function Comparatives() {
     })()
     return () => { cancelled = true }
   }, [familyId])
+
+  useEffect(() => {
+    if (!familyId) return
+    const effectiveYear = selectedYear === ALL_YEARS_VALUE ? getCurrentYear() : selectedYear
+    const effectiveMonth = selectedMonth === ALL_MONTHS_VALUE ? getCurrentMonth() : selectedMonth
+    loadCategoryLimitsForMonth(familyId, effectiveYear, effectiveMonth).then(setLimitRows)
+  }, [familyId, selectedMonth, selectedYear])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -881,6 +892,56 @@ export default function Comparatives() {
                 )}
               </VintageCard>
 
+              {/* Gasto vs. limite */}
+              {limitRows.length > 0 && (
+                <VintageCard>
+                  <div className="flex items-start justify-between mb-1">
+                    <div>
+                      <h3 className="text-base font-serif font-semibold text-coffee">Gasto vs. limite</h3>
+                      <p className="text-xs text-ink/50 mt-0.5">Onde a família está no mês.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowCategoryModal(true)}
+                      className="text-xs text-petrol hover:underline shrink-0 mt-1"
+                    >
+                      Editar limites →
+                    </button>
+                  </div>
+                  <div className="space-y-3 mt-4">
+                    {limitRows.map((row) => {
+                      const barColor = limitBarColor(row.status)
+                      const badge = formatLimitBadge(row)
+                      return (
+                        <div key={row.categoryId}>
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: barColor }} />
+                            <span className="text-sm font-medium text-ink/85 truncate">
+                              {row.categoryName}
+                              {row.parentName && <span className="text-ink/40 font-normal"> · {row.parentName}</span>}
+                            </span>
+                            <div className="flex-1" />
+                            <span className="text-sm tabular-nums text-ink/60 shrink-0">{formatBRL(row.spentCents)} de {formatBRL(row.limitCents)}</span>
+                            <span
+                              className="text-xs font-semibold shrink-0 min-w-[3.5rem] text-right"
+                              style={{ color: barColor }}
+                            >
+                              {badge}
+                            </span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-border/50 overflow-hidden mt-1.5">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{ width: `${Math.min(row.pct, 100)}%`, backgroundColor: barColor }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </VintageCard>
+              )}
+
             </div>
             )}
           </div>
@@ -902,6 +963,18 @@ export default function Comparatives() {
           </div>
         </footer>
       </div>
+
+      <CategorySettingsModal
+        isOpen={showCategoryModal}
+        onClose={() => setShowCategoryModal(false)}
+        familyId={familyId}
+        kind="expense"
+        onChanged={() => {
+          const effectiveYear = selectedYear === ALL_YEARS_VALUE ? getCurrentYear() : selectedYear
+          const effectiveMonth = selectedMonth === ALL_MONTHS_VALUE ? getCurrentMonth() : selectedMonth
+          loadCategoryLimitsForMonth(familyId!, effectiveYear, effectiveMonth).then(setLimitRows)
+        }}
+      />
 
       <PdfPreviewModal
         isOpen={isPdfModalOpen}

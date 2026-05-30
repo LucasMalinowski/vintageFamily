@@ -9,6 +9,7 @@ CREATE TABLE public.categories (
                                    icon text,
                                    parent_id uuid,
                                    is_system boolean NOT NULL DEFAULT false,
+                                   monthly_limit_cents integer,
                                    created_at timestamp with time zone NOT NULL DEFAULT now(),
                                    updated_at timestamp with time zone NOT NULL DEFAULT now(),
                                    CONSTRAINT categories_pkey PRIMARY KEY (id),

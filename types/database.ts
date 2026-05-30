@@ -121,6 +121,7 @@ export type Database = {
           id: string
           is_system: boolean
           kind: string
+          monthly_limit_cents: number | null
           name: string
           parent_id: string | null
           updated_at: string
@@ -132,6 +133,7 @@ export type Database = {
           id?: string
           is_system?: boolean
           kind: string
+          monthly_limit_cents?: number | null
           name: string
           parent_id?: string | null
           updated_at?: string
@@ -143,6 +145,7 @@ export type Database = {
           id?: string
           is_system?: boolean
           kind?: string
+          monthly_limit_cents?: number | null
           name?: string
           parent_id?: string | null
           updated_at?: string

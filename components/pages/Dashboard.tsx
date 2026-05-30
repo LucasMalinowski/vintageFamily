@@ -9,8 +9,10 @@ import Topbar from '../layout/Topbar'
 import VintageCard from '../ui/VintageCard'
 import Modal from '../ui/Modal'
 import Select from '../ui/Select'
-import { formatDate, isDueDateToday, isDueDateOverdue } from '@/lib/dates'
+import { formatDate, isDueDateToday, isDueDateOverdue, getCurrentMonth, getCurrentYear } from '@/lib/dates'
 import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
+import { loadCategoryLimitsForMonth, type CategoryLimitRow, limitBarColor, formatLimitBadge } from '@/lib/categoryLimits'
+import { formatBRL } from '@/lib/money'
 
 const PHRASES = [
   'Organizar o dinheiro é cuidar do tempo que ainda vamos viver.',
@@ -118,6 +120,8 @@ export default function Dashboard() {
   const [familyName, setFamilyName] = useState('')
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false)
   const [reminderFilter, setReminderFilter] = useState<ReminderFilter>(null)
+  const [limitRows, setLimitRows] = useState<CategoryLimitRow[]>([])
+  const [loadingLimits, setLoadingLimits] = useState(true)
   const [reminderForm, setReminderForm] = useState({
     title: '',
     due_date: '',
@@ -128,10 +132,15 @@ export default function Dashboard() {
     if (familyId) {
       loadReminders()
       loadPendingPayables()
+      const now = new Date()
+      loadCategoryLimitsForMonth(familyId, now.getFullYear(), now.getMonth() + 1)
+        .then(setLimitRows)
+        .finally(() => setLoadingLimits(false))
     } else {
       // familyId not yet available - clear loading state so cards don't spin forever
       setLoading(false)
       setLoadingPayables(false)
+      setLoadingLimits(false)
     }
     loadFamilyName()
   }, [familyId, user?.id])
@@ -363,7 +372,7 @@ export default function Dashboard() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
             <VintageCard className="!bg-paper flex h-full flex-col">
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div>
@@ -531,6 +540,54 @@ export default function Dashboard() {
                 </Link>
               </div>
             </VintageCard>
+
+            {/* Limites do mês */}
+            {(loadingLimits || limitRows.length > 0) && (
+              <VintageCard className="!bg-paper flex flex-col lg:col-span-2">
+                <div className="flex items-start justify-between mb-1">
+                  <div>
+                    <h3 className="text-xl font-body font-thin text-sidebar">Limites do mês</h3>
+                    <p className="text-sm text-ink/40">
+                      {limitRows.filter((r) => r.status !== 'ok').length > 0
+                        ? `${limitRows.filter((r) => r.status !== 'ok').length} ${limitRows.filter((r) => r.status !== 'ok').length === 1 ? 'categoria pede' : 'categorias pedem'} atenção.`
+                        : 'Tudo dentro do planejado.'}
+                    </p>
+                  </div>
+                  <Link href="/comparatives" className="text-xs text-ink/40 hover:text-ink/60 transition-vintage mt-1">
+                    Ver todos →
+                  </Link>
+                </div>
+                {loadingLimits ? (
+                  <div className="text-sm text-ink/50 py-4">Carregando...</div>
+                ) : (
+                  <div className="space-y-3 mt-3">
+                    {limitRows.slice(0, 3).map((row) => {
+                      const barColor = limitBarColor(row.status)
+                      const badge = formatLimitBadge(row)
+                      return (
+                        <div key={row.categoryId}>
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: barColor }} />
+                            <span className="text-sm font-medium text-ink/85 truncate">
+                              {row.categoryName}
+                              {row.parentName && <span className="text-ink/40 font-normal"> · {row.parentName}</span>}
+                            </span>
+                            <div className="flex-1" />
+                            <span className="text-xs tabular-nums text-ink/50 shrink-0">{formatBRL(row.spentCents)} de {formatBRL(row.limitCents)}</span>
+                            <span className="text-xs font-semibold shrink-0 min-w-[3.5rem] text-right" style={{ color: barColor }}>
+                              {badge}
+                            </span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-border/50 overflow-hidden mt-1.5">
+                            <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(row.pct, 100)}%`, backgroundColor: barColor }} />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </VintageCard>
+            )}
           </div>
         </div>
       </div>

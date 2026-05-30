@@ -7,7 +7,7 @@ export async function dispatchInsights(
   familyId: string,
   insights: string[],
   period: string,
-  type: 'proactive' | 'on_demand' = 'proactive',
+  type: 'proactive' | 'on_demand' | 'limit_alert' = 'proactive',
   question?: string
 ): Promise<void> {
   if (insights.length === 0) return
@@ -41,12 +41,18 @@ export async function dispatchInsights(
 
     if (channels.includes('whatsapp') && member.phone_number) {
       try {
-        const header = type === 'proactive' ? '💡 *Insights do mês - Florim*\n\n' : '💡 *Insight sob demanda - Florim*\n\n'
-        const templateName = process.env.WHATSAPP_INSIGHTS_TEMPLATE_NAME
+        // limit_alert: always plain text — the insights template expects an image header
+        // and should not be used for transactional alerts
+        const isLimitAlert = type === 'limit_alert'
+        const header = type === 'proactive' ? '💡 *Insights do mês - Florim*\n\n' : type === 'on_demand' ? '💡 *Insight sob demanda - Florim*\n\n' : ''
+        const templateName = !isLimitAlert ? process.env.WHATSAPP_INSIGHTS_TEMPLATE_NAME : undefined
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://florim.app'
+        const headerImageUrl = templateName ? `${appUrl}/insights_whatsapp.png` : undefined
         const result = templateName
-          ? await whatsAppService.sendTemplateMessage(member.phone_number, templateName, [period, content])
+          ? await whatsAppService.sendTemplateMessage(member.phone_number, templateName, [period, content], 'pt_BR', [], headerImageUrl)
           : await whatsAppService.sendTextMessage(member.phone_number, header + content)
         sentChannels.push('whatsapp')
+        console.log(`[insights-dispatch] WhatsApp sent to ...${member.phone_number.replace(/\D/g, '').slice(-4)} msgId=${result.messageId}`)
         await posthogLogs.info('Insights WhatsApp message accepted by Meta', {
           family_id: familyId,
           user_id: member.id,
@@ -71,7 +77,9 @@ export async function dispatchInsights(
       }
     }
 
-    if (channels.includes('email') && member.email) {
+    // limit_alert never sends email — spending warnings would spam the user every time
+    // they add any expense in a category that's already over budget
+    if (type !== 'limit_alert' && channels.includes('email') && member.email) {
       try {
         await sendInsightsEmail({ to: member.email, name: member.name ?? '', insights, period })
         sentChannels.push('email')

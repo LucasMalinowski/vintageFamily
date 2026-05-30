@@ -43,24 +43,35 @@ export class WhatsAppService {
     templateName: string,
     bodyParameters: string[],
     languageCode = 'pt_BR',
-    buttons: { index: string; payload: string }[] = []
+    buttons: { index: string; payload: string }[] = [],
+    headerImageUrl?: string
   ): Promise<{ messageId: string | null }> {
     const recipient = to.replace(/\D/g, '')
-    const components = [
-      {
-        type: 'body',
-        parameters: bodyParameters.map((text) => ({
-          type: 'text',
-          text: this.sanitizeTemplateParameter(text),
-        })),
-      },
+    const components: object[] = []
+
+    if (headerImageUrl) {
+      components.push({
+        type: 'header',
+        parameters: [{ type: 'image', image: { link: headerImageUrl } }],
+      })
+    }
+
+    components.push({
+      type: 'body',
+      parameters: bodyParameters.map((text) => ({
+        type: 'text',
+        text: this.sanitizeTemplateParameter(text),
+      })),
+    })
+
+    components.push(
       ...buttons.map((button) => ({
         type: 'button',
         sub_type: 'quick_reply',
         index: button.index,
         parameters: [{ type: 'payload', payload: button.payload }],
-      })),
-    ]
+      }))
+    )
 
     const response = await fetch(this.apiUrl, {
       method: 'POST',

@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
 
     if (status) {
       const error = status.errors?.[0]
-      await posthogLogs.info('WhatsApp message status webhook received', {
+      const logPayload = {
         endpoint: '/api/whatsapp/webhook',
         meta_message_id: status.id ?? 'unknown',
         whatsapp_status: status.status ?? 'unknown',
@@ -111,7 +111,13 @@ export async function POST(request: NextRequest) {
         error_code: error?.code ?? 0,
         error_title: error?.title ?? 'none',
         error_message: error?.message ?? error?.error_data?.details ?? 'none',
-      })
+      }
+      if (error) {
+        console.error('[webhook] delivery FAILED', JSON.stringify(logPayload))
+      } else {
+        console.log(`[webhook] delivery status=${status.status} msg=${status.id} to=...${status.recipient_id?.slice(-4)}`)
+      }
+      await posthogLogs.info('WhatsApp message status webhook received', logPayload)
       await flushPostHogLogs()
       return NextResponse.json({ status: 'ok' }, { status: 200 })
     }

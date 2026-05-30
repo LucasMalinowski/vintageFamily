@@ -158,6 +158,47 @@ export default function Expenses() {
     recurrenceFrequency: 'monthly',
   })
   const [suggestedCategoryId, setSuggestedCategoryId] = useState<string | null>(null)
+  const [categoryLimitInfo, setCategoryLimitInfo] = useState<{
+    limitCents: number
+    spentCents: number
+    limitCategoryName: string
+  } | null>(null)
+
+  useEffect(() => {
+    const catId = formData.categoryId
+    if (!catId || !familyId) { setCategoryLimitInfo(null); return }
+    const cat = categories.find(c => c.id === catId)
+    if (!cat) { setCategoryLimitInfo(null); return }
+    // Resolve effective limit: own limit or parent's limit
+    let limitCents: number | null = cat.monthly_limit_cents ?? null
+    let limitHolderId = catId
+    let limitCategoryName = cat.name
+    if (!limitCents && cat.parent_id) {
+      const parent = categories.find(c => c.id === cat.parent_id)
+      if (parent?.monthly_limit_cents) {
+        limitCents = parent.monthly_limit_cents
+        limitHolderId = parent.id
+        limitCategoryName = parent.name
+      }
+    }
+    if (!limitCents) { setCategoryLimitInfo(null); return }
+    const limitedIds = [limitHolderId, ...categories.filter(c => c.parent_id === limitHolderId).map(c => c.id)]
+    const now = new Date()
+    const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
+    const captured = { limitCents, limitCategoryName }
+    supabase
+      .from('expenses')
+      .select('amount_cents')
+      .eq('family_id', familyId)
+      .in('category_id', limitedIds)
+      .gte('date', firstDay)
+      .lte('date', lastDay)
+      .then(({ data }) => {
+        const spent = (data ?? []).reduce((s, e) => s + (e.amount_cents ?? 0), 0)
+        setCategoryLimitInfo({ limitCents: captured.limitCents, spentCents: spent, limitCategoryName: captured.limitCategoryName })
+      })
+  }, [formData.categoryId, familyId, categories])
 
   useEffect(() => {
     if (formData.categoryId) { setSuggestedCategoryId(null); return }
@@ -273,7 +314,7 @@ export default function Expenses() {
   async function loadCategories() {
     const { data } = await supabase
       .from('categories')
-      .select('id,name,kind,parent_id,is_system,icon')
+      .select('id,name,kind,parent_id,is_system,icon,monthly_limit_cents')
       .eq('family_id', familyId!)
       .eq('kind', 'expense')
       .order('name')
@@ -468,6 +509,18 @@ export default function Expenses() {
 
     closeModal()
     loadExpenses()
+
+    // Fire-and-forget limit alert check
+    if (familyId && category?.id) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session?.access_token) return
+        fetch('/api/categories/limit-alert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ familyId, categoryId: category.id }),
+        }).catch(() => {/* silent */})
+      })
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -560,6 +613,7 @@ export default function Expenses() {
         recurrenceFrequency: 'monthly',
       })
     }
+    loadCategories()  // always refresh so latest limits are loaded
     setIsModalOpen(true)
   }
 
@@ -1622,6 +1676,35 @@ export default function Expenses() {
             required
             variant="modal"
           />
+
+          {/* Limit indicator */}
+          {(() => {
+            if (!categoryLimitInfo) return null
+            const { limitCents, spentCents, limitCategoryName } = categoryLimitInfo
+            const amountCents = formData.amount ? Math.round(parseFloat(formData.amount) * 100) : 0
+            const projected = spentCents + amountCents
+            const projectedPct = limitCents > 0 ? Math.round((projected / limitCents) * 100) : 0
+            if (projectedPct < 80 && projected <= limitCents) return null
+            const isOver = projected > limitCents
+            const barColor = isOver ? '#B05C3A' : '#C2A45D'
+            const excess = projected - limitCents
+            return (
+              <div className={`rounded-lg px-3 py-2.5 border text-sm ${isOver ? 'bg-terracotta/8 border-terracotta/30 text-terracotta' : 'bg-gold/8 border-gold/30 text-gold'}`}>
+                <p className="font-medium">
+                  {isOver
+                    ? `⚠️ Esta despesa passa o limite de ${limitCategoryName} em ${formatBRL(excess)}.`
+                    : `⚠️ Esta despesa deixa ${limitCategoryName} a ${projectedPct}% do limite.`
+                  }
+                </p>
+                <p className="text-ink/60 text-xs mt-0.5">
+                  Limite do mês: {formatBRL(limitCents)} · já lançado {formatBRL(spentCents)}.
+                </p>
+                <div className="w-full h-1.5 rounded-full bg-border/50 overflow-hidden mt-2">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(projectedPct, 100)}%`, backgroundColor: barColor }} />
+                </div>
+              </div>
+            )
+          })()}
 
           <div>
             <label className="block font-body text-ink mb-2">Método</label>

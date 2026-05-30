@@ -7,6 +7,7 @@ export interface CategoryRecord {
   parent_id: string | null
   is_system: boolean
   icon: string | null
+  monthly_limit_cents: number | null
 }
 
 export interface CategoryNode extends CategoryRecord {
