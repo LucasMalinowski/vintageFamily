@@ -46,10 +46,13 @@ export async function dispatchInsights(
         // The image header is always passed so the template format matches.
         const header = type === 'proactive' ? '💡 *Insights do mês - Florim*\n\n' : type === 'on_demand' ? '💡 *Insight sob demanda - Florim*\n\n' : ''
         const templateName = process.env.WHATSAPP_INSIGHTS_TEMPLATE_NAME
+        // Prefer pre-uploaded media_id (set WHATSAPP_INSIGHTS_IMAGE_ID after running the upload endpoint)
+        // over URL — Meta fetches URLs on every send which is unreliable (error 131053)
+        const headerImageId = process.env.WHATSAPP_INSIGHTS_IMAGE_ID
         const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://florim.app'
-        const headerImageUrl = `${appUrl}/insights_whatsapp.png`
+        const headerImageUrl = headerImageId ? undefined : `${appUrl}/insights_whatsapp.png`
         const result = templateName
-          ? await whatsAppService.sendTemplateMessage(member.phone_number, templateName, [period, content], 'pt_BR', [], headerImageUrl)
+          ? await whatsAppService.sendTemplateMessage(member.phone_number, templateName, [period, content], 'pt_BR', [], headerImageUrl, headerImageId)
           : await whatsAppService.sendTextMessage(member.phone_number, header + content)
         sentChannels.push('whatsapp')
         console.log(`[insights-dispatch] WhatsApp sent to ...${member.phone_number.replace(/\D/g, '').slice(-4)} msgId=${result.messageId}`)

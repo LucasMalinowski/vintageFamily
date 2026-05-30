@@ -44,16 +44,18 @@ export class WhatsAppService {
     bodyParameters: string[],
     languageCode = 'pt_BR',
     buttons: { index: string; payload: string }[] = [],
-    headerImageUrl?: string
+    headerImageUrl?: string,
+    headerImageId?: string
   ): Promise<{ messageId: string | null }> {
     const recipient = to.replace(/\D/g, '')
     const components: object[] = []
 
-    if (headerImageUrl) {
-      components.push({
-        type: 'header',
-        parameters: [{ type: 'image', image: { link: headerImageUrl } }],
-      })
+    if (headerImageId || headerImageUrl) {
+      // Prefer media_id (uploaded once, cached by Meta) over URL (fetched on every send)
+      const imageParam = headerImageId
+        ? { type: 'image', image: { id: headerImageId } }
+        : { type: 'image', image: { link: headerImageUrl } }
+      components.push({ type: 'header', parameters: [imageParam] })
     }
 
     components.push({
@@ -159,6 +161,31 @@ export class WhatsAppService {
       `> 🔒 Em conformidade com a *LGPD*, seus dados são tratados com total segurança pelo *Florim*. Nenhuma informação é compartilhada com terceiros.\n` +
       `> 📄 Termos e Política de Privacidade: ${appUrl}/termos-e-servicos`
     )
+  }
+
+  /**
+   * Upload an image file to WhatsApp's Media API and return the media_id.
+   * Store the returned id in WHATSAPP_INSIGHTS_IMAGE_ID so you only upload once.
+   */
+  async uploadMedia(imageBuffer: Buffer, mimeType: string): Promise<string> {
+    const form = new FormData()
+    form.append('messaging_product', 'whatsapp')
+    form.append('type', mimeType)
+    const ab = imageBuffer.buffer.slice(imageBuffer.byteOffset, imageBuffer.byteOffset + imageBuffer.byteLength) as ArrayBuffer
+    form.append('file', new Blob([ab], { type: mimeType }), 'image.png')
+
+    const res = await fetch(`${this.graphBaseUrl}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/media`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.token}` },
+      body: form,
+    })
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(`WhatsApp media upload error ${res.status}: ${body}`)
+    }
+    const data = await res.json() as { id?: string }
+    if (!data.id) throw new Error('WhatsApp media upload: no id in response')
+    return data.id
   }
 
   async sendWelcomeTips(to: string): Promise<void> {
