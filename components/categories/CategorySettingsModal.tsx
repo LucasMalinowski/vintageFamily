@@ -431,9 +431,10 @@ export default function CategorySettingsModal({
               <button
                 type="button"
                 onClick={() => startEditLimit(item)}
-                className="text-sm text-ink/80 hover:text-coffee transition-colors text-left"
+                className="flex items-center gap-1.5 text-sm text-ink/80 hover:text-coffee transition-colors text-left group"
               >
                 {formatBRL(limit)}
+                <Pencil className="w-3 h-3 opacity-35 group-hover:opacity-70 transition-opacity" />
               </button>
             ) : (
               <button
