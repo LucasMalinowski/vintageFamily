@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "M3BUT2HVFH.app.florim.app",
+        "paths": ["/invite", "/invite/*"]
+      }
+    ]
+  }
+}

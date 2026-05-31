@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import Link from 'next/link'
+import { Eye, EyeOff } from 'lucide-react'
 
 type InviteInfo = {
   email: string
@@ -22,6 +23,8 @@ function InvitePageContent() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [agreed, setAgreed] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const token = searchParams.get('token')
 
@@ -53,6 +56,13 @@ function InvitePageContent() {
     }
 
     fetchInvite()
+  }, [token])
+
+  useEffect(() => {
+    if (!token) return
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+    if (!isMobile) return
+    window.location.href = `florim://invite?token=${token}`
   }, [token])
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -114,35 +124,55 @@ function InvitePageContent() {
           value={name}
           onChange={(event) => setName(event.target.value)}
           required
-          className="w-full px-4 py-3 bg-offWhite border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
+          className="w-full px-4 py-3 bg-offWhite border border-border rounded-full text-ink/80 focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
           placeholder="Nome completo"
         />
       </div>
 
       <div>
         <label className="block text-sm font-body text-ink mb-2">Senha</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          required
-          minLength={6}
-          className="w-full px-4 py-3 bg-offWhite border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
-          placeholder="••••••••"
-        />
+        <div className="relative">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+            minLength={6}
+            className="w-full px-4 py-3 pr-11 bg-offWhite border border-border rounded-full text-ink/80 focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
+            placeholder="••••••••"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(v => !v)}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink/70 transition-vintage"
+            tabIndex={-1}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
       </div>
 
       <div>
         <label className="block text-sm font-body text-ink mb-2">Confirmar senha</label>
-        <input
-          type="password"
-          value={confirmPassword}
-          onChange={(event) => setConfirmPassword(event.target.value)}
-          required
-          minLength={6}
-          className="w-full px-4 py-3 bg-offWhite border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
-          placeholder="••••••••"
-        />
+        <div className="relative">
+          <input
+            type={showConfirmPassword ? 'text' : 'password'}
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            required
+            minLength={6}
+            className="w-full px-4 py-3 pr-11 bg-offWhite border border-border rounded-full text-ink/80 focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
+            placeholder="••••••••"
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword(v => !v)}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink/70 transition-vintage"
+            tabIndex={-1}
+          >
+            {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
       </div>
 
       <label className="flex items-start gap-3 cursor-pointer">
@@ -248,35 +278,55 @@ function InvitePageContent() {
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                     required
-                    className="w-full px-4 py-3 bg-white/70 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
+                    className="w-full px-4 py-3 bg-white/70 border border-border rounded-full text-ink/80 focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
                     placeholder="Nome completo"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-body text-ink mb-2">Senha</label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    required
-                    minLength={6}
-                    className="w-full px-4 py-3 bg-white/70 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
-                    placeholder="••••••••"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      required
+                      minLength={6}
+                      className="w-full px-4 py-3 pr-11 bg-white/70 border border-border rounded-full text-ink/80 focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(v => !v)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink/70 transition-vintage"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-body text-ink mb-2">Confirmar senha</label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    required
-                    minLength={6}
-                    className="w-full px-4 py-3 bg-white/70 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
-                    placeholder="••••••••"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      required
+                      minLength={6}
+                      className="w-full px-4 py-3 pr-11 bg-white/70 border border-border rounded-full text-ink/80 focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(v => !v)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-ink/40 hover:text-ink/70 transition-vintage"
+                      tabIndex={-1}
+                    >
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
 
                 <label className="flex items-start gap-3 cursor-pointer">

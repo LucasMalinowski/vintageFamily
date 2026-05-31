@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.florim.app",
+      "sha256_cert_fingerprints": [
+        "23:0D:7B:54:78:9A:D7:A9:85:FB:FA:AA:E7:F2:EE:8E:55:4D:1C:CB:5A:AF:F2:BA:60:BE:09:BF:E6:BF:E6:F9"
+      ]
+    }
+  }
+]
