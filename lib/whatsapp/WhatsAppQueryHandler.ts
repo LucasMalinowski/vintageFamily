@@ -6,7 +6,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { nvidiaAIService } from '@/lib/ai/NvidiaAIService'
 import { formatBRL } from '@/lib/money'
 import type { IntentClassification, ClassifyItem, ClassifyResult } from '@/lib/ai/NvidiaAIService'
-import { getBillingCycleRange } from '@/lib/billing-cycle'
+import { getBillingCycleRange, getCurrentBillingPeriod } from '@/lib/billing-cycle'
 
 type DateRange = { from: string; to: string }
 
@@ -334,12 +334,14 @@ export class WhatsAppQueryHandler {
 
     switch (timeRange) {
       case 'current_month': {
-        const refMonth = format(today, 'yyyy-MM')
+        const refMonth = getCurrentBillingPeriod(billingCycleDay, today)
         const { start, end } = getBillingCycleRange(billingCycleDay, refMonth)
         return { from: start, to: end }
       }
       case 'last_month': {
-        const prev = subMonths(today, 1)
+        const currentRef = getCurrentBillingPeriod(billingCycleDay, today)
+        const [cy, cm] = currentRef.split('-').map(Number)
+        const prev = subMonths(new Date(cy, cm - 1, 1), 1)
         const refMonth = format(prev, 'yyyy-MM')
         const { start, end } = getBillingCycleRange(billingCycleDay, refMonth)
         return { from: start, to: end }

@@ -24,7 +24,7 @@ import {
   ALL_MONTHS_VALUE,
   ALL_YEARS_VALUE,
 } from '@/lib/dates'
-import { getBillingCycleRange } from '@/lib/billing-cycle'
+import { getBillingCycleRange, getCurrentBillingPeriod } from '@/lib/billing-cycle'
 import AnalyticsKpiCard from '@/components/ui/AnalyticsKpiCard'
 import SankeyChart, { SankeyNode, SankeyLink } from '@/components/ui/SankeyChart'
 import { buildInstallmentDates, splitAmountCents } from '@/lib/installments'
@@ -240,7 +240,13 @@ export default function Expenses() {
       .eq('id', user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.billing_cycle_day) setBillingCycleDay(data.billing_cycle_day)
+        if (data?.billing_cycle_day) {
+          setBillingCycleDay(data.billing_cycle_day)
+          const period = getCurrentBillingPeriod(data.billing_cycle_day)
+          const [py, pm] = period.split('-').map(Number)
+          setSelectedYear(py)
+          setSelectedMonth(pm)
+        }
       })
   }, [user?.id])
 

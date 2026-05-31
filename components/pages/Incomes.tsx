@@ -28,7 +28,7 @@ import {
   ALL_MONTHS_VALUE,
   ALL_YEARS_VALUE,
 } from '@/lib/dates'
-import { getBillingCycleRange } from '@/lib/billing-cycle'
+import { getBillingCycleRange, getCurrentBillingPeriod } from '@/lib/billing-cycle'
 import { ArrowDown, Calendar, Check, Clock, DollarSign, Download, Edit2, FileDown, FileText, List, SlidersHorizontal, Search, Plus, TrendingUp, X, Tag } from 'lucide-react'
 import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
@@ -221,7 +221,13 @@ export default function Incomes() {
       .eq('id', user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.billing_cycle_day) setBillingCycleDay(data.billing_cycle_day)
+        if (data?.billing_cycle_day) {
+          setBillingCycleDay(data.billing_cycle_day)
+          const period = getCurrentBillingPeriod(data.billing_cycle_day)
+          const [py, pm] = period.split('-').map(Number)
+          setSelectedYear(py)
+          setSelectedMonth(pm)
+        }
       })
   }, [user?.id])
 

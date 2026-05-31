@@ -18,9 +18,9 @@ export function getBillingCycleRange(cycleDay: number, referenceMonth: string): 
     return { start, end }
   }
 
-  // Cycle: from (day) of previous month to (day-1) of current month
-  const startDate = new Date(year, month - 2, day) // previous month
-  const endDate = new Date(year, month - 1, day - 1) // current month, day before cycle day
+  // Cycle: from (day) of reference month to (day-1) of next month
+  const startDate = new Date(year, month - 1, day) // reference month
+  const endDate = new Date(year, month, day - 1) // next month, day before cycle restarts
 
   const fmt = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
