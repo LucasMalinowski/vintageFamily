@@ -57,6 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const familyLoadInProgressRef = useRef<string | null>(null)
   const userRef = useRef<User | null>(null)
   const familyIdRef = useRef<string | null>(null)
+  // Prevents onAuthStateChange from running applyAuthenticatedSession while signIn/signUp
+  // is already managing the flow — avoids duplicate syncServerSession calls and state flicker.
+  const authInProgressRef = useRef(false)
 
   // Keep refs in sync so event listeners read current values without stale closures
   useEffect(() => { userRef.current = user }, [user])
@@ -130,7 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!mountedRef.current) return
+      if (!mountedRef.current || authInProgressRef.current) return
 
       if (session?.user) {
         void applyAuthenticatedSession(session)
@@ -195,23 +198,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [applyAuthenticatedSession, loadFamilyId])
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
+    authInProgressRef.current = true
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
 
-    let session: Session | null = data.session
-    if (!session) {
-      const { data: sessionData } = await supabase.auth.getSession()
-      session = sessionData.session
+      let session: Session | null = data.session
+      if (!session) {
+        const { data: sessionData } = await supabase.auth.getSession()
+        session = sessionData.session
+      }
+      if (!session) throw new Error('Não foi possível autenticar o usuário.')
+
+      await syncServerSession(session)
+      setUser(session.user)
+      setAuthStatus('authenticated')
+      router.replace('/inicio')
+    } finally {
+      authInProgressRef.current = false
     }
-    if (!session) throw new Error('Não foi possível autenticar o usuário.')
-
-    await syncServerSession(session)
-    setUser(session.user)
-    setAuthStatus('authenticated')
-    router.replace('/inicio')
   }
 
   const signUp = async (email: string, password: string, name: string, familyName: string) => {
+    authInProgressRef.current = true
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({ email, password })
       if (authError) throw authError
@@ -261,29 +270,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.replace('/inicio')
     } catch (error: any) {
       throw error
+    } finally {
+      authInProgressRef.current = false
     }
   }
 
   const signInWithGoogle = async (idToken: string) => {
-    const { data, error } = await supabase.auth.signInWithIdToken({
-      provider: 'google',
-      token: idToken,
-    })
-    if (error) throw error
-    if (!data.session) throw new Error('Não foi possível autenticar com Google.')
+    authInProgressRef.current = true
+    try {
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: idToken,
+      })
+      if (error) throw error
+      if (!data.session) throw new Error('Não foi possível autenticar com Google.')
 
-    await syncServerSession(data.session)
-    setUser(data.session.user)
-    setAuthStatus('authenticated')
+      await syncServerSession(data.session)
+      setUser(data.session.user)
+      setAuthStatus('authenticated')
 
-    // Detect new user (no family yet) → SSO onboarding
-    const { data: userData } = await supabase
-      .from('users')
-      .select('family_id')
-      .eq('id', data.session.user.id)
-      .maybeSingle()
+      // Detect new user (no family yet) → SSO onboarding
+      const { data: userData } = await supabase
+        .from('users')
+        .select('family_id')
+        .eq('id', data.session.user.id)
+        .maybeSingle()
 
-    router.replace(userData?.family_id ? '/inicio' : '/signup/sso-complete')
+      router.replace(userData?.family_id ? '/inicio' : '/signup/sso-complete')
+    } finally {
+      authInProgressRef.current = false
+    }
   }
 
   const signInWithApple = async () => {
@@ -297,6 +313,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const acceptInvite = async (token: string, email: string, name: string, password: string) => {
+    authInProgressRef.current = true
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({ email, password })
       if (authError) throw authError
@@ -335,6 +352,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.replace('/inicio')
     } catch (error: any) {
       throw error
+    } finally {
+      authInProgressRef.current = false
     }
   }
 

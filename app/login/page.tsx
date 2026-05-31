@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/components/AuthProvider'
 import { SSOButtons, SSODivider } from '@/components/SSOButtons'
 import Link from 'next/link'
@@ -25,8 +25,12 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const submittedRef = useRef(false)
 
   useEffect(() => {
+    // Only redirect if the user was already authenticated before submitting the form.
+    // signIn() calls router.replace directly; we must not issue a second replace from here.
+    if (submittedRef.current) return
     if (!loading && user && authStatus === 'authenticated') {
       router.replace('/inicio')
     }
@@ -34,11 +38,13 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    submittedRef.current = true
     setError('')
     setLoading(true)
     try {
       await signIn(email, password)
     } catch (err: any) {
+      submittedRef.current = false
       setError(err.message || 'Erro ao fazer login')
     } finally {
       setLoading(false)

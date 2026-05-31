@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import Link from 'next/link'
@@ -25,10 +25,12 @@ function InvitePageContent() {
   const [agreed, setAgreed] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const submittedRef = useRef(false)
 
   const token = searchParams.get('token')
 
   useEffect(() => {
+    if (submittedRef.current) return
     if (user) {
       router.push('/inicio')
     }
@@ -81,11 +83,13 @@ function InvitePageContent() {
       return
     }
 
+    submittedRef.current = true
     setSubmitting(true)
 
     try {
       await acceptInvite(token, inviteInfo.email, name, password)
     } catch (err: any) {
+      submittedRef.current = false
       setError(err.message || 'Erro ao aceitar convite.')
     } finally {
       setSubmitting(false)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/components/AuthProvider'
 import { SSOButtons, SSODivider } from '@/components/SSOButtons'
 import { useRouter } from 'next/navigation'
@@ -20,8 +20,10 @@ export default function SignUpPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [agreed, setAgreed] = useState(false)
+  const submittedRef = useRef(false)
 
   useEffect(() => {
+    if (submittedRef.current) return
     if (!loading && user && authStatus === 'authenticated') router.replace('/inicio')
   }, [authStatus, loading, user, router])
 
@@ -54,11 +56,13 @@ export default function SignUpPage() {
       return
     }
 
+    submittedRef.current = true
     setLoading(true)
 
     try {
       await signUp(cleanEmail, password, cleanName, cleanFamilyName)
     } catch (err: any) {
+      submittedRef.current = false
       setError(err.message || 'Erro ao criar conta')
     } finally {
       setLoading(false)
