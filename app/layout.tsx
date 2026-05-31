@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import Providers from '@/components/Providers'
 import CookieBanner from '@/components/CookieBanner'
+import MobileAppBanner from '@/components/MobileAppBanner'
 
 export const metadata: Metadata = {
   title: {
@@ -92,6 +93,7 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
+        <MobileAppBanner />
         <CookieBanner />
       </body>
     </html>
