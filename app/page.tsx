@@ -133,8 +133,8 @@ const PLANS = [
     bullets: [
       'Despesas e Receitas',
       'Poupança e sonhos',
-      '75 registros por WhatsApp/mês',
-      '15 consultas com IA/mês',
+      '25 registros por WhatsApp/mês',
+      '7 consultas com IA/mês',
       '3 insights sob demanda/mês',
       '3 importações ou exportações/mês',
     ],

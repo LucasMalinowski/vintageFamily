@@ -14,8 +14,8 @@ const COMPARISON_ROWS = [
   { label: 'Poupança e sonhos', free: true, pro: true },
   { label: 'Lembretes e vencimento', free: true, pro: true },
   { label: 'Família compartilhada', free: true, pro: true },
-  { label: 'WhatsApp para registrar lançamentos', free: '75/mês', pro: 'Ilimitado' },
-  { label: 'Consultas com IA pelo WhatsApp', free: '15/mês', pro: 'Ilimitado' },
+  { label: 'WhatsApp para registrar lançamentos', free: '25/mês', pro: 'Ilimitado' },
+  { label: 'Consultas com IA pelo WhatsApp', free: '7/mês', pro: 'Ilimitado' },
   { label: 'Insights sob demanda', free: '3/mês', pro: 'Ilimitado' },
   { label: 'Insights automáticos', free: '2/mês', pro: 'Frequência ajustável' },
   { label: 'Sugestão de categorias com IA', free: true, pro: true },
@@ -261,7 +261,7 @@ export default function PlansPage() {
             </div>
             <p className="text-[13px] text-ink/45 mb-6">Sem cartão. Seus dados continuam disponíveis.</p>
             <ul className="flex flex-col gap-2 text-sm text-ink/70 mb-7 flex-1">
-              {['Registro ilimitado de contas, receitas, poupanças e lembretes', 'Família compartilhada', '75 registros por WhatsApp/mês', '15 consultas com IA/mês', '3 insights sob demanda/mês', '3 importações/exportações/mês', 'Histórico comparativo de 2 meses'].map((b) => (
+              {['Registro ilimitado de contas, receitas, poupanças e lembretes', 'Família compartilhada', '25 registros por WhatsApp/mês', '7 consultas com IA/mês', '3 insights sob demanda/mês', '3 importações/exportações/mês', 'Histórico comparativo de 2 meses'].map((b) => (
                 <li key={b} className="flex items-center gap-2">
                   <Check size={14} className="text-olive shrink-0" />
                   <span>{b}</span>

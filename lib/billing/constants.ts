@@ -34,9 +34,9 @@ export function isPlanCode(value: string): value is PlanCode {
 }
 
 export const FREE_TIER_LIMITS = {
-  whatsappRecordingsPerMonth: 75,
+  whatsappRecordingsPerMonth: 25,
   audioMessagesPerMonth: 10,
-  aiQueriesPerMonth: 15,
+  aiQueriesPerMonth: 7,
   exportImportPerMonth: 3,
   comparativeHistoryMonths: 2,
   onDemandInsightsFreePerMonth: 3,

@@ -227,7 +227,7 @@ export async function processWhatsAppMessage(
       if (!usage.allowed) {
         await whatsAppService.sendTextMessage(
           fromPhone,
-          'Você usou todas as 15 consultas gratuitas deste mês. 🎯\n\nAssine o Florim Pro para consultas ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.'
+          'Você usou todas as 7 consultas gratuitas deste mês. 🎯\n\nAssine o Florim Pro para consultas ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.'
         )
         return
       }
@@ -309,7 +309,7 @@ export async function processWhatsAppMessage(
     if (!usage.allowed) {
       await whatsAppService.sendTextMessage(
         fromPhone,
-        'Você usou todas as 75 mensagens gratuitas deste mês. 🎯\n\nAssine o Florim Pro para mensagens ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.'
+        'Você usou todas as 25 mensagens gratuitas deste mês. 🎯\n\nAssine o Florim Pro para mensagens ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.'
       )
       return
     }
@@ -514,7 +514,7 @@ export async function processWhatsAppButtonReply(
         .eq('id', pending.id)
       await whatsAppService.sendTextMessage(
         fromPhone,
-        'Você usou todas as 75 mensagens gratuitas deste mês. 🎯\n\nAssine o Florim Pro para mensagens ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.'
+        'Você usou todas as 25 mensagens gratuitas deste mês. 🎯\n\nAssine o Florim Pro para mensagens ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.'
       )
       return
     }
