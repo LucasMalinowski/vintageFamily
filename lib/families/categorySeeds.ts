@@ -87,6 +87,8 @@ export const FAMILY_CATEGORY_SEEDS: CategorySeed[] = [
       { name: 'Farmácia' },
       { name: 'Consultas' },
       { name: 'Exames' },
+      { name: 'Plano de Saúde' },
+      { name: 'Dentista' },
     ],
   },
   {

@@ -50,10 +50,10 @@ import { usePlan } from '@/lib/billing/plan-context'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
 
-type PaymentMethod = 'PIX' | 'Credito' | 'Debito'
+type PaymentMethod = 'PIX' | 'Credito' | 'Debito' | 'ValeAlimentacao'
 
 const normalizePaymentMethod = (method: string | null): PaymentMethod | null => {
-  if (method === 'PIX' || method === 'Credito' || method === 'Debito') {
+  if (method === 'PIX' || method === 'Credito' || method === 'Debito' || method === 'ValeAlimentacao') {
     return method
   }
   return null
@@ -84,6 +84,7 @@ const formatPaymentLabel = (method: PaymentMethod | null, installments: number |
   }
   if (method === 'Debito') return 'Debito'
   if (method === 'PIX') return 'PIX'
+  if (method === 'ValeAlimentacao') return 'Vale Alimentação'
   return 'Não definido'
 }
 
@@ -1486,8 +1487,8 @@ export default function Expenses() {
                                         ⚠ Sem método
                                       </span>
                                     )}
-                                  </div>
-                                )}
+                                  </span>
+                                </div>
                               </div>
                             </div>
 
@@ -1715,7 +1716,7 @@ export default function Expenses() {
           <div>
             <label className="block font-body text-ink mb-2">Método</label>
             <div className="flex gap-2">
-              {(['PIX', 'Credito', 'Debito'] as PaymentMethod[]).map((method) => (
+              {(['PIX', 'Credito', 'Debito', 'ValeAlimentacao'] as PaymentMethod[]).map((method) => (
                 <button
                   key={method}
                   type="button"
@@ -1726,7 +1727,7 @@ export default function Expenses() {
                       : 'border-border bg-bg text-ink hover:bg-paper'
                   }`}
                 >
-                  {method === 'Credito' ? 'Crédito' : method === 'Debito' ? 'Débito' : method}
+                  {method === 'Credito' ? 'Crédito' : method === 'Debito' ? 'Débito' : method === 'ValeAlimentacao' ? 'Vale Alimentação' : method}
                 </button>
               ))}
             </div>
@@ -1930,6 +1931,7 @@ export default function Expenses() {
           if (met !== undefined) setSelectedPaymentMethod(met)
         }}
       />
+
     </div>
   )
 }

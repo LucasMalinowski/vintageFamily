@@ -30,6 +30,7 @@ const METHOD_OPTIONS = [
   { value: 'PIX', label: 'PIX' },
   { value: 'Credito', label: 'Crédito' },
   { value: 'Debito', label: 'Débito' },
+  { value: 'ValeAlimentacao', label: 'Vale Alimentação' },
 ]
 
 export default function FilterSheet({

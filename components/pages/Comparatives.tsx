@@ -290,13 +290,13 @@ export default function Comparatives() {
       })
     const methodTotal = Array.from(methodMap.values()).reduce((s, v) => s + v, 0) || 1
     const METHOD_COLORS: Record<string, string> = {
-      PIX: '#6FBF8A', Credito: '#2F6F7E', Debito: '#3689B5', Outro: '#C2A45D',
+      PIX: '#6FBF8A', Credito: '#2F6F7E', Debito: '#3689B5', ValeAlimentacao: '#16A34A', Outro: '#C2A45D',
     }
-    const allMethods = ['PIX', 'Credito', 'Debito', 'Outro']
+    const allMethods = ['PIX', 'Credito', 'Debito', 'ValeAlimentacao', 'Outro']
     setPaymentMethodItems(
       allMethods.map((m) => {
         const val = methodMap.get(m) || 0
-        return { label: m === 'Credito' ? 'Crédito' : m === 'Debito' ? 'Débito' : m, value: val, pct: Math.round((val / methodTotal) * 100), color: METHOD_COLORS[m] }
+        return { label: m === 'Credito' ? 'Crédito' : m === 'Debito' ? 'Débito' : m === 'ValeAlimentacao' ? 'Vale Alimentação' : m, value: val, pct: Math.round((val / methodTotal) * 100), color: METHOD_COLORS[m] }
       }).filter((i) => i.value > 0),
     )
 
@@ -943,6 +943,15 @@ export default function Comparatives() {
                             >
                               {badge}
                             </span>
+                            <button
+                              type="button"
+                              onClick={handleBell}
+                              disabled={togglingBellId === row.categoryId}
+                              title={row.silenced ? 'Alertas silenciados este mês — clique para reativar' : 'Silenciar alertas este mês'}
+                              className={`shrink-0 p-1 rounded transition-colors ${row.silenced ? 'text-gold' : 'text-ink/25 hover:text-ink/50'}`}
+                            >
+                              {row.silenced ? <BellOff className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
+                            </button>
                           </div>
                           <div className="w-full h-1.5 rounded-full bg-border/50 overflow-hidden mt-1.5">
                             <div
