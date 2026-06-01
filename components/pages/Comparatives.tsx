@@ -137,6 +137,8 @@ export default function Comparatives() {
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false)
   const [limitRows, setLimitRows] = useState<CategoryLimitRow[]>([])
   const [showCategoryModal, setShowCategoryModal] = useState(false)
+  const [billingPeriodKey, setBillingPeriodKey] = useState('')
+  const [togglingBellId, setTogglingBellId] = useState<string | null>(null)
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
   const [pdfUrl, setPdfUrl] = useState('')
   const [pdfGenerating, setPdfGenerating] = useState(false)
@@ -358,7 +360,13 @@ export default function Comparatives() {
     if (!familyId) return
     const effectiveYear = selectedYear === ALL_YEARS_VALUE ? getCurrentYear() : selectedYear
     const effectiveMonth = selectedMonth === ALL_MONTHS_VALUE ? getCurrentMonth() : selectedMonth
-    loadCategoryLimitsForMonth(familyId, effectiveYear, effectiveMonth).then(setLimitRows)
+    const loadWithSilences = async () => {
+      const periodKey = billingPeriodKey || await getUserBillingPeriodKey()
+      if (!billingPeriodKey) setBillingPeriodKey(periodKey)
+      const rows = await loadCategoryLimitsForMonth(familyId, effectiveYear, effectiveMonth, periodKey)
+      setLimitRows(rows)
+    }
+    loadWithSilences()
   }, [familyId, selectedMonth, selectedYear])
 
   useEffect(() => {
@@ -912,6 +920,13 @@ export default function Comparatives() {
                     {limitRows.map((row) => {
                       const barColor = limitBarColor(row.status)
                       const badge = formatLimitBadge(row)
+                      const handleBell = async () => {
+                        if (!familyId || !billingPeriodKey) return
+                        setTogglingBellId(row.categoryId)
+                        const nowSilenced = await toggleCategoryLimitSilence(familyId, row.categoryId, billingPeriodKey)
+                        setLimitRows(prev => prev.map(r => r.categoryId === row.categoryId ? { ...r, silenced: nowSilenced } : r))
+                        setTogglingBellId(null)
+                      }
                       return (
                         <div key={row.categoryId}>
                           <div className="flex items-center gap-2">
@@ -972,7 +987,7 @@ export default function Comparatives() {
         onChanged={() => {
           const effectiveYear = selectedYear === ALL_YEARS_VALUE ? getCurrentYear() : selectedYear
           const effectiveMonth = selectedMonth === ALL_MONTHS_VALUE ? getCurrentMonth() : selectedMonth
-          loadCategoryLimitsForMonth(familyId!, effectiveYear, effectiveMonth).then(setLimitRows)
+          loadCategoryLimitsForMonth(familyId!, effectiveYear, effectiveMonth, billingPeriodKey).then(setLimitRows)
         }}
       />
 
