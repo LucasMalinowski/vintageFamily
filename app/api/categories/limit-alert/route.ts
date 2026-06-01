@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { sendExpoPushNotifications } from '@/lib/notifications/push'
 import { dispatchInsights } from '@/lib/insights/dispatcher'
 import { formatBRL } from '@/lib/money'
+import { getCurrentBillingPeriod } from '@/lib/billing-cycle'
 
 /**
  * POST /api/categories/limit-alert
@@ -149,6 +150,28 @@ export async function POST(request: NextRequest) {
   const level: AlertLevel | null = pct >= 100 ? 'over' : pct >= 80 ? 'warning' : null
   if (!level) {
     return NextResponse.json({ ok: true, reason: 'below threshold', pct })
+  }
+
+  // Check if this limit is silenced for the current billing period
+  const { data: familyUser } = await supabaseAdmin
+    .from('users')
+    .select('billing_cycle_day')
+    .eq('family_id', familyId)
+    .not('billing_cycle_day', 'is', null)
+    .limit(1)
+    .maybeSingle()
+  const billingPeriodKey = getCurrentBillingPeriod(familyUser?.billing_cycle_day ?? 1, now)
+
+  const { data: silence } = await supabaseAdmin
+    .from('category_limit_silences')
+    .select('category_id')
+    .eq('family_id', familyId)
+    .eq('category_id', limitHolderId)
+    .eq('billing_period_key', billingPeriodKey)
+    .maybeSingle()
+
+  if (silence) {
+    return NextResponse.json({ ok: true, reason: 'silenced', pct, level })
   }
 
   console.log(`[limit-alert] ${categoryName} pct=${pct} level=${level} spent=${spentCents} limit=${limitCents}`)

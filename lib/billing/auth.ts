@@ -20,15 +20,49 @@ function parseMaybeJson(value: string) {
   }
 }
 
+function getProjectRef() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+  try {
+    return new URL(url).hostname.split('.')[0]
+  } catch {
+    return null
+  }
+}
+
 export function getAccessTokenFromCookieStore(cookieStore: CookieStoreLike) {
-  const tokenCookie = cookieStore
-    .getAll()
-    .find((cookie) => cookie.name.startsWith('sb-') && cookie.name.endsWith('-auth-token'))
+  const allCookies = cookieStore.getAll()
+  const projectRef = getProjectRef()
 
-  if (!tokenCookie?.value) return null
+  // Use the exact cookie key for this project to avoid collisions with other Supabase projects
+  const cookieKey = projectRef ? `sb-${projectRef}-auth-token` : null
 
-  const decoded = decodeURIComponent(tokenCookie.value)
-  const parsed = parseMaybeJson(decoded)
+  const singleCookie = cookieKey
+    ? allCookies.find((c) => c.name === cookieKey)
+    : allCookies.find((c) => c.name.startsWith('sb-') && c.name.endsWith('-auth-token'))
+
+  // @supabase/ssr splits tokens > 3180 bytes into chunks: key.0, key.1, ...
+  const firstChunk = cookieKey
+    ? allCookies.find((c) => c.name === `${cookieKey}.0`)
+    : allCookies.find((c) => c.name.startsWith('sb-') && /.*-auth-token\.0$/.test(c.name))
+
+  let rawValue: string | null = null
+
+  if (singleCookie?.value) {
+    rawValue = decodeURIComponent(singleCookie.value)
+  } else if (firstChunk) {
+    const baseKey = firstChunk.name.replace(/\.0$/, '')
+    const parts: string[] = []
+    for (let i = 0; ; i++) {
+      const chunk = allCookies.find((c) => c.name === `${baseKey}.${i}`)
+      if (!chunk) break
+      parts.push(chunk.value)
+    }
+    rawValue = parts.join('')
+  }
+
+  if (!rawValue) return null
+
+  const parsed = parseMaybeJson(rawValue)
 
   if (Array.isArray(parsed) && typeof parsed[0] === 'string') {
     return parsed[0]

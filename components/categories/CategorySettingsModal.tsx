@@ -1,14 +1,20 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Bell, BellOff, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
 import { CategoryKind, normalizeCategoryName } from '@/lib/categories'
 import CategoryIcon from '@/components/ui/CategoryIcon'
 import IconPicker from '@/components/ui/IconPicker'
 import { formatBRL } from '@/lib/money'
-import { limitBarColor, limitStatus } from '@/lib/categoryLimits'
+import {
+  getUserBillingPeriodKey,
+  limitBarColor,
+  limitStatus,
+  loadSilencedCategoryIds,
+  toggleCategoryLimitSilence,
+} from '@/lib/categoryLimits'
 
 type Scope = 'categories' | 'savings'
 
@@ -81,6 +87,10 @@ export default function CategorySettingsModal({
   const [draftLimit, setDraftLimit] = useState('')
   const [savingLimit, setSavingLimit] = useState(false)
 
+  const [billingPeriodKey, setBillingPeriodKey] = useState('')
+  const [silencedIds, setSilencedIds] = useState<Set<string>>(new Set())
+  const [togglingBellId, setTogglingBellId] = useState<string | null>(null)
+
   async function loadItems() {
     if (!familyId) return
     setLoading(true)
@@ -129,6 +139,12 @@ export default function CategorySettingsModal({
         }
       }
       setSpentMap(map)
+
+      // Load silence state for this billing period
+      const periodKey = billingPeriodKey || await getUserBillingPeriodKey()
+      if (!billingPeriodKey) setBillingPeriodKey(periodKey)
+      const silenced = await loadSilencedCategoryIds(familyId, periodKey)
+      setSilencedIds(silenced)
     }
 
     setLoading(false)
@@ -145,6 +161,19 @@ export default function CategorySettingsModal({
   function cancelEditLimit() {
     setEditingLimitId(null)
     setDraftLimit('')
+  }
+
+  async function handleToggleBell(categoryId: string) {
+    if (!familyId || !billingPeriodKey) return
+    setTogglingBellId(categoryId)
+    const nowSilenced = await toggleCategoryLimitSilence(familyId, categoryId, billingPeriodKey)
+    setSilencedIds(prev => {
+      const next = new Set(prev)
+      if (nowSilenced) next.add(categoryId)
+      else next.delete(categoryId)
+      return next
+    })
+    setTogglingBellId(null)
   }
 
   useEffect(() => {
@@ -461,8 +490,19 @@ export default function CategorySettingsModal({
               <span className="text-sm text-ink/30">—</span>
             )}
           </td>
-          <td className="px-3 py-2.5 w-20">
+          <td className="px-3 py-2.5 w-24">
             <div className="flex items-center gap-1 justify-end">
+              {limit ? (
+                <button
+                  type="button"
+                  onClick={() => handleToggleBell(item.id)}
+                  disabled={togglingBellId === item.id}
+                  title={silencedIds.has(item.id) ? 'Alertas silenciados este mês — clique para reativar' : 'Silenciar alertas este mês'}
+                  className={`p-1 rounded border transition-colors ${silencedIds.has(item.id) ? 'border-gold/60 text-gold' : 'border-border text-ink/40 hover:text-ink/70'}`}
+                >
+                  {silencedIds.has(item.id) ? <BellOff className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={() => startEdit(item)}
@@ -587,56 +627,59 @@ export default function CategorySettingsModal({
                   <div key={main.id} className="overflow-hidden rounded-[16px] border-2 border-border/70 bg-paper/70">
                     <div className={`h-1 ${main.is_system ? 'bg-gradient-to-r from-coffee via-petrol to-olive' : 'bg-gradient-to-r from-terracotta via-gold to-coffee'}`} />
 
-                    {isEditingThis ? (
-                      <div className="px-3 py-3">
-                        <ComposerForm placeholder="Nome da categoria" showIconPicker onCancel={resetComposer} />
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 px-3 py-3">
-                        <button type="button" onClick={() => toggleExpandMain(main.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
-                          <ChevronDown className={`w-4 h-4 shrink-0 text-ink/40 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                          {main.icon && <CategoryIcon name={main.icon} className="w-4 h-4 shrink-0 text-sidebar/60" />}
-                          <div className="min-w-0">
-                            <span className="block font-semibold text-sidebar truncate">{main.name}</span>
-                            <span className="text-[10px] text-ink/40">{(main as NodeItem & { children?: NodeItem[] }).children?.length ?? 0} subcategorias{main.is_system ? ' · Sistema' : ''}</span>
-                          </div>
-                        </button>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button type="button" onClick={() => startEdit(main)} className="p-1.5 rounded border border-border text-ink/70 hover:bg-paper" aria-label={`Editar ${main.name}`}>
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button type="button" onClick={() => handleDelete(main)} className="p-1.5 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10" aria-label={`Excluir ${main.name}`}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                    {/* Row header — always visible */}
+                    <div className="flex items-center gap-2 px-3 py-3">
+                      <button type="button" onClick={() => toggleExpandMain(main.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
+                        <ChevronDown className={`w-4 h-4 shrink-0 text-ink/40 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                        {main.icon && <CategoryIcon name={main.icon} className="w-4 h-4 shrink-0 text-sidebar/60" />}
+                        <div className="min-w-0">
+                          <span className="block font-semibold text-sidebar truncate">{main.name}</span>
+                          <span className="text-[10px] text-ink/40">{(main as NodeItem & { children?: NodeItem[] }).children?.length ?? 0} subcategorias{main.is_system ? ' · Sistema' : ''}</span>
                         </div>
+                      </button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button type="button" onClick={() => startEdit(main)} className="p-1.5 rounded border border-border text-[#2F3B3344] hover:bg-paper hover:text-ink" aria-label={`Editar ${main.name}`}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button type="button" onClick={() => handleDelete(main)} className="p-1.5 rounded border border-[#B05C3A]/30 text-[#C06060] hover:bg-terracotta/10" aria-label={`Excluir ${main.name}`}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Accordion inline edit panel */}
+                    {isEditingThis && (
+                      <div className="border-t border-[#3E5F4B22] px-3 py-3" style={{ background: 'rgba(62,95,75,0.03)' }}>
+                        <p className="text-[11px] uppercase tracking-wide font-semibold text-[#2F3B3377] mb-2">Editar</p>
+                        <ComposerForm placeholder="Nome da categoria" showIconPicker onCancel={resetComposer} />
                       </div>
                     )}
 
-                    {isExpanded && !isEditingThis && (
+                    {isExpanded && (
                       <div className="border-t border-border/50 pb-2 px-3 space-y-2 pt-2">
                         {(main as NodeItem & { children: NodeItem[] }).children.map((child) => {
                           const isEditingChild = editingId === child.id
                           return (
                             <div key={child.id} className={`ml-5 overflow-hidden rounded-[14px] border-2 ${isEditingChild ? 'border-coffee/50 bg-offWhite' : childStackTone}`}>
                               <div className="h-0.5 bg-gradient-to-r from-petrol via-olive to-gold" />
-                              {isEditingChild ? (
-                                <div className="px-3 py-2">
-                                  <ComposerForm placeholder="Nome da subcategoria" onCancel={resetComposer} />
+                              <div className="flex items-center gap-2 px-3 py-2">
+                                <div className="flex-1 min-w-0">
+                                  <span className="block text-sm font-semibold text-ink/80 truncate">{child.name}</span>
+                                  {child.is_system && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>}
                                 </div>
-                              ) : (
-                                <div className="flex items-center gap-2 px-3 py-2">
-                                  <div className="flex-1 min-w-0">
-                                    <span className="block text-sm font-semibold text-ink/80 truncate">{child.name}</span>
-                                    {child.is_system && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>}
-                                  </div>
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    <button type="button" onClick={() => startEdit(child)} className="p-1.5 rounded border border-border text-ink/70 hover:bg-paper" aria-label={`Editar ${child.name}`}>
-                                      <Pencil className="w-3 h-3" />
-                                    </button>
-                                    <button type="button" onClick={() => handleDelete(child)} className="p-1.5 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10" aria-label={`Excluir ${child.name}`}>
-                                      <Trash2 className="w-3 h-3" />
-                                    </button>
-                                  </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button type="button" onClick={() => startEdit(child)} className="p-1.5 rounded border border-border text-[#2F3B3344] hover:bg-paper hover:text-ink" aria-label={`Editar ${child.name}`}>
+                                    <Pencil className="w-3 h-3" />
+                                  </button>
+                                  <button type="button" onClick={() => handleDelete(child)} className="p-1.5 rounded border border-[#B05C3A]/30 text-[#C06060] hover:bg-terracotta/10" aria-label={`Excluir ${child.name}`}>
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+                              {isEditingChild && (
+                                <div className="border-t border-[#3E5F4B22] px-3 py-2.5" style={{ background: 'rgba(62,95,75,0.03)' }}>
+                                  <p className="text-[11px] uppercase tracking-wide font-semibold text-[#2F3B3377] mb-2">Editar subcategoria</p>
+                                  <ComposerForm placeholder="Nome da subcategoria" onCancel={resetComposer} />
                                 </div>
                               )}
                             </div>

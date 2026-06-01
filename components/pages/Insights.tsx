@@ -6,6 +6,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import { useAuth } from '@/components/AuthProvider'
 import { Lightbulb, MessageCircleQuestion, Share2, Sparkles, Lock, Flag } from 'lucide-react'
 import { usePlan } from '@/lib/billing/plan-context'
+import { supabase } from '@/lib/supabase'
 
 type InsightRow = {
   id: string
@@ -71,7 +72,12 @@ export default function InsightsPage() {
 
   async function loadInsights() {
     setLoading(true)
-    const res = await fetch('/api/insights')
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) { setLoading(false); return }
+    const res = await fetch('/api/insights', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
     if (res.ok) {
       const data = await res.json()
       setInsights(data.insights ?? [])
@@ -94,9 +100,12 @@ export default function InsightsPage() {
     setAsking(true)
     setAskError(null)
 
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) { setAsking(false); return }
     const res = await fetch('/api/insights/ask', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ question: q }),
     })
 

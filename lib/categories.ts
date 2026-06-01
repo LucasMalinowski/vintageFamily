@@ -1,5 +1,23 @@
 export type CategoryKind = 'income' | 'expense'
 
+const CATEGORY_COLOR_PALETTE = [
+  '#6FBF8A', '#2F6F7E', '#C2A45D', '#B05C3A', '#3E5F4B',
+  '#3689B5', '#7A66A1', '#4D7AB2', '#5E8E62', '#8A6B8F',
+]
+
+export const getCategoryColor = (name: string, index?: number): string => {
+  if (index !== undefined) return CATEGORY_COLOR_PALETTE[index % CATEGORY_COLOR_PALETTE.length]
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = ((hash << 5) - hash) + name.charCodeAt(i)
+    hash |= 0
+  }
+  return CATEGORY_COLOR_PALETTE[Math.abs(hash) % CATEGORY_COLOR_PALETTE.length]
+}
+
+export const GOAL_COLOR_PALETTE = ['#C2A45D', '#6FBF8A', '#2F6F7E', '#B05C3A', '#3E5F4B']
+export const getGoalColor = (index: number): string => GOAL_COLOR_PALETTE[index % GOAL_COLOR_PALETTE.length]
+
 export interface CategoryRecord {
   id: string
   name: string

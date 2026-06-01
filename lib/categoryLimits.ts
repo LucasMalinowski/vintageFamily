@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { formatBRL } from '@/lib/money'
+import { getCurrentBillingPeriod } from '@/lib/billing-cycle'
 
 export interface CategoryLimitRow {
   categoryId: string
@@ -11,6 +12,7 @@ export interface CategoryLimitRow {
   pct: number
   excessCents: number
   status: 'ok' | 'warning' | 'over'
+  silenced: boolean
 }
 
 export function limitStatus(pct: number): 'ok' | 'warning' | 'over' {
@@ -32,16 +34,70 @@ export function formatLimitBadge(row: CategoryLimitRow): string {
   return `${row.pct}%`
 }
 
+export async function getUserBillingPeriodKey(): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return getCurrentBillingPeriod(1)
+  const { data } = await supabase.from('users').select('billing_cycle_day').eq('id', user.id).maybeSingle()
+  return getCurrentBillingPeriod(data?.billing_cycle_day ?? 1)
+}
+
+export async function loadSilencedCategoryIds(familyId: string, billingPeriodKey: string): Promise<Set<string>> {
+  const { data } = await supabase
+    .from('category_limit_silences')
+    .select('category_id')
+    .eq('family_id', familyId)
+    .eq('billing_period_key', billingPeriodKey)
+  return new Set((data ?? []).map((r) => r.category_id))
+}
+
+export async function toggleCategoryLimitSilence(
+  familyId: string,
+  categoryId: string,
+  billingPeriodKey: string
+): Promise<boolean> {
+  const { data: existing } = await supabase
+    .from('category_limit_silences')
+    .select('category_id')
+    .eq('family_id', familyId)
+    .eq('category_id', categoryId)
+    .eq('billing_period_key', billingPeriodKey)
+    .maybeSingle()
+
+  if (existing) {
+    await supabase
+      .from('category_limit_silences')
+      .delete()
+      .eq('family_id', familyId)
+      .eq('category_id', categoryId)
+      .eq('billing_period_key', billingPeriodKey)
+    return false
+  }
+
+  // Delete any stale rows from previous periods before inserting the new one
+  await supabase
+    .from('category_limit_silences')
+    .delete()
+    .eq('family_id', familyId)
+    .eq('category_id', categoryId)
+    .neq('billing_period_key', billingPeriodKey)
+
+  await supabase
+    .from('category_limit_silences')
+    .insert({ family_id: familyId, category_id: categoryId, billing_period_key: billingPeriodKey })
+  return true
+}
+
 export async function loadCategoryLimitsForMonth(
   familyId: string,
   year: number,
-  month: number
+  month: number,
+  billingPeriodKey?: string
 ): Promise<CategoryLimitRow[]> {
   const firstDay = `${year}-${String(month).padStart(2, '0')}-01`
   const lastDay = new Date(year, month, 0).toISOString().slice(0, 10)
 
   // Load ALL expense categories to build the full tree for aggregation
-  const [{ data: allCatsData }, { data: expenses }] = await Promise.all([
+  const [{ data: allCatsData }, { data: expenses }, silencedIds] = await Promise.all([
     supabase
       .from('categories')
       .select('id,name,parent_id,icon,monthly_limit_cents')
@@ -53,6 +109,7 @@ export async function loadCategoryLimitsForMonth(
       .eq('family_id', familyId)
       .gte('date', firstDay)
       .lte('date', lastDay),
+    billingPeriodKey ? loadSilencedCategoryIds(familyId, billingPeriodKey) : Promise.resolve(new Set<string>()),
   ])
 
   type Cat = { id: string; name: string; parent_id: string | null; icon: string | null; monthly_limit_cents: number | null }
@@ -107,6 +164,7 @@ export async function loadCategoryLimitsForMonth(
       pct,
       excessCents,
       status: limitStatus(pct),
+      silenced: silencedIds.has(cat.id),
     }
   })
 

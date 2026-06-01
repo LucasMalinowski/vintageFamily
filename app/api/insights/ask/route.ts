@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { getAccessTokenFromCookieStore, getAccessTokenFromAuthHeader, requireUserByAccessToken, getProfileByUserId } from '@/lib/billing/auth'
+import { getAccessTokenFromAuthHeader, requireUserByAccessToken, getProfileByUserId } from '@/lib/billing/auth'
 import { hasBillingAccess } from '@/lib/billing/access'
 import { checkAndIncrementOnDemandInsight } from '@/lib/billing/free-tier'
 import { FREE_TIER_LIMITS } from '@/lib/billing/constants'
@@ -8,8 +7,7 @@ import { generateOnDemandInsight } from '@/lib/insights/generator'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 export async function POST(request: NextRequest) {
-  const cookieStore = await cookies()
-  const token = getAccessTokenFromCookieStore(cookieStore) ?? getAccessTokenFromAuthHeader(request)
+  const token = getAccessTokenFromAuthHeader(request)
   const { error, user } = await requireUserByAccessToken(token)
   if (error || !user) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
 

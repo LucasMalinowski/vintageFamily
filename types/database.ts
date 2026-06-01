@@ -167,6 +167,42 @@ export type Database = {
           },
         ]
       }
+      category_limit_silences: {
+        Row: {
+          family_id: string
+          category_id: string
+          billing_period_key: string
+          created_at: string
+        }
+        Insert: {
+          family_id: string
+          category_id: string
+          billing_period_key: string
+          created_at?: string
+        }
+        Update: {
+          family_id?: string
+          category_id?: string
+          billing_period_key?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_limit_silences_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "category_limit_silences_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coupon_codes: {
         Row: {
           code: string
