@@ -579,7 +579,7 @@ async function saveRecord(
 
   let categoryName = record.category_name
 
-  if (!categoryName) {
+  if (!categoryName || !categoryId) {
     const fallback = getFallbackCategory(kind, categoryList)
     categoryId = fallback?.id ?? null
     categoryName = fallback?.name ?? (kind === 'expense' ? 'Outros' : 'Outras Receitas')

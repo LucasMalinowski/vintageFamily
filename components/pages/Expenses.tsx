@@ -1487,8 +1487,8 @@ export default function Expenses() {
                                         ⚠ Sem método
                                       </span>
                                     )}
-                                  </span>
-                                </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
 

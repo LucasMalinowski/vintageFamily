@@ -123,7 +123,7 @@ Regras gerais:
 - Responda APENAS com JSON: {"records": [...]}
 - Para mensagens sem conteúdo financeiro ou lembrete, responda: {"records": []}
 - date: YYYY-MM-DD. Use as datas de contexto fornecidas na mensagem. Para datas futuras ("semana que vem", "na sexta", "amanhã"), calcule a partir de hoje.
-- category_name: use a subcategoria mais específica disponível (ex: prefira "Transporte / Combustível" a "Transporte" para gasolina)
+- category_name: use APENAS nomes da lista acima — nunca invente categorias novas. Use a subcategoria mais específica disponível (ex: prefira "Transporte / Combustível" a "Transporte" para gasolina). Se nada se encaixar, use "Outros" (despesa) ou "Outras Receitas" (receita).
 
 Tipos de registro:
 

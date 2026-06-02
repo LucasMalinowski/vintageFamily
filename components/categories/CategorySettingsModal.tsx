@@ -627,59 +627,56 @@ export default function CategorySettingsModal({
                   <div key={main.id} className="overflow-hidden rounded-[16px] border-2 border-border/70 bg-paper/70">
                     <div className={`h-1 ${main.is_system ? 'bg-gradient-to-r from-coffee via-petrol to-olive' : 'bg-gradient-to-r from-terracotta via-gold to-coffee'}`} />
 
-                    {/* Row header — always visible */}
-                    <div className="flex items-center gap-2 px-3 py-3">
-                      <button type="button" onClick={() => toggleExpandMain(main.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
-                        <ChevronDown className={`w-4 h-4 shrink-0 text-ink/40 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                        {main.icon && <CategoryIcon name={main.icon} className="w-4 h-4 shrink-0 text-sidebar/60" />}
-                        <div className="min-w-0">
-                          <span className="block font-semibold text-sidebar truncate">{main.name}</span>
-                          <span className="text-[10px] text-ink/40">{(main as NodeItem & { children?: NodeItem[] }).children?.length ?? 0} subcategorias{main.is_system ? ' · Sistema' : ''}</span>
-                        </div>
-                      </button>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button type="button" onClick={() => startEdit(main)} className="p-1.5 rounded border border-border text-[#2F3B3344] hover:bg-paper hover:text-ink" aria-label={`Editar ${main.name}`}>
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button type="button" onClick={() => handleDelete(main)} className="p-1.5 rounded border border-[#B05C3A]/30 text-[#C06060] hover:bg-terracotta/10" aria-label={`Excluir ${main.name}`}>
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Accordion inline edit panel */}
-                    {isEditingThis && (
-                      <div className="border-t border-[#3E5F4B22] px-3 py-3" style={{ background: 'rgba(62,95,75,0.03)' }}>
-                        <p className="text-[11px] uppercase tracking-wide font-semibold text-[#2F3B3377] mb-2">Editar</p>
+                    {isEditingThis ? (
+                      <div className="px-3 py-3">
                         <ComposerForm placeholder="Nome da categoria" showIconPicker onCancel={resetComposer} />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 px-3 py-3">
+                        <button type="button" onClick={() => toggleExpandMain(main.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
+                          <ChevronDown className={`w-4 h-4 shrink-0 text-ink/40 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                          {main.icon && <CategoryIcon name={main.icon} className="w-4 h-4 shrink-0 text-sidebar/60" />}
+                          <div className="min-w-0">
+                            <span className="block font-semibold text-sidebar truncate">{main.name}</span>
+                            <span className="text-[10px] text-ink/40">{(main as NodeItem & { children?: NodeItem[] }).children?.length ?? 0} subcategorias{main.is_system ? ' · Sistema' : ''}</span>
+                          </div>
+                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button type="button" onClick={() => startEdit(main)} className="p-1.5 rounded border border-border text-ink/70 hover:bg-paper" aria-label={`Editar ${main.name}`}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button type="button" onClick={() => handleDelete(main)} className="p-1.5 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10" aria-label={`Excluir ${main.name}`}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     )}
 
-                    {isExpanded && (
+                    {isExpanded && !isEditingThis && (
                       <div className="border-t border-border/50 pb-2 px-3 space-y-2 pt-2">
                         {(main as NodeItem & { children: NodeItem[] }).children.map((child) => {
                           const isEditingChild = editingId === child.id
                           return (
                             <div key={child.id} className={`ml-5 overflow-hidden rounded-[14px] border-2 ${isEditingChild ? 'border-coffee/50 bg-offWhite' : childStackTone}`}>
                               <div className="h-0.5 bg-gradient-to-r from-petrol via-olive to-gold" />
-                              <div className="flex items-center gap-2 px-3 py-2">
-                                <div className="flex-1 min-w-0">
-                                  <span className="block text-sm font-semibold text-ink/80 truncate">{child.name}</span>
-                                  {child.is_system && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>}
-                                </div>
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <button type="button" onClick={() => startEdit(child)} className="p-1.5 rounded border border-border text-[#2F3B3344] hover:bg-paper hover:text-ink" aria-label={`Editar ${child.name}`}>
-                                    <Pencil className="w-3 h-3" />
-                                  </button>
-                                  <button type="button" onClick={() => handleDelete(child)} className="p-1.5 rounded border border-[#B05C3A]/30 text-[#C06060] hover:bg-terracotta/10" aria-label={`Excluir ${child.name}`}>
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              </div>
-                              {isEditingChild && (
-                                <div className="border-t border-[#3E5F4B22] px-3 py-2.5" style={{ background: 'rgba(62,95,75,0.03)' }}>
-                                  <p className="text-[11px] uppercase tracking-wide font-semibold text-[#2F3B3377] mb-2">Editar subcategoria</p>
+                              {isEditingChild ? (
+                                <div className="px-3 py-2">
                                   <ComposerForm placeholder="Nome da subcategoria" onCancel={resetComposer} />
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 px-3 py-2">
+                                  <div className="flex-1 min-w-0">
+                                    <span className="block text-sm font-semibold text-ink/80 truncate">{child.name}</span>
+                                    {child.is_system && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>}
+                                  </div>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <button type="button" onClick={() => startEdit(child)} className="p-1.5 rounded border border-border text-ink/70 hover:bg-paper" aria-label={`Editar ${child.name}`}>
+                                      <Pencil className="w-3 h-3" />
+                                    </button>
+                                    <button type="button" onClick={() => handleDelete(child)} className="p-1.5 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10" aria-label={`Excluir ${child.name}`}>
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
                                 </div>
                               )}
                             </div>

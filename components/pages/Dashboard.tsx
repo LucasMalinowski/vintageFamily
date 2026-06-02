@@ -137,7 +137,6 @@ export default function Dashboard() {
         .then(setLimitRows)
         .finally(() => setLoadingLimits(false))
     } else {
-      // familyId not yet available - clear loading state so cards don't spin forever
       setLoading(false)
       setLoadingPayables(false)
       setLoadingLimits(false)

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import Link from 'next/link'
-import { ChartColumnBig, CreditCard, FileDown, FileText, MoreVertical, PiggyBank, SlidersHorizontal, TrendingUp, Wallet } from 'lucide-react'
+import { Bell, BellOff, ChartColumnBig, CreditCard, FileDown, FileText, MoreVertical, PiggyBank, SlidersHorizontal, TrendingUp, Wallet } from 'lucide-react'
 import AnalyticsKpiCard from '@/components/ui/AnalyticsKpiCard'
 import SankeyChart, { SankeyNode, SankeyLink } from '@/components/ui/SankeyChart'
 import LineChart, { LineSeries } from '@/components/ui/LineChart'
@@ -37,7 +37,14 @@ import {
 import { matchesSearch } from '@/lib/filterSearch'
 import { formatBRL } from '@/lib/money'
 import { buildPdfBlob, downloadBlob, downloadCsv } from '@/lib/report-export'
-import { loadCategoryLimitsForMonth, type CategoryLimitRow, limitBarColor, formatLimitBadge } from '@/lib/categoryLimits'
+import {
+  formatLimitBadge,
+  getUserBillingPeriodKey,
+  limitBarColor,
+  loadCategoryLimitsForMonth,
+  toggleCategoryLimitSilence,
+  type CategoryLimitRow,
+} from '@/lib/categoryLimits'
 import CategorySettingsModal from '@/components/categories/CategorySettingsModal'
 
 interface Totals {
