@@ -99,17 +99,13 @@ export async function updateWhatsAppMessageLog(
 
 export async function findWhatsAppUser(fromPhone: string): Promise<WhatsAppUserRow | null> {
   const candidates = buildPhoneCandidates(fromPhone)
-
-  for (const candidate of candidates) {
-    const { data } = await supabaseAdmin
-      .from('users')
-      .select('id,family_id,billing_cycle_day')
-      .like('phone_number', `%${candidate}`)
-      .maybeSingle()
-    if (data) return data
-  }
-
-  return null
+  const { data } = await supabaseAdmin
+    .from('users')
+    .select('id,family_id,billing_cycle_day')
+    .in('phone_number', candidates)
+    .limit(1)
+    .maybeSingle()
+  return data ?? null
 }
 
 function formatRecordSummary(record: AIExtractedRecord): string {
@@ -342,14 +338,19 @@ async function saveRecordsAndReply(
   fromPhone: string,
   familyId: string,
   records: AIExtractedRecord[],
-  todayISO: string
+  todayISO: string,
+  prefetchedCategories?: CategoryRecord[]
 ): Promise<void> {
-  const { data: categories } = await supabaseAdmin
-    .from('categories')
-    .select('id,name,kind,parent_id,is_system,icon')
-    .eq('family_id', familyId)
-
-  const categoryList = (categories ?? []) as CategoryRecord[]
+  let categoryList: CategoryRecord[]
+  if (prefetchedCategories) {
+    categoryList = prefetchedCategories
+  } else {
+    const { data: categories } = await supabaseAdmin
+      .from('categories')
+      .select('id,name,kind,parent_id,is_system,icon')
+      .eq('family_id', familyId)
+    categoryList = (categories ?? []) as CategoryRecord[]
+  }
   const labelMap = buildCategoryLabelMap(categoryList)
   const results: SaveResult[] = []
 
@@ -522,7 +523,11 @@ export async function processWhatsAppButtonReply(
 
   if (pending.action_type === 'record') {
     const records = ((pending.payload as any).records ?? []) as AIExtractedRecord[]
-    await saveRecordsAndReply(fromPhone, pending.family_id, records, new Date().toISOString().slice(0, 10))
+    const { data: cats } = await supabaseAdmin
+      .from('categories')
+      .select('id,name,kind,parent_id,is_system,icon')
+      .eq('family_id', pending.family_id)
+    await saveRecordsAndReply(fromPhone, pending.family_id, records, new Date().toISOString().slice(0, 10), (cats ?? []) as CategoryRecord[])
   } else {
     const intent = (pending.payload as any).intent as IntentClassification
     const reply = await handleMutation(fromPhone, pending.family_id, intent)

@@ -21,12 +21,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Convite inválido.' }, { status: 404 })
   }
 
-  if (invite.accepted) {
-    return NextResponse.json({ error: 'Convite já utilizado.' }, { status: 410 })
-  }
-
-  if (new Date(invite.expires_at).getTime() < Date.now()) {
-    return NextResponse.json({ error: 'Convite expirado.' }, { status: 410 })
+  if (invite.accepted || new Date(invite.expires_at).getTime() < Date.now()) {
+    return NextResponse.json({ error: 'Convite inválido.' }, { status: 404 })
   }
 
   const { data: family } = await supabaseAdmin

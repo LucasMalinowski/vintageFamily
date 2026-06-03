@@ -47,17 +47,25 @@ export async function GET(request: NextRequest) {
   const lockPeriod = getDailyJobPeriod(today)
   let dispatched = 0
 
+  // Batch prefetch all members with insights enabled across all families
+  const allFamilyIds = families.map(f => f.id)
+  const { data: allMembers } = await supabaseAdmin
+    .from('users')
+    .select('id, family_id, insights_enabled, insight_interval_days')
+    .in('family_id', allFamilyIds)
+    .eq('insights_enabled', true)
+
+  const membersByFamily = new Map<string, NonNullable<typeof allMembers>>()
+  for (const m of allMembers ?? []) {
+    const list = membersByFamily.get(m.family_id) ?? []
+    list.push(m)
+    membersByFamily.set(m.family_id, list)
+  }
+
   for (const family of families) {
     try {
-      // Check if at least one member has insights enabled
-      const { data: members } = await supabaseAdmin
-        .from('users')
-        .select('id, insights_enabled, insight_interval_days')
-        .eq('family_id', family.id)
-        .eq('insights_enabled', true)
-        .limit(1)
-
-      if (!members?.length) continue
+      const members = membersByFamily.get(family.id) ?? []
+      if (!members.length) continue
 
       const access = await hasBillingAccess({ familyId: family.id })
       const hasFullInsightAccess = access.isPaidTier || access.hasActiveTrial
