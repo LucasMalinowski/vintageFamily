@@ -23,11 +23,12 @@ export default function FabButton({
 
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`
         fixed ${positionClasses[position]} z-40
-        w-14 h-14 bg-fabGreen text-white rounded-full 
-        shadow-vintage flex items-center justify-center 
+        w-14 h-14 bg-fabGreen text-white rounded-full
+        shadow-vintage flex items-center justify-center
         hover:bg-fabGreen/90 transition-vintage
         group
       `}

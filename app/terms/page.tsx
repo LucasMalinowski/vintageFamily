@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import PublicNavbar from '@/components/layout/PublicNavbar'
 import PublicFooter from '@/components/layout/PublicFooter'
 
@@ -50,7 +51,7 @@ export default function TermsPage() {
           <Section title="4. Planos e pagamento">
             <p>
               O Florim oferece um período de teste gratuito de 30 dias com recursos do plano Pro. Após o término do trial, a conta continua no plano gratuito com limites mensais, salvo contratação de um plano pago. Os valores e condições dos planos estão disponíveis em{' '}
-              <a href="/plans" className="text-coffee underline underline-offset-2 hover:text-coffee/80">florim.app/plans</a>.
+              <Link href="/plans" className="text-coffee underline underline-offset-2 hover:text-coffee/80">florim.app/plans</Link>.
             </p>
             <p>
               Os pagamentos são processados pela Stripe, Inc. As assinaturas são renovadas automaticamente ao final de cada período. O cancelamento pode ser feito a qualquer momento pelo painel do aplicativo, com efeito ao final do período vigente.
@@ -94,9 +95,9 @@ export default function TermsPage() {
           <Section title="8. Dados do usuário">
             <p>
               O Usuário é titular dos dados financeiros que insere no Florim. O Florim trata esses dados exclusivamente para prestação do serviço, conforme a{' '}
-              <a href="/privacy" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
+              <Link href="/privacy" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
                 Política de Privacidade
-              </a>.
+              </Link>.
             </p>
           </Section>
 

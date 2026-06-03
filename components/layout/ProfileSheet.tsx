@@ -36,6 +36,7 @@ export default function ProfileSheet({ open, onClose, userName = '', familyName 
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMounted(true)
       const t = setTimeout(() => setAnimated(true), 10)
       return () => clearTimeout(t)
@@ -106,6 +107,7 @@ export default function ProfileSheet({ open, onClose, userName = '', familyName 
         <div className="py-2">
           {menuItems.map(({ icon: Icon, label, subtitle, href }) => (
             <button
+              type="button"
               key={`${label}-${href}`}
               onClick={() => handleNav(href)}
               className="w-full flex items-center gap-4 px-5 py-3.5 text-left text-ink hover:bg-paper transition-vintage"
@@ -126,6 +128,7 @@ export default function ProfileSheet({ open, onClose, userName = '', familyName 
 
         {/* Sign out */}
         <button
+          type="button"
           onClick={handleSignOut}
           className="w-full flex items-center gap-4 px-5 py-3.5 text-left text-terracotta hover:bg-paper transition-vintage"
         >

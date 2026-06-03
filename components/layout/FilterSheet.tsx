@@ -50,9 +50,11 @@ export default function FilterSheet({
   const [localMonth, setLocalMonth] = useState(month)
   const [localYear, setLocalYear] = useState(year)
   const [localStatus, setLocalStatus] = useState(status)
-  const [localMethod, setLocalMethod] = useState(method)
-  const monthOptions = getMonthOptions(true)
-  const yearOptions = getYearOptions(2020, true)
+	  const [localMethod, setLocalMethod] = useState(method)
+	  const monthOptions = getMonthOptions(true)
+	  const yearOptions = getYearOptions(2020, true)
+	  const monthButtons = monthOptions.filter((option) => option.value !== '0')
+	  const yearButtons = yearOptions.filter((option) => option.value !== '0')
 
   useEffect(() => {
     if (open) {
@@ -114,6 +116,7 @@ export default function FilterSheet({
         <div className="flex items-center justify-between px-5 py-3 shrink-0">
           <span className="text-base font-semibold text-ink font-serif">Filtros</span>
           <button
+            type="button"
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-full bg-ink/5 text-ink/60"
             aria-label="Fechar filtros"
@@ -139,7 +142,7 @@ export default function FilterSheet({
               Todos os meses
             </button>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-              {monthOptions.filter((option) => option.value !== '0').map((m) => (
+	              {monthButtons.map((m) => (
                 <button
                   key={m.value}
                   type="button"
@@ -172,7 +175,7 @@ export default function FilterSheet({
               Todos os anos
             </button>
             <div className="flex gap-2 flex-wrap">
-              {yearOptions.filter((option) => option.value !== '0').map((y) => (
+	              {yearButtons.map((y) => (
                 <button
                   key={y.value}
                   type="button"

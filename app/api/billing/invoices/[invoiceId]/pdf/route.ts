@@ -50,7 +50,7 @@ export async function GET(
       return NextResponse.json({ error: 'PDF da fatura indisponível.' }, { status: 404 })
     }
 
-    const pdfResponse = await fetch(invoice.invoice_pdf)
+	    const pdfResponse = await fetch(invoice.invoice_pdf, { cache: 'no-store' })
 
     if (!pdfResponse.ok) {
       return NextResponse.json({ error: 'Não foi possível baixar o PDF da fatura.' }, { status: 502 })

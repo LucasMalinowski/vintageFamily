@@ -56,6 +56,7 @@ function ReminderRow({
       }`}
     >
       <button
+        type="button"
         onClick={() => onToggle(reminder.id, reminder.is_done)}
         className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[5px] border-[1.5px] transition-vintage ${
           reminder.is_done ? 'border-olive bg-olive' : 'border-border bg-transparent hover:border-olive'
@@ -83,6 +84,7 @@ function ReminderRow({
       </span>
 
       <button
+        type="button"
         onClick={() => onEdit?.(reminder)}
         className="p-1 rounded text-ink/35 hover:text-petrol transition-vintage shrink-0"
         aria-label="Editar"
@@ -92,6 +94,7 @@ function ReminderRow({
 
       {onDelete && (
         <button
+          type="button"
           onClick={() => onDelete(reminder.id)}
           className="p-1 rounded text-ink/35 hover:text-terracotta transition-vintage shrink-0"
           aria-label="Excluir"
@@ -153,6 +156,7 @@ export default function Reminders() {
     if (familyId) {
       loadReminders()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [familyId])
 
   const toggleDone = async (id: string, isDone: boolean) => {
@@ -266,6 +270,7 @@ export default function Reminders() {
           actions={
             <div className="hidden md:flex">
               <button
+                type="button"
                 onClick={() => setIsModalOpen(true)}
                 className="min-w-[160px] px-5 py-2 bg-sidebar text-white rounded-md hover:bg-olive/90 transition-vintage text-sm font-semibold"
               >
@@ -278,7 +283,7 @@ export default function Reminders() {
         {/* Scrollable cards area - mobile only internal scroll */}
         <div className="flex-1 min-h-0 overflow-y-auto md:overflow-visible px-[18px] pt-3 pb-4 md:px-6 md:pt-0">
           {loading ? (
-            <div className="py-12 text-center text-ink/60">Carregando...</div>
+            <div className="py-12 text-center text-ink/60">Carregando…</div>
           ) : reminders.length === 0 ? (
             <div className="rounded-[12px] border border-border bg-offWhite px-6 py-10 shadow-soft">
               <EmptyState
@@ -396,6 +401,7 @@ export default function Reminders() {
         {/* Mobile footer - sticky outside scroll */}
         <div className="md:hidden shrink-0 px-[18px] pt-2 pb-2 border-t border-border bg-offWhite">
           <button
+            type="button"
             onClick={() => setIsModalOpen(true)}
             className="w-full bg-coffee text-paper rounded-[12px] py-[13px] text-sm font-semibold transition-vintage hover:bg-coffee/90"
           >
@@ -427,13 +433,15 @@ export default function Reminders() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-body text-ink mb-2">
+            <label htmlFor="reminder-title" className="block text-sm font-body text-ink mb-2">
               Título <span className="text-terracotta">*</span>
             </label>
             <input
+              id="reminder-title"
               type="text"
               required
               value={formData.title}
+              aria-label="Título do lembrete"
               onChange={(event) => setFormData({ ...formData, title: event.target.value })}
               className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder="Ex: Conferir conta de água"
@@ -441,11 +449,13 @@ export default function Reminders() {
           </div>
 
           <div>
-            <label className="block text-sm font-body text-ink mb-2">Data</label>
+            <label htmlFor="reminder-date" className="block text-sm font-body text-ink mb-2">Data</label>
             <input
+              id="reminder-date"
               type="date"
               value={formData.due_date}
               onChange={(event) => setFormData({ ...formData, due_date: event.target.value })}
+              aria-label="Data de vencimento"
               className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>

@@ -98,11 +98,10 @@ export class BankStatementImportService {
     })
   }
 
-  async commit(request: CommitRequest): Promise<ImportResult> {
-    const analyzed = await this.analyzeImport(request)
-    const categories = await this.ensureImportCategories(request.familyId)
-    const batchId = globalThis.crypto.randomUUID()
-    const importedAt = new Date().toISOString()
+	  async commit(request: CommitRequest): Promise<ImportResult> {
+	    const analyzed = await this.analyzeImport(request)
+	    const batchId = globalThis.crypto.randomUUID()
+	    const importedAt = new Date().toISOString()
 
     const { error: batchInsertError } = await this.db.from('bank_statement_import_batches').insert({
       id: batchId,
@@ -144,9 +143,12 @@ export class BankStatementImportService {
       throw new BankStatementImportError('A revisão enviada não corresponde ao arquivo analisado.', 422, 'review_key_mismatch')
     }
 
-    const selectedCategoryIds = request.reviewedItems
-      .map((item) => item.categoryId)
-      .filter((value): value is string => Boolean(value))
+    const selectedCategoryIds: string[] = []
+    for (const item of request.reviewedItems) {
+      if (item.categoryId) {
+        selectedCategoryIds.push(item.categoryId)
+      }
+    }
     const availableCategories = await this.loadCategoriesByIds(request.familyId, selectedCategoryIds)
 
     const committedItems = analyzed.items.flatMap((entry) => {
@@ -188,33 +190,36 @@ export class BankStatementImportService {
         selectedCategoryName: selectedCategory?.name || null,
       }]
     })
+    const categories = await this.ensureImportCategories(request.familyId)
 
-    const incomeRows = committedItems
-      .filter((item) => item.item.type === 'income')
-      .map((item) => ({
-        family_id: request.familyId,
-        category_id: item.selectedCategoryId || categories.incomeId,
-        category_name: item.selectedCategoryName || STATEMENT_IMPORT_CATEGORY_NAME,
-        description: item.item.description,
-        amount_cents: item.amountCents,
-        date: item.item.date,
-        status: 'received',
-        notes: null,
-        source: request.format === 'ofx' ? OFX_IMPORT_SOURCE : CSV_IMPORT_SOURCE,
-        source_type: request.format === 'ofx' ? OFX_IMPORT_SOURCE_TYPE : CSV_IMPORT_SOURCE_TYPE,
-        source_bank: request.bank,
-        imported_at: importedAt,
-        import_batch_id: batchId,
-        raw_description: item.item.rawDescription,
-        raw_line: item.item.rawLine,
-        raw_payload: item.item.rawPayload,
-        import_hash: item.importHash,
-        low_confidence: item.item.confidence < LOW_CONFIDENCE_THRESHOLD,
-      }))
+    const incomeRows: Database['public']['Tables']['incomes']['Insert'][] = []
+    const expenseRows: Database['public']['Tables']['expenses']['Insert'][] = []
+    for (const item of committedItems) {
+      if (item.item.type === 'income') {
+        incomeRows.push({
+          family_id: request.familyId,
+          category_id: item.selectedCategoryId || categories.incomeId,
+          category_name: item.selectedCategoryName || STATEMENT_IMPORT_CATEGORY_NAME,
+          description: item.item.description,
+          amount_cents: item.amountCents,
+          date: item.item.date,
+          status: 'received',
+          notes: null,
+          source: request.format === 'ofx' ? OFX_IMPORT_SOURCE : CSV_IMPORT_SOURCE,
+          source_type: request.format === 'ofx' ? OFX_IMPORT_SOURCE_TYPE : CSV_IMPORT_SOURCE_TYPE,
+          source_bank: request.bank,
+          imported_at: importedAt,
+          import_batch_id: batchId,
+          raw_description: item.item.rawDescription,
+          raw_line: item.item.rawLine,
+          raw_payload: item.item.rawPayload,
+          import_hash: item.importHash,
+          low_confidence: item.item.confidence < LOW_CONFIDENCE_THRESHOLD,
+        })
+        continue
+      }
 
-    const expenseRows = committedItems
-      .filter((item) => item.item.type === 'expense')
-      .map((item) => ({
+      expenseRows.push({
         family_id: request.familyId,
         category_id: item.selectedCategoryId || categories.expenseId,
         category_name: item.selectedCategoryName || STATEMENT_IMPORT_CATEGORY_NAME,
@@ -236,7 +241,8 @@ export class BankStatementImportService {
         raw_payload: item.item.rawPayload,
         import_hash: item.importHash,
         low_confidence: item.item.confidence < LOW_CONFIDENCE_THRESHOLD,
-      }))
+      })
+    }
 
     let insertedIncomeCount = 0
     if (incomeRows.length) {

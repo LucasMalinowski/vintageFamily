@@ -28,6 +28,7 @@ export default function AuthHandoffPage() {
     }
 
     if (!accessToken || !refreshToken) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFailed(true)
       return
     }
@@ -61,7 +62,7 @@ export default function AuthHandoffPage() {
   return (
     <div className="min-h-screen bg-sidebar flex items-center justify-center">
       <div className="bg-paper rounded-[28px] px-8 py-10 text-center max-w-sm w-full">
-        <p className="font-serif text-[20px] text-coffee mb-2">Autenticando...</p>
+        <p className="font-serif text-[20px] text-coffee mb-2">Autenticando…</p>
         <p className="text-sm text-ink/60">Você será redirecionado em instantes.</p>
       </div>
     </div>

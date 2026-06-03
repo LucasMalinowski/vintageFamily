@@ -95,11 +95,13 @@ function resolveColumns(headers: string[]): ColumnMap | null {
   const date = normalized.findIndex((h) => DATE_COLS.has(h))
   if (date === -1) return null
 
-  // Collect all description-like columns in order; first = desc1, second = desc2
-  const descIndices = normalized
-    .map((h, i) => ({ h, i }))
-    .filter(({ h }) => DESCRIPTION_COLS.has(h))
-    .map(({ i }) => i)
+	  // Collect all description-like columns in order; first = desc1, second = desc2
+	  const descIndices: number[] = []
+	  for (const [i, h] of normalized.entries()) {
+	    if (DESCRIPTION_COLS.has(h)) {
+	      descIndices.push(i)
+	    }
+	  }
 
   const desc1 = descIndices[0] ?? -1
   const desc2 = descIndices[1] ?? null

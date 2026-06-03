@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
@@ -785,6 +786,7 @@ export default function Incomes() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Buscar..."
                   autoFocus
+                  aria-label="Buscar receitas"
                   className="h-[38px] w-full rounded-[10px] border border-border bg-bg pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-petrol/30"
                 />
               </div>
@@ -831,6 +833,7 @@ export default function Incomes() {
               <div className="fixed inset-0 z-40" onClick={() => setAddMenuOpen(false)} />
               <div className="absolute right-0 top-full mt-1 z-50 bg-offWhite rounded-[14px] border border-border shadow-lg w-64 overflow-hidden animate-popup-in">
                 <button
+                  type="button"
                   onClick={() => { openModal(); setAddMenuOpen(false) }}
                   className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
                 >
@@ -843,6 +846,7 @@ export default function Incomes() {
                   </div>
                 </button>
                 <button
+                  type="button"
                   onClick={() => { setIsImportModalOpen(true); setAddMenuOpen(false) }}
                   className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
                 >
@@ -855,6 +859,7 @@ export default function Incomes() {
                   </div>
                 </button>
                 <button
+                  type="button"
                   onClick={() => { setIsCategorySettingsOpen(true); setAddMenuOpen(false) }}
                   className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
                 >
@@ -867,6 +872,7 @@ export default function Incomes() {
                   </div>
                 </button>
                 <button
+                  type="button"
                   onClick={() => { handleExportCsv(); setAddMenuOpen(false) }}
                   disabled={!filteredIncomes.length || exportingFormat !== null}
                   className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3 disabled:opacity-40"
@@ -880,6 +886,7 @@ export default function Incomes() {
                   </div>
                 </button>
                 <button
+                  type="button"
                   onClick={() => { handleExportPdf(); setAddMenuOpen(false) }}
                   disabled={!filteredIncomes.length || exportingFormat !== null}
                   className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage flex items-center gap-3 disabled:opacity-40"
@@ -900,6 +907,7 @@ export default function Incomes() {
         {/* Desktop toolbar */}
         <div className="hidden md:flex items-center gap-2.5 px-6 py-3 border-b border-border bg-bg">
           <button
+            type="button"
             onClick={() => setFiltersOpen(prev => !prev)}
             className="flex items-center gap-2 h-[38px] px-3 rounded-[10px] border border-border bg-white text-ink text-[13px] font-medium hover:bg-paper transition-vintage"
           >
@@ -911,16 +919,16 @@ export default function Incomes() {
           </button>
           <div className="flex items-center h-[38px] bg-white border border-border rounded-[10px] px-3 gap-2 flex-1 max-w-[380px]">
             <Search className="w-4 h-4 text-petrol shrink-0" />
-            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Buscar por nome ou categoria..." className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none" />
+            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Buscar por nome ou categoria..." aria-label="Buscar por nome ou categoria" className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none" />
           </div>
           <div className="flex-1" />
-          <button onClick={() => setIsCategorySettingsOpen(true)} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage">
+          <button type="button" onClick={() => setIsCategorySettingsOpen(true)} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage">
             <Tag className="w-4 h-4" /> Categorias
           </button>
-          <button onClick={handleExportPdf} disabled={!filteredIncomes.length || exportingFormat !== null} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage disabled:opacity-40">
+          <button type="button" onClick={handleExportPdf} disabled={!filteredIncomes.length || exportingFormat !== null} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage disabled:opacity-40">
             <Upload className="w-4 h-4" /> Exportar
           </button>
-          <button onClick={() => openModal()} className="flex items-center gap-1.5 h-[38px] px-4 rounded-[10px] text-white text-[13px] font-semibold transition-vintage" style={{ background: '#3E8E5C' }}>
+          <button type="button" onClick={() => openModal()} className="flex items-center gap-1.5 h-[38px] px-4 rounded-[10px] text-white text-[13px] font-semibold transition-vintage" style={{ background: '#3E8E5C' }}>
             <Plus className="w-4 h-4" /> Nova receita
           </button>
 
@@ -941,6 +949,7 @@ export default function Incomes() {
                       <div className="fixed inset-0 z-40" onClick={() => setAddMenuOpen(false)} />
                       <div className="absolute right-0 top-full mt-1 z-50 bg-offWhite rounded-[14px] border border-border shadow-lg w-64 overflow-hidden animate-popup-in">
                         <button
+                          type="button"
                           onClick={() => { openModal(); setAddMenuOpen(false) }}
                           className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
                         >
@@ -953,6 +962,7 @@ export default function Incomes() {
                           </div>
                         </button>
                         <button
+                          type="button"
                           onClick={() => { setIsImportModalOpen(true); setAddMenuOpen(false) }}
                           className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
                         >
@@ -965,6 +975,7 @@ export default function Incomes() {
                           </div>
                         </button>
                         <button
+                          type="button"
                           onClick={() => { handleExportCsv(); setAddMenuOpen(false) }}
                           disabled={!filteredIncomes.length || exportingFormat !== null}
                           className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3 disabled:opacity-40"
@@ -978,6 +989,7 @@ export default function Incomes() {
                           </div>
                         </button>
                         <button
+                          type="button"
                           onClick={() => { handleExportPdf(); setAddMenuOpen(false) }}
                           disabled={!filteredIncomes.length || exportingFormat !== null}
                           className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage flex items-center gap-3 disabled:opacity-40"
@@ -1026,7 +1038,7 @@ export default function Incomes() {
                 />
               </div>
               {activeFiltersCount > 0 && (
-                <button onClick={clearFilters} className="text-xs text-[#B05C3A] hover:underline self-end pb-2">Limpar filtros</button>
+                <button type="button" onClick={clearFilters} className="text-xs text-[#B05C3A] hover:underline self-end pb-2">Limpar filtros</button>
               )}
             </div>
           </div>
@@ -1121,7 +1133,7 @@ export default function Incomes() {
                       {trendSeries.length > 0 ? (
                         <LineChart series={trendSeries} labels={trendData.map(d => d.label)} height={160} />
                       ) : (
-                        <div className="h-[140px] flex items-center justify-center text-sm text-ink/40">Carregando...</div>
+                        <div className="h-[140px] flex items-center justify-center text-sm text-ink/40">Carregando…</div>
                       )}
                     </div>
                     {categoryDonutSlices.length > 0 ? (
@@ -1157,7 +1169,7 @@ export default function Incomes() {
               )}
 
               {loading ? (
-                <div className="text-center py-12 text-ink/60">Carregando...</div>
+                <div className="text-center py-12 text-ink/60">Carregando…</div>
             ) : filteredIncomes.length === 0 ? (
               <EmptyState
                 icon={<DollarSign className="w-16 h-16" />}
@@ -1378,16 +1390,18 @@ export default function Incomes() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block font-body text-ink mb-2 font-serif">
+            <label htmlFor="income-description" className="block font-body text-ink mb-2 font-serif">
               Descrição <span className="text-terracotta">*</span>
             </label>
             <input
+              id="income-description"
               type="text"
               required
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value, categoryId: '' })}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder="Ex: Salário"
+              aria-label="Descrição da receita"
             />
             {suggestedCategoryId && !formData.categoryId && categoryLabelMap.get(suggestedCategoryId) && (
               <button
@@ -1412,10 +1426,11 @@ export default function Incomes() {
           />
 
           <div>
-            <label className="block font-serif font-body text-ink mb-2">
+            <label htmlFor="income-amount" className="block font-serif font-body text-ink mb-2">
               Valor <span className="text-terracotta">*</span>
             </label>
             <CurrencyInput
+              id="income-amount"
               required
               value={formData.amount}
               onChange={(v) => setFormData({ ...formData, amount: v })}
@@ -1424,15 +1439,17 @@ export default function Incomes() {
           </div>
 
           <div>
-            <label className="block font-serif font-body text-ink mb-2">
+            <label htmlFor="income-date" className="block font-serif font-body text-ink mb-2">
               Data <span className="text-terracotta">*</span>
             </label>
             <input
+              id="income-date"
               type="date"
               required
               value={formData.date}
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
+              aria-label="Data da receita"
             />
           </div>
 
@@ -1449,15 +1466,17 @@ export default function Incomes() {
           />
 
           <div>
-            <label className="block font-serif font-body text-ink mb-2">
+            <label htmlFor="income-notes" className="block font-serif font-body text-ink mb-2">
               Observação
             </label>
             <textarea
+              id="income-notes"
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 resize-none"
               rows={3}
               placeholder="Notas adicionais..."
+              aria-label="Observação"
             />
           </div>
 
@@ -1632,12 +1651,12 @@ export default function Incomes() {
             Assine o Florim Pro para exportações ilimitadas e outros recursos avançados.
           </p>
           <div className="flex gap-3 pt-2">
-            <button onClick={() => setShowPaywallModal(false)} className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage text-sm">
+            <button type="button" onClick={() => setShowPaywallModal(false)} className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage text-sm">
               Fechar
             </button>
-            <a href="/settings/billing" className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg text-sm font-semibold text-center hover:bg-coffee/90 transition-vintage">
+            <Link href="/settings/billing" className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg text-sm font-semibold text-center hover:bg-coffee/90 transition-vintage">
               Ver planos
-            </a>
+            </Link>
           </div>
         </div>
       </Modal>

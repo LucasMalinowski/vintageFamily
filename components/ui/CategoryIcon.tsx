@@ -11,5 +11,6 @@ export default function CategoryIcon({ name, className = 'w-4 h-4' }: CategoryIc
   if (!name) return null
   const Icon = ICON_MAP.get(name)
   if (!Icon) return null
+  // eslint-disable-next-line react-hooks/static-components
   return <Icon className={className} />
 }

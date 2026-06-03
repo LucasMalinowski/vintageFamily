@@ -35,11 +35,13 @@ async function cancelFamilyStripeSubscriptions(familyId: string) {
       limit: 10,
     })
 
-    await Promise.all(
-      subscriptions.data
-        .filter((sub) => ['active', 'trialing', 'past_due'].includes(sub.status))
-        .map((sub) => stripe.subscriptions.cancel(sub.id))
-    )
+	    const cancelRequests = []
+	    for (const sub of subscriptions.data) {
+	      if (['active', 'trialing', 'past_due'].includes(sub.status)) {
+	        cancelRequests.push(stripe.subscriptions.cancel(sub.id))
+	      }
+	    }
+	    await Promise.all(cancelRequests)
   } catch (err) {
     console.error('[admin-family-delete] stripe subscription cancel failed', err)
   }
@@ -51,9 +53,12 @@ async function deleteFamilyAttachments(familyId: string, userIds: string[]) {
     supabaseService.from('incomes').select('attachment_path').eq('family_id', familyId),
   ])
 
-  const attachmentPaths = [...(expenses ?? []), ...(incomes ?? [])]
-    .map((row) => row.attachment_path)
-    .filter((path): path is string => Boolean(path))
+	  const attachmentPaths: string[] = []
+	  for (const row of [...(expenses ?? []), ...(incomes ?? [])]) {
+	    if (row.attachment_path) {
+	      attachmentPaths.push(row.attachment_path)
+	    }
+	  }
 
   if (attachmentPaths.length > 0) {
     const { error } = await supabaseService.storage.from('attachments').remove(attachmentPaths)

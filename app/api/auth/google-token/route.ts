@@ -16,10 +16,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing code' }, { status: 400 })
     }
 
-    const res = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
+	    const res = await fetch('https://oauth2.googleapis.com/token', {
+	      method: 'POST',
+	      cache: 'no-store',
+	      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+	      body: new URLSearchParams({
         code,
         client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
         client_secret: process.env.GOOGLE_CLIENT_SECRET!,

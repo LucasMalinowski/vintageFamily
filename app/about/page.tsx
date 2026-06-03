@@ -1,8 +1,18 @@
-'use client'
-
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import PublicNavbar from '@/components/layout/PublicNavbar'
 import PublicFooter from '@/components/layout/PublicFooter'
+
+export const metadata: Metadata = {
+  title: 'O Florim',
+  description: 'Sistema de controle financeiro familiar criado para trazer clareza, diálogo e tranquilidade ao cotidiano da casa.',
+  alternates: { canonical: '/about' },
+  openGraph: {
+    title: 'O Florim - Sistema financeiro familiar',
+    description: 'Criado dentro de uma família, para famílias.',
+    url: 'https://florim.app/about',
+  },
+}
 
 export default function AboutPage() {
   return (
@@ -60,6 +70,7 @@ export default function AboutPage() {
               loop
               playsInline
               src="/about-video.mp4"
+              aria-label="Demonstração do Florim em uso"
             />
           </section>
         </div>

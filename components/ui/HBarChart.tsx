@@ -19,8 +19,8 @@ export default function HBarChart({ items, currency = true }: HBarChartProps) {
 
   return (
     <div className="flex flex-col gap-2.5">
-      {items.map((item, i) => (
-        <div key={i} className="flex flex-col gap-1">
+	      {items.map((item) => (
+	        <div key={item.label} className="flex flex-col gap-1">
           <div className="flex justify-between text-[11px] text-ink/70">
             <span>{item.label}</span>
             <span className="font-semibold tabular-nums">

@@ -93,13 +93,14 @@ export default function AdminFeedbackPage() {
   }, [page, typeFilter, locationFilter])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (isSuperAdmin) loadFeedbacks()
   }, [isSuperAdmin, loadFeedbacks])
 
   const handleFilter = () => { setPage(1); loadFeedbacks() }
 
   if (checking) {
-    return <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6"><p className="text-sm text-ink/60">Carregando...</p></div>
+    return <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6"><p className="text-sm text-ink/60">Carregando…</p></div>
   }
   if (!isSuperAdmin) return null
 
@@ -115,8 +116,9 @@ export default function AdminFeedbackPage() {
       <div className="bg-bg border border-border rounded-vintage shadow-vintage p-4">
         <div className="flex flex-wrap gap-3 items-end">
           <div>
-            <label className="block text-xs font-medium text-ink/60 mb-1">Tipo</label>
+            <label htmlFor="admin-feedback-type" className="block text-xs font-medium text-ink/60 mb-1">Tipo</label>
             <select
+              id="admin-feedback-type"
               value={typeFilter}
               onChange={e => setTypeFilter(e.target.value)}
               className="border border-border rounded bg-bg px-3 py-1.5 text-sm text-ink focus:outline-none focus:border-coffee"
@@ -128,8 +130,9 @@ export default function AdminFeedbackPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-ink/60 mb-1">Local</label>
+            <label htmlFor="admin-feedback-location" className="block text-xs font-medium text-ink/60 mb-1">Local</label>
             <select
+              id="admin-feedback-location"
               value={locationFilter}
               onChange={e => setLocationFilter(e.target.value)}
               className="border border-border rounded bg-bg px-3 py-1.5 text-sm text-ink focus:outline-none focus:border-coffee min-w-[200px]"
@@ -139,6 +142,7 @@ export default function AdminFeedbackPage() {
             </select>
           </div>
           <button
+            type="button"
             onClick={handleFilter}
             className="bg-coffee text-paper text-sm font-medium px-4 py-1.5 rounded hover:bg-coffee/90 transition-colors"
           >
@@ -153,7 +157,7 @@ export default function AdminFeedbackPage() {
 
       <div className="bg-bg border border-border rounded-vintage shadow-vintage overflow-hidden">
         {loading ? (
-          <p className="text-sm text-ink/60 p-6">Carregando...</p>
+          <p className="text-sm text-ink/60 p-6">Carregando…</p>
         ) : feedbacks.length === 0 ? (
           <p className="text-sm text-ink/60 p-6">Nenhum feedback encontrado.</p>
         ) : (
@@ -182,13 +186,13 @@ export default function AdminFeedbackPage() {
                       {expanded === fb.id ? (
                         <div>
                           <p className="text-ink/80 whitespace-pre-wrap text-xs leading-relaxed">{fb.description}</p>
-                          <button onClick={() => setExpanded(null)} className="text-xs text-coffee underline mt-1">Recolher</button>
+                          <button type="button" onClick={() => setExpanded(null)} className="text-xs text-coffee underline mt-1">Recolher</button>
                         </div>
                       ) : (
                         <div>
                           <p className="text-ink/80 line-clamp-2 text-xs">{fb.description}</p>
                           {fb.description.length > 80 && (
-                            <button onClick={() => setExpanded(fb.id)} className="text-xs text-coffee underline mt-0.5">Ver tudo</button>
+                            <button type="button" onClick={() => setExpanded(fb.id)} className="text-xs text-coffee underline mt-0.5">Ver tudo</button>
                           )}
                         </div>
                       )}
@@ -214,6 +218,7 @@ export default function AdminFeedbackPage() {
           <p className="text-ink/60">Página {page} de {totalPages}</p>
           <div className="flex gap-2">
             <button
+              type="button"
               disabled={page <= 1}
               onClick={() => setPage(p => p - 1)}
               className="px-3 py-1.5 border border-border rounded text-ink/70 hover:bg-paper disabled:opacity-40 disabled:cursor-not-allowed"
@@ -221,6 +226,7 @@ export default function AdminFeedbackPage() {
               ← Anterior
             </button>
             <button
+              type="button"
               disabled={page >= totalPages}
               onClick={() => setPage(p => p + 1)}
               className="px-3 py-1.5 border border-border rounded text-ink/70 hover:bg-paper disabled:opacity-40 disabled:cursor-not-allowed"

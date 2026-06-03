@@ -54,6 +54,7 @@ function StatusBadge({ family }: { family: FamilyRow }) {
     )
   }
   if (family.trial_expires_at && new Date(family.trial_expires_at) > new Date()) {
+    // eslint-disable-next-line react-hooks/purity
     const days = Math.ceil((new Date(family.trial_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     return (
       <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-gold/20 text-coffee">
@@ -220,7 +221,7 @@ export default function SuperAdminSettingsPage() {
   if (checkingAdmin) {
     return (
       <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
-        <p className="text-sm text-ink/60">Carregando...</p>
+        <p className="text-sm text-ink/60">Carregando…</p>
       </div>
     )
   }
@@ -310,6 +311,7 @@ export default function SuperAdminSettingsPage() {
                           type="date"
                           value={inputDateStr}
                           disabled={isBusy}
+                          aria-label="Data de expiração do trial"
                           onChange={(e) =>
                             setTrialInputs((prev) => ({ ...prev, [family.id]: e.target.value }))
                           }
@@ -317,6 +319,7 @@ export default function SuperAdminSettingsPage() {
                         />
                         {isDirty && (
                           <button
+                            type="button"
                             onClick={() =>
                               updateFamily(family.id, {
                                 trial_expires_at: dateInputToISO(inputDateStr),
@@ -332,6 +335,7 @@ export default function SuperAdminSettingsPage() {
                       <div className="flex gap-1 mt-2 flex-wrap">
                         {[30, 60, 90, 180].map((n) => (
                           <button
+                            type="button"
                             key={n}
                             disabled={isBusy}
                             onClick={() =>

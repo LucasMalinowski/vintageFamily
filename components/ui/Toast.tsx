@@ -21,14 +21,25 @@ export function toast(message: string, options?: { type?: ToastType; action?: { 
 export function ToastContainer() {
   const [toasts, setToasts] = useState<ToastMessage[]>([])
 
-  useEffect(() => {
-    _addToast = (msg) => {
-      const id = Math.random().toString(36).slice(2)
-      setToasts((prev) => [...prev, { ...msg, id }])
-      setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 5000)
-    }
-    return () => { _addToast = null }
-  }, [])
+	  useEffect(() => {
+	    const timeoutIds = new Set<ReturnType<typeof setTimeout>>()
+	    _addToast = (msg) => {
+	      const id = Math.random().toString(36).slice(2)
+	      setToasts((prev) => [...prev, { ...msg, id }])
+	      const timeoutId = setTimeout(() => {
+	        timeoutIds.delete(timeoutId)
+	        setToasts((prev) => prev.filter((t) => t.id !== id))
+	      }, 5000)
+	      timeoutIds.add(timeoutId)
+	    }
+	    return () => {
+	      _addToast = null
+	      for (const timeoutId of timeoutIds) {
+	        clearTimeout(timeoutId)
+	      }
+	      timeoutIds.clear()
+	    }
+	  }, [])
 
   const dismiss = (id: string) => setToasts((prev) => prev.filter((t) => t.id !== id))
 
@@ -51,15 +62,16 @@ export function ToastContainer() {
               <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-[#3E8E5C]" />
             ) : null}
             <p className="flex-1 text-[13px] text-ink leading-snug">{t.message}</p>
-            {t.action && (
-              <button
-                onClick={() => { t.action!.onClick(); dismiss(t.id) }}
-                className="text-[12px] font-semibold text-coffee underline shrink-0"
-              >
+	            {t.action && (
+	              <button
+	                type="button"
+	                onClick={() => { t.action!.onClick(); dismiss(t.id) }}
+	                className="text-[12px] font-semibold text-coffee underline shrink-0"
+	              >
                 {t.action.label}
               </button>
             )}
-            <button onClick={() => dismiss(t.id)} className="text-ink/35 hover:text-ink shrink-0">
+	            <button type="button" onClick={() => dismiss(t.id)} className="text-ink/35 hover:text-ink shrink-0">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>

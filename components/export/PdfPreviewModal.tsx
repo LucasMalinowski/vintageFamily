@@ -39,13 +39,14 @@ export default function PdfPreviewModal({
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-ink/60">{summary}</p>
           {showSignaturesToggle && onToggleSignatures ? (
-            <label className="flex items-center gap-2 text-sm text-ink/70 cursor-pointer select-none">
+            <div className="flex items-center gap-2 text-sm text-ink/70 select-none">
               <button
                 type="button"
                 role="switch"
                 aria-checked={includeSignatures}
+                aria-label="Incluir assinaturas no PDF"
                 onClick={() => onToggleSignatures(!includeSignatures)}
-                className="relative w-8 h-[18px] rounded-full transition-colors shrink-0"
+                className="relative w-8 h-[18px] rounded-full transition-colors shrink-0 cursor-pointer"
                 style={{ background: includeSignatures ? '#6FBF8A' : '#E4D7C2' }}
               >
                 <span
@@ -54,17 +55,18 @@ export default function PdfPreviewModal({
                 />
               </button>
               Assinaturas
-            </label>
+            </div>
           ) : null}
         </div>
 
         <div className="rounded-lg border border-border bg-paper overflow-hidden">
           {pdfUrl ? (
-            <iframe
-              title={previewLabel}
-              src={pdfUrl}
-              className="h-[70vh] w-full"
-            />
+	            <iframe
+	              title={previewLabel}
+	              src={pdfUrl}
+	              sandbox="allow-downloads"
+	              className="h-[70vh] w-full"
+	            />
           ) : error ? (
             <div className="flex h-[70vh] items-center justify-center px-6 text-center text-sm text-red-700">
               {error}

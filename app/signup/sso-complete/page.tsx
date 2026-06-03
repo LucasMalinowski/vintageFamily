@@ -9,6 +9,7 @@
  * and their chosen family name, then call /api/families/create.
  */
 
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -47,6 +48,7 @@ export default function SSOCompletePage() {
         ''
       if (providerName) setName(providerName)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -119,9 +121,11 @@ export default function SSOCompletePage() {
 
       {/* Header */}
       <div className="pt-12 pb-2 px-7 text-center md:mb-8 md:pt-0 shrink-0">
-        <img
+        <Image
           src="/logo.png"
           alt="Florim"
+          width={80}
+          height={80}
           className="w-[52px] h-[52px] md:w-20 md:h-20 object-contain mx-auto mb-3"
         />
         <h1 className="font-serif text-[26px] md:text-4xl text-coffee mb-2">

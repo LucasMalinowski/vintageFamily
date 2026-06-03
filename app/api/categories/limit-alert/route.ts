@@ -47,10 +47,11 @@ async function generateInsight(
       ? `A família ultrapassou o limite de ${leafName} em ${excess} (gasto ${spent}, limite ${limit}). Escreva UMA dica prática e curta (máx 15 palavras) sobre como controlar gastos com ${leafName} nos próximos dias. Apenas a dica, sem introdução.`
       : `A família usou ${pct}% do limite de ${leafName} (${spent} de ${limit}). Escreva UMA dica prática e curta (máx 15 palavras) para não ultrapassar o limite de ${leafName}. Apenas a dica, sem introdução.`
 
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      signal: controller.signal,
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+	    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+	      method: 'POST',
+	      cache: 'no-store',
+	      signal: controller.signal,
+	      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'llama-3.1-8b-instant',
         messages: [
@@ -125,12 +126,15 @@ export async function POST(request: NextRequest) {
   // Gather all category IDs that count toward this limit:
   // If the limit is on a parent → include the parent + all its children
   // If the limit is on a leaf → just that category
-  const limitedCatIds: string[] = [limitHolderId]
-  const isParent = !((allSiblings ?? []).find(c => c.id === limitHolderId)?.parent_id)
-  if (isParent) {
-    const children = (allSiblings ?? []).filter(c => c.parent_id === limitHolderId).map(c => c.id)
-    limitedCatIds.push(...children)
-  }
+	  const limitedCatIds: string[] = [limitHolderId]
+	  const isParent = !((allSiblings ?? []).find(c => c.id === limitHolderId)?.parent_id)
+	  if (isParent) {
+	    for (const category of allSiblings ?? []) {
+	      if (category.parent_id === limitHolderId) {
+	        limitedCatIds.push(category.id)
+	      }
+	    }
+	  }
 
   const now = new Date()
   const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`

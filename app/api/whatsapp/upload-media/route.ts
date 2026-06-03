@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://florim.app'
   const imageUrl = `${appUrl}/insights_whatsapp.png`
 
-  const imageRes = await fetch(imageUrl)
+	  const imageRes = await fetch(imageUrl, { cache: 'no-store' })
   if (!imageRes.ok) {
     return NextResponse.json({ error: `Failed to fetch image: ${imageRes.status} ${imageUrl}` }, { status: 500 })
   }

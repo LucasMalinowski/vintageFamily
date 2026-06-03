@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import CookiePreferencesLink from './CookiePreferencesLink'
 
@@ -75,7 +76,7 @@ export default function PublicFooter({ color = 'sidebar' }: PublicFooterProps) {
       {/* ── Mobile layout ──────────────────────────────────────── */}
       <div className="md:hidden flex flex-col items-center gap-5 px-5 py-8">
         <div className="flex items-center gap-2.5">
-          <img src="/logo.png" alt="Florim" className="w-10 h-10 object-contain" />
+          <Image src="/logo.png" alt="Florim" width={40} height={40} className="w-10 h-10 object-contain" />
           <span className={`font-serif text-lg font-light tracking-widest ${theme.brand}`}>FLORIM</span>
         </div>
         <div className="flex flex-wrap justify-center gap-5">
@@ -85,7 +86,7 @@ export default function PublicFooter({ color = 'sidebar' }: PublicFooterProps) {
           <Link href="/terms" className={`text-[13px] transition-vintage ${theme.link}`}>Termos</Link>
           <Link href="/cookies" className={`text-[13px] transition-vintage ${theme.link}`}>Cookies</Link>
         </div>
-        <p className={`text-[12px] ${theme.bottom}`}>© {new Date().getFullYear()} Florim</p>
+        <p suppressHydrationWarning className={`text-[12px] ${theme.bottom}`}>© {new Date().getFullYear()} Florim</p>
       </div>
 
       {/* ── Desktop layout ─────────────────────────────────────── */}
@@ -97,7 +98,7 @@ export default function PublicFooter({ color = 'sidebar' }: PublicFooterProps) {
           {/* Brand column */}
           <div>
             <div className="flex items-center gap-2.5 mb-4">
-              <img src="/logo.png" alt="Florim" className="w-12 h-12 object-contain" />
+              <Image src="/logo.png" alt="Florim" width={48} height={48} className="w-12 h-12 object-contain" />
               <span className={`font-serif text-lg font-light tracking-widest ${theme.brand}`}>FLORIM</span>
             </div>
             <p className={`text-sm leading-relaxed max-w-xs ${theme.muted}`}>
@@ -135,7 +136,7 @@ export default function PublicFooter({ color = 'sidebar' }: PublicFooterProps) {
           style={{ marginTop: 40, paddingTop: 20 }}
         >
           <span>LUCAS BRAZAU MALINOWSKI DESENVOLVIMENTO DE SOFTWARE LTDA · CNPJ 58.804.959/0001-60</span>
-          <span>© {new Date().getFullYear()} Florim</span>
+          <span suppressHydrationWarning>© {new Date().getFullYear()} Florim</span>
         </div>
       </div>
     </footer>

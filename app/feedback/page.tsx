@@ -76,7 +76,7 @@ export default function FeedbackPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-ink mb-3">Tipo <span className="text-terracotta">*</span></label>
+                <span className="block text-sm font-medium text-ink mb-3">Tipo <span className="text-terracotta">*</span></span>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                   {TYPES.map(t => (
                     <button

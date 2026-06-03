@@ -45,7 +45,8 @@ function pickNext(current: string): string {
 function useTypewriter() {
   const [displayed, setDisplayed] = useState('')
   const [cursor, setCursor] = useState(true)
-  const phraseRef = useRef(PHRASES[Math.floor(Math.random() * PHRASES.length)])
+  const [initialPhrase] = useState(() => PHRASES[Math.floor(Math.random() * PHRASES.length)])
+  const phraseRef = useRef(initialPhrase)
   const indexRef = useRef(0)
   const directionRef = useRef<'typing' | 'deleting'>('typing')
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -162,7 +163,7 @@ function DesktopHeroCard({
           <p className="text-[12.5px] text-white/60 mt-1">Saldo estimado do mês</p>
         </div>
         <p className="font-serif italic text-[13px] text-white/65 max-w-[220px] text-right leading-relaxed hidden lg:block">
-          "Organizar o dinheiro é cuidar do tempo que ainda vamos viver."
+          &ldquo;Organizar o dinheiro é cuidar do tempo que ainda vamos viver.&rdquo;
         </p>
       </div>
 
@@ -237,6 +238,7 @@ export default function Dashboard() {
       setLoadingLimits(false)
     }
     loadFamilyName()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [familyId, user?.id])
 
   async function loadMonthStats(fid: string) {
@@ -408,13 +410,12 @@ export default function Dashboard() {
 
   const handleReminderFilterChange = (nextFilter: Exclude<ReminderFilter, null>) => {
     setReminderFilter((current) => (current === nextFilter ? null : nextFilter))
-  }
+	  }
 
-  const clearCompleted = async () => {
-    const completedIds = reminders.filter((reminder) => reminder.is_done).map((reminder) => reminder.id)
-    if (completedIds.length === 0) return
+	  const clearCompleted = async () => {
+	    if (!reminders.some((reminder) => reminder.is_done)) return
 
-    await supabase
+	    await supabase
       .from('reminders')
       .update({ hidden_on_dashboard: true })
       .eq('family_id', familyId!)
@@ -545,12 +546,12 @@ export default function Dashboard() {
                 O Florim analisou seus últimos 90 dias e pode encontrar oportunidades de economia.
               </p>
             </div>
-            <a
+            <Link
               href="/insights"
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-[10px] bg-coffee text-paper text-[13px] font-semibold hover:bg-coffee/90 transition-vintage shrink-0"
             >
               Ver insights
-            </a>
+            </Link>
           </div>
 
           {/* Sonhos em curso strip — desktop only */}
@@ -564,7 +565,7 @@ export default function Dashboard() {
                   </div>
                   <p className="text-[12.5px] italic font-serif text-ink/50">Pequenos passos viram caminhos.</p>
                 </div>
-                <a href="/savings" className="text-[12px] text-petrol font-semibold hover:underline">Ver poupança →</a>
+                <Link href="/savings" className="text-[12px] text-petrol font-semibold hover:underline">Ver poupança →</Link>
               </div>
               <div className="grid grid-cols-4 gap-3">
                 {topSavings.map((s, i) => {
@@ -572,7 +573,7 @@ export default function Dashboard() {
                   const colors = ['#6FBF8A', '#C2A45D', '#3F6E7A', '#B05C3A']
                   const c = colors[i % colors.length]
                   return (
-                    <a key={s.id} href="/savings" className="bg-white rounded-xl border overflow-hidden hover:shadow-soft transition-vintage block" style={{ borderColor: `${c}33` }}>
+                    <Link key={s.id} href="/savings" className="bg-white rounded-xl border overflow-hidden hover:shadow-soft transition-vintage block" style={{ borderColor: `${c}33` }}>
                       <div className="h-[5px]" style={{ background: c }} />
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-2 mb-2">
@@ -592,7 +593,7 @@ export default function Dashboard() {
                           <p className="text-[11px] font-semibold mt-2" style={{ color: c }}>+ {formatBRL(s.delta)} sem.</p>
                         )}
                       </div>
-                    </a>
+                    </Link>
                   )
                 })}
               </div>
@@ -631,7 +632,7 @@ export default function Dashboard() {
 
               <div className="flex flex-1 flex-col">
                 {loadingPayables ? (
-                  <div className="flex-1 text-center py-8 text-ink/60">Carregando...</div>
+                  <div className="flex-1 text-center py-8 text-ink/60">Carregando…</div>
                 ) : pendingPayables.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center text-center py-8">
                     <p className="text-petrol mb-2">Sem contas pendentes</p>
@@ -678,6 +679,7 @@ export default function Dashboard() {
                     <p className="text-sm text-ink/40">Notas de cuidado.</p>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setIsReminderModalOpen(true)}
                     className="w-9 h-9 rounded-full bg-petrol text-white flex items-center justify-center hover:opacity-90 transition-vintage shrink-0"
                     aria-label="Novo lembrete"
@@ -729,7 +731,7 @@ export default function Dashboard() {
 
               <div className="flex flex-1 flex-col">
                 {loading ? (
-                  <div className="flex-1 text-center py-8 text-ink/60">Carregando...</div>
+                  <div className="flex-1 text-center py-8 text-ink/60">Carregando…</div>
                 ) : reminders.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center text-center py-8">
                     <p className="text-petrol mb-2">Sem lembretes por agora</p>
@@ -748,6 +750,7 @@ export default function Dashboard() {
                         }`}
                       >
                         <button
+                          type="button"
                           onClick={() => toggleDone(reminder.id, reminder.is_done)}
                           className={`w-5 h-5 rounded border-2 flex-shrink-0 mt-0.5 transition-vintage ${
                             reminder.is_done
@@ -806,7 +809,7 @@ export default function Dashboard() {
                   </Link>
                 </div>
                 {loadingLimits ? (
-                  <div className="text-sm text-ink/50 py-4">Carregando...</div>
+                  <div className="text-sm text-ink/50 py-4">Carregando…</div>
                 ) : (
                   <div className="space-y-3 mt-3">
                     {limitRows.slice(0, 3).map((row) => {
@@ -847,25 +850,29 @@ export default function Dashboard() {
       >
         <form onSubmit={handleCreateReminder} className="space-y-4">
           <div>
-            <label className="block text-sm font-body text-ink mb-2">
+            <label htmlFor="dash-reminder-title" className="block text-sm font-body text-ink mb-2">
               Título <span className="text-terracotta">*</span>
             </label>
             <input
+              id="dash-reminder-title"
               type="text"
               required
               value={reminderForm.title}
               onChange={(event) => setReminderForm({ ...reminderForm, title: event.target.value })}
               className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder="Ex: Conferir conta de água"
+              aria-label="Título do lembrete"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-body text-ink mb-2">Data</label>
+            <label htmlFor="dash-reminder-date" className="block text-sm font-body text-ink mb-2">Data</label>
             <input
+              id="dash-reminder-date"
               type="date"
               value={reminderForm.due_date}
               onChange={(event) => setReminderForm({ ...reminderForm, due_date: event.target.value })}
+              aria-label="Data de vencimento do lembrete"
               className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>

@@ -82,6 +82,7 @@ export default function RightDrawer({
                   )}
                 </div>
                 <button
+                  type="button"
                   onClick={onClose}
                   className="text-ink/40 hover:text-ink transition-vintage shrink-0 mt-0.5"
                   aria-label="Fechar"

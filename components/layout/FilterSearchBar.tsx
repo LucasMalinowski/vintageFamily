@@ -44,6 +44,7 @@ export default function FilterSearchBar({
             value={value}
             onChange={(event) => onChange(event.target.value)}
             placeholder={placeholder}
+            aria-label={placeholder}
             className="h-10 w-full rounded-md border border-border text-sm bg-bg pl-10 pr-4 text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-paper-2/30"
           />
         </div>

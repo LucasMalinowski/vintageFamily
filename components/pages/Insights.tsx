@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import Topbar from '@/components/layout/Topbar'
 import EmptyState from '@/components/ui/EmptyState'
@@ -93,6 +94,7 @@ export default function InsightsPage() {
 
   useEffect(() => {
     if (!familyId) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadInsights()
   }, [familyId])
 
@@ -153,7 +155,7 @@ export default function InsightsPage() {
     <div className="flex flex-col min-h-screen bg-paper">
       <Topbar
         title="Insights"
-        subtitle="O Florim ouvindo seus números — com calma."
+        subtitle="O Florim ouvindo seus números, com calma."
         accent="#3F6E7A"
         showBackButton
       />
@@ -188,6 +190,7 @@ export default function InsightsPage() {
                   onChange={(e) => setQuestion(e.target.value)}
                   rows={3}
                   placeholder="Ex: Como posso economizar em alimentação? Qual meu maior gasto esse mês?"
+                  aria-label="Pergunta para análise financeira"
                   className="w-full px-4 py-3 bg-paper border border-border rounded-[10px] text-[14px] text-ink placeholder:text-ink/40 focus:outline-none focus:ring-2 focus:ring-petrol/20 resize-none transition-vintage"
                   disabled={asking || (!hasFullInsightAccess && onDemandRemaining === 0)}
                 />
@@ -202,7 +205,7 @@ export default function InsightsPage() {
                     {asking ? 'Analisando...' : 'Gerar insight'}
                   </button>
                   <p className="text-[12px] text-ink/45 italic">
-                    Sua pergunta é processada nos seus dados — privada por padrão.
+                    Sua pergunta é processada nos seus dados, privada por padrão.
                   </p>
                 </div>
               </form>
@@ -211,9 +214,9 @@ export default function InsightsPage() {
                   <span className="text-[14px] mt-0.5 shrink-0" style={{ color: '#A58E5F' }}>🔒</span>
                   <p className="text-[12px] text-ink/70">
                     Você atingiu o limite mensal do plano gratuito.{' '}
-                    <a href="/settings/billing" className="text-coffee font-medium underline">
+                    <Link href="/settings/billing" className="text-coffee font-medium underline">
                       Assine o plano Pro
-                    </a>{' '}
+                    </Link>{' '}
                     para perguntas ilimitadas.
                   </p>
                 </div>
@@ -232,7 +235,7 @@ export default function InsightsPage() {
 
             {/* Insight cards */}
             {loading ? (
-              <div className="py-12 text-center text-ink/50 text-[13px]">Carregando...</div>
+              <div className="py-12 text-center text-ink/50 text-[13px]">Carregando…</div>
             ) : insights.length === 0 ? (
               <EmptyState
                 icon={<Lightbulb className="w-10 h-10 text-gold" />}
@@ -343,7 +346,7 @@ export default function InsightsPage() {
             <div className="bg-white rounded-xl border border-border shadow-soft p-5">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-serif text-[16px] text-coffee">Preferências</h3>
-                {prefSaving && <span className="text-[11px] text-ink/40">Salvando...</span>}
+                {prefSaving && <span className="text-[11px] text-ink/40">Salvando…</span>}
               </div>
               <div className="space-y-0">
                 {[

@@ -52,6 +52,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
                     {title}
                   </Dialog.Title>
                   <button
+                    type="button"
                     onClick={onClose}
                     className="text-ink/40 hover:text-ink transition-vintage"
                   >

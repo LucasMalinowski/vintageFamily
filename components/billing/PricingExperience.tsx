@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -116,6 +117,7 @@ export default function PricingExperience({
   const [activationMessage, setActivationMessage] = useState('Confirmando seus dados...')
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStep(showIntro ? 'intro' : 'plans')
   }, [showIntro])
 
@@ -208,10 +210,11 @@ export default function PricingExperience({
       for (let attempt = 0; attempt < 20; attempt += 1) {
         if (cancelled) return
 
-        const response = await fetch('/api/billing/checkout-status', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+	        const response = await fetch('/api/billing/checkout-status', {
+	          method: 'POST',
+	          headers: {
+	            Authorization: `Bearer ${token}`,
+	          },
         })
 
         const payload = await response.json().catch(() => null)
@@ -255,6 +258,7 @@ export default function PricingExperience({
           <div className="grid grid-cols-[auto,1fr,auto] items-center">
             {showIntro ? (
               <button
+                type="button"
                 onClick={() => setStep('intro')}
                 className="text-xs text-coffee/70 transition-vintage hover:text-coffee"
                 aria-label="Voltar"
@@ -293,6 +297,7 @@ export default function PricingExperience({
                       {!plan.is_active ? 'Plano indisponível no momento.' : '30 dias grátis. Cancele quando quiser.'}
                     </p>
                     <button
+                      type="button"
                       disabled={!plan.is_active}
                       onClick={() => {
                         if (!isAuthenticated) {
@@ -372,7 +377,7 @@ export default function PricingExperience({
             <div className="mt-12 rounded-vintage border border-border bg-bg p-6">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-serif text-coffee">Checkout integrado</h3>
-                <button className="text-sm text-ink/70" onClick={() => setSelectedPlan(null)}>
+                <button type="button" className="text-sm text-ink/70" onClick={() => setSelectedPlan(null)}>
                   Fechar
                 </button>
               </div>
@@ -430,6 +435,7 @@ export default function PricingExperience({
               muted
               loop
               playsInline
+              aria-label="Demonstração do Florim"
             >
               <source src="/plans-video.webm" type="video/webm" />
               <source src="/plans-video.mp4" type="video/mp4" />
@@ -437,9 +443,9 @@ export default function PricingExperience({
           </section>
 
           <section className="relative min-h-[60vh] bg-sidebar px-8 text-paper sm:px-12 lg:px-14">
-            <img src="/logo-florim.png" alt="Florim" className="mt-16 h-40 w-40 object-contain" />
+            <Image src="/logo-florim.png" alt="Florim" width={160} height={160} className="mt-16 h-40 w-40 object-contain" />
             <div className="absolute inset-0 flex items-center justify-center px-8 text-center sm:px-12 lg:px-14">
-              <div className="w-full max-w-2xl border-l-4 border-paper/80 pl-6 pr-4 text-left">
+              <div className="w-full max-w-2xl pl-6 pr-4 text-left shadow-[inset_2px_0_0_rgba(249,244,232,0.65)]">
                 <div className="font-serif text-[22px] font-light leading-tight text-paper/90 sm:text-[24px] lg:text-[24px]">
                   <p className="mb-4">
                     O Florim foi pensado para caber no orçamento da casa e ser valioso o suficiente para
@@ -455,6 +461,7 @@ export default function PricingExperience({
             </div>
             <div className="absolute bottom-8 right-8">
               <button
+                type="button"
                 onClick={() => setStep('plans')}
                 className="rounded-full border border-gold px-6 py-3 text-sm font-semibold text-gold transition-vintage hover:bg-gold hover:text-sidebar"
               >

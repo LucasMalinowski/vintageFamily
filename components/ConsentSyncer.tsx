@@ -37,6 +37,7 @@ export default function ConsentSyncer() {
     }
     window.addEventListener('florim:consent-changed', handleChange)
     return () => window.removeEventListener('florim:consent-changed', handleChange)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
   return null

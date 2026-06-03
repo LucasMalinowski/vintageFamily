@@ -164,10 +164,11 @@ export default function PricingPage() {
       for (let attempt = 0; attempt < 20; attempt += 1) {
         if (cancelled) return
 
-        const response = await fetch('/api/billing/checkout-status', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+	        const response = await fetch('/api/billing/checkout-status', {
+	          method: 'POST',
+	          headers: {
+	            Authorization: `Bearer ${token}`,
+	          },
         })
 
         const payload = await response.json().catch(() => null)
@@ -217,7 +218,7 @@ export default function PricingPage() {
           {message ? <p className="mb-6 text-sm text-red-700">{message}</p> : null}
 
           {loading ? (
-            <div className="py-12 text-center text-ink/60">Carregando...</div>
+            <div className="py-12 text-center text-ink/60">Carregando…</div>
           ) : (
             <div className="space-y-8">
               <div className="grid gap-5 xl:grid-cols-3">
@@ -248,6 +249,7 @@ export default function PricingPage() {
                         </p>
                       </div>
                       <button
+                        type="button"
                         disabled={!plan.is_active}
                         onClick={() => {
                           posthog.capture(EVENTS.CHECKOUT_STARTED, { plan_code: plan.plan_code })
@@ -319,6 +321,7 @@ export default function PricingPage() {
                     <p className="mt-2 text-sm text-ink/65">{selectedPlanContent.teaser}</p>
                   </div>
                   <button
+                    type="button"
                     className="rounded-full border border-border px-3 py-2 text-sm text-ink/70 transition-vintage hover:bg-paper"
                     onClick={() => setSelectedPlan(null)}
                   >

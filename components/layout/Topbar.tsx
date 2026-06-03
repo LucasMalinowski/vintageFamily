@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { Bell, BanknoteArrowDown, BanknoteArrowUp, ChartColumnBig, ChevronDown, ChevronLeft, Home, Info, PiggyBank, Settings } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
@@ -189,6 +190,7 @@ export default function Topbar({
             <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
               {showBackButton ? (
                 <button
+                  type="button"
                   onClick={() => router.back()}
                   className="w-[34px] h-[34px] rounded-[9px] bg-coffee/[0.09] flex items-center justify-center text-coffee shrink-0 hover:bg-coffee/[0.15] transition-vintage"
                   aria-label="Voltar"
@@ -226,6 +228,7 @@ export default function Topbar({
                 </div>
               )}
               <button
+                type="button"
                 onClick={() => router.push('/reminders')}
                 className="text-coffee hover:text-coffee/80 transition-vintage"
                 aria-label="Abrir lembretes"
@@ -235,12 +238,13 @@ export default function Topbar({
 
               {/* Mobile avatar - opens ProfileSheet */}
               <button
+                type="button"
                 onClick={() => setProfileSheetOpen(true)}
                 className="flex md:hidden w-8 h-8 rounded-full bg-[#B05C3A] items-center justify-center shrink-0"
                 aria-label="Abrir perfil"
               >
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+                  <Image src={avatarUrl} alt="Avatar" width={32} height={32} className="w-full h-full rounded-full object-cover" />
                 ) : (
                   <span className="text-[11px] font-bold text-white leading-none">
                     {userName
@@ -250,6 +254,7 @@ export default function Topbar({
                 )}
               </button>
               <button
+                type="button"
                 onClick={() => router.push('/settings')}
                 className="hidden sm:inline-flex text-coffee hover:text-coffee/80 transition-vintage"
                 aria-label="Abrir configurações"
@@ -262,16 +267,18 @@ export default function Topbar({
               {/* Avatar pill + dropdown */}
               <div ref={profileRef} className="hidden sm:block relative">
                 <button
+                  type="button"
                   onClick={() => setProfileOpen(prev => !prev)}
                   className="flex items-center gap-2 border border-border rounded-full py-1 pl-1 pr-3 hover:bg-paper transition-vintage"
                   aria-label="Abrir perfil"
                 >
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden shrink-0 bg-[#B05C3A]">
+                  <div className="relative w-7 h-7 rounded-full flex items-center justify-center overflow-hidden shrink-0 bg-[#B05C3A]">
                     {avatarUrl ? (
-                      <img
+                      <Image
                         src={avatarUrl}
                         alt="Avatar"
-                        className="w-full h-full rounded-full object-cover"
+                        fill
+                        className="rounded-full object-cover"
                       />
                     ) : (
                       <span className="text-[11px] font-bold text-white leading-none">
@@ -295,6 +302,7 @@ export default function Topbar({
                       { label: 'Assinatura', href: '/settings/billing' },
                     ].map(({ label, href }) => (
                       <button
+                        type="button"
                         key={href}
                         onClick={() => { setProfileOpen(false); router.push(href) }}
                         className="w-full text-left px-4 py-2.5 text-[13px] text-ink hover:bg-bg transition-vintage"

@@ -12,7 +12,7 @@ function toIso(timestamp?: number | null) {
   return new Date(timestamp * 1000).toISOString()
 }
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
   try {
     const accessToken = getAccessTokenFromAuthHeader(request)
     const auth = await requireUserByAccessToken(accessToken)

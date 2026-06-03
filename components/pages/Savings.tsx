@@ -371,7 +371,15 @@ export default function Savings() {
   const monthLabelSav = selectedMonth !== ALL_MONTHS_VALUE ? getMonthLabel(selectedMonth) : 'Todos'
 
   const perSavingAnalytics = useMemo(() => {
-    return savings.filter((s) => !s.parent_id).map((s) => {
+    const analytics: Array<{
+      saving: Saving
+      balance: number
+      prevBalance: number
+      periodDep: number
+      periodWit: number
+    }> = []
+    for (const s of savings) {
+      if (s.parent_id) continue
       const allTimeDep = allTimeContributions
         .filter((c) => c.saving_id === s.id && c.type !== 'withdrawal')
         .reduce((sum, c) => sum + c.amount_cents, 0)
@@ -386,8 +394,9 @@ export default function Savings() {
         .filter((c) => c.saving_id === s.id && c.type === 'withdrawal')
         .reduce((sum, c) => sum + c.amount_cents, 0)
       const prevBalance = balance - periodDep + periodWit
-      return { saving: s, balance, prevBalance, periodDep, periodWit }
-    })
+      analytics.push({ saving: s, balance, prevBalance, periodDep, periodWit })
+    }
+    return analytics
   }, [savings, allTimeContributions, contributions])
 
   const visibleSavings = (
@@ -551,6 +560,7 @@ export default function Savings() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Buscar..."
                   autoFocus
+                  aria-label="Buscar poupanças"
                   className="h-[38px] w-full rounded-[10px] border border-border bg-bg pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-petrol/30"
                 />
               </div>
@@ -597,6 +607,7 @@ export default function Savings() {
               <div className="fixed inset-0 z-40" onClick={() => setAddMenuOpen(false)} />
               <div className="absolute right-0 top-full mt-1 z-50 bg-offWhite rounded-[14px] border border-border shadow-lg w-64 overflow-hidden animate-popup-in">
                 <button
+                  type="button"
                   onClick={() => { setIsDepositOpen(true); setAddMenuOpen(false) }}
                   className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
                 >
@@ -609,6 +620,7 @@ export default function Savings() {
                   </div>
                 </button>
                 <button
+                  type="button"
                   onClick={() => { setIsWithdrawalOpen(true); setAddMenuOpen(false) }}
                   className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
                 >
@@ -621,6 +633,7 @@ export default function Savings() {
                   </div>
                 </button>
                 <button
+                  type="button"
                   onClick={() => { setIsSavingSettingsOpen(true); setAddMenuOpen(false) }}
                   className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
                 >
@@ -633,6 +646,7 @@ export default function Savings() {
                   </div>
                 </button>
                 <button
+                  type="button"
                   onClick={() => { handleExportCsv(); setAddMenuOpen(false) }}
                   disabled={!visibleSavings.length || exportingFormat !== null}
                   className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3 disabled:opacity-40"
@@ -646,6 +660,7 @@ export default function Savings() {
                   </div>
                 </button>
                 <button
+                  type="button"
                   onClick={() => { handleExportPdf(); setAddMenuOpen(false) }}
                   disabled={!visibleSavings.length || exportingFormat !== null}
                   className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage flex items-center gap-3 disabled:opacity-40"
@@ -666,6 +681,7 @@ export default function Savings() {
         {/* Desktop toolbar */}
         <div className="hidden md:flex items-center gap-2.5 px-6 py-3 border-b border-border bg-bg">
           <button
+            type="button"
             onClick={() => setFiltersOpen(prev => !prev)}
             className="flex items-center gap-2 h-[38px] px-3 rounded-[10px] border border-border bg-white text-ink text-[13px] font-medium hover:bg-paper transition-vintage"
           >
@@ -677,16 +693,16 @@ export default function Savings() {
           </button>
           <div className="flex items-center h-[38px] bg-white border border-border rounded-[10px] px-3 gap-2 flex-1 max-w-[380px]">
             <Search className="w-4 h-4 text-petrol shrink-0" />
-            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Buscar por nome ou categoria..." className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none" />
+            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Buscar por nome ou categoria..." aria-label="Buscar por nome ou categoria" className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none" />
           </div>
           <div className="flex-1" />
-          <button onClick={() => setIsSavingSettingsOpen(true)} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage">
+          <button type="button" onClick={() => setIsSavingSettingsOpen(true)} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage">
             <Tag className="w-4 h-4" /> Categorias
           </button>
-          <button onClick={handleExportPdf} disabled={!visibleSavings.length || exportingFormat !== null} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage disabled:opacity-40">
+          <button type="button" onClick={handleExportPdf} disabled={!visibleSavings.length || exportingFormat !== null} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage disabled:opacity-40">
             <Upload className="w-4 h-4" /> Exportar
           </button>
-          <button onClick={() => setIsSavingSettingsOpen(true)} className="flex items-center gap-1.5 h-[38px] px-4 rounded-[10px] text-white text-[13px] font-semibold transition-vintage" style={{ background: '#3F6E7A' }}>
+          <button type="button" onClick={() => setIsSavingSettingsOpen(true)} className="flex items-center gap-1.5 h-[38px] px-4 rounded-[10px] text-white text-[13px] font-semibold transition-vintage" style={{ background: '#3F6E7A' }}>
             <Plus className="w-4 h-4" /> Novo sonho
           </button>
         </div>
@@ -710,7 +726,7 @@ export default function Savings() {
                 />
               </div>
               {activeFiltersCount > 0 && (
-                <button onClick={clearFilters} className="text-xs text-[#B05C3A] hover:underline self-end pb-2">Limpar filtros</button>
+                <button type="button" onClick={clearFilters} className="text-xs text-[#B05C3A] hover:underline self-end pb-2">Limpar filtros</button>
               )}
             </div>
           </div>
@@ -796,7 +812,7 @@ export default function Savings() {
                   {(periodDeposits > 0 || periodWithdrawals > 0) && (
                     <div className="bg-white rounded-xl border border-border shadow-soft p-4">
                       <h3 className="text-sm font-semibold text-ink font-serif mb-3">
-                        Movimentação — {monthLabelSav}{selectedYear !== ALL_YEARS_VALUE ? `/${selectedYear}` : ''}
+                        Movimentação: {monthLabelSav}{selectedYear !== ALL_YEARS_VALUE ? `/${selectedYear}` : ''}
                       </h3>
                       <div className="flex gap-3 flex-wrap">
                         {periodDeposits > 0 && (
@@ -868,6 +884,7 @@ export default function Savings() {
                           )}
                           <div className="flex gap-2.5 mt-3.5" onClick={e => e.stopPropagation()}>
                             <button
+                              type="button"
                               onClick={() => { setIsDepositOpen(true); setDepositForm({ ...emptyTxForm(), savingId: savingNode.id }) }}
                               className="flex-1 flex items-center justify-center gap-1.5 py-[9px] rounded-[10px] text-white font-semibold text-[13px] border-none transition-vintage"
                               style={{ background: c }}
@@ -875,6 +892,7 @@ export default function Savings() {
                               <TrendingUp className="w-[13px] h-[13px]" /> Guardar
                             </button>
                             <button
+                              type="button"
                               onClick={() => { setIsWithdrawalOpen(true); setWithdrawalForm({ ...emptyTxForm(), savingId: savingNode.id }) }}
                               className="flex-1 flex items-center justify-center gap-1.5 py-[9px] rounded-[10px] font-semibold text-[13px] border border-border bg-white text-coffee transition-vintage"
                             >
@@ -1001,10 +1019,11 @@ export default function Savings() {
             variant="modal"
           />
           <div>
-            <label className="block font-serif font-body text-ink mb-2">
+            <label htmlFor="deposit-amount" className="block font-serif font-body text-ink mb-2">
               Valor (R$) <span className="text-terracotta">*</span>
             </label>
             <CurrencyInput
+              id="deposit-amount"
               required
               value={depositForm.amount}
               onChange={(v) => setDepositForm({ ...depositForm, amount: v })}
@@ -1012,25 +1031,29 @@ export default function Savings() {
             />
           </div>
           <div>
-            <label className="block font-serif font-body text-ink mb-2">
+            <label htmlFor="deposit-date" className="block font-serif font-body text-ink mb-2">
               Data <span className="text-terracotta">*</span>
             </label>
             <input
+              id="deposit-date"
               type="date"
               required
               value={depositForm.date}
               onChange={(e) => setDepositForm({ ...depositForm, date: e.target.value })}
+              aria-label="Data do depósito"
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
           <div>
-            <label className="block font-serif font-body text-ink mb-2">Observação</label>
+            <label htmlFor="deposit-notes" className="block font-serif font-body text-ink mb-2">Observação</label>
             <textarea
+              id="deposit-notes"
               value={depositForm.notes}
               onChange={(e) => setDepositForm({ ...depositForm, notes: e.target.value })}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 resize-none"
               rows={3}
               placeholder="Notas adicionais..."
+              aria-label="Observação do depósito"
             />
           </div>
           <div className="flex gap-3 pt-4">
@@ -1056,10 +1079,11 @@ export default function Savings() {
             variant="modal"
           />
           <div>
-            <label className="block font-serif font-body text-ink mb-2">
+            <label htmlFor="withdrawal-amount" className="block font-serif font-body text-ink mb-2">
               Valor a resgatar (R$) <span className="text-terracotta">*</span>
             </label>
             <CurrencyInput
+              id="withdrawal-amount"
               required
               value={withdrawalForm.amount}
               onChange={(v) => setWithdrawalForm({ ...withdrawalForm, amount: v })}
@@ -1067,25 +1091,29 @@ export default function Savings() {
             />
           </div>
           <div>
-            <label className="block font-serif font-body text-ink mb-2">
+            <label htmlFor="withdrawal-date" className="block font-serif font-body text-ink mb-2">
               Data <span className="text-terracotta">*</span>
             </label>
             <input
+              id="withdrawal-date"
               type="date"
               required
               value={withdrawalForm.date}
               onChange={(e) => setWithdrawalForm({ ...withdrawalForm, date: e.target.value })}
+              aria-label="Data do resgate"
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
           <div>
-            <label className="block font-serif font-body text-ink mb-2">Observação</label>
+            <label htmlFor="withdrawal-notes" className="block font-serif font-body text-ink mb-2">Observação</label>
             <textarea
+              id="withdrawal-notes"
               value={withdrawalForm.notes}
               onChange={(e) => setWithdrawalForm({ ...withdrawalForm, notes: e.target.value })}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 resize-none"
               rows={3}
               placeholder="Motivo do resgate..."
+              aria-label="Motivo do resgate"
             />
           </div>
           <div className="flex gap-3 pt-4">
@@ -1108,7 +1136,7 @@ export default function Savings() {
         accent="#3F6E7A"
       >
         {detailsLoading ? (
-          <div className="text-center py-8 text-ink/60">Carregando...</div>
+          <div className="text-center py-8 text-ink/60">Carregando…</div>
         ) : detailsContributions.length === 0 ? (
           <div className="text-center py-8 text-ink/50 text-sm">Nenhuma movimentação registrada.</div>
         ) : (
@@ -1148,20 +1176,23 @@ export default function Savings() {
       >
         <form onSubmit={handleEditSavingSubmit} className="space-y-4">
           <div>
-            <label className="block font-serif font-body text-ink mb-2">
+            <label htmlFor="saving-name" className="block font-serif font-body text-ink mb-2">
               Nome <span className="text-terracotta">*</span>
             </label>
             <input
+              id="saving-name"
               type="text"
               required
               value={editForm.name}
               onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              aria-label="Nome da poupança"
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
           <div>
-            <label className="block font-serif font-body text-ink mb-2">Meta (R$)</label>
+            <label htmlFor="saving-target" className="block font-serif font-body text-ink mb-2">Meta (R$)</label>
             <CurrencyInput
+              id="saving-target"
               value={editForm.target}
               onChange={(v) => setEditForm({ ...editForm, target: v })}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"

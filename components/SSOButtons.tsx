@@ -45,11 +45,12 @@ export function SSOButtons({ onError, disabled = false }: SSOButtonsProps) {
   // Initialise the GIS code client as soon as the script is ready.
   // The GIS script is loaded in layout.tsx with strategy="afterInteractive".
   // We poll every 200 ms so the ref is populated before the first click.
-  useEffect(() => {
-    let mounted = true
+	  useEffect(() => {
+	    let mounted = true
+	    let retryTimeout: ReturnType<typeof setTimeout> | null = null
 
-    const tryInit = () => {
-      if (!mounted) return
+	    const tryInit = () => {
+	      if (!mounted) return
 
       if (typeof window !== 'undefined' && window.google?.accounts?.oauth2) {
         codeClientRef.current = window.google.accounts.oauth2.initCodeClient({
@@ -85,13 +86,18 @@ export function SSOButtons({ onError, disabled = false }: SSOButtonsProps) {
         return
       }
 
-      // Script not ready yet — retry shortly
-      setTimeout(tryInit, 200)
-    }
+	      // Script not ready yet — retry shortly
+	      retryTimeout = setTimeout(tryInit, 200)
+	    }
 
-    tryInit()
-    return () => { mounted = false }
-  }, [signInWithGoogle, onError])
+	    tryInit()
+	    return () => {
+	      mounted = false
+	      if (retryTimeout) {
+	        clearTimeout(retryTimeout)
+	      }
+	    }
+	  }, [signInWithGoogle, onError])
 
   const handleGoogleClick = () => {
     if (!codeClientRef.current) {
@@ -131,7 +137,7 @@ export function SSOButtons({ onError, disabled = false }: SSOButtonsProps) {
         type="button"
         onClick={handleApple}
         disabled={isDisabled}
-        className="flex items-center justify-center gap-2.5 w-full py-3.5 px-4 bg-black text-white rounded-full text-[15px] font-body font-medium hover:opacity-90 transition-vintage disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex items-center justify-center gap-2.5 w-full py-3.5 px-4 bg-zinc-950 text-white rounded-full text-[15px] font-body font-medium hover:opacity-90 transition-vintage disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {appleLoading ? <LoadingSpinner color="white" /> : <><AppleIcon /> Continuar com Apple</>}
       </button>

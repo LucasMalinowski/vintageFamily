@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Download, ExternalLink, FileUp, Landmark, Loader2, X } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
@@ -86,11 +87,13 @@ function BankBadge({ bankId }: { bankId: BankId }) {
   }
 
   return (
-      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-border bg-white shadow-soft">
-        <img
+      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-border bg-white shadow-soft">
+        <Image
             src={tutorial.iconUrl}
             alt={`Ícone oficial do app ${tutorial.name}`}
-            className="h-full w-full object-cover"
+            fill
+            unoptimized
+            className="object-cover"
             onError={() => setImageError(true)}
         />
       </div>
@@ -476,6 +479,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                               checked={review?.ignore || false}
                               onChange={(event) => updateReviewItem(item.previewKey, { ignore: event.target.checked })}
                               className="h-4 w-4 rounded border-border text-petrol focus:ring-petrol"
+                              aria-label="Ignorar este lançamento"
                           />
                         </td>
                         <td className="px-3 py-3 text-ink/80">{item.date}</td>
@@ -485,6 +489,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                               value={review?.description || item.description}
                               onChange={(event) => updateReviewItem(item.previewKey, { description: event.target.value })}
                               className="w-full min-w-[260px] rounded-md border border-border bg-bg px-3 py-2 text-sm"
+                              aria-label="Descrição do lançamento"
                           />
                         </td>
                         <td className="px-3 py-3">
@@ -768,6 +773,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                   type="file"
                   accept={fileInputAccept}
                   className="hidden"
+                  aria-label="Selecionar extrato bancário"
                   onChange={(event) => handleFileSelection(event.target.files?.[0] || null)}
               />
 

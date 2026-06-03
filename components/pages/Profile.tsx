@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
@@ -158,15 +159,15 @@ export default function Profile() {
         )}
 
         {loading ? (
-          <div className="text-center py-12 text-ink/60">Carregando...</div>
+          <div className="text-center py-12 text-ink/60">Carregando…</div>
         ) : (
           <form onSubmit={handleSave} className="space-y-6">
             {/* Avatar */}
             <div className="flex flex-col items-center gap-3 py-4">
               <div className="relative">
-                <div className="w-[88px] h-[88px] rounded-full bg-[#B05C3A] flex items-center justify-center overflow-hidden">
+                <div className="relative w-[88px] h-[88px] rounded-full bg-[#B05C3A] flex items-center justify-center overflow-hidden">
                   {avatarPreview ? (
-                    <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                    <Image src={avatarPreview} alt="Avatar" fill unoptimized className="object-cover" />
                   ) : (
                     <span className="text-[28px] font-bold text-white leading-none">{initials || 'U'}</span>
                   )}
@@ -185,6 +186,7 @@ export default function Profile() {
                 type="file"
                 accept="image/*"
                 className="hidden"
+                aria-label="Selecionar foto de perfil"
                 onChange={handleAvatarChange}
               />
               <div className="text-center">
@@ -196,10 +198,11 @@ export default function Profile() {
             {/* Fields */}
             <div className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold tracking-[0.14em] uppercase text-ink/45 mb-2">
+                <label htmlFor="profile-page-name" className="block text-[11px] font-bold tracking-[0.14em] uppercase text-ink/45 mb-2">
                   Nome Completo
                 </label>
                 <input
+                  id="profile-page-name"
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
                   className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-coffee/25 transition-vintage text-ink"
@@ -207,22 +210,26 @@ export default function Profile() {
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold tracking-[0.14em] uppercase text-ink/45 mb-2">
+                <label htmlFor="profile-page-email" className="block text-[11px] font-bold tracking-[0.14em] uppercase text-ink/45 mb-2">
                   E-mail
                 </label>
                 <input
+                  id="profile-page-email"
                   value={profileEmail}
                   disabled
+                  readOnly
                   className="w-full px-4 py-3 bg-paper border border-border rounded-lg text-ink/50 cursor-not-allowed"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold tracking-[0.14em] uppercase text-ink/45 mb-2">
+                <label htmlFor="profile-page-family" className="block text-[11px] font-bold tracking-[0.14em] uppercase text-ink/45 mb-2">
                   Família
                 </label>
                 <input
+                  id="profile-page-family"
                   value={familyName}
                   disabled
+                  readOnly
                   className="w-full px-4 py-3 bg-paper border border-border rounded-lg text-ink/50 cursor-not-allowed"
                 />
               </div>

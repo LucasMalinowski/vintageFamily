@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import PublicNavbar from '@/components/layout/PublicNavbar'
 import PublicFooter from '@/components/layout/PublicFooter'
 
@@ -111,9 +112,9 @@ export default function PrivacyPage() {
           <Section title="10. Cookies">
             <p>
               Utilizamos cookies essenciais (necessários ao funcionamento) e cookies analíticos (com seu consentimento). Veja nossa{' '}
-              <a href="/cookies" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
+              <Link href="/cookies" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
                 Política de Cookies
-              </a>{' '}
+              </Link>{' '}
               para mais detalhes.
             </p>
           </Section>

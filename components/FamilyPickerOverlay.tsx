@@ -73,7 +73,7 @@ export function FamilyPickerOverlay() {
 
         <div className="overflow-y-auto max-h-[60vh]">
           {loading ? (
-            <div className="px-6 py-8 text-center text-sm text-ink/50">Carregando famílias...</div>
+            <div className="px-6 py-8 text-center text-sm text-ink/50">Carregando famílias…</div>
           ) : families.length === 0 ? (
             <div className="px-6 py-8 text-center text-sm text-ink/50">Nenhuma família encontrada.</div>
           ) : (
@@ -82,6 +82,7 @@ export function FamilyPickerOverlay() {
               const isBusy = switching === family.id
               return (
                 <button
+                  type="button"
                   key={family.id}
                   onClick={() => handlePick(family.id)}
                   disabled={!!switching}
@@ -109,6 +110,7 @@ export function FamilyPickerOverlay() {
 
         <div className="px-6 py-4 border-t border-border bg-paper">
           <button
+            type="button"
             onClick={hideFamilyPicker}
             disabled={!!switching}
             className="text-sm text-ink/50 hover:text-ink/80 transition-vintage disabled:opacity-40"

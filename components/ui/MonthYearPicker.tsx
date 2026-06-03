@@ -25,6 +25,7 @@ export default function MonthYearPicker({
   const maxYear = getCurrentYear() + 2
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (open) setPickerYear(year > 0 ? year : getCurrentYear())
   }, [open, year])
 

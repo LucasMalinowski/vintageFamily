@@ -50,13 +50,15 @@ export async function DELETE(request: Request) {
 
   const userId = authData.user.id
 
-  const { data: profile } = await supabaseAdmin
-    .from('users')
-    .select('id,family_id,role,name,email')
-    .eq('id', userId)
-    .maybeSingle()
+	  const { data: profile } = await supabaseAdmin
+	    .from('users')
+	    .select('id,family_id,role,name,email')
+	    .eq('id', userId)
+	    .maybeSingle()
+	  const userEmail = authData.user.email ?? profile?.email
+	  const userName = profile?.name ?? ''
 
-  const { error: deletionError } = await supabaseAdmin.rpc('delete_user_profile_for_account_deletion', {
+	  const { error: deletionError } = await supabaseAdmin.rpc('delete_user_profile_for_account_deletion', {
     p_user_id: userId,
     p_new_admin_id: null,
   })
@@ -72,10 +74,9 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'Erro ao preparar exclusão da conta.' }, { status: 500 })
   }
 
-  const userEmail = authData.user.email ?? profile?.email
-  if (userEmail) {
-    void sendAccountDeletionEmail({ to: userEmail, name: profile?.name ?? '' })
-  }
+	  if (userEmail) {
+	    void sendAccountDeletionEmail({ to: userEmail, name: userName })
+	  }
 
   const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
   if (authDeleteError) {

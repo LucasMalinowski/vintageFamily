@@ -70,14 +70,19 @@ export async function GET(request: NextRequest) {
     ? await supabaseAdmin.from('push_tokens').select('user_id, token').in('user_id', userIds)
     : { data: [] }
 
-  // Build family_id → push tokens[] map
-  const familyTokens = new Map<string, string[]>()
-  for (const user of users ?? []) {
-    const userTokens = (tokens ?? [])
-      .filter((t) => t.user_id === user.id)
-      .map((t) => t.token)
-    if (!userTokens.length) continue
-    familyTokens.set(user.family_id, [
+	  // Build family_id → push tokens[] map
+	  const tokensByUserId = new Map<string, string[]>()
+	  for (const tokenRow of tokens ?? []) {
+	    const userTokens = tokensByUserId.get(tokenRow.user_id) ?? []
+	    userTokens.push(tokenRow.token)
+	    tokensByUserId.set(tokenRow.user_id, userTokens)
+	  }
+
+	  const familyTokens = new Map<string, string[]>()
+	  for (const user of users ?? []) {
+	    const userTokens = tokensByUserId.get(user.id) ?? []
+	    if (!userTokens.length) continue
+	    familyTokens.set(user.family_id, [
       ...(familyTokens.get(user.family_id) ?? []),
       ...userTokens,
     ])

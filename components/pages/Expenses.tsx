@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
@@ -214,6 +215,7 @@ export default function Expenses() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [todayIso, setTodayIso] = useState('')
 
   // Form
   const RECURRENCE_OPTIONS = [
@@ -263,7 +265,12 @@ export default function Expenses() {
       }
     }
     if (!limitCents) { setCategoryLimitInfo(null); return }
-    const limitedIds = [limitHolderId, ...categories.filter(c => c.parent_id === limitHolderId).map(c => c.id)]
+	    const limitedIds = [limitHolderId]
+	    for (const category of categories) {
+	      if (category.parent_id === limitHolderId) {
+	        limitedIds.push(category.id)
+	      }
+	    }
     const now = new Date()
     const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
@@ -307,10 +314,14 @@ export default function Expenses() {
   }, [formData.description])
 
   useEffect(() => {
+    setTodayIso(new Date().toISOString().slice(0, 10))
+  }, [])
+
+  useEffect(() => {
     if (familyId) {
-      // eslint-disable-next-line react-hooks/immutability
       loadCategories()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [familyId])
 
   useEffect(() => {
@@ -344,9 +355,9 @@ export default function Expenses() {
 
   useEffect(() => {
     if (familyId) {
-      // eslint-disable-next-line react-hooks/immutability
       loadExpenses()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     familyId,
     selectedMonth,
@@ -793,29 +804,30 @@ export default function Expenses() {
       pct: Math.round((c.value / total) * 100),
       color: getCatRailColor(c.label) || DONUT_PALETTE[i % DONUT_PALETTE.length],
     }))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryBreakdown, total])
 
-  const paidCategoryBreakdown = useMemo(() => {
-    const map = new Map<string, number>()
-    filteredExpenses.filter(e => e.status === 'paid').forEach((e) => {
-      const label = getCategoryLabel(e.category_id, e.category_name)
-      map.set(label, (map.get(label) || 0) + e.amount_cents)
-    })
-    return Array.from(map.entries())
-      .map(([label, value]) => ({ label, value }))
+	  const paidCategoryBreakdown = useMemo(() => {
+	    const map = new Map<string, number>()
+	    for (const e of filteredExpenses) {
+	      if (e.status !== 'paid') continue
+	      const label = getCategoryLabel(e.category_id, e.category_name)
+	      map.set(label, (map.get(label) || 0) + e.amount_cents)
+	    }
+	    return Array.from(map.entries())
+	      .map(([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredExpenses])
 
-  const openCategoryBreakdown = useMemo(() => {
-    const map = new Map<string, number>()
-    filteredExpenses.filter(e => e.status === 'open').forEach((e) => {
-      const label = getCategoryLabel(e.category_id, e.category_name)
-      map.set(label, (map.get(label) || 0) + e.amount_cents)
-    })
-    return Array.from(map.entries())
-      .map(([label, value]) => ({ label, value }))
+	  const openCategoryBreakdown = useMemo(() => {
+	    const map = new Map<string, number>()
+	    for (const e of filteredExpenses) {
+	      if (e.status !== 'open') continue
+	      const label = getCategoryLabel(e.category_id, e.category_name)
+	      map.set(label, (map.get(label) || 0) + e.amount_cents)
+	    }
+	    return Array.from(map.entries())
+	      .map(([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredExpenses])
@@ -1087,6 +1099,7 @@ export default function Expenses() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Buscar..."
                   autoFocus
+                  aria-label="Buscar despesas"
                   className="h-[38px] w-full rounded-[10px] border border-border bg-bg pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-petrol/30"
                 />
               </div>
@@ -1133,6 +1146,7 @@ export default function Expenses() {
             <div className="fixed inset-0 z-40" onClick={() => setAddMenuOpen(false)} />
             <div className="absolute right-0 top-full mt-1 z-50 bg-offWhite rounded-[14px] border border-border shadow-lg w-64 overflow-hidden animate-popup-in">
               <button
+                type="button"
                 onClick={() => { openModal(); setAddMenuOpen(false) }}
                 className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
               >
@@ -1145,6 +1159,7 @@ export default function Expenses() {
                 </div>
               </button>
               <button
+                type="button"
                 onClick={() => { setIsImportModalOpen(true); setAddMenuOpen(false) }}
                 className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
               >
@@ -1157,6 +1172,7 @@ export default function Expenses() {
                 </div>
               </button>
               <button
+                type="button"
                 onClick={() => { setIsCategorySettingsOpen(true); setAddMenuOpen(false) }}
                 className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
               >
@@ -1169,6 +1185,7 @@ export default function Expenses() {
                 </div>
               </button>
               <button
+                type="button"
                 onClick={() => { handleExportCsv(); setAddMenuOpen(false) }}
                 disabled={!sortedExpenses.length || exportingFormat !== null}
                 className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3 disabled:opacity-40"
@@ -1182,6 +1199,7 @@ export default function Expenses() {
                 </div>
               </button>
               <button
+                type="button"
                 onClick={() => { handleExportPdf(); setAddMenuOpen(false) }}
                 disabled={!sortedExpenses.length || exportingFormat !== null}
                 className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage flex items-center gap-3 disabled:opacity-40"
@@ -1202,6 +1220,7 @@ export default function Expenses() {
       {/* Desktop toolbar */}
       <div className="hidden md:flex items-center gap-2.5 px-6 py-3 border-b border-border bg-bg">
         <button
+          type="button"
           onClick={() => setFiltersOpen(prev => !prev)}
           className="flex items-center gap-2 h-[38px] px-3 rounded-[10px] border border-border bg-white text-ink text-[13px] font-medium hover:bg-paper transition-vintage"
         >
@@ -1217,20 +1236,21 @@ export default function Expenses() {
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             placeholder="Buscar por nome ou categoria..."
+            aria-label="Buscar por nome ou categoria"
             className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none"
           />
         </div>
         <div className="flex-1" />
-        <button onClick={() => setIsCategorySettingsOpen(true)} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage">
+        <button type="button" onClick={() => setIsCategorySettingsOpen(true)} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage">
           <Tag className="w-4 h-4" /> Categorias
         </button>
-        <button onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage">
+        <button type="button" onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage">
           <Download className="w-4 h-4" /> Importar
         </button>
-        <button onClick={handleExportPdf} disabled={!sortedExpenses.length || exportingFormat !== null} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage disabled:opacity-40">
+        <button type="button" onClick={handleExportPdf} disabled={!sortedExpenses.length || exportingFormat !== null} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage disabled:opacity-40">
           <Upload className="w-4 h-4" /> Exportar
         </button>
-        <button onClick={() => openModal()} className="flex items-center gap-1.5 h-[38px] px-4 rounded-[10px] text-white text-[13px] font-semibold transition-vintage" style={{ background: '#B05C3A' }}>
+        <button type="button" onClick={() => openModal()} className="flex items-center gap-1.5 h-[38px] px-4 rounded-[10px] text-white text-[13px] font-semibold transition-vintage" style={{ background: '#B05C3A' }}>
           <Plus className="w-4 h-4" /> Nova despesa
         </button>
       </div>
@@ -1271,13 +1291,14 @@ export default function Expenses() {
                   options={[{ value: '', label: 'Todos' }, { value: 'PIX', label: 'PIX' }, { value: 'Credito', label: 'Crédito' }, { value: 'Debito', label: 'Débito' }]}
                 />
               </div>
-              <label className="flex items-center gap-2 text-[13px] text-ink cursor-pointer select-none">
+              <div className="flex items-center gap-2 text-[13px] text-ink select-none">
                 <button
                   type="button"
                   role="switch"
                   aria-checked={onlyInstallments}
+                  aria-label="Somente parceladas"
                   onClick={() => setOnlyInstallments(v => !v)}
-                  className="relative w-8 h-[18px] rounded-full transition-colors shrink-0"
+                  className="relative w-8 h-[18px] rounded-full transition-colors shrink-0 cursor-pointer"
                   style={{ background: onlyInstallments ? '#3F6E7A' : '#E4D7C2' }}
                 >
                   <span
@@ -1286,9 +1307,9 @@ export default function Expenses() {
                   />
                 </button>
                 Somente parceladas
-              </label>
+              </div>
               {activeFiltersCount > 0 && (
-                <button onClick={clearFilters} className="text-xs text-terracotta hover:underline">Limpar filtros</button>
+                <button type="button" onClick={clearFilters} className="text-xs text-terracotta hover:underline">Limpar filtros</button>
               )}
           </div>
         </div>
@@ -1335,7 +1356,7 @@ export default function Expenses() {
             )}
 
             {loading ? (
-              <div className="text-center py-12 text-ink/60">Carregando...</div>
+              <div className="text-center py-12 text-ink/60">Carregando…</div>
             ) : filteredExpenses.length === 0 ? (
               <EmptyState
                 icon={<Receipt className="w-16 h-16" />}
@@ -1377,6 +1398,7 @@ export default function Expenses() {
                         </p>
                       </div>
                       <button
+                        type="button"
                         onClick={() => setSelectedStatus('pending_confirmation' as unknown as string)}
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-vintage"
                         style={{ borderColor: 'rgba(176,92,58,0.3)', color: '#B05C3A', background: '#fff' }}
@@ -1419,7 +1441,7 @@ export default function Expenses() {
                           : expense.payment_method ?? ''
                         const installmentBadge = expense.payment_method === 'Credito' && expense.installments && expense.installments > 1
                           ? `${expense.installment_index ?? 1}/${expense.installments}x` : null
-                        const isOverdue = !isPaid && !isPending && expense.date < new Date().toISOString().slice(0, 10)
+                        const isOverdue = todayIso !== '' && !isPaid && !isPending && expense.date < todayIso
                         const statusLabel = isPaid ? 'PAGO' : isPending ? 'A CONFIRMAR' : isOverdue ? 'ATRASADO' : 'EM ABERTO'
                         const statusBg = isPaid ? 'rgba(111,191,138,0.18)' : isPending ? 'rgba(47,111,126,0.15)' : isOverdue ? 'rgba(176,92,58,0.18)' : 'rgba(194,164,93,0.22)'
                         const statusFg = isPaid ? '#3E8E5C' : isPending ? '#2F6F7E' : isOverdue ? '#B05C3A' : '#A58E5F'
@@ -1610,6 +1632,7 @@ export default function Expenses() {
                 {hasMore && (
                   <div className="flex justify-center pt-2">
                     <button
+                      type="button"
                       onClick={() => setVisibleCount(n => n + 30)}
                       className="px-5 py-2.5 rounded-[10px] border border-border bg-white text-[13px] font-medium text-ink/70 hover:bg-bg transition-vintage"
                     >
@@ -1679,14 +1702,16 @@ export default function Expenses() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block font-body text-ink mb-2">
+            <label htmlFor="expense-description" className="block font-body text-ink mb-2">
               Descrição <span className="text-terracotta">*</span>
             </label>
             <input
+              id="expense-description"
               type="text"
               required
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value, categoryId: '' })}
+              aria-label="Descrição da despesa"
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder="Ex: Conta de luz"
             />
@@ -1704,10 +1729,11 @@ export default function Expenses() {
           </div>
 
           <div>
-            <label className="block font-body text-ink mb-2">
+            <label htmlFor="expense-amount" className="block font-body text-ink mb-2">
               Valor <span className="text-terracotta">*</span>
             </label>
             <CurrencyInput
+              id="expense-amount"
               required
               value={formData.amount}
               onChange={(v) => setFormData({ ...formData, amount: v })}
@@ -1716,14 +1742,16 @@ export default function Expenses() {
           </div>
 
           <div>
-            <label className="block font-body text-ink mb-2">
+            <label htmlFor="expense-date" className="block font-body text-ink mb-2">
               Data <span className="text-terracotta">*</span>
             </label>
             <input
+              id="expense-date"
               type="date"
               required
               value={formData.date}
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              aria-label="Data da despesa"
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
@@ -1767,7 +1795,7 @@ export default function Expenses() {
           })()}
 
           <div>
-            <label className="block font-body text-ink mb-2">Método</label>
+            <span className="block font-body text-ink mb-2">Método</span>
             <div className="flex gap-2">
               {(['PIX', 'Credito', 'Debito', 'ValeAlimentacao'] as PaymentMethod[]).map((method) => (
                 <button
@@ -2007,12 +2035,12 @@ export default function Expenses() {
             Assine o Florim Pro para exportações ilimitadas e outros recursos avançados.
           </p>
           <div className="flex gap-3 pt-2">
-            <button onClick={() => setShowPaywallModal(false)} className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage text-sm">
+            <button type="button" onClick={() => setShowPaywallModal(false)} className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage text-sm">
               Fechar
             </button>
-            <a href="/settings/billing" className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg text-sm font-semibold text-center hover:bg-coffee/90 transition-vintage">
+            <Link href="/settings/billing" className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg text-sm font-semibold text-center hover:bg-coffee/90 transition-vintage">
               Ver planos
-            </a>
+            </Link>
           </div>
         </div>
       </Modal>

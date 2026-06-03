@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import { usePlan } from '@/lib/billing/plan-context'
 import Modal from '@/components/ui/Modal'
+import Link from 'next/link'
 import { Lock } from 'lucide-react'
 
 export default function InsightsSettingsPage() {
@@ -60,7 +61,7 @@ export default function InsightsSettingsPage() {
     setTimeout(() => setSaved(false), 2000)
   }
 
-  if (loading) return <div className="py-12 text-center text-ink/50 text-sm">Carregando...</div>
+  if (loading) return <div className="py-12 text-center text-ink/50 text-sm">Carregando…</div>
 
   return (
     <div className="space-y-6 max-w-lg">
@@ -81,6 +82,8 @@ export default function InsightsSettingsPage() {
           <button
             type="button"
             onClick={() => setInsightsEnabled((v) => !v)}
+            aria-label={insightsEnabled ? 'Desativar insights automáticos' : 'Ativar insights automáticos'}
+            aria-pressed={insightsEnabled}
             className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
               insightsEnabled ? 'bg-coffee' : 'bg-border'
             }`}
@@ -117,6 +120,7 @@ export default function InsightsSettingsPage() {
             min={3}
             max={365}
             value={intervalDays}
+            aria-label="Frequência de insights em dias"
             onChange={(e) => {
               if (!hasFullInsightAccess) { setUpsellOpen(true); return }
               setIntervalDays(Math.max(3, Number(e.target.value)))
@@ -177,12 +181,12 @@ export default function InsightsSettingsPage() {
           <p className="text-sm text-ink/70">
             No plano gratuito, você recebe 2 insights automáticos por mês.
           </p>
-          <a
+          <Link
             href="/settings/billing"
             className="block w-full text-center py-3 bg-coffee text-paper rounded-lg text-sm font-semibold hover:bg-coffee/90 transition-vintage"
           >
             Ver planos - a partir de R$19,90/mês
-          </a>
+          </Link>
           <button
             type="button"
             onClick={() => setUpsellOpen(false)}

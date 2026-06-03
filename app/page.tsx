@@ -1,6 +1,16 @@
-'use client'
-
+import type { Metadata } from 'next'
 import Link from 'next/link'
+
+export const metadata: Metadata = {
+  title: { absolute: 'Florim - Gestão financeira familiar' },
+  description: 'Cuide das finanças da família, juntos. Despesas, sonhos, combinados e insights com IA num só lugar. Plano gratuito, sem cartão.',
+  alternates: { canonical: '/' },
+  openGraph: {
+    title: 'Florim - Gestão financeira familiar',
+    description: 'Cuide das finanças da família, juntos. Comece grátis.',
+    url: 'https://florim.app',
+  },
+}
 import {
   BanknoteArrowDown,
   BanknoteArrowUp,
@@ -264,6 +274,7 @@ export default function Home() {
             className="absolute inset-0 w-full h-full object-cover"
             autoPlay muted loop playsInline
             src="/main-video.mp4"
+            aria-label="Vídeo de apresentação do Florim"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/78 via-black/35 to-transparent" />
           <div className="relative z-10">
@@ -314,7 +325,7 @@ export default function Home() {
             </div>
           </section>
           <section className="relative h-full">
-            <video className="h-full w-full object-cover" autoPlay muted loop playsInline src="/about-video.mp4" />
+            <video className="h-full w-full object-cover" autoPlay muted loop playsInline src="/about-video.mp4" aria-label="Demonstração do Florim em uso" />
           </section>
         </div>
       </div>

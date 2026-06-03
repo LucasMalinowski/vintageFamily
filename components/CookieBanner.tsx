@@ -15,6 +15,7 @@ export default function CookieBanner() {
 
   useEffect(() => {
     if (!localStorage.getItem('florim_cookie_consent')) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setVisible(true)
     }
   }, [])
@@ -70,18 +71,21 @@ export default function CookieBanner() {
             </p>
             <div className="flex gap-2 shrink-0 flex-wrap">
               <button
+                type="button"
                 onClick={reject}
                 className="px-4 py-2 text-sm font-body text-ink/70 border border-border rounded-full hover:bg-paper transition-vintage"
               >
                 Rejeitar
               </button>
               <button
+                type="button"
                 onClick={() => setShowManage(true)}
                 className="px-4 py-2 text-sm font-body text-ink/70 border border-border rounded-full hover:bg-paper transition-vintage"
               >
                 Gerenciar
               </button>
               <button
+                type="button"
                 onClick={accept}
                 className="px-4 py-2 text-sm font-body bg-coffee text-paper rounded-full hover:bg-coffee/90 transition-vintage"
               >
@@ -112,17 +116,20 @@ export default function CookieBanner() {
                   checked={analyticsEnabled}
                   onChange={(e) => setAnalyticsEnabled(e.target.checked)}
                   className="mt-1 shrink-0 accent-coffee"
+                  aria-label="Habilitar cookies analíticos"
                 />
               </div>
             </div>
             <div className="flex gap-2 justify-end">
               <button
+                type="button"
                 onClick={() => setShowManage(false)}
                 className="px-4 py-2 text-sm font-body text-ink/70 border border-border rounded-full hover:bg-paper transition-vintage"
               >
                 Cancelar
               </button>
               <button
+                type="button"
                 onClick={savePreferences}
                 className="px-4 py-2 text-sm font-body bg-coffee text-paper rounded-full hover:bg-coffee/90 transition-vintage"
               >

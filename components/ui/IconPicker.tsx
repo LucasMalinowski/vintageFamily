@@ -55,6 +55,7 @@ export default function IconPicker({ value, onSelect }: IconPickerProps) {
 
   useEffect(() => {
     if (!open) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     updatePosition()
     window.addEventListener('scroll', updatePosition, true)
     return () => window.removeEventListener('scroll', updatePosition, true)
@@ -99,6 +100,7 @@ export default function IconPicker({ value, onSelect }: IconPickerProps) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar ícone..."
+            aria-label="Buscar ícone"
             className="flex-1 bg-transparent text-sm text-ink placeholder:text-ink/35 focus:outline-none"
             autoFocus
           />
@@ -162,6 +164,7 @@ export default function IconPicker({ value, onSelect }: IconPickerProps) {
         aria-label="Escolher ícone"
         title={value || 'Sem ícone'}
       >
+        {/* eslint-disable-next-line react-hooks/static-components */}
         {CurrentIcon ? <CurrentIcon className="w-4 h-4" /> : <Tag className="w-4 h-4" />}
         <span className="pointer-events-none absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-coffee text-paper shadow-sm">
           <Pencil className="w-2 h-2" />

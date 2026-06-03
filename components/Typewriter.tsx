@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 type Phase = 'idle' | 'typing' | 'pausing' | 'deleting' | 'between'
 
@@ -19,7 +19,7 @@ type TypewriterProps = {
   startDelay?: number
   /** Whether to loop forever. Default true. Has no effect for single strings - use loop=false to type once. */
   loop?: boolean
-  /** className applied to the outer <span>. */
+  /** className applied to the outer <output>. */
   className?: string
   /** Called once when a non-looping text has fully typed out. */
   onComplete?: () => void
@@ -36,7 +36,7 @@ export default function Typewriter({
   className,
   onComplete,
 }: TypewriterProps) {
-  const strings = Array.isArray(texts) ? texts : [texts]
+  const strings = useMemo(() => Array.isArray(texts) ? texts : [texts], [texts])
   const single = strings.length === 1
 
   const [textIndex, setTextIndex] = useState(0)
@@ -45,7 +45,7 @@ export default function Typewriter({
   const [visible, setVisible] = useState(false)
   const [done, setDone] = useState(false)
 
-  const containerRef = useRef<HTMLSpanElement>(null)
+  const containerRef = useRef<HTMLOutputElement>(null)
   const onCompleteRef = useRef(onComplete)
   useEffect(() => { onCompleteRef.current = onComplete })
 
@@ -61,6 +61,7 @@ export default function Typewriter({
     if (!el) return
 
     if (reducedRef.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCharIndex(strings[0].length)
       setPhase('pausing')
       setVisible(true)
@@ -84,6 +85,7 @@ export default function Typewriter({
   useEffect(() => {
     if (!visible || phase !== 'idle') return
     if (startDelay <= 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPhase('typing')
       return
     }
@@ -104,6 +106,7 @@ export default function Typewriter({
       } else {
         // Finished typing
         if (!loop && single) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setDone(true)
           onCompleteRef.current?.()
           return
@@ -137,16 +140,16 @@ export default function Typewriter({
   const displayed = currentText.slice(0, charIndex)
 
   return (
-    <span ref={containerRef} role="status" aria-label={currentText} className={className}>
+    <output ref={containerRef} aria-label={currentText} className={className}>
       {/* Preserve whitespace and newlines */}
-      {displayed.split('\n').map((line, i, arr) => (
-        <span key={i}>
+	      {displayed.split('\n').map((line, i, arr) => (
+	        <span key={`${currentText}-${line}`}>
           {line}
           {i < arr.length - 1 && <br />}
         </span>
       ))}
       {/* Caret - always visible, uses global .typewriter-caret keyframe */}
       <span aria-hidden="true" className="typewriter-caret">|</span>
-    </span>
+    </output>
   )
 }

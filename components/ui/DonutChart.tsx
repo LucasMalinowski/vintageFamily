@@ -29,6 +29,7 @@ export default function DonutChart({ slices, center, currency = true, showLegend
     const fullDash = (s.pct / 100) * circ
     const dash = Math.max(fullDash - GAP, 0)
     const arc = { ...s, off: off + GAP / 2, dash, gap: circ - dash }
+    // eslint-disable-next-line react-hooks/immutability
     off += fullDash
     return arc
   })
@@ -76,8 +77,8 @@ export default function DonutChart({ slices, center, currency = true, showLegend
 
       {showLegend && (
         <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto pr-1">
-          {slices.map((s, i) => (
-            <div key={i} className="flex items-center gap-2 min-w-0">
+	          {slices.map((s) => (
+	            <div key={s.label} className="flex items-center gap-2 min-w-0">
               <div
                 className="w-[9px] h-[9px] rounded-[2px] shrink-0"
                 style={{ background: s.color }}

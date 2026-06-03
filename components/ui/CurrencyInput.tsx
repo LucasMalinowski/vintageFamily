@@ -23,6 +23,8 @@ interface CurrencyInputProps {
   className?: string
   required?: boolean
   disabled?: boolean
+  'aria-label'?: string
+  id?: string
 }
 
 export default function CurrencyInput({
@@ -32,6 +34,8 @@ export default function CurrencyInput({
   className = '',
   required,
   disabled,
+  'aria-label': ariaLabel,
+  id,
 }: CurrencyInputProps) {
   const [cents, setCents] = useState(() => valueToCents(value))
   const skipSync = useRef(false)
@@ -42,6 +46,7 @@ export default function CurrencyInput({
       skipSync.current = false
       return
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCents(valueToCents(value))
   }, [value])
 
@@ -65,6 +70,8 @@ export default function CurrencyInput({
       className={className}
       required={required}
       disabled={disabled}
+      aria-label={ariaLabel}
+      id={id}
     />
   )
 }

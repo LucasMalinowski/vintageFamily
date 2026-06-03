@@ -41,22 +41,22 @@ export async function detectAndUpsertRecurringPatterns(familyId: string): Promis
   since.setMonth(since.getMonth() - 2)
   const sinceDate = toISO(since)
 
-  // Fetch last 2 months of expenses
-  const { data: expenses } = await supabaseAdmin
-    .from('expenses')
-    .select('description, category_id, amount_cents, date')
-    .eq('family_id', familyId)
-    .gte('date', sinceDate)
-    .not('status', 'eq', 'pending_confirmation')
-    .order('date', { ascending: true })
-
-  // Fetch last 2 months of incomes
-  const { data: incomes } = await supabaseAdmin
-    .from('incomes')
-    .select('description, category_id, amount_cents, date')
-    .eq('family_id', familyId)
-    .gte('date', sinceDate)
-    .order('date', { ascending: true })
+	  // Fetch last 2 months of expenses and incomes
+	  const [{ data: expenses }, { data: incomes }] = await Promise.all([
+	    supabaseAdmin
+	      .from('expenses')
+	      .select('description, category_id, amount_cents, date')
+	      .eq('family_id', familyId)
+	      .gte('date', sinceDate)
+	      .not('status', 'eq', 'pending_confirmation')
+	      .order('date', { ascending: true }),
+	    supabaseAdmin
+	      .from('incomes')
+	      .select('description, category_id, amount_cents, date')
+	      .eq('family_id', familyId)
+	      .gte('date', sinceDate)
+	      .order('date', { ascending: true }),
+	  ])
 
   type Row = { description: string; category_id: string | null; amount_cents: number; date: string }
   type GroupedEntry = { kind: 'expense' | 'income'; rows: Row[] }

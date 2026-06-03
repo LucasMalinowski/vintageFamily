@@ -54,6 +54,7 @@ function DonutSvg({
     const fullDash = (s.pct / 100) * circ
     const dash = Math.max(fullDash - GAP_PX, 0)
     const arc = { ...s, off: off + GAP_PX / 2, dash, gap: circ - dash }
+    // eslint-disable-next-line react-hooks/immutability
     off += fullDash
     return arc
   })
@@ -143,7 +144,7 @@ export default function DonutCategoryModal({
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-5 border-b border-border shrink-0">
                 <Dialog.Title className="font-serif text-[20px] text-coffee">Despesas por categoria</Dialog.Title>
-                <button onClick={onClose} className="text-ink/40 hover:text-ink transition-vintage">
+                <button type="button" onClick={onClose} className="text-ink/40 hover:text-ink transition-vintage">
                   <X className="w-5 h-5" />
                 </button>
               </div>

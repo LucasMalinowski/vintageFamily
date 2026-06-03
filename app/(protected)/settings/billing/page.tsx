@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Info } from 'lucide-react'
 import BillingPaymentElement from '@/components/billing/BillingPaymentElement'
 import { getAuthBearerToken } from '@/lib/billing/client'
@@ -186,8 +186,10 @@ export default function BillingSettingsPage() {
       }),
     ])
 
-    const billingPayload = await billingResponse.json().catch(() => null)
-    const invoicesPayload = await invoicesResponse.json().catch(() => null)
+	    const [billingPayload, invoicesPayload] = await Promise.all([
+	      billingResponse.json().catch(() => null),
+	      invoicesResponse.json().catch(() => null),
+	    ])
 
     if (!billingResponse.ok) {
       setMessage(billingPayload?.error || 'Não foi possível carregar dados de assinatura.')
@@ -207,6 +209,7 @@ export default function BillingSettingsPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load()
   }, [])
 
@@ -403,13 +406,13 @@ export default function BillingSettingsPage() {
     await load()
   }
 
-  const resolvePlanChangeAction = (targetPlan: PlanCode) => {
+  const resolvePlanChangeAction = useCallback((targetPlan: PlanCode) => {
     if (!currentPlan) return 'subscribe'
     if (targetPlan === currentPlan) return 'current'
     if (UPGRADE_PATHS[currentPlan]?.includes(targetPlan)) return 'upgrade'
     if (DOWNGRADE_PATHS[currentPlan]?.includes(targetPlan)) return 'downgrade'
     return 'invalid'
-  }
+  }, [currentPlan])
 
   const selectedPlanAction = selectedPlan ? resolvePlanChangeAction(selectedPlan) : 'invalid'
 
@@ -426,10 +429,11 @@ export default function BillingSettingsPage() {
       const action = resolvePlanChangeAction(planCode)
       return action !== 'invalid' || planCode === currentPlan
     })
-  }, [currentPlan, foundersEligible])
+  }, [currentPlan, foundersEligible, resolvePlanChangeAction])
 
   useEffect(() => {
     if (!planPickerOpen || !selectedPlan || selectedPlanAction !== 'downgrade') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPlanPreview(null)
       return
     }
@@ -569,7 +573,7 @@ export default function BillingSettingsPage() {
   })()
 
   if (loading) {
-    return <div className="rounded-vintage border border-border bg-bg p-6 shadow-vintage text-ink/60">Carregando cobrança...</div>
+    return <div className="rounded-vintage border border-border bg-bg p-6 shadow-vintage text-ink/60">Carregando cobrança…</div>
   }
 
   return (
@@ -624,6 +628,7 @@ export default function BillingSettingsPage() {
             ) : (
               <div className="flex flex-col gap-2">
                 <button
+                  type="button"
                   onClick={() => {
                     setSelectedPlan(currentPlan ?? 'standard_monthly')
                     setPlanPickerOpen(true)
@@ -633,6 +638,7 @@ export default function BillingSettingsPage() {
                   {hasStripeSubscription ? 'Alterar Plano de Assinatura' : 'Escolher plano de assinatura'}
                 </button>
                 <button
+                  type="button"
                   onClick={startPaymentMethodUpdate}
                   disabled={!data?.subscription || actionLoading === 'payment_method'}
                   className="rounded-full border border-border bg-bg px-4 py-2 text-sm text-ink/70 hover:bg-offWhite disabled:opacity-60"
@@ -641,6 +647,7 @@ export default function BillingSettingsPage() {
                 </button>
                 {scheduledChange?.target_plan ? (
                   <button
+                    type="button"
                     onClick={clearScheduledChange}
                     disabled={actionLoading === 'clear_schedule'}
                     className="rounded-full border border-border bg-bg px-4 py-2 text-sm text-ink/70 hover:bg-offWhite disabled:opacity-60"
@@ -649,6 +656,7 @@ export default function BillingSettingsPage() {
                   </button>
                 ) : null}
                 <button
+                  type="button"
                   onClick={() => updateCancellation(!data?.subscription?.cancel_at_period_end)}
                   disabled={!data?.subscription || actionLoading === 'cancel' || actionLoading === 'resume'}
                   className="rounded-full border border-border bg-bg px-4 py-2 text-sm text-ink/70 hover:bg-offWhite disabled:opacity-60"
@@ -737,6 +745,7 @@ export default function BillingSettingsPage() {
                   </p>
                 </div>
                 <button
+                  type="button"
                   className="rounded-full border border-border bg-bg px-3 py-2 text-sm text-ink/70 transition-vintage hover:bg-offWhite"
                   onClick={() => setPaymentFlow(null)}
                 >
@@ -865,6 +874,7 @@ export default function BillingSettingsPage() {
                   </p>
                 </div>
                 <button
+                  type="button"
                   className="rounded-full border border-border bg-bg px-3 py-2 text-sm text-ink/70 transition-vintage hover:bg-offWhite"
                   onClick={() => setPlanPickerOpen(false)}
                 >
@@ -979,7 +989,7 @@ export default function BillingSettingsPage() {
                       {actionLoading === 'preview_change' ? (
                         <div className="flex flex-col items-center justify-center gap-3 rounded-[16px] border border-border bg-offWhite px-4 py-6 text-center text-sm text-ink/70">
                           <div className="h-8 w-8 animate-spin rounded-full border-4 border-sidebar/20 border-t-sidebar" />
-                          <div>Simulando ajuste de cobrança...</div>
+                          <div>Simulando ajuste de cobrança…</div>
                         </div>
                       ) : null}
                       {actionLoading !== 'preview_change' && planPreview ? (

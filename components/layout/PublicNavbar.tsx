@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect } from 'react'
@@ -69,7 +70,7 @@ export default function PublicNavbar({ color = 'sidebar', showWordmark = true }:
         className={`w-full px-5 py-4 md:px-6 md:py-5 flex items-center justify-between backdrop-blur-sm ${theme.wrapper}`}
       >
         <Link href="/" className="flex items-center">
-          <img src="/logo.png" alt="Florim" className="w-10 h-10 md:w-16 md:h-16 object-contain" />
+          <Image src="/logo.png" alt="Florim" width={64} height={64} className="w-10 h-10 md:w-16 md:h-16 object-contain" />
           {showWordmark ? (
             <span className="font-serif text-base md:text-lg font-thin tracking-wide text-gold">FLORIM</span>
           ) : null}

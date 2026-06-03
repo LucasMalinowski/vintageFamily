@@ -21,11 +21,13 @@ async function cancelFamilyStripeSubscription(familyId: string) {
       limit: 10,
     })
 
-    await Promise.all(
-      subscriptions.data
-        .filter((sub) => sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due')
-        .map((sub) => stripe.subscriptions.cancel(sub.id))
-    )
+	    const cancelRequests = []
+	    for (const sub of subscriptions.data) {
+	      if (sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due') {
+	        cancelRequests.push(stripe.subscriptions.cancel(sub.id))
+	      }
+	    }
+	    await Promise.all(cancelRequests)
   } catch (err) {
     console.error('[account-delete] stripe subscription cancel failed', err)
   }
@@ -38,14 +40,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
 
-  const userId = auth.user.id
-  const { newAdminId } = await request.json().catch(() => ({}))
-
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from('users')
-    .select('id,family_id,role,name,email')
-    .eq('id', userId)
-    .maybeSingle()
+	  const userId = auth.user.id
+	  const [body, profileResult] = await Promise.all([
+	    request.json().catch(() => ({})),
+	    supabaseAdmin
+	      .from('users')
+	      .select('id,family_id,role,name,email')
+	      .eq('id', userId)
+	      .maybeSingle(),
+	  ])
+	  const { newAdminId } = body as { newAdminId?: unknown }
+	  const { data: profile, error: profileError } = profileResult
 
   if (profileError || !profile) {
     return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 400 })

@@ -219,42 +219,49 @@ export default function Comparatives() {
       savingNameById.set(saving.id, saving.name)
     }
 
-    const incomeDetails: BarDetailRow[] = (incomeRows.data || [])
-      .map((row) => ({
+    const incomeDetails: BarDetailRow[] = []
+    for (const row of incomeRows.data || []) {
+      const detail = {
         date: row.date,
         name: row.description || 'Sem nome',
         category: row.category_name || 'Sem categoria',
         value: row.amount_cents,
-      }))
-      .filter((row) => isDateWithinFilters(row.date, selectedMonth, selectedYear))
-      .filter((row) => matchesSearch(searchTerm, row.name, row.category))
-      .sort((a, b) => b.date.localeCompare(a.date))
+      }
+      if (!isDateWithinFilters(detail.date, selectedMonth, selectedYear)) continue
+      if (!matchesSearch(searchTerm, detail.name, detail.category)) continue
+      incomeDetails.push(detail)
+    }
+    incomeDetails.sort((a, b) => b.date.localeCompare(a.date))
 
-    const paidDetails: BarDetailRow[] = (paidRows.data || [])
-      .map((row) => ({
+    const paidDetails: BarDetailRow[] = []
+    for (const row of paidRows.data || []) {
+      const detail = {
         date: row.date,
         name: row.description || 'Sem nome',
         category: row.category_name || 'Sem categoria',
         value: row.amount_cents,
-      }))
-      .filter((row) => isDateWithinFilters(row.date, selectedMonth, selectedYear))
-      .filter((row) => matchesSearch(searchTerm, row.name, row.category))
-      .sort((a, b) => b.date.localeCompare(a.date))
+      }
+      if (!isDateWithinFilters(detail.date, selectedMonth, selectedYear)) continue
+      if (!matchesSearch(searchTerm, detail.name, detail.category)) continue
+      paidDetails.push(detail)
+    }
+    paidDetails.sort((a, b) => b.date.localeCompare(a.date))
 
-    const savedDetails: BarDetailRow[] = (savingsRows.data || [])
-      .filter((row: { type?: string }) => row.type !== 'withdrawal')
-      .map((row) => {
-        const savingName = savingNameById.get(row.saving_id) || 'Sem categoria'
-        return {
-          date: row.date,
-          name: savingName,
-          category: savingName,
-          value: row.amount_cents,
-        }
-      })
-      .filter((row) => isDateWithinFilters(row.date, selectedMonth, selectedYear))
-      .filter((row) => matchesSearch(searchTerm, row.name, row.category))
-      .sort((a, b) => b.date.localeCompare(a.date))
+    const savedDetails: BarDetailRow[] = []
+    for (const row of savingsRows.data || []) {
+      if (row.type === 'withdrawal') continue
+      const savingName = savingNameById.get(row.saving_id) || 'Sem categoria'
+      const detail = {
+        date: row.date,
+        name: savingName,
+        category: savingName,
+        value: row.amount_cents,
+      }
+      if (!isDateWithinFilters(detail.date, selectedMonth, selectedYear)) continue
+      if (!matchesSearch(searchTerm, detail.name, detail.category)) continue
+      savedDetails.push(detail)
+    }
+    savedDetails.sort((a, b) => b.date.localeCompare(a.date))
 
     const incomeByCategory = new Map<string, number>()
     for (const row of incomeDetails) {
@@ -291,23 +298,23 @@ export default function Comparatives() {
 
     // Payment method breakdown from paid expenses
     const methodMap = new Map<string, number>()
-    ;(paidRows.data || [])
-      .filter((r) => isDateWithinFilters(r.date, selectedMonth, selectedYear))
-      .forEach((r: { payment_method?: string | null; amount_cents: number }) => {
-        const m = r.payment_method || 'Outro'
-        methodMap.set(m, (methodMap.get(m) || 0) + r.amount_cents)
-      })
+    for (const row of paidRows.data || []) {
+      if (!isDateWithinFilters(row.date, selectedMonth, selectedYear)) continue
+      const method = row.payment_method || 'Outro'
+      methodMap.set(method, (methodMap.get(method) || 0) + row.amount_cents)
+    }
     const methodTotal = Array.from(methodMap.values()).reduce((s, v) => s + v, 0) || 1
     const METHOD_COLORS: Record<string, string> = {
       PIX: '#6FBF8A', Credito: '#2F6F7E', Debito: '#3689B5', ValeAlimentacao: '#16A34A', Outro: '#C2A45D',
     }
     const allMethods = ['PIX', 'Credito', 'Debito', 'ValeAlimentacao', 'Outro']
-    setPaymentMethodItems(
-      allMethods.map((m) => {
-        const val = methodMap.get(m) || 0
-        return { label: m === 'Credito' ? 'Crédito' : m === 'Debito' ? 'Débito' : m === 'ValeAlimentacao' ? 'Vale Alimentação' : m, value: val, pct: Math.round((val / methodTotal) * 100), color: METHOD_COLORS[m] }
-      }).filter((i) => i.value > 0),
-    )
+    const paymentItems: HBarItem[] = []
+    for (const m of allMethods) {
+      const val = methodMap.get(m) || 0
+      if (val <= 0) continue
+      paymentItems.push({ label: m === 'Credito' ? 'Crédito' : m === 'Debito' ? 'Débito' : m === 'ValeAlimentacao' ? 'Vale Alimentação' : m, value: val, pct: Math.round((val / methodTotal) * 100), color: METHOD_COLORS[m] })
+    }
+    setPaymentMethodItems(paymentItems)
 
     const incomeTotal = incomeDetails.reduce((sum, row) => sum + row.value, 0)
     const paidTotal = paidDetails.reduce((sum, row) => sum + row.value, 0)
@@ -363,6 +370,7 @@ export default function Comparatives() {
       if (!cancelled) setTrendData(results)
     })()
     return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [familyId])
 
   useEffect(() => {
@@ -376,6 +384,7 @@ export default function Comparatives() {
       setLimitRows(rows)
     }
     loadWithSilences()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [familyId, selectedMonth, selectedYear])
 
   useEffect(() => {
@@ -391,7 +400,6 @@ export default function Comparatives() {
   const monthlyItems = chartItems(monthlyTotals)
   const maxBar = Math.max(1, ...monthlyItems.map((item) => Math.abs(item.value)))
 
-  // Comparatives Sankey
 
   // Donut for expenses by category
   const expenseDonutSlices = useMemo((): DonutSlice[] => {
@@ -620,6 +628,7 @@ export default function Comparatives() {
               <div className="fixed inset-0 z-40" onClick={() => setMobileMenuOpen(false)} />
               <div className="absolute right-0 top-full mt-1 z-50 bg-offWhite rounded-[14px] border border-border shadow-lg w-56 overflow-hidden animate-popup-in">
                 <button
+                  type="button"
                   onClick={() => { handleExportCsv(); setMobileMenuOpen(false) }}
                   disabled={exportingFormat !== null}
                   className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3 disabled:opacity-40"
@@ -633,6 +642,7 @@ export default function Comparatives() {
                   </div>
                 </button>
                 <button
+                  type="button"
                   onClick={() => { handleExportPdf(); setMobileMenuOpen(false) }}
                   disabled={exportingFormat !== null}
                   className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage flex items-center gap-3 disabled:opacity-40"
@@ -653,6 +663,7 @@ export default function Comparatives() {
         {/* Desktop toolbar */}
         <div className="hidden md:flex items-center gap-2.5 px-6 py-3 border-b border-border bg-bg">
           <button
+            type="button"
             onClick={() => setFiltersOpen(prev => !prev)}
             className="flex items-center gap-2 h-[38px] px-3 rounded-[10px] border border-border bg-white text-ink text-[13px] font-medium hover:bg-paper transition-vintage"
           >
@@ -663,7 +674,7 @@ export default function Comparatives() {
             <ChevronDown className={`w-3.5 h-3.5 text-ink/40 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
           </button>
           <div className="flex-1" />
-          <button onClick={handleExportPdf} disabled={!trendData.length} className="flex items-center gap-1.5 h-[38px] px-4 rounded-[10px] text-white text-[13px] font-semibold transition-vintage disabled:opacity-40" style={{ background: '#C2A45D' }}>
+          <button type="button" onClick={handleExportPdf} disabled={!trendData.length} className="flex items-center gap-1.5 h-[38px] px-4 rounded-[10px] text-white text-[13px] font-semibold transition-vintage disabled:opacity-40" style={{ background: '#C2A45D' }}>
             <FileText className="w-4 h-4" /> Exportar PDF
           </button>
         </div>
@@ -677,7 +688,7 @@ export default function Comparatives() {
               onChange={(m, y) => { setSelectedMonth(m); setSelectedYear(y) }}
             />
             {activeFiltersCount > 0 && (
-              <button onClick={clearFilters} className="text-xs text-[#B05C3A] hover:underline">Limpar filtros</button>
+              <button type="button" onClick={clearFilters} className="text-xs text-[#B05C3A] hover:underline">Limpar filtros</button>
             )}
           </div>
         )}
@@ -703,7 +714,7 @@ export default function Comparatives() {
 
           <div className="flex-1 min-w-0 px-[18px] pt-3 pb-4 md:px-0 md:pt-0 md:pb-0">
             {loading ? (
-              <div className="text-center py-12 text-ink/60">Carregando...</div>
+              <div className="text-center py-12 text-ink/60">Carregando…</div>
             ) : (
               <div className="space-y-6">
               {/* KPI cards */}
@@ -882,7 +893,7 @@ export default function Comparatives() {
                 {trendSeries.length > 0 ? (
                   <LineChart series={trendSeries} labels={trendData.map(d => d.label)} height={150} />
                 ) : (
-                  <div className="h-[130px] flex items-center justify-center text-sm text-ink/40">Carregando...</div>
+                  <div className="h-[130px] flex items-center justify-center text-sm text-ink/40">Carregando…</div>
                 )}
               </VintageCard>
 
@@ -1018,12 +1029,12 @@ export default function Comparatives() {
             Assine o Florim Pro para exportações ilimitadas e outros recursos avançados.
           </p>
           <div className="flex gap-3 pt-2">
-            <button onClick={() => setShowPaywallModal(false)} className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage text-sm">
+            <button type="button" onClick={() => setShowPaywallModal(false)} className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage text-sm">
               Fechar
             </button>
-            <a href="/settings/billing" className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg text-sm font-semibold text-center hover:bg-coffee/90 transition-vintage">
+            <Link href="/settings/billing" className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg text-sm font-semibold text-center hover:bg-coffee/90 transition-vintage">
               Ver planos
-            </a>
+            </Link>
           </div>
         </div>
       </Modal>

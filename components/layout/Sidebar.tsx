@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -199,7 +200,7 @@ export default function Sidebar() {
     <>
       <div className={`border-b border-white/10 bg-sidebar ${sidebarCollapsed ? 'p-4' : 'p-6'}`}>
         <div className={`flex ${sidebarCollapsed ? 'flex-col items-center' : 'items-center gap-3'}`}>
-          <img src="/logo.png" alt="Logo Florim" className={`${sidebarCollapsed ? 'w-12 h-12' : 'w-14 h-14'} object-contain`} />
+          <Image src="/logo.png" alt="Logo Florim" width={56} height={56} className={`${sidebarCollapsed ? 'w-12 h-12' : 'w-14 h-14'} object-contain`} />
           {!sidebarCollapsed && (
             <div>
               <h2 className="text-white font-serif text-lg">Família</h2>
@@ -258,6 +259,7 @@ export default function Sidebar() {
 
       <div className={`border-t border-white/10 ${sidebarCollapsed ? 'p-2' : 'p-4'}`}>
         <button
+          type="button"
           onClick={() => setIsCollapsed((prev) => !prev)}
           className={`
             hidden md:flex items-center rounded-lg transition-vintage text-white/80 hover:bg-white/10 hover:text-white mb-2
@@ -270,6 +272,7 @@ export default function Sidebar() {
           {!sidebarCollapsed && <span className="font-body text-sm">Recolher menu</span>}
         </button>
         <button
+          type="button"
           onClick={() => {
             signOut()
             setIsOpen(false)
@@ -296,6 +299,7 @@ export default function Sidebar() {
     <>
       {/* Mobile menu button - hidden since BottomNav handles navigation */}
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="fixed top-4 left-4 z-50 hidden w-10 h-10 bg-sidebar rounded-lg flex items-center justify-center text-white shadow-vintage"
       >

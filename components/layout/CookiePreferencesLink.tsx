@@ -10,7 +10,7 @@ export default function CookiePreferencesLink({ className }: Props) {
   }
 
   return (
-    <button onClick={handleClick} className={className}>
+    <button type="button" onClick={handleClick} className={className}>
       Preferências de cookies
     </button>
   )

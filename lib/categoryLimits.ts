@@ -118,10 +118,13 @@ export async function loadCategoryLimitsForMonth(
 
   if (!catsWithLimit.length) return []
 
-  // Build parent name map
-  const parentNameMap = new Map<string, string>(
-    allCats.filter(c => !c.parent_id).map(c => [c.id, c.name])
-  )
+	  // Build parent name map
+	  const parentNameMap = new Map<string, string>()
+	  for (const cat of allCats) {
+	    if (!cat.parent_id) {
+	      parentNameMap.set(cat.id, cat.name)
+	    }
+	  }
 
   // Build children map: parentId → childIds
   const childrenOf = new Map<string, string[]>()

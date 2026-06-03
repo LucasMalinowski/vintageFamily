@@ -141,7 +141,7 @@ export default function PlanCheckout({
   }, [planCode])
 
   if (loading) {
-    return <p className="text-sm text-ink/60">Inicializando checkout...</p>
+    return <p className="text-sm text-ink/60">Inicializando checkout…</p>
   }
 
   if (!stripePromise) {

@@ -29,9 +29,10 @@ export async function GET(request: NextRequest) {
     query = query.limit(100)
   }
 
-  const { data: insights } = await query
-
-  const counters = await getUsageCounters(profile.family_id)
+	  const [{ data: insights }, counters] = await Promise.all([
+	    query,
+	    getUsageCounters(profile.family_id),
+	  ])
   const onDemandLimit = hasFullInsightAccess
     ? FREE_TIER_LIMITS.onDemandInsightsPaidPerMonth
     : FREE_TIER_LIMITS.onDemandInsightsFreePerMonth

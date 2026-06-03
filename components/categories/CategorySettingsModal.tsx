@@ -186,6 +186,7 @@ export default function CategorySettingsModal({
       setSelectedMainId(null)
       setExpandedMainIds(new Set())
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, familyId, scope, kind])
 
   const tree = useMemo(() => buildTree(items), [items])
@@ -327,9 +328,14 @@ export default function CategorySettingsModal({
     if (!familyId) return
     if (!confirm(`Excluir a categoria "${item.name}"?`)) return
 
-    if (scope === 'savings') {
-      const childIds = items.filter((it) => it.parent_id === item.id).map((it) => it.id)
-      const idsToDelete = [item.id, ...childIds]
+	    if (scope === 'savings') {
+	      const childIds: string[] = []
+	      for (const it of items) {
+	        if (it.parent_id === item.id) {
+	          childIds.push(it.id)
+	        }
+	      }
+	      const idsToDelete = [item.id, ...childIds]
       await supabase.from('savings_contributions').delete().eq('family_id', familyId).in('saving_id', idsToDelete)
       const { error } = await supabase.from('savings').delete().eq('family_id', familyId).in('id', idsToDelete)
       if (error) { alert('Não foi possível excluir. Tente novamente.'); return }
@@ -365,6 +371,7 @@ export default function CategorySettingsModal({
           value={draftName}
           onChange={(event) => setDraftName(event.target.value)}
           autoFocus
+          aria-label="Nome da categoria"
           className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50"
           placeholder={placeholder}
         />
@@ -444,13 +451,14 @@ export default function CategorySettingsModal({
                   onChange={(e) => setDraftLimit(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') saveLimit(item.id); if (e.key === 'Escape') cancelEditLimit() }}
                   autoFocus
+                  aria-label="Limite mensal da categoria"
                   min="0"
                   step="0.01"
                   className="w-24 px-2 py-1 border border-coffee/50 rounded text-sm bg-paper focus:outline-none focus:ring-1 focus:ring-coffee/40"
                   placeholder="0,00"
                 />
                 <button type="button" onClick={() => saveLimit(item.id)} disabled={savingLimit} className="text-xs px-2 py-1 rounded bg-coffee text-paper disabled:opacity-60">
-                  Ok
+                  Salvar limite
                 </button>
                 <button type="button" onClick={cancelEditLimit} className="text-xs px-1.5 py-1 rounded border border-border text-ink/60">
                   ×
@@ -505,7 +513,7 @@ export default function CategorySettingsModal({
                 <LimitBar pct={pct} />
               </div>
             ) : (
-              <span className="text-sm text-ink/30">—</span>
+              <span className="text-sm text-ink/30">Sem limite</span>
             )}
           </td>
           <td className="px-3 py-2.5 w-24">
@@ -515,7 +523,7 @@ export default function CategorySettingsModal({
                   type="button"
                   onClick={() => handleToggleBell(item.id)}
                   disabled={togglingBellId === item.id}
-                  title={silencedIds.has(item.id) ? 'Alertas silenciados este mês — clique para reativar' : 'Silenciar alertas este mês'}
+                  title={silencedIds.has(item.id) ? 'Alertas silenciados este mês, clique para reativar' : 'Silenciar alertas este mês'}
                   className={`p-1 rounded border transition-colors ${silencedIds.has(item.id) ? 'border-gold/60 text-gold' : 'border-border text-ink/40 hover:text-ink/70'}`}
                 >
                   {silencedIds.has(item.id) ? <BellOff className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
@@ -559,12 +567,12 @@ export default function CategorySettingsModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} size="xl">
       {isExpenseTable && (
-        <p className="text-sm text-ink/50 mb-3">Defina um teto mensal por categoria — opcional.</p>
+        <p className="text-sm text-ink/50 mb-3">Defina um teto mensal por categoria, opcional.</p>
       )}
 
       <div className="rounded-lg border border-border bg-paper min-h-[60vh] flex flex-col">
         {loading ? (
-          <p className="text-sm text-ink/60 p-4">Carregando...</p>
+          <p className="text-sm text-ink/60 p-4">Carregando…</p>
         ) : tree.length === 0 ? (
           <div className="space-y-3 p-4">
             <p className="text-sm text-ink/60">Nenhuma categoria cadastrada.</p>
@@ -573,6 +581,7 @@ export default function CategorySettingsModal({
                 type="text"
                 value={draftName}
                 onChange={(event) => setDraftName(event.target.value)}
+                aria-label="Nova Categoria Principal"
                 className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
                 placeholder="Nova Categoria Principal"
               />
@@ -596,7 +605,7 @@ export default function CategorySettingsModal({
                     <th className="px-3 py-2 text-left text-[10px] uppercase tracking-widest text-ink/40 font-medium">Categoria</th>
                     <th className="px-3 py-2 text-left text-[10px] uppercase tracking-widest text-ink/40 font-medium w-44">Limite mensal</th>
                     <th className="px-3 py-2 text-left text-[10px] uppercase tracking-widest text-ink/40 font-medium w-48">Este mês</th>
-                    <th className="px-3 py-2 w-20" />
+                    <th className="px-3 py-2 w-20" aria-label="Ações" />
                   </tr>
                 </thead>
                 <tbody>
@@ -745,7 +754,7 @@ export default function CategorySettingsModal({
                           <div className="px-3 py-3 space-y-2">
                             <div className="flex gap-2 items-center">
                               <IconPicker value={draftIcon} onSelect={setDraftIcon} />
-                              <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder="Nome da categoria" />
+                              <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label="Nome da categoria" className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder="Nome da categoria" />
                             </div>
                             <div className="flex gap-2">
                               <button type="button" onClick={resetComposer} className="px-3 py-1.5 rounded-lg border border-border text-sm text-ink/70">Cancelar</button>
@@ -788,7 +797,7 @@ export default function CategorySettingsModal({
                     <div className="space-y-2">
                       <div className="flex gap-2 items-center">
                         <IconPicker value={draftIcon} onSelect={setDraftIcon} />
-                        <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder="Nome da categoria principal" />
+                        <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label="Nome da categoria principal" className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder="Nome da categoria principal" />
                       </div>
                       <div className="flex gap-2">
                         <button type="button" onClick={resetComposer} className="px-3 py-2 rounded-lg border border-border text-sm text-ink/70">Cancelar</button>
@@ -828,7 +837,7 @@ export default function CategorySettingsModal({
                           <div className="h-1 bg-gradient-to-r from-petrol via-olive to-gold" />
                           {isEditingChild ? (
                             <div className="px-4 py-3 space-y-2">
-                              <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder="Nome da subcategoria" />
+                              <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label="Nome da subcategoria" className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder="Nome da subcategoria" />
                               <div className="flex gap-2">
                                 <button type="button" onClick={resetComposer} className="px-3 py-1.5 rounded-lg border border-border text-sm text-ink/70">Cancelar</button>
                                 <button type="button" onClick={saveComposer} disabled={saving} className="px-3 py-1.5 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60">{saving ? 'Salvando...' : 'Salvar'}</button>
@@ -867,7 +876,7 @@ export default function CategorySettingsModal({
                   </button>
                   {isChildComposer && !editingId ? (
                     <div className="space-y-2">
-                      <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder="Nome da subcategoria" />
+                      <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label="Nova subcategoria" className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder="Nome da subcategoria" />
                       <div className="flex gap-2">
                         <button type="button" onClick={resetComposer} className="px-3 py-2 rounded-lg border border-border text-sm text-ink/70">Cancelar</button>
                         <button type="button" onClick={saveComposer} disabled={saving} className="px-3 py-2 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60">{saving ? 'Salvando...' : 'Criar'}</button>

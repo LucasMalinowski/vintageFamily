@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useEffect, useMemo, useState } from 'react'
 import { Check, ChevronDown, Search } from 'lucide-react'
 import { useAuth } from '@/components/AuthProvider'
@@ -424,15 +425,15 @@ export default function ProfileSettingsPage() {
       )}
 
       {loading ? (
-        <div className="py-8 text-center text-sm text-ink/60 font-body">Carregando...</div>
+        <div className="py-8 text-center text-sm text-ink/60 font-body">Carregando…</div>
       ) : (
         <>
           {/* Avatar + name + email header */}
           <div className="flex items-center gap-5 mb-2">
             <div className="relative shrink-0">
-              <div className="w-[72px] h-[72px] rounded-full bg-[#B05C3A] flex items-center justify-center overflow-hidden">
+              <div className="relative w-[72px] h-[72px] rounded-full bg-[#B05C3A] flex items-center justify-center overflow-hidden">
                 {avatarPreview ? (
-                  <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                  <Image src={avatarPreview} alt="Avatar" fill unoptimized className="object-cover" />
                 ) : (
                   <span className="text-white text-2xl font-bold">
                     {profileName ? profileName.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') : 'U'}
@@ -565,6 +566,7 @@ export default function ProfileSettingsPage() {
                     value={phoneInput}
                     onChange={(e) => setPhoneInput(e.target.value)}
                     placeholder="45 99999-9999"
+                    aria-label="Número de telefone"
                     className="flex-1 px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
                   />
                 </div>
@@ -590,6 +592,7 @@ export default function ProfileSettingsPage() {
                     inputMode="numeric"
                     maxLength={6}
                     value={otpInput}
+                    aria-label="Código de verificação"
                     onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder="000000"
                     className="w-32 px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage text-center tracking-widest font-numbers"
@@ -639,10 +642,11 @@ export default function ProfileSettingsPage() {
           <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
             <form onSubmit={handleSaveProfile} className="space-y-4">
               <div>
-                <label className="block text-sm font-body text-ink mb-1.5">
+                <label htmlFor="profile-settings-name" className="block text-sm font-body text-ink mb-1.5">
                   Nome completo <span className="text-terracotta">*</span>
                 </label>
                 <input
+                  id="profile-settings-name"
                   value={profileName}
                   onChange={(event) => setProfileName(event.target.value)}
                   className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
@@ -650,12 +654,14 @@ export default function ProfileSettingsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-body text-ink mb-1.5">
+                <label htmlFor="profile-settings-email" className="block text-sm font-body text-ink mb-1.5">
                   E-mail <span className="text-terracotta">*</span>
                 </label>
                 <input
+                  id="profile-settings-email"
                   value={profileEmail}
                   disabled
+                  readOnly
                   className="w-full px-4 py-3 bg-paper border border-border rounded-lg text-ink/60"
                 />
               </div>
@@ -729,7 +735,7 @@ export default function ProfileSettingsPage() {
       <Modal isOpen={deleteModalOpen} onClose={() => !deleting && setDeleteModalOpen(false)} title="Excluir conta" size="sm">
         <div className="space-y-4">
           {deletionInfoLoading ? (
-            <p className="text-sm text-ink/60">Carregando informações...</p>
+            <p className="text-sm text-ink/60">Carregando informações…</p>
           ) : (
             <>
               {deleteError && (
@@ -773,13 +779,15 @@ export default function ProfileSettingsPage() {
               )}
 
               <div className="space-y-1.5">
-                <label className="block text-sm font-body text-ink">
+                <label htmlFor="delete-confirm" className="block text-sm font-body text-ink">
                   Digite <strong>EXCLUIR</strong> para confirmar
                 </label>
                 <input
+                  id="delete-confirm"
                   value={deleteConfirmText}
                   onChange={(e) => setDeleteConfirmText(e.target.value)}
                   placeholder="EXCLUIR"
+                  aria-label="Digite EXCLUIR para confirmar"
                   className="w-full px-3 py-2.5 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/30 transition-vintage"
                 />
               </div>

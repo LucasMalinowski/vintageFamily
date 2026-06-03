@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
@@ -242,7 +243,7 @@ export default function FamilySettingsPage() {
 
       {loading ? (
         <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
-          <p className="text-sm text-ink/60 font-body">Carregando...</p>
+          <p className="text-sm text-ink/60 font-body">Carregando…</p>
         </div>
       ) : (
         <>
@@ -255,6 +256,7 @@ export default function FamilySettingsPage() {
                   onChange={(event) => setFamilyName(event.target.value)}
                   className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
                   placeholder="Família"
+                  aria-label="Nome da família"
                 />
               </div>
               <button
@@ -286,9 +288,9 @@ export default function FamilySettingsPage() {
                       className="flex flex-col md:flex-row md:items-center gap-4 border border-border rounded-lg bg-paper px-4 py-3"
                     >
                       <div className="flex items-center gap-3 flex-1">
-                        <div className="w-12 h-12 rounded-full bg-coffee/20 flex items-center justify-center overflow-hidden">
+                        <div className="relative w-12 h-12 rounded-full bg-coffee/20 flex items-center justify-center overflow-hidden">
                           {member.avatar_url ? (
-                            <img src={member.avatar_url} alt={member.name} className="w-full h-full object-cover" />
+                            <Image src={member.avatar_url} alt={member.name} fill className="object-cover" />
                           ) : (
                             <span className="text-coffee text-lg font-serif">
                               {member.name ? member.name.slice(0, 1).toUpperCase() : 'M'}
@@ -348,6 +350,7 @@ export default function FamilySettingsPage() {
                 value={inviteEmail}
                 onChange={(event) => setInviteEmail(event.target.value)}
                 required
+                aria-label="E-mail para convite"
                 className="flex-1 px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
                 placeholder="email@exemplo.com"
               />

@@ -125,6 +125,7 @@ export default function ActionMenu({ onEdit, onDelete, onView, onAttach, onDepos
         ref={fileInputRef}
         type="file"
         className="hidden"
+        aria-label="Selecionar arquivo"
         onChange={(event) => {
           const file = event.target.files?.[0]
           if (!file) return

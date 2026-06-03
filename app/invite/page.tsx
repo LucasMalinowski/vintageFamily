@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
@@ -97,7 +98,7 @@ function InvitePageContent() {
   }
 
   const formBody = loading ? (
-    <p className="text-sm text-ink/60 font-body">Carregando convite...</p>
+    <p className="text-sm text-ink/60 font-body">Carregando convite…</p>
   ) : (
     <form onSubmit={handleSubmit} className="flex flex-col gap-[14px]">
       {error && (
@@ -113,18 +114,21 @@ function InvitePageContent() {
       )}
 
       <div>
-        <label className="block text-sm font-body text-ink mb-2">Email</label>
+        <label htmlFor="invite-email" className="block text-sm font-body text-ink mb-2">Email</label>
         <input
+          id="invite-email"
           type="email"
           value={inviteInfo?.email ?? ''}
           disabled
+          readOnly
           className="w-full px-4 py-3 bg-offWhite border border-border rounded-full text-ink/60"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-body text-ink mb-2">Seu nome</label>
+        <label htmlFor="invite-name" className="block text-sm font-body text-ink mb-2">Seu nome</label>
         <input
+          id="invite-name"
           value={name}
           onChange={(event) => setName(event.target.value)}
           required
@@ -134,9 +138,10 @@ function InvitePageContent() {
       </div>
 
       <div>
-        <label className="block text-sm font-body text-ink mb-2">Senha</label>
+        <label htmlFor="invite-password" className="block text-sm font-body text-ink mb-2">Senha</label>
         <div className="relative">
           <input
+            id="invite-password"
             type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -157,9 +162,10 @@ function InvitePageContent() {
       </div>
 
       <div>
-        <label className="block text-sm font-body text-ink mb-2">Confirmar senha</label>
+        <label htmlFor="invite-confirm-password" className="block text-sm font-body text-ink mb-2">Confirmar senha</label>
         <div className="relative">
           <input
+            id="invite-confirm-password"
             type={showConfirmPassword ? 'text' : 'password'}
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
@@ -181,6 +187,7 @@ function InvitePageContent() {
 
       <label className="flex items-start gap-3 cursor-pointer">
         <input
+          id="invite-agreement"
           type="checkbox"
           checked={agreed}
           onChange={(e) => setAgreed(e.target.checked)}
@@ -216,7 +223,8 @@ function InvitePageContent() {
       <div className="flex flex-col min-h-screen md:hidden">
         {/* Logo centered at top */}
         <div className="flex justify-center pt-12 shrink-0">
-          <img src="/logo-florim.png" alt="Florim" className="h-[72px] object-contain" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <Image src="/logo-florim.png" alt="Florim" width={72} height={72} className="object-contain" />
         </div>
 
         {/* Quote / invite context */}
@@ -235,10 +243,12 @@ function InvitePageContent() {
 
       {/* ── Desktop layout ─────────────────────────────────────── */}
       <div className="hidden md:flex min-h-screen items-center justify-center px-6 py-10 relative">
-        <img
+        <Image
           src="/logo-florim.png"
           alt="Florim"
-          className="w-32 h-32 object-contain absolute left-8 top-8"
+          width={128}
+          height={128}
+          className="object-contain absolute left-8 top-8"
         />
 
         <div className="w-full max-w-6xl flex flex-col gap-10 md:flex-row md:items-center md:justify-between">
@@ -251,7 +261,7 @@ function InvitePageContent() {
           <div className="bg-paper backdrop-blur-sm rounded-[28px] border border-border/70 shadow-vintage p-12 w-full md:max-w-xl md:-translate-y-6">
             <h2 className="text-2xl font-serif text-coffee mb-6">Aceitar convite</h2>
             {loading ? (
-              <p className="text-sm text-ink/60 font-body">Carregando convite...</p>
+              <p className="text-sm text-ink/60 font-body">Carregando convite…</p>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
@@ -267,18 +277,21 @@ function InvitePageContent() {
                 )}
 
                 <div>
-                  <label className="block text-sm font-body text-ink mb-2">Email</label>
+                  <label htmlFor="invite-desktop-email" className="block text-sm font-body text-ink mb-2">Email</label>
                   <input
+                    id="invite-desktop-email"
                     type="email"
                     value={inviteInfo?.email ?? ''}
                     disabled
+                    readOnly
                     className="w-full px-4 py-3 bg-white/70 border border-border rounded-full text-ink/60"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-body text-ink mb-2">Seu nome</label>
+                  <label htmlFor="invite-desktop-name" className="block text-sm font-body text-ink mb-2">Seu nome</label>
                   <input
+                    id="invite-desktop-name"
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                     required
@@ -288,9 +301,10 @@ function InvitePageContent() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-body text-ink mb-2">Senha</label>
+                  <label htmlFor="invite-desktop-password" className="block text-sm font-body text-ink mb-2">Senha</label>
                   <div className="relative">
                     <input
+                      id="invite-desktop-password"
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
@@ -311,9 +325,10 @@ function InvitePageContent() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-body text-ink mb-2">Confirmar senha</label>
+                  <label htmlFor="invite-desktop-confirm-password" className="block text-sm font-body text-ink mb-2">Confirmar senha</label>
                   <div className="relative">
                     <input
+                      id="invite-desktop-confirm-password"
                       type={showConfirmPassword ? 'text' : 'password'}
                       value={confirmPassword}
                       onChange={(event) => setConfirmPassword(event.target.value)}
@@ -335,6 +350,7 @@ function InvitePageContent() {
 
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
+                    id="invite-desktop-agreement"
                     type="checkbox"
                     checked={agreed}
                     onChange={(e) => setAgreed(e.target.checked)}
@@ -371,7 +387,7 @@ function InvitePageContent() {
 
 export default function InvitePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center p-4">Carregando...</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center p-4">Carregando…</div>}>
       <InvitePageContent />
     </Suspense>
   )

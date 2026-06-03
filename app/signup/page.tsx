@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/components/AuthProvider'
 import { SSOButtons, SSODivider } from '@/components/SSOButtons'
@@ -74,9 +75,11 @@ export default function SignUpPage() {
 
       {/* Header - logo + title (always visible, adjusts sizing per breakpoint) */}
       <div className="pt-12 pb-2 px-7 text-center md:mb-8 md:pt-0 shrink-0">
-        <img
+        <Image
           src="/logo.png"
           alt="Florim"
+          width={80}
+          height={80}
           className="w-[52px] h-[52px] md:w-20 md:h-20 object-contain mx-auto mb-3"
         />
         <h1 className="font-serif text-[26px] md:text-4xl text-coffee mb-2">

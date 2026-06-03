@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 
@@ -51,7 +52,7 @@ export default function MobileAppBanner() {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[60] p-4 animate-slide-up">
       <div className="max-w-sm mx-auto bg-sidebar text-paper rounded-2xl shadow-vintage px-5 py-4 flex items-center gap-4">
-        <img src="/logo-small.png" alt="Florim" className="w-10 h-10 rounded-xl shrink-0 object-cover" />
+        <Image src="/logo-small.png" alt="Florim" width={40} height={40} className="w-10 h-10 rounded-xl shrink-0 object-cover" />
 
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-body font-semibold leading-tight">Florim no seu bolso</p>
@@ -70,6 +71,7 @@ export default function MobileAppBanner() {
         </div>
 
         <button
+          type="button"
           onClick={dismiss}
           aria-label="Fechar"
           className="shrink-0 text-paper/50 hover:text-paper transition-vintage -mt-1 -mr-1"

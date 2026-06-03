@@ -5,6 +5,25 @@ import Providers from '@/components/Providers'
 import CookieBanner from '@/components/CookieBanner'
 import MobileAppBanner from '@/components/MobileAppBanner'
 
+const organizationJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'Florim',
+  alternateName: 'Florim App',
+  legalName: 'LUCAS BRAZAU MALINOWSKI DESENVOLVIMENTO DE SOFTWARE LTDA',
+  url: 'https://florim.app',
+  logo: 'https://florim.app/logo.png',
+  email: 'contato@florim.app',
+  address: {
+    '@type': 'PostalAddress',
+    streetAddress: 'Avenida Paulista, 1106, Sala 01, Andar 16',
+    addressLocality: 'São Paulo',
+    addressRegion: 'SP',
+    postalCode: '01310-914',
+    addressCountry: 'BR',
+  },
+}
+
 export const metadata: Metadata = {
   title: {
     default: 'Florim - Gestão financeira familiar',
@@ -64,32 +83,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="pt-BR">
-      <body className="bg-paper text-ink font-body">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'Organization',
-              name: 'Florim',
-              alternateName: 'Florim App',
-              legalName: 'LUCAS BRAZAU MALINOWSKI DESENVOLVIMENTO DE SOFTWARE LTDA',
-              url: 'https://florim.app',
-              logo: 'https://florim.app/logo.png',
-              email: 'contato@florim.app',
-              address: {
-                '@type': 'PostalAddress',
-                streetAddress: 'Avenida Paulista, 1106, Sala 01, Andar 16',
-                addressLocality: 'São Paulo',
-                addressRegion: 'SP',
-                postalCode: '01310-914',
-                addressCountry: 'BR',
-              },
-            }),
-          }}
-        />
-        <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
+	    <html lang="pt-BR">
+	      <body className="bg-paper text-ink font-body">
+	        <script type="application/ld+json">{JSON.stringify(organizationJsonLd)}</script>
+	        <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
         <Providers>
           {children}
         </Providers>
