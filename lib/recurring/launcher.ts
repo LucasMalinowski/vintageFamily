@@ -40,6 +40,33 @@ export async function launchDueRecurringItems(familyId?: string): Promise<number
 
   if (!patterns?.length) return 0
 
+  // Batch prefetch category names and family phone numbers to avoid N+1 queries
+  const uniqueCategoryIds = [...new Set(
+    patterns.map(p => p.category_id).filter(Boolean) as string[]
+  )]
+  const categoryNameMap = new Map<string, string>()
+  if (uniqueCategoryIds.length) {
+    const { data: cats } = await supabaseAdmin
+      .from('categories')
+      .select('id,name')
+      .in('id', uniqueCategoryIds)
+    for (const cat of cats ?? []) categoryNameMap.set(cat.id, cat.name)
+  }
+
+  const uniqueFamilyIds = [...new Set(patterns.map(p => p.family_id))]
+  const familyPhoneMap = new Map<string, string>()
+  {
+    const { data: members } = await supabaseAdmin
+      .from('users')
+      .select('family_id,phone_number')
+      .in('family_id', uniqueFamilyIds)
+      .not('phone_number', 'is', null)
+    for (const m of members ?? []) {
+      if (!familyPhoneMap.has(m.family_id) && m.phone_number)
+        familyPhoneMap.set(m.family_id, m.phone_number)
+    }
+  }
+
   let launched = 0
 
   for (const pattern of patterns) {
@@ -74,14 +101,8 @@ export async function launchDueRecurringItems(familyId?: string): Promise<number
       notes: null,
     }
 
-    // Resolve category name if we have a category_id
     if (pattern.category_id) {
-      const { data: cat } = await supabaseAdmin
-        .from('categories')
-        .select('name')
-        .eq('id', pattern.category_id)
-        .maybeSingle()
-      entryData.category_name = cat?.name ?? null
+      entryData.category_name = categoryNameMap.get(pattern.category_id) ?? null
     }
 
     const safeEntryData = {
@@ -95,15 +116,7 @@ export async function launchDueRecurringItems(familyId?: string): Promise<number
       await supabaseAdmin.from('expenses').insert(safeEntryData)
     }
 
-    // Notify via WhatsApp if family has a linked phone
-    const { data: members } = await supabaseAdmin
-      .from('users')
-      .select('phone_number')
-      .eq('family_id', pattern.family_id)
-      .not('phone_number', 'is', null)
-      .limit(1)
-
-    const phone = members?.[0]?.phone_number
+    const phone = familyPhoneMap.get(pattern.family_id)
     if (phone) {
       const amountStr = pattern.estimated_amount_cents
         ? ` de ${formatBRL(pattern.estimated_amount_cents)}`

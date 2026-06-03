@@ -6,6 +6,7 @@ import { useAuth } from '@/components/AuthProvider'
 import Sidebar from '@/components/layout/Sidebar'
 import BottomNav from '@/components/layout/BottomNav'
 import TrialCountdownBanner from '@/components/billing/TrialCountdownBanner'
+import { ToastContainer } from '@/components/ui/Toast'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, authStatus } = useAuth()
@@ -57,6 +58,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <main className="app-main flex-1 overflow-auto bg-paper pb-[80px] md:pb-0">{children}</main>
         <BottomNav />
       </div>
+      <ToastContainer />
     </div>
   )
 }

@@ -30,7 +30,7 @@ export default function PdfPreviewModal({
   includeSignatures = false,
   onToggleSignatures,
   onDownload,
-  downloadLabel = 'Imprimir ou salvar',
+  downloadLabel = 'Imprimir / Salvar PDF',
   previewLabel = 'Preview do PDF',
 }: PdfPreviewModalProps) {
   return (
@@ -39,13 +39,20 @@ export default function PdfPreviewModal({
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-ink/60">{summary}</p>
           {showSignaturesToggle && onToggleSignatures ? (
-            <label className="flex items-center gap-2 text-sm text-ink/70">
-              <input
-                type="checkbox"
-                checked={includeSignatures}
-                onChange={(event) => onToggleSignatures(event.target.checked)}
-                className="w-4 h-4 rounded border-border"
-              />
+            <label className="flex items-center gap-2 text-sm text-ink/70 cursor-pointer select-none">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={includeSignatures}
+                onClick={() => onToggleSignatures(!includeSignatures)}
+                className="relative w-8 h-[18px] rounded-full transition-colors shrink-0"
+                style={{ background: includeSignatures ? '#6FBF8A' : '#E4D7C2' }}
+              >
+                <span
+                  className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-all"
+                  style={{ left: includeSignatures ? '18px' : '2px' }}
+                />
+              </button>
               Assinaturas
             </label>
           ) : null}
@@ -55,7 +62,7 @@ export default function PdfPreviewModal({
           {pdfUrl ? (
             <iframe
               title={previewLabel}
-              src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&zoom=90`}
+              src={pdfUrl}
               className="h-[70vh] w-full"
             />
           ) : error ? (
@@ -64,7 +71,7 @@ export default function PdfPreviewModal({
             </div>
           ) : (
             <div className="flex h-[70vh] items-center justify-center text-sm text-ink/60">
-              {isGenerating ? 'Gerando pré-visualização do PDF...' : 'Clique em "Imprimir ou salvar" para gerar o PDF.'}
+              {isGenerating ? 'Gerando pré-visualização do PDF...' : 'Clique em "Gerar PDF" para gerar a pré-visualização.'}
             </div>
           )}
         </div>

@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import Link from 'next/link'
-import { Bell, BellOff, ChartColumnBig, CreditCard, FileDown, FileText, MoreVertical, PiggyBank, SlidersHorizontal, TrendingUp, Wallet } from 'lucide-react'
+import { Bell, BellOff, ChartColumnBig, ChevronDown, CreditCard, FileDown, FileText, MoreVertical, PiggyBank, SlidersHorizontal, TrendingUp, Wallet } from 'lucide-react'
 import AnalyticsKpiCard from '@/components/ui/AnalyticsKpiCard'
-import SankeyChart, { SankeyNode, SankeyLink } from '@/components/ui/SankeyChart'
 import LineChart, { LineSeries } from '@/components/ui/LineChart'
 import DonutChart, { DonutSlice } from '@/components/ui/DonutChart'
+import ExpandableDonut from '@/components/ui/ExpandableDonut'
 import HBarChart, { HBarItem } from '@/components/ui/HBarChart'
 import FilterSheet from '@/components/layout/FilterSheet'
 import Topbar from '@/components/layout/Topbar'
@@ -17,6 +17,7 @@ import VintageCard from '@/components/ui/VintageCard'
 import Select from '@/components/ui/Select'
 import MonthYearPicker from '@/components/ui/MonthYearPicker'
 import PdfPreviewModal from '@/components/export/PdfPreviewModal'
+import Modal from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import { usePlan } from '@/lib/billing/plan-context'
@@ -36,7 +37,7 @@ import {
 } from '@/lib/dates'
 import { matchesSearch } from '@/lib/filterSearch'
 import { formatBRL } from '@/lib/money'
-import { buildPdfBlob, downloadBlob, downloadCsv } from '@/lib/report-export'
+import { buildBrandedPdfBlob, downloadBlob, downloadCsv, openHtmlAsPdf } from '@/lib/report-export'
 import {
   formatLimitBadge,
   getUserBillingPeriodKey,
@@ -55,7 +56,7 @@ interface Totals {
 }
 
 type PieMetric = 'income' | 'paid' | 'saved'
-type ChartMode = 'flow' | 'bars'
+type ChartMode = 'bars' | 'line'
 type MetricKey = 'income' | 'paid' | 'saved' | 'balance'
 
 interface CategorySlice {
@@ -108,7 +109,7 @@ export default function Comparatives() {
   const isFreeTier = tier === 'free'
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filtersOpen, setFiltersOpen] = useState(true)
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
@@ -116,9 +117,9 @@ export default function Comparatives() {
   const [chartMode, setChartMode] = useState<ChartMode>(() => {
     if (typeof window !== 'undefined') {
       const stored = window.localStorage.getItem('dashboard-chart-view')
-      if (stored === 'bars' || stored === 'flow') return stored as ChartMode
+      if (stored === 'bars' || stored === 'line') return stored as ChartMode
     }
-    return 'flow'
+    return 'bars'
   })
   const [trendData, setTrendData] = useState<{ label: string; income: number; paid: number; saved: number }[]>([])
   const [paymentMethodItems, setPaymentMethodItems] = useState<HBarItem[]>([])
@@ -149,6 +150,7 @@ export default function Comparatives() {
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
   const [pdfUrl, setPdfUrl] = useState('')
   const [pdfGenerating, setPdfGenerating] = useState(false)
+  const [showPaywallModal, setShowPaywallModal] = useState(false)
 
   useEffect(() => {
     const stored = window.localStorage.getItem('app-filters-open')
@@ -390,31 +392,6 @@ export default function Comparatives() {
   const maxBar = Math.max(1, ...monthlyItems.map((item) => Math.abs(item.value)))
 
   // Comparatives Sankey
-  const comparativesSankeyData = useMemo(() => {
-    const { income, paid, saved } = monthlyTotals
-    if (income <= 0) return { nodes: [] as SankeyNode[], links: [] as SankeyLink[] }
-
-    const nodes: SankeyNode[] = [
-      { id: 'recv', col: 0, label: 'Recebido', value: income, color: '#6FBF8A' },
-    ]
-    const links: SankeyLink[] = []
-
-    if (paid > 0) {
-      nodes.push({ id: 'paid_n', col: 1, label: 'Pago', value: paid, color: '#2F6F7E' })
-      links.push({ from: 'recv', to: 'paid_n', value: paid, color: '#2F6F7E' })
-      categorySlices.paid.slice(0, 6).forEach((cat, i) => {
-        const id = `cat_${i}`
-        nodes.push({ id, col: 2, label: cat.label, value: cat.value, color: cat.color })
-        links.push({ from: 'paid_n', to: id, value: cat.value, color: cat.color })
-      })
-    }
-    if (saved > 0) {
-      nodes.push({ id: 'savd', col: 1, label: 'Poupado', value: saved, color: '#3689B5' })
-      links.push({ from: 'recv', to: 'savd', value: saved, color: '#3689B5' })
-    }
-
-    return { nodes, links }
-  }, [monthlyTotals, categorySlices])
 
   // Donut for expenses by category
   const expenseDonutSlices = useMemo((): DonutSlice[] => {
@@ -485,30 +462,35 @@ export default function Comparatives() {
     },
   ]
 
+  // Flat rows: paid expenses + income + savings, each with type label
   const exportRows = [
-    ...monthlyItems.map((item) => [
-      'Resumo',
-      item.label,
-      '',
-      '',
-      formatBRL(item.value),
-      '',
+    ...barDetails.paid.map((row) => [
+      row.date ? formatDate(row.date) : '',
+      row.name,
+      row.category,
+      'Pago',
+      row.value,
     ]),
-    ...((['income', 'paid', 'saved', 'balance'] as MetricKey[]).flatMap((metric) =>
-      barDetails[metric].map((row) => [
-        'Barras',
-        metric === 'income' ? 'Recebido' : metric === 'paid' ? 'Pago' : metric === 'saved' ? 'Poupado' : 'Saldo',
-        row.name,
-        row.date ? formatDate(row.date) : '',
-        formatBRL(row.value),
-        row.source || '',
-      ]),
-    )),
+    ...barDetails.income.map((row) => [
+      row.date ? formatDate(row.date) : '',
+      row.name,
+      row.category,
+      'Recebido',
+      row.value,
+    ]),
+    ...barDetails.saved.map((row) => [
+      row.date ? formatDate(row.date) : '',
+      row.name,
+      row.category,
+      'Poupado',
+      row.value,
+    ]),
   ]
+    .sort((a, b) => String(b[0]).localeCompare(String(a[0])))
+    .map((r) => [r[0], r[1], r[2], r[3], formatBRL(Number(r[4]))])
 
   const exportSubtitle = [
     `Período: ${selectedMonth === ALL_MONTHS_VALUE ? 'todos os meses' : getMonthLabel(selectedMonth)} / ${selectedYear === ALL_YEARS_VALUE ? 'todos os anos' : getYearLabel(selectedYear)}`,
-    chartMode === 'bars' ? 'Visão em barras' : 'Visão em fluxo',
     searchTerm ? `Busca: ${searchTerm}` : null,
   ]
     .filter(Boolean)
@@ -518,9 +500,24 @@ export default function Comparatives() {
     filename: `comparativos-${format(new Date(), 'yyyy-MM-dd')}`,
     title: 'Comparativos',
     subtitle: exportSubtitle,
-    headers: ['Seção', 'Métrica', 'Item', 'Data', 'Valor', 'Origem'],
+    headers: ['Data', 'Descricao', 'Categoria', 'Tipo', 'Valor'],
     rows: exportRows,
   }
+
+  const buildComparativesPdfBlob = () => buildBrandedPdfBlob({
+    title: 'Comparativos',
+    filterSummary: exportSubtitle || 'Sem filtros ativos',
+    headers: ['Data', 'Descricao', 'Categoria', 'Tipo', 'Valor'],
+    rows: exportRows,
+    cards: [
+      { label: 'RECEBIDO', value: formatBRL(monthlyTotals.income) },
+      { label: 'PAGO', value: formatBRL(monthlyTotals.paid) },
+      { label: 'POUPADO', value: formatBRL(monthlyTotals.saved) },
+      { label: 'SALDO', value: formatBRL(monthlyTotals.balance) },
+    ],
+    generatedDate: formatDate(new Date()),
+    accentColor: '#C2A45D',
+  })
 
   const closePdfModal = () => {
     if (pdfUrl) URL.revokeObjectURL(pdfUrl)
@@ -537,7 +534,7 @@ export default function Comparatives() {
     setIsPdfModalOpen(true)
 
     try {
-      const blob = await buildPdfBlob(exportTable)
+      const blob = await buildComparativesPdfBlob()
       setPdfBlob(blob)
       setPdfUrl(URL.createObjectURL(blob))
     } finally {
@@ -547,13 +544,8 @@ export default function Comparatives() {
   }
 
   const downloadPreviewPdf = async () => {
-    if (pdfBlob) {
-      downloadBlob(`${exportTable.filename}.pdf`, pdfBlob)
-      return
-    }
-
-    const blob = await buildPdfBlob(exportTable)
-    downloadBlob(`${exportTable.filename}.pdf`, blob)
+    const url = pdfUrl || URL.createObjectURL(await buildComparativesPdfBlob())
+    openHtmlAsPdf(url)
   }
 
   const checkExportLimit = async (): Promise<boolean> => {
@@ -567,7 +559,7 @@ export default function Comparatives() {
     const data = await res.json()
     if (!data.allowed) {
       posthog.capture(EVENTS.EXPORT_IMPORT_LIMIT_REACHED)
-      alert('Você atingiu o limite de 3 exportações/importações gratuitas este mês.\n\nAssine o Florim Pro em florim.app/pricing para continuar.')
+      setShowPaywallModal(true)
       return false
     }
     return true
@@ -594,7 +586,8 @@ export default function Comparatives() {
       <div className="flex flex-col h-full md:min-h-screen">
       <Topbar
         title="Comparativos"
-        subtitle="Entender o passado nos ajuda a construir o futuro."
+        subtitle="Padrões com calma, decisões com clareza."
+        accent="#C2A45D"
         variant="textured"
       />
 
@@ -657,38 +650,41 @@ export default function Comparatives() {
           )}
         </div>
 
-        {/* Desktop filter search bar */}
-        <div className="hidden md:block px-6 py-4">
-          <FilterSearchBar
-            value={searchTerm}
-            onChange={setSearchTerm}
-            onToggleFilters={() => setFiltersOpen((prev) => !prev)}
-            filtersOpen={filtersOpen}
-            placeholder="Buscar por nome ou categoria"
-            filterChips={activeFilterChips}
-            rightSlot={
-              <>
-                <button
-                  type="button"
-                  onClick={() => setChartMode('bars')}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-md border transition-vintage text-sm ${
-                    chartMode === 'bars'
-                      ? 'bg-petrol text-white border-petrol'
-                      : 'bg-bg text-petrol border-petrol/40'
-                  }`}
-                  aria-label="Ver gráfico de barras"
-                >
-                  <ChartColumnBig className="w-4 h-4" />
-                  Barras
-                </button>
-              </>
-            }
-          />
+        {/* Desktop toolbar */}
+        <div className="hidden md:flex items-center gap-2.5 px-6 py-3 border-b border-border bg-bg">
+          <button
+            onClick={() => setFiltersOpen(prev => !prev)}
+            className="flex items-center gap-2 h-[38px] px-3 rounded-[10px] border border-border bg-white text-ink text-[13px] font-medium hover:bg-paper transition-vintage"
+          >
+            <SlidersHorizontal className="w-4 h-4 text-petrol" />
+            {selectedMonth === ALL_MONTHS_VALUE
+              ? (selectedYear === ALL_YEARS_VALUE ? 'Últimos 6 meses' : String(selectedYear))
+              : `${getMonthLabel(selectedMonth).slice(0, 3)} ${selectedYear}`}
+            <ChevronDown className={`w-3.5 h-3.5 text-ink/40 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+          </button>
+          <div className="flex-1" />
+          <button onClick={handleExportPdf} disabled={!trendData.length} className="flex items-center gap-1.5 h-[38px] px-4 rounded-[10px] text-white text-[13px] font-semibold transition-vintage disabled:opacity-40" style={{ background: '#C2A45D' }}>
+            <FileText className="w-4 h-4" /> Exportar PDF
+          </button>
         </div>
 
+        {/* Desktop filter panel */}
+        {filtersOpen && (
+          <div className="hidden md:flex items-center gap-3 px-6 py-2.5 border-b border-border bg-bg/60">
+            <MonthYearPicker
+              month={selectedMonth}
+              year={selectedYear}
+              onChange={(m, y) => { setSelectedMonth(m); setSelectedYear(y) }}
+            />
+            {activeFiltersCount > 0 && (
+              <button onClick={clearFilters} className="text-xs text-[#B05C3A] hover:underline">Limpar filtros</button>
+            )}
+          </div>
+        )}
+
         {/* Scrollable content area - mobile only internal scroll */}
-        <div className={`flex-1 min-h-0 overflow-y-auto md:overflow-visible w-full flex flex-col md:flex-row md:px-6 md:pb-4 ${filtersOpen ? 'md:gap-4' : 'md:gap-0'} md:items-stretch`}>
-          <div className="hidden md:contents">
+        <div className="flex-1 min-h-0 overflow-y-auto md:overflow-visible w-full flex flex-col md:px-6 md:pb-4 pt-10">
+          <div className="hidden">
           <FilterSidebar
             open={filtersOpen}
             onOpenChange={setFiltersOpen}
@@ -752,7 +748,7 @@ export default function Comparatives() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-base font-serif font-semibold text-coffee">Fluxo do dinheiro</h3>
                   <div className="flex gap-1 bg-bg border border-border rounded-lg p-0.5">
-                    {(['flow', 'bars'] as const).map((mode) => (
+                    {(['bars', 'line'] as const).map((mode) => (
                       <button
                         key={mode}
                         type="button"
@@ -761,40 +757,13 @@ export default function Comparatives() {
                           chartMode === mode ? 'bg-petrol text-white' : 'text-ink/50 hover:text-ink'
                         }`}
                       >
-                        {mode === 'flow' ? 'Fluxo' : 'Barras'}
+                        {mode === 'bars' ? 'Barras' : 'Linha'}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {chartMode === 'flow' ? (
-                  comparativesSankeyData.nodes.length > 0 ? (
-                    <>
-                      {/* Desktop: full 3-col */}
-                      <div className="hidden md:block">
-                        <SankeyChart
-                          nodes={comparativesSankeyData.nodes}
-                          links={comparativesSankeyData.links}
-                          width={560}
-                          height={230}
-                        />
-                      </div>
-                      {/* Mobile: col 0+1 with links */}
-                      <div className="md:hidden">
-                        {(() => {
-                          const mn = comparativesSankeyData.nodes.filter(n => n.col < 2)
-                          const mids = new Set(mn.map(n => n.id))
-                          const ml = comparativesSankeyData.links.filter(l => mids.has(l.from) && mids.has(l.to))
-                          return <SankeyChart nodes={mn} links={ml} width={300} height={120} />
-                        })()}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="h-[200px] flex items-center justify-center text-sm text-ink/40">
-                      Sem dados para o período selecionado.
-                    </div>
-                  )
-                ) : (
+                {(
                   <>
                     <div className="mb-4 flex flex-wrap items-center gap-6 text-sm text-ink/80">
                       {monthlyItems.map((item) => (
@@ -874,17 +843,27 @@ export default function Comparatives() {
                 </div>
 
                 {/* Despesas por categoria */}
-                <div className="bg-white rounded-xl border border-border shadow-soft p-4">
-                  <h3 className="text-sm font-semibold text-ink font-serif mb-3">Despesas por categoria</h3>
-                  {expenseDonutSlices.length > 0 ? (
-                    <DonutChart
-                      slices={expenseDonutSlices}
-                      center={formatBRL(monthlyTotals.paid).replace('R$ ', '')}
-                    />
-                  ) : (
-                    <div className="text-sm text-ink/40 italic">Sem dados</div>
-                  )}
-                </div>
+                {expenseDonutSlices.length > 0 ? (
+                  <ExpandableDonut
+                    slices={expenseDonutSlices}
+                    total={monthlyTotals.paid}
+                    title="Despesas por categoria"
+                    modalTitle="Despesas por categoria"
+                    items={barDetails.paid.map((row, i) => ({
+                      id: String(i),
+                      description: row.name,
+                      amount_cents: row.value,
+                      date: row.date,
+                      status: 'paid',
+                      payment_method: null,
+                      category_name: row.category,
+                      category_id: null,
+                    }))}
+                    getCategoryLabel={(_id, name) => name}
+                  />
+                ) : (
+                  <div className="bg-white rounded-xl border border-border shadow-soft p-4 text-sm text-ink/40 italic">Sem dados</div>
+                )}
               </div>
 
               {/* Trend chart */}
@@ -1029,6 +1008,25 @@ export default function Comparatives() {
           setSelectedYear(y)
         }}
       />
+
+      <Modal isOpen={showPaywallModal} onClose={() => setShowPaywallModal(false)} title="Limite atingido">
+        <div className="space-y-4">
+          <p className="text-ink/80 text-sm">
+            Você atingiu o limite de 3 exportações/importações gratuitas este mês.
+          </p>
+          <p className="text-ink/60 text-sm">
+            Assine o Florim Pro para exportações ilimitadas e outros recursos avançados.
+          </p>
+          <div className="flex gap-3 pt-2">
+            <button onClick={() => setShowPaywallModal(false)} className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage text-sm">
+              Fechar
+            </button>
+            <a href="/settings/billing" className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg text-sm font-semibold text-center hover:bg-coffee/90 transition-vintage">
+              Ver planos
+            </a>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

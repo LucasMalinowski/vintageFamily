@@ -89,7 +89,7 @@ export default function Select({
         ? 'w-full min-h-12 rounded-[14px] border border-border bg-paper px-4 py-2.5 text-left text-sm text-ink shadow-[0_1px_0_rgba(255,255,255,.55)] transition-vintage hover:border-coffee/25 focus:outline-none focus:ring-2 focus:ring-paper-2/40'
         : 'w-full min-h-12 rounded-[14px] border border-border bg-bg px-4 py-2.5 text-left text-sm text-ink shadow-[0_1px_0_rgba(255,255,255,.55)] transition-vintage hover:border-coffee/25 focus:outline-none focus:ring-2 focus:ring-paper-2/40'
 
-  const optionsPanelClassName = 'absolute z-30 mt-2 max-h-72 w-full overflow-auto rounded-[16px] border border-border/70 bg-offWhite p-2 shadow-soft'
+  const optionsPanelClassName = `absolute z-[200] mt-2 max-h-72 overflow-auto rounded-[16px] border border-border/70 bg-offWhite p-2 shadow-soft ${variant === 'filter' ? 'min-w-full w-max max-w-[320px]' : 'w-full'}`
 
   return (
     <div>

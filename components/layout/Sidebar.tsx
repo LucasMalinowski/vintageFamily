@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  Home, BanknoteArrowUp, BanknoteArrowDown, PiggyBank, ChartColumnBig, LogOut, Menu, X, Info, Lightbulb,
+  Home, BanknoteArrowUp, BanknoteArrowDown, PiggyBank, ChartColumnBig, LogOut, Menu, X, Info, Lightbulb, Bell,
   ArrowRightToLine, ArrowLeftToLine
 } from 'lucide-react'
 import { useAuth } from '@/components/AuthProvider'
@@ -15,10 +15,11 @@ import { useEffect, useMemo, useState } from 'react'
 
 const menuItems = [
   { icon: Home, label: 'Início', href: '/inicio' },
-  { icon: BanknoteArrowUp, label: 'Despesas', href: '/expenses' },
-  { icon: BanknoteArrowDown, label: 'Receitas', href: '/incomes' },
+  { icon: BanknoteArrowUp, label: 'Contas a Pagar', href: '/expenses' },
+  { icon: BanknoteArrowDown, label: 'Contas a Receber', href: '/incomes' },
   { icon: PiggyBank, label: 'Poupança', href: '/savings' },
   { icon: ChartColumnBig, label: 'Comparativos', href: '/comparatives' },
+  { icon: Bell, label: 'Lembretes', href: '/reminders' },
   { icon: Lightbulb, label: 'Insights', href: '/insights' },
   { icon: Info, label: 'Sobre', href: '/sobre' },
 ]

@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import Topbar from '@/components/layout/Topbar'
 import EmptyState from '@/components/ui/EmptyState'
+import AnalyticsKpiCard from '@/components/ui/AnalyticsKpiCard'
 import { useAuth } from '@/components/AuthProvider'
-import { Lightbulb, MessageCircleQuestion, Share2, Sparkles, Lock, Flag } from 'lucide-react'
+import { Flag, Lightbulb, MessageCircleQuestion, Share2, Sparkles, TrendingDown } from 'lucide-react'
 import { usePlan } from '@/lib/billing/plan-context'
 import { supabase } from '@/lib/supabase'
 
@@ -48,12 +49,11 @@ async function shareInsight(content: string) {
     await navigator.share({ text })
   } else {
     await navigator.clipboard.writeText(text)
-    alert('Insight copiado para a área de transferência!')
   }
 }
 
 export default function InsightsPage() {
-  const { familyId } = useAuth()
+  const { familyId, user } = useAuth()
   const { tier } = usePlan()
   const hasFullInsightAccess = tier === 'paid' || tier === 'trial'
 
@@ -67,6 +67,10 @@ export default function InsightsPage() {
   const [askError, setAskError] = useState<string | null>(null)
   const [reportingId, setReportingId] = useState<string | null>(null)
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set())
+
+  // Real preferences from DB
+  const [channels, setChannels] = useState<string[]>(['whatsapp', 'email'])
+  const [prefSaving, setPrefSaving] = useState(false)
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -91,6 +95,27 @@ export default function InsightsPage() {
     if (!familyId) return
     loadInsights()
   }, [familyId])
+
+  useEffect(() => {
+    if (!user) return
+    supabase
+      .from('users')
+      .select('insight_channels')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.insight_channels?.length) setChannels(data.insight_channels)
+      })
+  }, [user])
+
+  async function toggleChannel(ch: string) {
+    const next = channels.includes(ch) ? channels.filter(c => c !== ch) : [...channels, ch]
+    setChannels(next)
+    if (!user) return
+    setPrefSaving(true)
+    await supabase.from('users').update({ insight_channels: next }).eq('id', user.id)
+    setPrefSaving(false)
+  }
 
   async function handleAsk(e: React.FormEvent) {
     e.preventDefault()
@@ -122,160 +147,248 @@ export default function InsightsPage() {
   }
 
   const onDemandRemaining = Math.max(0, onDemandLimit - onDemandUsed)
+  const proactiveCount = insights.filter(i => i.type === 'proactive').length
 
   return (
     <div className="flex flex-col min-h-screen bg-paper">
       <Topbar
         title="Insights"
-        subtitle="Análises inteligentes das suas finanças."
+        subtitle="O Florim ouvindo seus números — com calma."
+        accent="#3F6E7A"
         showBackButton
       />
 
-      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 max-w-2xl w-full mx-auto space-y-6">
+      {/* 2-column layout on desktop */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-4 md:px-6 py-5 md:grid md:gap-6" style={{ gridTemplateColumns: '1fr 300px' }}>
 
-        {/* On-demand ask box */}
-        <div className="bg-bg border border-border rounded-vintage shadow-vintage p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <MessageCircleQuestion className="w-5 h-5 text-petrol" />
-            <h2 className="font-serif text-base text-ink">Perguntar sobre minhas finanças</h2>
-          </div>
-          {!hasFullInsightAccess && (
-            <p className="text-xs text-ink/50">
-              {onDemandRemaining} pergunta{onDemandRemaining !== 1 ? 's' : ''} restante{onDemandRemaining !== 1 ? 's' : ''} este mês
-              {` (plano gratuito: ${onDemandLimit}/mês)`}
-            </p>
-          )}
-          <form onSubmit={handleAsk} className="space-y-2">
-            <textarea
-              ref={inputRef}
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              rows={2}
-              placeholder="Ex: Como posso economizar em alimentação? Qual meu maior gasto esse mês?"
-              className="w-full px-4 py-3 bg-paper border border-border rounded-lg text-sm text-ink focus:outline-none focus:ring-2 focus:ring-paper-2/50 resize-none transition-vintage"
-              disabled={asking || (!hasFullInsightAccess && onDemandRemaining === 0)}
-            />
-            {askError && <p className="text-xs text-terracotta">{askError}</p>}
-            <button
-              type="submit"
-              disabled={asking || !question.trim() || (!hasFullInsightAccess && onDemandRemaining === 0)}
-              className="w-full py-2.5 bg-coffee text-paper rounded-lg text-sm font-semibold hover:bg-coffee/90 transition-vintage disabled:opacity-50"
-            >
-              {asking ? 'Analisando...' : 'Gerar insight'}
-            </button>
-          </form>
-          {onDemandRemaining === 0 && !hasFullInsightAccess && (
-            <div className="flex items-start gap-2 p-3 bg-gold/10 border border-gold/30 rounded-lg">
-              <Lock className="w-4 h-4 text-gold shrink-0 mt-0.5" />
-              <p className="text-xs text-ink/70">
-                Você atingiu o limite mensal do plano gratuito.{' '}
-                <a href="/settings/billing" className="text-coffee font-medium underline">
-                  Assine o plano Pro
-                </a>{' '}
-                para perguntas ilimitadas.
-              </p>
-            </div>
-          )}
-        </div>
+          {/* ── Left column ── */}
+          <div className="space-y-5">
 
-        {/* Insights list */}
-        {loading ? (
-          <div className="py-12 text-center text-ink/50 text-sm">Carregando...</div>
-        ) : insights.length === 0 ? (
-          <EmptyState
-            icon={<Lightbulb className="w-10 h-10 text-gold" />}
-            message="Nenhum insight ainda"
-            submessage="Faça uma pergunta acima ou aguarde o próximo envio automático."
-          />
-        ) : (
-          <div className="space-y-3">
-            {insights.map((insight) => (
-              <div
-                key={insight.id}
-                className="bg-bg border border-border rounded-vintage shadow-vintage p-4 space-y-3"
-              >
-                {/* Header */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
-                    {insight.type === 'proactive' ? (
-                      <Sparkles className="w-4 h-4 text-gold shrink-0" />
-                    ) : (
-                      <MessageCircleQuestion className="w-4 h-4 text-petrol shrink-0" />
-                    )}
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      insight.type === 'proactive'
-                        ? 'bg-gold/15 text-gold'
-                        : 'bg-petrol/10 text-petrol'
-                    }`}>
-                      {insight.type === 'proactive' ? 'Proativo' : 'Sob demanda'}
-                    </span>
-                  </div>
-                  <span className="text-xs text-ink/40 shrink-0">{formatRelative(insight.created_at)}</span>
+            {/* Ask box */}
+            <div className="bg-white rounded-xl border border-border shadow-soft p-5">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <MessageCircleQuestion className="w-5 h-5 text-petrol" />
+                  <h2 className="font-serif text-[18px] text-ink font-medium">Perguntar sobre suas finanças</h2>
                 </div>
-
-                {/* Question (on-demand only) */}
-                {insight.prompt_question && (
-                  <p className="text-xs text-ink/50 italic border-l-2 border-petrol/30 pl-2">
-                    &ldquo;{insight.prompt_question}&rdquo;
-                  </p>
+                {!hasFullInsightAccess && (
+                  <span
+                    className="text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0"
+                    style={{ background: 'rgba(194,164,93,0.15)', color: '#A58E5F' }}
+                  >
+                    {onDemandRemaining} de {onDemandLimit} perguntas restantes este mês
+                  </span>
                 )}
-
-                {/* Content */}
-                <p className="text-sm text-ink leading-relaxed whitespace-pre-line">{insight.content}</p>
-
-                {/* Footer */}
-                <div className="flex items-center justify-between pt-1">
-                  <div className="flex gap-1.5 text-xs text-ink/30">
-                    {insight.sent_channels.map((ch) => (
-                      <span key={ch} className="capitalize">{ch === 'whatsapp' ? '💬 WhatsApp' : '📧 Email'}</span>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {reportedIds.has(insight.id) ? (
-                      <span className="text-xs text-ink/30">Reportado</span>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={reportingId === insight.id}
-                        onClick={() => reportInsightError(insight.id, insight.content, setReportingId, setReportedIds)}
-                        className="flex items-center gap-1 text-xs text-ink/30 hover:text-terracotta transition-vintage disabled:opacity-50"
-                      >
-                        <Flag className="w-3.5 h-3.5" />
-                        Reportar erro
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => shareInsight(insight.content)}
-                      className="flex items-center gap-1 text-xs text-ink/40 hover:text-ink/70 transition-vintage"
-                    >
-                      <Share2 className="w-3.5 h-3.5" />
-                      Compartilhar
-                    </button>
-                  </div>
-                </div>
               </div>
-            ))}
+              <form onSubmit={handleAsk} className="space-y-3">
+                <textarea
+                  ref={inputRef}
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  rows={3}
+                  placeholder="Ex: Como posso economizar em alimentação? Qual meu maior gasto esse mês?"
+                  className="w-full px-4 py-3 bg-paper border border-border rounded-[10px] text-[14px] text-ink placeholder:text-ink/40 focus:outline-none focus:ring-2 focus:ring-petrol/20 resize-none transition-vintage"
+                  disabled={asking || (!hasFullInsightAccess && onDemandRemaining === 0)}
+                />
+                {askError && <p className="text-xs text-[#B05C3A]">{askError}</p>}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="submit"
+                    disabled={asking || !question.trim() || (!hasFullInsightAccess && onDemandRemaining === 0)}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-coffee text-paper rounded-[10px] text-[14px] font-semibold hover:bg-coffee/90 transition-vintage disabled:opacity-50"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {asking ? 'Analisando...' : 'Gerar insight'}
+                  </button>
+                  <p className="text-[12px] text-ink/45 italic">
+                    Sua pergunta é processada nos seus dados — privada por padrão.
+                  </p>
+                </div>
+              </form>
+              {onDemandRemaining === 0 && !hasFullInsightAccess && (
+                <div className="flex items-start gap-2 p-3 mt-3 rounded-lg border" style={{ background: 'rgba(194,164,93,0.08)', borderColor: 'rgba(194,164,93,0.25)' }}>
+                  <span className="text-[14px] mt-0.5 shrink-0" style={{ color: '#A58E5F' }}>🔒</span>
+                  <p className="text-[12px] text-ink/70">
+                    Você atingiu o limite mensal do plano gratuito.{' '}
+                    <a href="/settings/billing" className="text-coffee font-medium underline">
+                      Assine o plano Pro
+                    </a>{' '}
+                    para perguntas ilimitadas.
+                  </p>
+                </div>
+              )}
+            </div>
 
-            {!hasFullInsightAccess && (
-              <div className="text-center py-3">
-                <p className="text-xs text-ink/40">
-                  Histórico completo disponível no{' '}
-                  <a href="/settings/billing" className="text-coffee underline">plano Pro</a>.
-                </p>
+            {/* Section label */}
+            {!loading && insights.length > 0 && (
+              <div className="flex items-center gap-2.5">
+                <span className="w-5 h-px bg-coffee/40" />
+                <span className="text-[10.5px] tracking-[0.18em] uppercase font-semibold text-coffee/70">
+                  Insights recentes
+                </span>
+              </div>
+            )}
+
+            {/* Insight cards */}
+            {loading ? (
+              <div className="py-12 text-center text-ink/50 text-[13px]">Carregando...</div>
+            ) : insights.length === 0 ? (
+              <EmptyState
+                icon={<Lightbulb className="w-10 h-10 text-gold" />}
+                message="Nenhum insight ainda"
+                submessage="Faça uma pergunta acima ou aguarde o próximo envio automático."
+              />
+            ) : (
+              <div className="space-y-4">
+                {insights.map((insight) => {
+                  const isAsk = insight.type === 'on_demand'
+                  return (
+                    <div key={insight.id} className="bg-white rounded-xl border border-border shadow-soft p-5">
+                      <div className="flex items-start gap-3">
+                        {/* Icon */}
+                        <div
+                          className="w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0 mt-0.5"
+                          style={isAsk
+                            ? { background: 'rgba(47,111,126,0.12)', color: '#3F6E7A' }
+                            : { background: 'rgba(194,164,93,0.18)', color: '#A58E5F' }
+                          }
+                        >
+                          {isAsk
+                            ? <MessageCircleQuestion className="w-[18px] h-[18px]" />
+                            : <Lightbulb className="w-[18px] h-[18px]" />
+                          }
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          {/* Meta row */}
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span
+                              className="text-[10px] font-bold tracking-[0.10em] uppercase"
+                              style={{ color: isAsk ? '#3F6E7A' : '#A58E5F' }}
+                            >
+                              {isAsk ? 'Sua pergunta' : 'Análise automática'}
+                            </span>
+                            <span className="text-[11.5px] text-ink/45">· {formatRelative(insight.created_at)}</span>
+                            <div className="flex-1" />
+                            {insight.sent_channels.map((ch) => (
+                              <span key={ch} className="text-[10.5px] font-medium px-2 py-0.5 rounded-full bg-ink/[0.06] text-ink/50">
+                                {ch === 'whatsapp' ? 'WhatsApp' : ch === 'email' ? 'Email' : ch}
+                              </span>
+                            ))}
+                          </div>
+
+                          {/* Question quote (on-demand) */}
+                          {insight.prompt_question && (
+                            <div
+                              className="px-3 py-2.5 rounded-[6px] border-l-[3px] mb-3 text-[13.5px] text-ink font-serif italic"
+                              style={{ background: 'rgba(47,111,126,0.06)', borderColor: '#3F6E7A' }}
+                            >
+                              &ldquo;{insight.prompt_question}&rdquo;
+                            </div>
+                          )}
+
+                          {/* Title for proactive */}
+                          {insight.type === 'proactive' && insight.content.split('\n')[0] && (
+                            <h3 className="font-serif text-[18px] text-coffee mb-2 leading-snug font-medium">
+                              {insight.content.split('\n')[0].slice(0, 80)}
+                            </h3>
+                          )}
+
+                          {/* Content */}
+                          <p className="text-[14px] text-ink leading-relaxed">{insight.content}</p>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2 mt-3">
+                            <button
+                              type="button"
+                              onClick={() => shareInsight(insight.content)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] border border-border bg-white text-[12px] text-ink/70 hover:bg-paper transition-vintage"
+                            >
+                              <Share2 className="w-3.5 h-3.5" /> Compartilhar
+                            </button>
+                            {reportedIds.has(insight.id) ? (
+                              <span className="text-[12px] text-ink/30">Reportado</span>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={reportingId === insight.id}
+                                onClick={() => reportInsightError(insight.id, insight.content, setReportingId, setReportedIds)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] border border-border bg-white text-[12px] text-ink/50 hover:bg-paper transition-vintage disabled:opacity-50"
+                              >
+                                <Flag className="w-3.5 h-3.5" /> Reportar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
-        )}
-      </div>
 
-      <footer className="hidden md:block mt-auto w-full">
-        <div className="h-[56px] bg-paper flex items-center justify-center px-6">
-          <p className="text-center text-[13px] text-gold italic">
-            Entender o dinheiro é o primeiro passo para a liberdade.
-          </p>
+          {/* ── Right sidebar — desktop only ── */}
+          <div className="hidden md:flex flex-col gap-4 mt-0">
+            <AnalyticsKpiCard
+              label="Insights este mês"
+              value={String(insights.length)}
+              sub={`${proactiveCount} automáticos · ${onDemandUsed} perguntas`}
+              iconTheme="purple"
+              icon={Sparkles}
+            />
+
+            {/* Preferências */}
+            <div className="bg-white rounded-xl border border-border shadow-soft p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-serif text-[16px] text-coffee">Preferências</h3>
+                {prefSaving && <span className="text-[11px] text-ink/40">Salvando...</span>}
+              </div>
+              <div className="space-y-0">
+                {[
+                  { label: 'E-mail', ch: 'email', desc: 'Receber insights por e-mail' },
+                  { label: 'WhatsApp', ch: 'whatsapp', desc: 'Receber insights no WhatsApp' },
+                ].map((p) => (
+                  <div
+                    key={p.ch}
+                    className="flex items-center gap-3 py-2.5 border-b border-border/50 last:border-0"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] text-ink">{p.label}</p>
+                      <p className="text-[11px] text-ink/45">{p.desc}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleChannel(p.ch)}
+                      className="relative w-8 h-[18px] rounded-full transition-colors shrink-0"
+                      style={{ background: channels.includes(p.ch) ? '#6FBF8A' : '#E4D7C2' }}
+                      aria-label={p.label}
+                    >
+                      <span
+                        className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-all"
+                        style={{ left: channels.includes(p.ch) ? '18px' : '2px' }}
+                      />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {!hasFullInsightAccess && (
+                <div
+                  className="mt-3 flex items-center gap-2 p-2.5 rounded-lg border"
+                  style={{ background: 'rgba(194,164,93,0.08)', borderColor: 'rgba(194,164,93,0.25)' }}
+                >
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" style={{ color: '#A58E5F' }} />
+                  <p className="text-[12px] text-ink/70 flex-1">
+                    Pro: perguntas ilimitadas + histórico completo.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      </footer>
+      </div>
     </div>
   )
 }

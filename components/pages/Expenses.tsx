@@ -9,6 +9,7 @@ import FilterSearchBar from '@/components/layout/FilterSearchBar'
 import Select from '@/components/ui/Select'
 import MonthYearPicker from '@/components/ui/MonthYearPicker'
 import Modal from '@/components/ui/Modal'
+import RightDrawer from '@/components/ui/RightDrawer'
 import EmptyState from '@/components/ui/EmptyState'
 import CategoryPathStack from '@/components/ui/CategoryPathStack'
 import CategoryIcon from '@/components/ui/CategoryIcon'
@@ -26,9 +27,12 @@ import {
 } from '@/lib/dates'
 import { getBillingCycleRange, getCurrentBillingPeriod } from '@/lib/billing-cycle'
 import AnalyticsKpiCard from '@/components/ui/AnalyticsKpiCard'
-import SankeyChart, { SankeyNode, SankeyLink } from '@/components/ui/SankeyChart'
+import DonutChart, { DonutSlice } from '@/components/ui/DonutChart'
+import DonutCategoryModal from '@/components/ui/DonutCategoryModal'
+import ConfirmModal from '@/components/ui/ConfirmModal'
+import { toast } from '@/components/ui/Toast'
 import { buildInstallmentDates, splitAmountCents } from '@/lib/installments'
-import { Calendar, Check, CheckCircle2, Clock, Edit2, Download, FileDown, FileText, Receipt, SlidersHorizontal, Search, Plus, X, Tag } from 'lucide-react'
+import { Calendar, Check, CheckCircle2, Clock, CreditCard, ChevronDown, Edit2, Download, FileDown, FileText, Maximize2, Paperclip, Receipt, SlidersHorizontal, Search, Plus, Upload, Users, X, Tag } from 'lucide-react'
 import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
 import FilterSheet from '@/components/layout/FilterSheet'
@@ -44,13 +48,85 @@ import {
 } from '@/lib/categories'
 import { matchesSearch } from '@/lib/filterSearch'
 import CurrencyInput from '@/components/ui/CurrencyInput'
-import { buildBrandedPdfBlob, downloadBlob, downloadCsv } from '@/lib/report-export'
+import { buildBrandedPdfBlob, downloadBlob, downloadCsv, openHtmlAsPdf } from '@/lib/report-export'
 import PdfPreviewModal from '@/components/export/PdfPreviewModal'
 import { usePlan } from '@/lib/billing/plan-context'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
 
 type PaymentMethod = 'PIX' | 'Credito' | 'Debito' | 'ValeAlimentacao'
+
+interface DonutExpensePanelProps {
+  slices: DonutSlice[]
+  total: number
+  expenses: { id: string; description: string; amount_cents: number; date: string; status: string; payment_method: string | null; category_name: string; category_id: string | null }[]
+  getCategoryLabel: (id: string | null, name: string) => string
+  getCatRailColor: (label: string) => string
+}
+
+function DonutExpensePanel({ slices, total, expenses, getCategoryLabel, getCatRailColor }: DonutExpensePanelProps) {
+  const [modalOpen, setModalOpen] = useState(false)
+  const centerText = formatBRL(total).replace('R$ ', '').replace('R$ ', '')
+
+  return (
+    <>
+      <div className="hidden md:block w-[300px] shrink-0">
+        <div
+          className="bg-white rounded-xl border border-border shadow-soft p-5 sticky top-4 cursor-pointer hover:shadow-vintage transition-vintage"
+          onClick={() => setModalOpen(true)}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-serif text-[16px] text-coffee">Por categoria</h3>
+            <Maximize2 className="w-3.5 h-3.5 text-ink/35" />
+          </div>
+          <DonutChart slices={slices} center={centerText} showLegend={false} />
+          {/* Mini legend (top 4 only) */}
+          <div className="mt-3 space-y-1.5">
+            {slices.slice(0, 4).map((s) => (
+              <div key={s.label} className="flex items-center gap-2">
+                <div className="w-[9px] h-[9px] rounded-[2px] shrink-0" style={{ background: s.color }} />
+                <span className="flex-1 text-[12px] text-ink truncate">{s.label}</span>
+                <span className="text-[11px] font-bold tabular-nums" style={{ color: s.color }}>{s.pct}%</span>
+              </div>
+            ))}
+            {slices.length > 4 && (
+              <p className="text-[11px] text-ink/40 pt-0.5">+ {slices.length - 4} outras categorias</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <DonutCategoryModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        slices={slices}
+        total={total}
+        expenses={expenses}
+        getCategoryLabel={getCategoryLabel}
+        getCatRailColor={getCatRailColor}
+      />
+    </>
+  )
+}
+
+const CAT_RAIL_RULES: [RegExp, string][] = [
+  [/^(Casa|Servi[çc]o|Conta|Aluguel)/i, '#3F6E7A'],
+  [/^Aliment/i, '#6FBF8A'],
+  [/^Lazer/i, '#C2A45D'],
+  [/^(Transporte|Sa[úu]de|Farm)/i, '#B05C3A'],
+  [/^Fam[íi]lia/i, '#3E5F4B'],
+]
+const CAT_RAIL_FALLBACK = ['#B05C3A', '#3F6E7A', '#6FBF8A', '#C2A45D', '#3E5F4B']
+
+function getCatRailColor(label: string): string {
+  const root = (label || '').split(' / ')[0].split(' > ')[0].trim()
+  for (const [re, c] of CAT_RAIL_RULES) if (re.test(root)) return c
+  let h = 0
+  for (let i = 0; i < root.length; i++) h = (h * 31 + root.charCodeAt(i)) & 0xFFFFFF
+  return CAT_RAIL_FALLBACK[Math.abs(h) % CAT_RAIL_FALLBACK.length]
+}
+
+const DONUT_PALETTE = ['#B05C3A', '#3F6E7A', '#6FBF8A', '#C2A45D', '#3E5F4B', '#7A66A1', '#3E8E5C', '#A58E5F']
 
 const normalizePaymentMethod = (method: string | null): PaymentMethod | null => {
   if (method === 'PIX' || method === 'Credito' || method === 'Debito' || method === 'ValeAlimentacao') {
@@ -114,7 +190,7 @@ export default function Expenses() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
   const [onlyInstallments, setOnlyInstallments] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filtersOpen, setFiltersOpen] = useState(true)
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   // Mobile UI state
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
@@ -134,6 +210,10 @@ export default function Expenses() {
   const [pdfUrl, setPdfUrl] = useState('')
   const [includeSignatures, setIncludeSignatures] = useState(true)
   const [exportingFormat, setExportingFormat] = useState<'csv' | 'pdf' | null>(null)
+  const [showPaywallModal, setShowPaywallModal] = useState(false)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
 
   // Form
   const RECURRENCE_OPTIONS = [
@@ -397,9 +477,10 @@ export default function Expenses() {
     const categoryLabel = category ? (categoryLabelMap.get(category.id) || category.name) : null
 
     if (!category || !categoryLabel) {
-      alert('Selecione uma categoria válida.')
+      setFormError('Selecione uma categoria válida.')
       return
     }
+    setFormError(null)
 
     const expenseData = {
       family_id: familyId!,
@@ -462,6 +543,12 @@ export default function Expenses() {
           .from('expenses')
           .update({ ...expenseData, updated_at: new Date().toISOString() })
           .eq('id', editingExpense.id)
+        // Optimistic: update only this record in state
+        const updated = { ...editingExpense, ...expenseData } as Expense
+        setExpenses((prev) => prev.map((e) => e.id === editingExpense.id ? updated : e))
+        setRawYearExpenses((prev) => prev.map((e) => e.id === editingExpense.id ? updated : e))
+        closeModal()
+        return
       }
     } else {
       if (paymentMethod === 'Credito' && installments > 1) {
@@ -482,7 +569,14 @@ export default function Expenses() {
           expenseData.installment_group_id = crypto.randomUUID()
           expenseData.installment_index = 1
         }
-        await supabase.from('expenses').insert({ ...expenseData, created_by: user?.id ?? null })
+        const { data: newRow } = await supabase.from('expenses').insert({ ...expenseData, created_by: user?.id ?? null }).select().maybeSingle()
+        if (newRow) {
+          setExpenses((prev) => [newRow as Expense, ...prev])
+          setRawYearExpenses((prev) => [newRow as Expense, ...prev])
+          if (expenses.length === 0) posthog.capture(EVENTS.FIRST_EXPENSE_CREATED)
+          closeModal()
+          return
+        }
       }
     }
 
@@ -530,14 +624,21 @@ export default function Expenses() {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     if (updatingIds.includes(id)) return
-    if (confirm('Remover este registro?')) {
-      setUpdatingIds((prev) => [...prev, id])
-      await supabase.from('expenses').delete().eq('id', id)
-      setUpdatingIds((prev) => prev.filter((item) => item !== id))
-      loadExpenses()
-    }
+    setDeleteConfirmId(id)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return
+    setDeleting(true)
+    setUpdatingIds((prev) => [...prev, deleteConfirmId])
+    await supabase.from('expenses').delete().eq('id', deleteConfirmId)
+    setUpdatingIds((prev) => prev.filter((item) => item !== deleteConfirmId))
+    setExpenses((prev) => prev.filter((e) => e.id !== deleteConfirmId))
+    setRawYearExpenses((prev) => prev.filter((e) => e.id !== deleteConfirmId))
+    setDeleting(false)
+    setDeleteConfirmId(null)
   }
 
   const handleTogglePaid = async (expense: Expense) => {
@@ -546,19 +647,22 @@ export default function Expenses() {
     const now = new Date().toISOString()
     const nextPaidAt = nextStatus === 'paid' ? now : null
 
+    // Optimistic update — no full reload
+    const applyUpdate = (arr: Expense[]) =>
+      arr.map((e) => e.id === expense.id ? { ...e, status: nextStatus as Expense['status'], paid_at: nextPaidAt } : e)
+    setExpenses(applyUpdate)
+    setRawYearExpenses(applyUpdate)
+
     setUpdatingIds((prev) => [...prev, expense.id])
     await supabase
       .from('expenses')
       .update({ status: nextStatus, paid_at: nextPaidAt, updated_at: now })
       .eq('id', expense.id)
     setUpdatingIds((prev) => prev.filter((item) => item !== expense.id))
-
-    loadExpenses()
   }
 
   const openDetails = (expense: Expense) => {
-    setDetailExpense(expense)
-    setIsDetailOpen(true)
+    openModal(expense)
   }
 
   const handleAttachExpense = async (expense: Expense, file: File) => {
@@ -580,7 +684,7 @@ export default function Expenses() {
 
     if (!response.ok) {
       const body = await response.json().catch(() => null)
-      alert(body?.error ?? 'Erro ao enviar arquivo.')
+      toast(body?.error ?? 'Erro ao enviar arquivo. Tente novamente.', { type: 'error' })
       return
     }
 
@@ -628,6 +732,7 @@ export default function Expenses() {
     setIsModalOpen(false)
     setEditingExpense(null)
     setCurrentAttachmentUrl(null)
+    setFormError(null)
   }
 
   // Cálculos
@@ -668,11 +773,6 @@ export default function Expenses() {
     ? Math.round(((total - prevMonthTotal) / prevMonthTotal) * 100)
     : null
 
-  const EXPENSE_CAT_PALETTE = [
-    '#4D9E6A', '#5E8E62', '#4A7A58', '#6FBF8A', '#3E9E6A',
-    '#7AAE82', '#5A9E72', '#8A9E8A', '#3E7A5A', '#6A8E6A',
-  ]
-
   const categoryBreakdown = useMemo(() => {
     const map = new Map<string, number>()
     filteredExpenses.forEach((e) => {
@@ -684,6 +784,17 @@ export default function Expenses() {
       .sort((a, b) => b.value - a.value)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredExpenses])
+
+  const expenseDonutSlices: DonutSlice[] = useMemo(() => {
+    if (total === 0) return []
+    return categoryBreakdown.slice(0, 8).map((c, i) => ({
+      label: c.label,
+      value: c.value,
+      pct: Math.round((c.value / total) * 100),
+      color: getCatRailColor(c.label) || DONUT_PALETTE[i % DONUT_PALETTE.length],
+    }))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryBreakdown, total])
 
   const paidCategoryBreakdown = useMemo(() => {
     const map = new Map<string, number>()
@@ -709,47 +820,15 @@ export default function Expenses() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredExpenses])
 
-  const expenseSankeyData = useMemo(() => {
-    const nodes: SankeyNode[] = [
-      { id: 'total', col: 0, label: 'Total', value: total, color: '#3E5F4B' },
-    ]
-    const links: SankeyLink[] = []
-
-    if (paid > 0) {
-      const paidPct = total > 0 ? Math.round((paid / total) * 100) : 0
-      nodes.push({ id: 'paid_n', col: 1, label: 'Pagas', value: paid, color: '#6FBF8A', pct: `${paidPct}%` })
-      links.push({ from: 'total', to: 'paid_n', value: paid, color: '#6FBF8A' })
-      paidCategoryBreakdown.forEach((c, i) => {
-        const catId = `cat_p_${i}`
-        nodes.push({ id: catId, col: 2, label: c.label, value: c.value, color: EXPENSE_CAT_PALETTE[i % EXPENSE_CAT_PALETTE.length] })
-        links.push({ from: 'paid_n', to: catId, value: c.value, color: EXPENSE_CAT_PALETTE[i % EXPENSE_CAT_PALETTE.length] })
-      })
-    }
-    if (open > 0) {
-      const openPct = total > 0 ? Math.round((open / total) * 100) : 0
-      nodes.push({ id: 'open_n', col: 1, label: 'A pagar', value: open, color: '#C2A45D', pct: `${openPct}%` })
-      links.push({ from: 'total', to: 'open_n', value: open, color: '#C2A45D' })
-      openCategoryBreakdown.forEach((c, i) => {
-        const existing = nodes.find(n => n.col === 2 && n.label === c.label)
-        if (existing) {
-          links.push({ from: 'open_n', to: existing.id, value: c.value, color: '#C2A45D' })
-        } else {
-          const catId = `cat_o_${i}`
-          nodes.push({ id: catId, col: 2, label: c.label, value: c.value, color: '#C2A45D' })
-          links.push({ from: 'open_n', to: catId, value: c.value, color: '#C2A45D' })
-        }
-      })
-    }
-
-    return { nodes, links }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [total, paid, open, paidCategoryBreakdown, openCategoryBreakdown])
 
   const monthLabel = selectedMonth !== ALL_MONTHS_VALUE
     ? getMonthLabel(selectedMonth)
     : 'Todos os meses'
+  const [visibleCount, setVisibleCount] = useState(30)
   const sortedExpenses = filteredExpenses.slice().sort((a, b) => b.date.localeCompare(a.date))
-  const groupedExpenses = sortedExpenses.reduce<Array<{ label: string; items: Expense[] }>>((groups, expense) => {
+  const visibleExpenses = sortedExpenses.slice(0, visibleCount)
+  const hasMore = sortedExpenses.length > visibleCount
+  const groupedExpenses = visibleExpenses.reduce<Array<{ label: string; items: Expense[] }>>((groups, expense) => {
     const label = formatMonthYear(expense.date)
     const lastGroup = groups[groups.length - 1]
     if (lastGroup && lastGroup.label === label) {
@@ -775,6 +854,7 @@ export default function Expenses() {
     setSelectedStatus('')
     setSelectedPaymentMethod('')
     setOnlyInstallments(false)
+    setVisibleCount(30)
   }
   const activeFilterChips = [
     {
@@ -878,7 +958,7 @@ export default function Expenses() {
     return buildBrandedPdfBlob({
       title: 'Registro de Despesas',
       filterSummary: buildFilterSummary(),
-      headers: ['Data', 'Descricao', 'Categoria', 'Status', 'Metodo', 'Parcelas', 'Valor', 'Pago em', 'Observacao'],
+      headers: ['Data', 'Descricao', 'Categoria', 'Status', 'Metodo', 'Parcelas', 'Pago em', 'Observacao', 'Valor'],
       rows: expensesOverride.map((expense) => [
         formatDate(expense.date),
         expense.description,
@@ -886,9 +966,9 @@ export default function Expenses() {
         expense.status === 'paid' ? 'Pago' : expense.status === 'pending_confirmation' ? 'Aguardando confirmação' : 'Em aberto',
         formatPaymentLabel(expense.payment_method, expense.installments),
         expense.installments && expense.installments > 1 ? `${expense.installments}x` : '',
-        formatBRL(expense.amount_cents),
         expense.paid_at ? formatDate(expense.paid_at) : '',
         expense.notes || '',
+        formatBRL(expense.amount_cents),
       ]),
       cards: [
         { label: 'TOTAL', value: formatBRL(totalCents) },
@@ -897,6 +977,7 @@ export default function Expenses() {
       ],
       generatedDate: formatDate(new Date()),
       includeSignatures: includeSignatureOverride,
+      accentColor: '#B05C3A',
     })
   }
 
@@ -934,18 +1015,8 @@ export default function Expenses() {
   }
 
   const downloadPreviewPdf = async () => {
-    if (pdfUrl) {
-      const link = document.createElement('a')
-      link.href = pdfUrl
-      link.download = `${exportTable.filename}.pdf`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      return
-    }
-
-    const blob = await generatePdfBlob()
-    downloadBlob(`${exportTable.filename}.pdf`, blob)
+    const url = pdfUrl || URL.createObjectURL(await generatePdfBlob())
+    openHtmlAsPdf(url)
   }
 
   const checkExportLimit = async (): Promise<boolean> => {
@@ -959,7 +1030,7 @@ export default function Expenses() {
     const data = await res.json()
     if (!data.allowed) {
       posthog.capture(EVENTS.EXPORT_IMPORT_LIMIT_REACHED)
-      alert('Você atingiu o limite de 3 exportações/importações gratuitas este mês.\n\nAssine o Florim Pro em florim.app/pricing para continuar.')
+      setShowPaywallModal(true)
       return false
     }
     return true
@@ -985,8 +1056,9 @@ export default function Expenses() {
   return (
     <div className="flex flex-col h-full md:min-h-screen">
       <Topbar
-        title="Despesas"
+        title="Contas a Pagar"
         subtitle="Compromissos honrados constroem segurança."
+        accent="#B05C3A"
         variant="textured"
       />
 
@@ -1127,236 +1199,138 @@ export default function Expenses() {
         )}
       </div>
 
-      {/* Desktop filter search bar */}
-      <div className="hidden md:block px-6 py-4">
-        <FilterSearchBar
-          value={searchTerm}
-          onChange={setSearchTerm}
-          onToggleFilters={() => setFiltersOpen((prev) => !prev)}
-          filtersOpen={filtersOpen}
-          placeholder="Buscar por nome ou categoria"
-          filterChips={activeFilterChips}
-          rightSlot={
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsCategorySettingsOpen(true)}
-                className="h-[38px] px-4 text-sm bg-bg border border-petrol/25 rounded-[10px] text-petrol font-medium hover:bg-petrol/5 transition-vintage"
-              >
-                Categorias
-              </button>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setAddMenuOpen((prev) => !prev)}
-                  className="w-[38px] h-[38px] rounded-[10px] bg-coffee text-paper flex items-center justify-center"
-                  aria-label="Adicionar"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
-                {addMenuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setAddMenuOpen(false)} />
-                    <div className="absolute right-0 top-full mt-1 z-50 bg-offWhite rounded-[14px] border border-border shadow-lg w-64 overflow-hidden animate-popup-in">
-                      <button
-                        onClick={() => { openModal(); setAddMenuOpen(false) }}
-                        className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
-                      >
-                        <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
-                          <Edit2 className="w-4 h-4 text-ink/60" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-ink">Adicionar manualmente</p>
-                          <p className="text-xs text-ink/45">Preencher um formulário</p>
-                        </div>
-                      </button>
-                      <button
-                        onClick={() => { setIsImportModalOpen(true); setAddMenuOpen(false) }}
-                        className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3"
-                      >
-                        <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
-                          <Download className="w-4 h-4 text-ink/60" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-ink">Importar extrato</p>
-                          <p className="text-xs text-ink/45">OFX, CSV de banco</p>
-                        </div>
-                      </button>
-                      <button
-                        onClick={() => { handleExportCsv(); setAddMenuOpen(false) }}
-                        disabled={!sortedExpenses.length || exportingFormat !== null}
-                        className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage border-b border-border flex items-center gap-3 disabled:opacity-40"
-                      >
-                        <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
-                          <FileDown className="w-4 h-4 text-ink/60" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-ink">Exportar CSV</p>
-                          <p className="text-xs text-ink/45">Planilha com os dados</p>
-                        </div>
-                      </button>
-                      <button
-                        onClick={() => { handleExportPdf(); setAddMenuOpen(false) }}
-                        disabled={!sortedExpenses.length || exportingFormat !== null}
-                        className="w-full text-left px-4 py-3.5 hover:bg-paper transition-vintage flex items-center gap-3 disabled:opacity-40"
-                      >
-                        <div className="w-9 h-9 rounded-[10px] bg-ink/[0.06] flex items-center justify-center shrink-0">
-                          <FileText className="w-4 h-4 text-ink/60" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-ink">Exportar PDF</p>
-                          <p className="text-xs text-ink/45">Relatório para imprimir</p>
-                        </div>
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          }
-        />
+      {/* Desktop toolbar */}
+      <div className="hidden md:flex items-center gap-2.5 px-6 py-3 border-b border-border bg-bg">
+        <button
+          onClick={() => setFiltersOpen(prev => !prev)}
+          className="flex items-center gap-2 h-[38px] px-3 rounded-[10px] border border-border bg-white text-ink text-[13px] font-medium hover:bg-paper transition-vintage"
+        >
+          <SlidersHorizontal className="w-4 h-4 text-petrol" />
+          {selectedMonth === ALL_MONTHS_VALUE
+            ? (selectedYear === ALL_YEARS_VALUE ? 'Todos' : String(selectedYear))
+            : `${getMonthLabel(selectedMonth).slice(0, 3)} ${selectedYear !== ALL_YEARS_VALUE ? selectedYear : ''}`}
+          <ChevronDown className={`w-3.5 h-3.5 text-ink/40 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+        </button>
+        <div className="flex items-center h-[38px] bg-white border border-border rounded-[10px] px-3 gap-2 flex-1 max-w-[380px]">
+          <Search className="w-4 h-4 text-petrol shrink-0" />
+          <input
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder="Buscar por nome ou categoria..."
+            className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none"
+          />
+        </div>
+        <div className="flex-1" />
+        <button onClick={() => setIsCategorySettingsOpen(true)} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage">
+          <Tag className="w-4 h-4" /> Categorias
+        </button>
+        <button onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage">
+          <Download className="w-4 h-4" /> Importar
+        </button>
+        <button onClick={handleExportPdf} disabled={!sortedExpenses.length || exportingFormat !== null} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage disabled:opacity-40">
+          <Upload className="w-4 h-4" /> Exportar
+        </button>
+        <button onClick={() => openModal()} className="flex items-center gap-1.5 h-[38px] px-4 rounded-[10px] text-white text-[13px] font-semibold transition-vintage" style={{ background: '#B05C3A' }}>
+          <Plus className="w-4 h-4" /> Nova despesa
+        </button>
       </div>
 
-      {/* Scrollable cards area - mobile only internal scroll */}
-      <div className="flex-1 min-h-0 overflow-y-auto md:overflow-visible">
-        <div className={`w-full flex flex-col md:flex-row md:px-6 md:pb-4 ${filtersOpen ? 'md:gap-4' : 'md:gap-0'} md:items-stretch`}>
-          <div className="hidden md:contents">
-            <FilterSidebar
-              open={filtersOpen}
-              onOpenChange={setFiltersOpen}
-              showToggle={false}
-              collapsedWidthClass="w-0"
-              activeFiltersCount={activeFiltersCount}
-              onClearFilters={clearFilters}
-            >
+      {/* Desktop filter panel — OUTSIDE scroll area so dropdowns don't clip */}
+      {filtersOpen && (
+        <div className="hidden md:block bg-bg/60 border-b border-border">
+          <div className="px-6 py-3 flex flex-wrap gap-3 items-end">
               <MonthYearPicker
                 month={selectedMonth}
                 year={selectedYear}
                 onChange={(m, y) => { setSelectedMonth(m); setSelectedYear(y) }}
               />
-              <Select
-                variant="filter"
-                label="Categoria"
-                value={selectedCategoryId}
-                onChange={setSelectedCategoryId}
-                options={[
-                  { value: '', label: 'Todas' },
-                  ...categoryOptions,
-                ]}
-              />
-              <Select
-                variant="filter"
-                label="Status"
-                value={selectedStatus}
-                onChange={setSelectedStatus}
-                options={[
-                  { value: '', label: 'Todos' },
-                  { value: 'paid', label: 'Pago' },
-                  { value: 'open', label: 'Em aberto' },
-                ]}
-              />
-              <Select
-                variant="filter"
-                label="Metodo"
-                value={selectedPaymentMethod}
-                onChange={setSelectedPaymentMethod}
-                options={[
-                  { value: '', label: 'Todos' },
-                  { value: 'PIX', label: 'PIX' },
-                  { value: 'Credito', label: 'Credito' },
-                  { value: 'Debito', label: 'Debito' },
-                ]}
-              />
-              <label className="flex items-center gap-2 text-sm text-petrol pt-2">
-                <input
-                  type="checkbox"
-                  checked={onlyInstallments}
-                  onChange={(event) => setOnlyInstallments(event.target.checked)}
-                  className="w-4 h-4 rounded border-gold/60 accent-gold"
+              <div className="min-w-[160px] max-w-[260px]">
+                <Select
+                  variant="filter"
+                  label="Categoria"
+                  value={selectedCategoryId}
+                  onChange={setSelectedCategoryId}
+                  options={[{ value: '', label: 'Todas' }, ...categoryOptions]}
                 />
+              </div>
+              <div className="min-w-[160px]">
+                <Select
+                  variant="filter"
+                  label="Status"
+                  value={selectedStatus}
+                  onChange={setSelectedStatus}
+                  options={[{ value: '', label: 'Todos' }, { value: 'paid', label: 'Pago' }, { value: 'open', label: 'Em aberto' }]}
+                />
+              </div>
+              <div className="min-w-[160px]">
+                <Select
+                  variant="filter"
+                  label="Método"
+                  value={selectedPaymentMethod}
+                  onChange={setSelectedPaymentMethod}
+                  options={[{ value: '', label: 'Todos' }, { value: 'PIX', label: 'PIX' }, { value: 'Credito', label: 'Crédito' }, { value: 'Debito', label: 'Débito' }]}
+                />
+              </div>
+              <label className="flex items-center gap-2 text-[13px] text-ink cursor-pointer select-none">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={onlyInstallments}
+                  onClick={() => setOnlyInstallments(v => !v)}
+                  className="relative w-8 h-[18px] rounded-full transition-colors shrink-0"
+                  style={{ background: onlyInstallments ? '#3F6E7A' : '#E4D7C2' }}
+                >
+                  <span
+                    className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-all"
+                    style={{ left: onlyInstallments ? '18px' : '2px' }}
+                  />
+                </button>
                 Somente parceladas
               </label>
-            </FilterSidebar>
+              {activeFiltersCount > 0 && (
+                <button onClick={clearFilters} className="text-xs text-terracotta hover:underline">Limpar filtros</button>
+              )}
           </div>
+        </div>
+      )}
 
-          <div className="flex-1 min-w-0 flex flex-col px-[18px] pt-3 pb-4 md:px-0 md:pt-0 md:pb-0">
-            {/* ── Analytics section ── */}
+      {/* Scrollable cards area */}
+      <div className="flex-1 min-h-0 overflow-y-auto md:overflow-visible">
+        <div className="w-full flex flex-col">
+          <div className="flex-1 min-w-0 flex flex-col px-[18px] pt-3 pb-4 md:px-6 md:pt-4 md:pb-4">
+            {/* ── KPI row ── */}
             {!loading && filteredExpenses.length > 0 && (
-              <div className="space-y-4 mb-5">
-                {/* KPI row */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <AnalyticsKpiCard
-                    label="Total de Despesas"
-                    value={formatBRL(total)}
-                    sub={totalDeltaPct != null ? `${totalDeltaPct >= 0 ? '↑' : '↓'} ${Math.abs(totalDeltaPct)}% vs ${prevMonthLabel}` : undefined}
-                    subPositive={totalDeltaPct != null && totalDeltaPct > 0}
-                    subNegative={totalDeltaPct != null && totalDeltaPct < 0}
-                    iconTheme="red"
-                    icon={Receipt}
-                  />
-                  <AnalyticsKpiCard
-                    label="Pagas"
-                    value={formatBRL(paid)}
-                    sub={total > 0 ? `${Math.round((paid / total) * 100)}% do total` : undefined}
-                    subPositive
-                    iconTheme="green"
-                    icon={CheckCircle2}
-                  />
-                  <AnalyticsKpiCard
-                    label="A Pagar"
-                    value={formatBRL(open)}
-                    sub={total > 0 ? `${Math.round((open / total) * 100)}% do total` : undefined}
-                    iconTheme="orange"
-                    icon={Clock}
-                  />
-                </div>
-
-                {/* Sankey card */}
-                {total > 0 && (expenseSankeyData.nodes.length > 1) && (
-                  <div className="bg-white rounded-xl border border-border shadow-soft p-4 md:p-5">
-                    <h3 className="text-sm font-semibold text-ink font-serif mb-3">
-                      Fluxo de despesas ({monthLabel}/{selectedYear !== ALL_YEARS_VALUE ? selectedYear : '-'})
-                    </h3>
-                    {/* Desktop: 3-col sankey + legend */}
-                    <div className="hidden md:flex gap-6 items-start">
-                      <div className="flex-1 min-w-0">
-                        <SankeyChart
-                          nodes={expenseSankeyData.nodes}
-                          links={expenseSankeyData.links}
-                          width={560}
-                          height={250}
-                        />
-                      </div>
-                      <div className="w-44 shrink-0 pt-1 flex flex-col gap-2">
-                        {categoryBreakdown.slice(0, 8).map((c, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-[2px] shrink-0" style={{ background: '#4D9E6A' }} />
-                            <span className="text-[11px] text-ink flex-1 truncate">{c.label}</span>
-                            <span className="text-[11px] text-ink/55 tabular-nums shrink-0">{formatBRL(c.value)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    {/* Mobile: 2-col sankey with col0→col1 links */}
-                    <div className="md:hidden space-y-3">
-                      {(() => {
-                        const mn = expenseSankeyData.nodes.filter(n => n.col < 2)
-                        const mids = new Set(mn.map(n => n.id))
-                        const ml = expenseSankeyData.links.filter(l => mids.has(l.from) && mids.has(l.to))
-                        return <SankeyChart nodes={mn} links={ml} width={300} height={120} />
-                      })()}
-                      <div className="flex flex-col gap-1.5">
-                        {categoryBreakdown.slice(0, 6).map((c, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-[2px] shrink-0" style={{ background: '#4D9E6A' }} />
-                            <span className="text-[11px] text-ink flex-1 truncate">{c.label}</span>
-                            <span className="text-[11px] text-ink/55 tabular-nums shrink-0">{formatBRL(c.value)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <AnalyticsKpiCard
+                  label="Total de Despesas"
+                  value={formatBRL(total)}
+                  sub={totalDeltaPct != null ? `${totalDeltaPct >= 0 ? '↑' : '↓'} ${Math.abs(totalDeltaPct)}% vs ${prevMonthLabel}` : undefined}
+                  subNegative={totalDeltaPct != null && totalDeltaPct > 0}
+                  iconTheme="red"
+                  icon={Receipt}
+                />
+                <AnalyticsKpiCard
+                  label="Pagas"
+                  value={formatBRL(paid)}
+                  sub={total > 0 ? `${Math.round((paid / total) * 100)}% do total` : undefined}
+                  subPositive
+                  iconTheme="green"
+                  icon={CheckCircle2}
+                />
+                <AnalyticsKpiCard
+                  label="Em aberto"
+                  value={formatBRL(open)}
+                  sub={total > 0 ? `${Math.round((open / total) * 100)}% do total` : undefined}
+                  iconTheme="orange"
+                  icon={Clock}
+                />
+                <AnalyticsKpiCard
+                  label="Categorias ativas"
+                  value={String(expenseDonutSlices.length)}
+                  sub={`${sortedExpenses.length} lançamentos`}
+                  iconTheme="purple"
+                  icon={Tag}
+                />
               </div>
             )}
 
@@ -1369,28 +1343,65 @@ export default function Expenses() {
                 submessage="Use o botão + para adicionar uma despesa."
               />
             ) : (
-              <div className="space-y-5">
-                {/* Pending confirmation banner */}
-                {filteredExpenses.some(e => e.status === 'pending_confirmation') && (
-                  <div className="flex items-start gap-3 p-3.5 bg-petrol/5 border border-petrol/25 rounded-xl">
-                    <span className="text-base shrink-0">📅</span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-petrol">Despesas recorrentes para confirmar</p>
-                      <p className="text-xs text-ink/55 mt-0.5">
-                        Algumas despesas recorrentes foram pré-registradas. Abra cada uma para confirmar se aconteceu ou excluir.
-                      </p>
-                    </div>
-                  </div>
+              <div className="flex flex-col md:flex-row gap-5">
+                {/* Left: Donut chart — desktop only */}
+                {expenseDonutSlices.length > 0 && (
+                  <DonutExpensePanel
+                    slices={expenseDonutSlices}
+                    total={total}
+                    expenses={filteredExpenses}
+                    getCategoryLabel={getCategoryLabel}
+                    getCatRailColor={getCatRailColor}
+                  />
                 )}
+
+                {/* Right: List */}
+                <div className="flex-1 min-w-0 space-y-5">
+                {/* Pending confirmation banner */}
+                {filteredExpenses.some(e => e.status === 'pending_confirmation') && (() => {
+                  const count = filteredExpenses.filter(e => e.status === 'pending_confirmation').length
+                  return (
+                    <div className="flex items-center gap-3 p-3.5 rounded-xl border" style={{ background: 'rgba(176,92,58,0.06)', borderColor: 'rgba(176,92,58,0.2)' }}>
+                      <div
+                        className="w-8 h-8 rounded-[8px] flex items-center justify-center shrink-0"
+                        style={{ background: 'rgba(176,92,58,0.12)', color: '#B05C3A' }}
+                      >
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13.5px] font-semibold" style={{ color: '#B05C3A' }}>
+                          {count} despesa{count !== 1 ? 's' : ''} recorrente{count !== 1 ? 's' : ''} para confirmar
+                        </p>
+                        <p className="text-xs text-ink/55 mt-0.5">
+                          Pré-registramos com base em meses anteriores. Confirme para incluir no orçamento.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setSelectedStatus('pending_confirmation' as unknown as string)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-vintage"
+                        style={{ borderColor: 'rgba(176,92,58,0.3)', color: '#B05C3A', background: '#fff' }}
+                      >
+                        Revisar →
+                      </button>
+                    </div>
+                  )
+                })()}
                 {groupedExpenses.map((group) => (
                   <div key={group.label} className="space-y-3">
                     {groupedExpenses.length > 1 && (
                       <div className="flex items-center gap-3">
-                        <div className="h-px flex-1 bg-border/70" />
-                        <span className="rounded-full border border-border bg-paper px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.11em] text-ink/65 shadow-sm">
+                        <div className="h-px flex-1" style={{ background: 'rgba(176,92,58,0.2)' }} />
+                        <span
+                          className="rounded-full border px-3 py-1 text-[10.5px] font-bold uppercase tracking-[0.18em] shadow-sm"
+                          style={{
+                            borderColor: 'rgba(176,92,58,0.3)',
+                            background: 'rgba(176,92,58,0.05)',
+                            color: 'rgba(176,92,58,0.8)',
+                          }}
+                        >
                           {group.label}
                         </span>
-                        <div className="h-px flex-1 bg-border/70" />
+                        <div className="h-px flex-1" style={{ background: 'rgba(176,92,58,0.2)' }} />
                       </div>
                     )}
                     <div className="space-y-3">
@@ -1401,6 +1412,17 @@ export default function Expenses() {
                         const catIcon = expense.category_id ? categoryIconMap.get(expense.category_id) : null
                         const isPaid = expense.status === 'paid'
                         const isPending = expense.status === 'pending_confirmation'
+                        const railColor = getCatRailColor(catLabel)
+                        const methodLabel = expense.payment_method === 'Credito' ? 'Crédito'
+                          : expense.payment_method === 'Debito' ? 'Débito'
+                          : expense.payment_method === 'ValeAlimentacao' ? 'Vale'
+                          : expense.payment_method ?? ''
+                        const installmentBadge = expense.payment_method === 'Credito' && expense.installments && expense.installments > 1
+                          ? `${expense.installment_index ?? 1}/${expense.installments}x` : null
+                        const isOverdue = !isPaid && !isPending && expense.date < new Date().toISOString().slice(0, 10)
+                        const statusLabel = isPaid ? 'PAGO' : isPending ? 'A CONFIRMAR' : isOverdue ? 'ATRASADO' : 'EM ABERTO'
+                        const statusBg = isPaid ? 'rgba(111,191,138,0.18)' : isPending ? 'rgba(47,111,126,0.15)' : isOverdue ? 'rgba(176,92,58,0.18)' : 'rgba(194,164,93,0.22)'
+                        const statusFg = isPaid ? '#3E8E5C' : isPending ? '#2F6F7E' : isOverdue ? '#B05C3A' : '#A58E5F'
                         return (
                           <div
                             id={`expense-${expense.id}`}
@@ -1492,73 +1514,89 @@ export default function Expenses() {
                               </div>
                             </div>
 
-                            {/* ── DESKTOP card ── */}
-                            <div className="hidden md:flex items-start gap-3 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage">
-                              <button
-                                type="button"
-                                onClick={() => handleTogglePaid(expense)}
-                                disabled={isUpdating}
-                                className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-vintage disabled:opacity-50 ${
-                                  isPaid ? 'border-olive bg-olive' : 'border-border bg-transparent hover:border-olive'
-                                }`}
-                                aria-label={`Marcar ${expense.description} como ${isPaid ? 'em aberto' : 'pago'}`}
-                              >
-                                {isPaid && <Check className="h-3 w-3 text-white" />}
-                              </button>
-
-                              {catIcon && (
-                                <CategoryIcon name={catIcon} className="mt-1 w-4 h-4 shrink-0 text-ink/40" />
-                              )}
-
-                              <div className="flex-1 min-w-0">
-                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                  <h4 className={`text-base font-medium font-serif leading-tight transition-vintage ${isPaid ? 'text-sidebar/60 line-through decoration-sidebar/30' : 'text-sidebar'}`}>
-                                    {expense.description}
-                                  </h4>
-                                  <span className="rounded-full bg-ink/5 px-2.5 py-0.5 text-[11px] font-medium text-ink/60">
-                                    {formatDate(expense.date)}
-                                  </span>
-                                  {isPaid && (
-                                    <span className="rounded-full bg-olive/15 px-2.5 py-0.5 text-[11px] font-semibold text-olive">
-                                      Pago
-                                    </span>
-                                  )}
-                                  {isPending && (
-                                    <span className="rounded-full bg-petrol/10 border border-petrol/30 px-2.5 py-0.5 text-[11px] font-semibold text-petrol">
-                                      Aguardando confirmação
-                                    </span>
-                                  )}
-                                </div>
-                                <CategoryPathStack
-                                  label={catLabel}
-                                  icon={catIcon}
-                                  className="mt-1"
-                                />
-                              </div>
-
-                              <div className="flex flex-col items-end gap-1 shrink-0">
-                                <span className={`font-numbers text-base font-semibold ${isPaid ? 'text-sidebar/60' : 'text-sidebar'}`}>
-                                  {formatBRL(expense.amount_cents)}
-                                </span>
-                                {expense.payment_method === null && (
-                                  <span
-                                    title="Método de pagamento não definido. Edite para definir."
-                                    className="text-xs text-amber-600 border border-amber-400/40 rounded px-1.5 py-0.5 cursor-help"
-                                  >
-                                    ⚠ Sem método
-                                  </span>
-                                )}
-                              </div>
-                              <div className="shrink-0">
-                                <ActionMenu
-                                  onView={() => openDetails(expense)}
-                                  onEdit={() => openModal(expense)}
-                                  onDelete={() => handleDelete(expense.id)}
-                                  onAttach={(file) => handleAttachExpense(expense, file)}
-                                  onToggleStatus={() => handleTogglePaid(expense)}
-                                  toggleStatusLabel={isPaid ? 'Marcar como Em aberto' : 'Marcar como Pago'}
+                            {/* ── DESKTOP card (ExpenseRow2) ── */}
+                            <div
+                              className="hidden md:flex items-stretch rounded-[10px] bg-white border border-border hover:shadow-soft transition-vintage cursor-pointer"
+                              onClick={() => openModal(expense)}
+                            >
+                              {/* Left rail */}
+                              <div className="w-1 shrink-0 self-stretch rounded-l-[9px]" style={{ background: railColor }} />
+                              {/* Content row */}
+                              <div className="flex-1 flex items-center gap-3 px-4 py-3 min-w-0">
+                                {/* Checkbox */}
+                                <button
+                                  type="button"
+                                  onClick={e => { e.stopPropagation(); handleTogglePaid(expense) }}
                                   disabled={isUpdating}
-                                />
+                                  className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[5px] border-[1.5px] transition-vintage disabled:opacity-50 ${
+                                    isPaid ? 'border-olive bg-olive' : 'border-border bg-transparent hover:border-olive'
+                                  }`}
+                                  aria-label={`Marcar como ${isPaid ? 'em aberto' : 'pago'}`}
+                                >
+                                  {isPaid && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                                </button>
+                                {/* Title + category */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-[8px] flex items-center justify-center shrink-0" style={{ background: `${railColor}18`, color: railColor }}>
+                                      <Receipt className="w-[13px] h-[13px]" />
+                                    </div>
+                                    <p className={`font-serif text-[15px] truncate ${isPaid ? 'line-through text-ink/50' : 'text-coffee'}`}>
+                                      {expense.description}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-1 ml-9">
+                                    {catLabel && (
+                                      <span className="inline-flex items-center text-[11.5px] font-medium px-2.5 py-0.5 rounded-full" style={{ background: `${railColor}15`, color: railColor }}>
+                                        {catLabel.split(' / ').slice(-1)[0]}
+                                      </span>
+                                    )}
+                                    {expense.attachment_path && (
+                                      <span className="flex items-center gap-1 text-[11px] text-ink/40">
+                                        <Paperclip className="w-3 h-3" /> anexo
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {/* Method + installments */}
+                                <div className="hidden lg:flex items-center gap-1.5 w-[120px] shrink-0 text-ink/60">
+                                  {expense.payment_method === 'PIX'
+                                    ? <span className="text-[11px] font-bold" style={{ color: '#3E8E5C' }}>PIX</span>
+                                    : expense.payment_method
+                                      ? <CreditCard className="w-[13px] h-[13px]" />
+                                      : null}
+                                  <span className="text-[12px]">{methodLabel || '—'}</span>
+                                  {installmentBadge && <span className="text-[11px] font-semibold text-petrol ml-1">{installmentBadge}</span>}
+                                </div>
+                                {/* Date */}
+                                <div className="hidden lg:flex items-center gap-1.5 w-[100px] shrink-0 text-ink/55 text-[12.5px]">
+                                  <Calendar className="w-3 h-3" />
+                                  {formatDate(expense.date, 'dd/MM/yy')}
+                                </div>
+                                {/* Amount + status */}
+                                <div className="text-right shrink-0 w-[100px]">
+                                  <p className={`font-numbers font-bold text-[15px] tabular-nums ${isOverdue ? 'text-[#B05C3A]' : isPaid ? 'text-[#3E5F4B]/60' : 'text-[#3E5F4B]'}`}>
+                                    {formatBRL(expense.amount_cents)}
+                                  </p>
+                                  <span className="inline-block text-[10.5px] font-bold uppercase tracking-[0.04em] px-2.5 py-[3px] rounded-full mt-1" style={{ background: statusBg, color: statusFg }}>
+                                    {statusLabel}
+                                  </span>
+                                </div>
+                                {/* Menu */}
+                                <div
+                                  className="shrink-0 ml-1"
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  <ActionMenu
+                                    onView={() => openDetails(expense)}
+                                    onEdit={() => openModal(expense)}
+                                    onDelete={() => handleDelete(expense.id)}
+                                    onAttach={(file) => handleAttachExpense(expense, file)}
+                                    onToggleStatus={() => handleTogglePaid(expense)}
+                                    toggleStatusLabel={isPaid ? 'Marcar como Em aberto' : 'Marcar como Pago'}
+                                    disabled={isUpdating}
+                                  />
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1567,6 +1605,19 @@ export default function Expenses() {
                     </div>
                   </div>
                 ))}
+
+                {/* Load more */}
+                {hasMore && (
+                  <div className="flex justify-center pt-2">
+                    <button
+                      onClick={() => setVisibleCount(n => n + 30)}
+                      className="px-5 py-2.5 rounded-[10px] border border-border bg-white text-[13px] font-medium text-ink/70 hover:bg-bg transition-vintage"
+                    >
+                      Mostrar mais ({sortedExpenses.length - visibleCount} restantes)
+                    </button>
+                  </div>
+                )}
+                </div>
               </div>
             )}
           </div>
@@ -1618,11 +1669,13 @@ export default function Expenses() {
         downloadLabel="Imprimir ou salvar"
       />
 
-      {/* Modal */}
-      <Modal
+      {/* Expense form — RightDrawer on desktop, Modal on mobile */}
+      <RightDrawer
         isOpen={isModalOpen}
         onClose={closeModal}
         title={editingExpense ? 'Editar Despesa' : 'Nova Despesa'}
+        subtitle="Compromissos honrados constroem segurança."
+        accent="#B05C3A"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -1810,6 +1863,9 @@ export default function Expenses() {
             </div>
           )}
 
+          {formError && (
+            <p className="text-[12.5px] text-[#B05C3A] rounded-lg bg-[#B05C3A]/8 border border-[#B05C3A]/25 px-3 py-2">{formError}</p>
+          )}
           <div className="flex gap-3 pt-2">
             <button
               type="button"
@@ -1826,7 +1882,17 @@ export default function Expenses() {
             </button>
           </div>
         </form>
-      </Modal>
+      </RightDrawer>
+
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={confirmDelete}
+        title="Excluir despesa"
+        message="Esta despesa será removida permanentemente. Esta ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        loading={deleting}
+      />
 
       <Modal
         isOpen={isDetailOpen}
@@ -1877,7 +1943,7 @@ export default function Expenses() {
                       try {
                         window.open(await getAttachmentViewUrl(detailExpense.attachment_path, attachmentUrl), '_blank', 'noopener,noreferrer')
                       } catch {
-                        alert('Não foi possível abrir o anexo.')
+                        toast('Não foi possível abrir o anexo. Tente novamente.', { type: 'error' })
                       }
                     }}
                     className="text-petrol hover:opacity-80 transition-vintage"
@@ -1931,6 +1997,25 @@ export default function Expenses() {
           if (met !== undefined) setSelectedPaymentMethod(met)
         }}
       />
+
+      <Modal isOpen={showPaywallModal} onClose={() => setShowPaywallModal(false)} title="Limite atingido">
+        <div className="space-y-4">
+          <p className="text-ink/80 text-sm">
+            Você atingiu o limite de 3 exportações/importações gratuitas este mês.
+          </p>
+          <p className="text-ink/60 text-sm">
+            Assine o Florim Pro para exportações ilimitadas e outros recursos avançados.
+          </p>
+          <div className="flex gap-3 pt-2">
+            <button onClick={() => setShowPaywallModal(false)} className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage text-sm">
+              Fechar
+            </button>
+            <a href="/settings/billing" className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg text-sm font-semibold text-center hover:bg-coffee/90 transition-vintage">
+              Ver planos
+            </a>
+          </div>
+        </div>
+      </Modal>
 
     </div>
   )

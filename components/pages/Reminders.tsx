@@ -3,71 +3,14 @@
 import { useEffect, useState } from 'react'
 import Topbar from '@/components/layout/Topbar'
 import Modal from '@/components/ui/Modal'
+import RightDrawer from '@/components/ui/RightDrawer'
 import Select from '@/components/ui/Select'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import EmptyState from '@/components/ui/EmptyState'
-import { BellRing, Check } from 'lucide-react'
+import { BellRing, Check, Pencil, Trash2 } from 'lucide-react'
+import ConfirmModal from '@/components/ui/ConfirmModal'
 import { formatDate, isDueDateToday, isDueDateOverdue } from '@/lib/dates'
-
-function ReminderRow({
-  reminder,
-  onToggle,
-  getCategoryColors,
-}: {
-  reminder: { id: string; title: string; due_date: string | null; category: string; is_done: boolean }
-  onToggle: (id: string, isDone: boolean) => void
-  getCategoryColors: Record<string, string>
-}) {
-  const isOverdue = !reminder.is_done && isDueDateOverdue(reminder.due_date, reminder.is_done)
-  const isToday = !reminder.is_done && isDueDateToday(reminder.due_date)
-
-  const dateBadgeClass = reminder.is_done
-    ? 'bg-olive/20 text-olive'
-    : isOverdue
-      ? 'bg-terracotta/15 text-terracotta'
-      : isToday
-        ? 'bg-olive/20 text-olive'
-        : 'bg-gold/20 text-gold'
-
-  return (
-    <div
-      className={`flex items-start gap-3 px-[14px] py-3 rounded-[10px] border border-border transition-vintage ${
-        reminder.is_done ? 'opacity-55' : 'hover:shadow-soft'
-      }`}
-    >
-      <button
-        onClick={() => onToggle(reminder.id, reminder.is_done)}
-        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-vintage ${
-          reminder.is_done ? 'border-olive bg-olive' : 'border-border bg-transparent hover:border-olive'
-        }`}
-        aria-label={`Marcar ${reminder.title} como ${reminder.is_done ? 'pendente' : 'feito'}`}
-      >
-        {reminder.is_done ? <Check className="h-3 w-3 text-white" /> : null}
-      </button>
-
-      <div className="flex-1 min-w-0">
-        <p className={`text-sm text-ink font-body ${reminder.is_done ? 'line-through' : ''}`}>
-          {reminder.title}
-        </p>
-        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-          {reminder.due_date && (
-            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${dateBadgeClass}`}>
-              {formatDate(reminder.due_date, 'dd/MM')}
-            </span>
-          )}
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-              getCategoryColors[reminder.category] || getCategoryColors['Outros']
-            }`}
-          >
-            {reminder.category}
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 interface Reminder {
   id: string
@@ -78,13 +21,98 @@ interface Reminder {
   hidden_on_dashboard: boolean
 }
 
-type ReminderFilter = 'pending' | 'done' | null
+const REMINDER_CAT_COLORS: Record<string, string> = {
+  Conta: '#C06060', Casa: '#6FBF8A', Sonhos: '#3F6E7A', Família: '#3E5F4B', Outros: '#2F3B33',
+}
+
+function ReminderRow({
+  reminder,
+  onToggle,
+  onDelete,
+  onEdit,
+  getCategoryColors,
+}: {
+  reminder: Reminder
+  onToggle: (id: string, isDone: boolean) => void
+  onDelete?: (id: string) => void
+  onEdit?: (reminder: Reminder) => void
+  getCategoryColors: Record<string, string>
+}) {
+  const isOverdue = !reminder.is_done && isDueDateOverdue(reminder.due_date, reminder.is_done)
+  const isToday = !reminder.is_done && isDueDateToday(reminder.due_date)
+  const catColor = REMINDER_CAT_COLORS[reminder.category] ?? '#2F3B33'
+
+  const dateBg = reminder.is_done
+    ? 'rgba(111,191,138,0.18)' : isOverdue
+    ? 'rgba(192,96,96,0.18)' : isToday
+    ? 'rgba(111,191,138,0.18)'
+    : 'rgba(194,164,93,0.22)'
+  const dateFg = reminder.is_done ? '#3E8E5C' : isOverdue ? '#C06060' : isToday ? '#3E8E5C' : '#A58E5F'
+
+  return (
+    <div
+      className={`flex items-center gap-3 px-4 py-3 rounded-[10px] border border-border bg-white transition-vintage ${
+        reminder.is_done ? 'opacity-60' : 'hover:shadow-soft'
+      }`}
+    >
+      <button
+        onClick={() => onToggle(reminder.id, reminder.is_done)}
+        className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[5px] border-[1.5px] transition-vintage ${
+          reminder.is_done ? 'border-olive bg-olive' : 'border-border bg-transparent hover:border-olive'
+        }`}
+        aria-label={`Marcar ${reminder.title} como ${reminder.is_done ? 'pendente' : 'feito'}`}
+      >
+        {reminder.is_done ? <Check className="h-3 w-3 text-white" strokeWidth={3} /> : null}
+      </button>
+
+      <p className={`flex-1 text-[14px] text-ink ${reminder.is_done ? 'line-through' : ''}`}>
+        {reminder.title}
+      </p>
+
+      {reminder.due_date && (
+        <span className="rounded-xl px-2.5 py-1 text-[11.5px] font-semibold shrink-0" style={{ background: dateBg, color: dateFg }}>
+          {formatDate(reminder.due_date, 'dd/MM')}
+        </span>
+      )}
+
+      <span
+        className="rounded-xl px-2.5 py-1 text-[11.5px] font-semibold text-white shrink-0"
+        style={{ background: catColor }}
+      >
+        {reminder.category}
+      </span>
+
+      <button
+        onClick={() => onEdit?.(reminder)}
+        className="p-1 rounded text-ink/35 hover:text-petrol transition-vintage shrink-0"
+        aria-label="Editar"
+      >
+        <Pencil className="w-[14px] h-[14px]" />
+      </button>
+
+      {onDelete && (
+        <button
+          onClick={() => onDelete(reminder.id)}
+          className="p-1 rounded text-ink/35 hover:text-terracotta transition-vintage shrink-0"
+          aria-label="Excluir"
+        >
+          <Trash2 className="w-[14px] h-[14px]" />
+        </button>
+      )}
+    </div>
+  )
+}
+
+type ReminderFilter = 'pending' | 'done' | 'overdue' | null
 
 export default function Reminders() {
   const { familyId } = useAuth()
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [statusFilter, setStatusFilter] = useState<ReminderFilter>(null)
   const [formData, setFormData] = useState({
     title: '',
@@ -94,12 +122,17 @@ export default function Reminders() {
 
   const pendingReminders = reminders.filter((reminder) => !reminder.is_done)
   const completedReminders = reminders.filter((reminder) => reminder.is_done)
+  const overdueReminders = reminders.filter(
+    (reminder) => !reminder.is_done && isDueDateOverdue(reminder.due_date, reminder.is_done)
+  )
   const filteredReminders =
     statusFilter === 'pending'
       ? pendingReminders
       : statusFilter === 'done'
         ? completedReminders
-        : reminders
+        : statusFilter === 'overdue'
+          ? overdueReminders
+          : reminders
 
   async function loadReminders() {
     const { data } = await supabase
@@ -139,29 +172,78 @@ export default function Reminders() {
     )
   }
 
-  const handleStatusFilterChange = (nextFilter: Exclude<ReminderFilter, null>) => {
+  const handleStatusFilterChange = (nextFilter: NonNullable<ReminderFilter>) => {
     setStatusFilter((current) => (current === nextFilter ? null : nextFilter))
+  }
+
+  const deleteReminder = (id: string) => { setDeleteConfirmId(id) }
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return
+    setDeleting(true)
+    await supabase.from('reminders').delete().eq('id', deleteConfirmId)
+    setReminders(prev => prev.filter(r => r.id !== deleteConfirmId))
+    setDeleting(false)
+    setDeleteConfirmId(null)
+  }
+
+  const openEdit = (reminder: Reminder) => {
+    setEditingReminder(reminder)
+    setFormData({
+      title: reminder.title,
+      due_date: reminder.due_date ?? '',
+      category: reminder.category,
+    })
+    setIsModalOpen(true)
+  }
+
+  const closeReminderModal = () => {
+    setIsModalOpen(false)
+    setEditingReminder(null)
+    setFormData({ title: '', due_date: '', category: 'Outros' })
+  }
+
+  const clearCompleted = async () => {
+    const completedIds = completedReminders.map((r) => r.id)
+    if (completedIds.length === 0) return
+    await supabase
+      .from('reminders')
+      .update({ hidden_on_dashboard: true })
+      .in('id', completedIds)
+    setReminders((prev) => prev.filter((r) => !r.is_done))
+    setStatusFilter(null)
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!familyId || !formData.title.trim()) return
 
-    await supabase.from('reminders').insert({
-      family_id: familyId,
-      title: formData.title.trim(),
-      due_date: formData.due_date || null,
-      category: formData.category || 'Outros',
-      recurrence: 'none',
-      is_done: false,
-      hidden_on_dashboard: false,
-      note: null,
-      due_time: null,
-    })
+    if (editingReminder) {
+      // Edit mode
+      const updated = {
+        title: formData.title.trim(),
+        due_date: formData.due_date || null,
+        category: formData.category || 'Outros',
+      }
+      await supabase.from('reminders').update(updated).eq('id', editingReminder.id)
+      setReminders(prev => prev.map(r => r.id === editingReminder.id ? { ...r, ...updated } : r))
+    } else {
+      // Create mode
+      const { data } = await supabase.from('reminders').insert({
+        family_id: familyId,
+        title: formData.title.trim(),
+        due_date: formData.due_date || null,
+        category: formData.category || 'Outros',
+        recurrence: 'none',
+        is_done: false,
+        hidden_on_dashboard: false,
+        note: null,
+        due_time: null,
+      }).select().maybeSingle()
+      if (data) setReminders(prev => [data as Reminder, ...prev])
+    }
 
-    setFormData({ title: '', due_date: '', category: 'Outros' })
-    setIsModalOpen(false)
-    loadReminders()
+    closeReminderModal()
   }
 
   const getCategoryColors: Record<string, string> = {
@@ -177,7 +259,8 @@ export default function Reminders() {
       <div className="flex flex-col h-full md:min-h-screen">
         <Topbar
           title="Lembretes"
-          subtitle="Pequenas notas de cuidado para a casa."
+          subtitle="Pequenas notas para a casa fluir."
+          accent="#3E5F4B"
           variant="textured"
           showBackButton
           actions={
@@ -207,28 +290,47 @@ export default function Reminders() {
           ) : (
             <div className="space-y-5">
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleStatusFilterChange('pending')}
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition-vintage ${
-                    statusFilter === 'pending'
-                      ? 'bg-sidebar text-paper'
-                      : 'border border-border bg-offWhite text-ink hover:bg-paper'
-                  }`}
-                >
-                  Pendentes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStatusFilterChange('done')}
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition-vintage ${
-                    statusFilter === 'done'
-                      ? 'bg-sidebar text-paper'
-                      : 'border border-border bg-offWhite text-ink hover:bg-paper'
-                  }`}
-                >
-                  Concluídos
-                </button>
+                {(
+                  [
+                    { key: null,       label: 'Todos',      count: reminders.length },
+                    { key: 'pending',  label: 'Pendentes',  count: pendingReminders.length },
+                    { key: 'done',     label: 'Concluídos', count: completedReminders.length },
+                    { key: 'overdue',  label: 'Atrasados',  count: overdueReminders.length },
+                  ] as { key: ReminderFilter; label: string; count: number }[]
+                ).map((pill) => {
+                  const isActive = statusFilter === pill.key
+                  return (
+                    <button
+                      key={pill.label}
+                      type="button"
+                      onClick={() => pill.key ? handleStatusFilterChange(pill.key) : setStatusFilter(null)}
+                      className={`rounded-full px-4 py-2 text-sm font-semibold transition-vintage flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-coffee text-paper'
+                          : 'border border-border bg-offWhite text-ink hover:bg-paper'
+                      }`}
+                    >
+                      {pill.label}
+                      <span
+                        className={`rounded-full text-[11px] px-1.5 min-w-[18px] text-center ${
+                          isActive ? 'bg-white/20 text-paper' : 'bg-ink/[0.07] text-ink/55'
+                        }`}
+                      >
+                        {pill.count}
+                      </span>
+                    </button>
+                  )
+                })}
+                <div className="hidden md:flex items-center gap-2 ml-auto">
+                  <button
+                    type="button"
+                    onClick={clearCompleted}
+                    disabled={completedReminders.length === 0}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-bg text-ink/60 text-[12.5px] font-medium hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed transition-vintage"
+                  >
+                    Limpar concluídos
+                  </button>
+                </div>
               </div>
 
               {filteredReminders.length === 0 ? (
@@ -245,34 +347,29 @@ export default function Reminders() {
                   </p>
                 </div>
               ) : statusFilter === null ? (
-                <div className="space-y-6">
+                <div className="space-y-5">
                   {pendingReminders.length > 0 && (
                     <div>
-                      <p className="font-serif text-xl text-coffee mb-3">Pendentes</p>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-5 h-px bg-[#B05C3A]/40" />
+                        <span className="text-[10.5px] tracking-[0.18em] uppercase font-semibold text-[#B05C3A]/70">Pendentes · {pendingReminders.length}</span>
+                      </div>
                       <div className="space-y-2">
                         {pendingReminders.map((reminder) => (
-                          <ReminderRow
-                            key={reminder.id}
-                            reminder={reminder}
-                            onToggle={toggleDone}
-                            getCategoryColors={getCategoryColors}
-                          />
+                          <ReminderRow key={reminder.id} reminder={reminder} onToggle={toggleDone} onDelete={deleteReminder} onEdit={openEdit} getCategoryColors={getCategoryColors} />
                         ))}
                       </div>
                     </div>
                   )}
-
                   {completedReminders.length > 0 && (
                     <div>
-                      <p className="font-serif text-xl text-coffee mb-3 mt-3">Concluídos</p>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-5 h-px bg-olive/40" />
+                        <span className="text-[10.5px] tracking-[0.18em] uppercase font-semibold text-olive/70">Concluídos · {completedReminders.length}</span>
+                      </div>
                       <div className="space-y-2">
                         {completedReminders.map((reminder) => (
-                          <ReminderRow
-                            key={reminder.id}
-                            reminder={reminder}
-                            onToggle={toggleDone}
-                            getCategoryColors={getCategoryColors}
-                          />
+                          <ReminderRow key={reminder.id} reminder={reminder} onToggle={toggleDone} onDelete={deleteReminder} onEdit={openEdit} getCategoryColors={getCategoryColors} />
                         ))}
                       </div>
                     </div>
@@ -285,6 +382,8 @@ export default function Reminders() {
                       key={reminder.id}
                       reminder={reminder}
                       onToggle={toggleDone}
+                      onDelete={deleteReminder}
+                      onEdit={openEdit}
                       getCategoryColors={getCategoryColors}
                     />
                   ))}
@@ -319,10 +418,12 @@ export default function Reminders() {
         </footer>
       </div>
 
-      <Modal
+      <RightDrawer
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Novo lembrete"
+        onClose={closeReminderModal}
+        subtitle="Pequenas notas para a casa fluir."
+        accent="#3E5F4B"
+        title={editingReminder ? 'Editar lembrete' : 'Novo lembrete'}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -378,7 +479,17 @@ export default function Reminders() {
             </button>
           </div>
         </form>
-      </Modal>
+      </RightDrawer>
+
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={confirmDelete}
+        title="Excluir lembrete"
+        message="Este lembrete será removido permanentemente."
+        confirmLabel="Excluir"
+        loading={deleting}
+      />
     </>
   )
 }

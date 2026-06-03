@@ -50,7 +50,7 @@ export default function ActionMenu({ onEdit, onDelete, onView, onAttach, onDepos
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-auto min-w-44 rounded-lg border border-border bg-bg shadow-vintage z-20">
+        <div className="absolute right-0 mt-2 w-auto min-w-44 rounded-lg border border-border bg-bg shadow-vintage z-50">
           {onDeposit && (
             <button
               type="button"

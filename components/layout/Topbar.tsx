@@ -21,6 +21,7 @@ const PAGE_ICONS: Record<string, React.ElementType> = {
 interface TopbarProps {
   title: string
   subtitle?: string
+  accent?: string
   actions?: React.ReactNode
   filters?: React.ReactNode
   variant?: 'default' | 'textured'
@@ -32,6 +33,7 @@ interface TopbarProps {
 export default function Topbar({
   title,
   subtitle,
+  accent,
   actions,
   filters,
   variant = 'default',
@@ -177,9 +179,12 @@ export default function Topbar({
   }, [familyId])
 
   return (
-    <div className={`${variant === 'textured' ? 'bg-paper' : 'bg-bg'} px-4 md:px-6 py-3 md:py-0`}>
+    <div
+      className={`${variant === 'textured' ? 'bg-paper' : 'bg-bg'} px-4 md:px-6 py-3 md:py-0`}
+      style={accent ? { borderLeft: `3px solid ${accent}` } : undefined}
+    >
       <div className={`${filters ? 'flex flex-col gap-2' : ''}`}>
-        <div className="md:min-h-[103px] flex items-center">
+        <div className="md:min-h-[90px] flex items-center">
           <div className="flex flex-row items-center justify-between w-full gap-3">
             <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
               {showBackButton ? (
@@ -191,14 +196,24 @@ export default function Topbar({
                   <ChevronLeft className="w-[20px] h-[20px]" />
                 </button>
               ) : PageIcon ? (
-                <div className="w-[34px] h-[34px] rounded-[9px] bg-coffee/[0.09] flex items-center justify-center text-coffee shrink-0">
+                <div
+                  className="w-[34px] h-[34px] rounded-[9px] flex items-center justify-center shrink-0"
+                  style={
+                    accent
+                      ? { background: `${accent}18`, color: accent }
+                      : { background: 'rgba(62,95,75,0.09)', color: '#3E5F4B' }
+                  }
+                >
                   <PageIcon className="w-[17px] h-[17px]" />
                 </div>
               ) : null}
               <div className="min-w-0">
                 <h1 className={`text-xl md:text-3xl font-serif text-coffee leading-tight mb-0.5 md:mb-1 ${titleClassName}`}>{title}</h1>
                 {subtitle && (
-                  <p className={`text-xs md:text-sm text-ink/70 font-body ${subtitleClassName}`}>{subtitle}</p>
+                  <p
+                    className={`text-xs md:text-sm font-body ${accent ? 'italic' : 'text-ink/70'} ${subtitleClassName}`}
+                    style={accent ? { color: accent } : undefined}
+                  >{subtitle}</p>
                 )}
               </div>
             </div>

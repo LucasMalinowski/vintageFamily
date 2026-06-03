@@ -6,12 +6,16 @@ import { useAuth } from '@/components/AuthProvider'
 import AnalyticsKpiCard from '@/components/ui/AnalyticsKpiCard'
 import LineChart, { LineSeries } from '@/components/ui/LineChart'
 import DonutChart, { DonutSlice } from '@/components/ui/DonutChart'
+import ExpandableDonut from '@/components/ui/ExpandableDonut'
 import Topbar from '@/components/layout/Topbar'
 import FilterSidebar from '@/components/layout/FilterSidebar'
 import FilterSearchBar from '@/components/layout/FilterSearchBar'
 import Select from '@/components/ui/Select'
 import MonthYearPicker from '@/components/ui/MonthYearPicker'
 import Modal from '@/components/ui/Modal'
+import RightDrawer from '@/components/ui/RightDrawer'
+import ConfirmModal from '@/components/ui/ConfirmModal'
+import { toast } from '@/components/ui/Toast'
 import EmptyState from '@/components/ui/EmptyState'
 import CategoryPathStack from '@/components/ui/CategoryPathStack'
 import CategoryIcon from '@/components/ui/CategoryIcon'
@@ -29,7 +33,7 @@ import {
   ALL_YEARS_VALUE,
 } from '@/lib/dates'
 import { getBillingCycleRange, getCurrentBillingPeriod } from '@/lib/billing-cycle'
-import { ArrowDown, Calendar, Check, Clock, DollarSign, Download, Edit2, FileDown, FileText, List, SlidersHorizontal, Search, Plus, TrendingUp, X, Tag } from 'lucide-react'
+import { ArrowDown, Calendar, Check, ChevronDown, Clock, DollarSign, Download, Edit2, FileDown, FileText, List, SlidersHorizontal, Search, Plus, TrendingUp, Upload, X, Tag } from 'lucide-react'
 import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
 import FilterSheet from '@/components/layout/FilterSheet'
@@ -46,7 +50,7 @@ import {
 } from '@/lib/categories'
 import { matchesSearch } from '@/lib/filterSearch'
 import CurrencyInput from '@/components/ui/CurrencyInput'
-import { buildBrandedPdfBlob, downloadBlob, downloadCsv } from '@/lib/report-export'
+import { buildBrandedPdfBlob, downloadBlob, downloadCsv, openHtmlAsPdf } from '@/lib/report-export'
 import { usePlan } from '@/lib/billing/plan-context'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
@@ -89,7 +93,7 @@ export default function Incomes() {
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<'' | IncomeStatus>('')
   const [searchTerm, setSearchTerm] = useState('')
-  const [filtersOpen, setFiltersOpen] = useState(true)
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const [addMenuOpen, setAddMenuOpen] = useState(false)
@@ -105,6 +109,10 @@ export default function Incomes() {
   const [currentAttachmentUrl, setCurrentAttachmentUrl] = useState<string | null>(null)
   const [updatingIds, setUpdatingIds] = useState<string[]>([])
   const [exportingFormat, setExportingFormat] = useState<'csv' | 'pdf' | null>(null)
+  const [showPaywallModal, setShowPaywallModal] = useState(false)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false)
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
   const [pdfUrl, setPdfUrl] = useState('')
@@ -321,13 +329,14 @@ export default function Incomes() {
   const handleToggleReceived = async (income: Income) => {
     if (updatingIds.includes(income.id)) return
     const nextStatus: IncomeStatus = income.status === 'received' ? 'pending' : 'received'
+    // Optimistic update
+    const applyUpdate = (arr: Income[]) =>
+      arr.map((i) => i.id === income.id ? { ...i, status: nextStatus } : i)
+    setIncomes(applyUpdate)
+    setRawYearIncomes(applyUpdate)
     setUpdatingIds((prev) => [...prev, income.id])
-    await supabase
-      .from('incomes')
-      .update({ status: nextStatus })
-      .eq('id', income.id)
+    await supabase.from('incomes').update({ status: nextStatus }).eq('id', income.id)
     setUpdatingIds((prev) => prev.filter((id) => id !== income.id))
-    loadIncomes()
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -342,9 +351,10 @@ export default function Incomes() {
       : formData.status
 
     if (!category || !categoryLabel) {
-      alert('Selecione uma categoria válida.')
+      setFormError('Selecione uma categoria válida.')
       return
     }
+    setFormError(null)
 
     const incomeData = {
       family_id: familyId!,
@@ -363,8 +373,21 @@ export default function Incomes() {
         .from('incomes')
         .update({ ...incomeData, updated_at: new Date().toISOString() })
         .eq('id', editingIncome.id)
+      // Optimistic: update only this record in state
+      const updated = { ...editingIncome, ...incomeData } as Income
+      setIncomes((prev) => prev.map((i) => i.id === editingIncome.id ? updated : i))
+      setRawYearIncomes((prev) => prev.map((i) => i.id === editingIncome.id ? updated : i))
+      closeModal()
+      return
     } else {
-      await supabase.from('incomes').insert({ ...incomeData, created_by: user?.id ?? null })
+      const { data: newRow } = await supabase.from('incomes').insert({ ...incomeData, created_by: user?.id ?? null }).select().maybeSingle()
+      if (newRow) {
+        setIncomes((prev) => [newRow as Income, ...prev])
+        setRawYearIncomes((prev) => [newRow as Income, ...prev])
+        if (incomes.length === 0) posthog.capture(EVENTS.FIRST_INCOME_CREATED)
+        closeModal()
+        return
+      }
     }
 
     if (!editingIncome && incomes.length === 0) posthog.capture(EVENTS.FIRST_INCOME_CREATED)
@@ -399,16 +422,20 @@ export default function Incomes() {
     loadIncomes()
   }
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Remover este registro?')) {
-      await supabase.from('incomes').delete().eq('id', id)
-      loadIncomes()
-    }
+  const handleDelete = (id: string) => { setDeleteConfirmId(id) }
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return
+    setDeleting(true)
+    await supabase.from('incomes').delete().eq('id', deleteConfirmId)
+    setIncomes((prev) => prev.filter((i) => i.id !== deleteConfirmId))
+    setRawYearIncomes((prev) => prev.filter((i) => i.id !== deleteConfirmId))
+    setDeleting(false)
+    setDeleteConfirmId(null)
   }
 
   const openDetails = (income: Income) => {
-    setDetailIncome(income)
-    setIsDetailOpen(true)
+    openModal(income)
   }
 
   const handleAttachIncome = async (income: Income, file: File) => {
@@ -430,7 +457,7 @@ export default function Incomes() {
 
     if (!response.ok) {
       const body = await response.json().catch(() => null)
-      alert(body?.error ?? 'Erro ao enviar arquivo.')
+      toast(body?.error ?? 'Erro ao enviar arquivo. Tente novamente.', { type: 'error' })
       return
     }
 
@@ -473,6 +500,7 @@ export default function Incomes() {
     setIsModalOpen(false)
     setEditingIncome(null)
     setCurrentAttachmentUrl(null)
+    setFormError(null)
   }
 
   const filteredIncomes = incomes.filter((income) =>
@@ -603,8 +631,8 @@ export default function Incomes() {
       income.description,
       getCategoryLabel(income.category_id, income.category_name),
       getIncomeStatusLabel(income.status),
-      formatBRL(income.amount_cents),
       income.notes || '',
+      formatBRL(income.amount_cents),
     ]),
   )
 
@@ -632,7 +660,7 @@ export default function Incomes() {
     return buildBrandedPdfBlob({
       title: 'Receitas',
       filterSummary: exportSubtitle || 'Sem filtros ativos',
-      headers: ['Data', 'Descricao', 'Categoria', 'Status', 'Valor', 'Observacao'],
+      headers: ['Data', 'Descricao', 'Categoria', 'Status', 'Observacao', 'Valor'],
       rows: exportRows,
       cards: [
         { label: 'TOTAL', value: formatBRL(total) },
@@ -640,6 +668,7 @@ export default function Incomes() {
         { label: 'A RECEBER', value: formatBRL(total - receivedCents) },
       ],
       generatedDate: formatDate(new Date()),
+      accentColor: '#3E8E5C',
     })
   }
 
@@ -674,15 +703,10 @@ export default function Incomes() {
 
   const downloadPreviewPdf = async () => {
     try {
-      if (pdfBlob) {
-        downloadBlob(`${exportTable.filename}.pdf`, pdfBlob)
-        return
-      }
-
-      const blob = await buildIncomePdfBlob()
-      downloadBlob(`${exportTable.filename}.pdf`, blob)
+      const url = pdfUrl || URL.createObjectURL(await buildIncomePdfBlob())
+      openHtmlAsPdf(url)
     } catch {
-      setPdfError('Não foi possível baixar o PDF desta tela.')
+      setPdfError('Não foi possível abrir o PDF desta tela.')
     }
   }
 
@@ -703,7 +727,7 @@ export default function Incomes() {
     const data = await res.json()
     if (!data.allowed) {
       posthog.capture(EVENTS.EXPORT_IMPORT_LIMIT_REACHED)
-      alert('Você atingiu o limite de 3 exportações/importações gratuitas este mês.\n\nAssine o Florim Pro em florim.app/pricing para continuar.')
+      setShowPaywallModal(true)
       return false
     }
     return true
@@ -730,8 +754,9 @@ export default function Incomes() {
     <>
       <div className="flex flex-col h-full md:min-h-screen">
         <Topbar
-          title="Receitas"
-          subtitle="O fruto do trabalho em forma de números."
+          title="Contas a Receber"
+          subtitle="Cada renda é uma colheita do que se planta."
+          accent="#3E8E5C"
           variant="textured"
         />
 
@@ -872,25 +897,37 @@ export default function Incomes() {
           )}
         </div>
 
-        {/* Desktop filter search bar */}
-        <div className="hidden md:block px-6 py-4">
-          <FilterSearchBar
-            value={searchTerm}
-            onChange={setSearchTerm}
-            onToggleFilters={() => setFiltersOpen((prev) => !prev)}
-            filtersOpen={filtersOpen}
-            placeholder="Buscar por nome ou categoria"
-            filterChips={activeFilterChips}
-            rightSlot={
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCategorySettingsOpen(true)}
-                  className="h-[38px] px-4 text-sm bg-bg border border-petrol/25 rounded-[10px] text-petrol font-medium hover:bg-petrol/5 transition-vintage"
-                >
-                  Categorias
-                </button>
-                <div className="relative">
+        {/* Desktop toolbar */}
+        <div className="hidden md:flex items-center gap-2.5 px-6 py-3 border-b border-border bg-bg">
+          <button
+            onClick={() => setFiltersOpen(prev => !prev)}
+            className="flex items-center gap-2 h-[38px] px-3 rounded-[10px] border border-border bg-white text-ink text-[13px] font-medium hover:bg-paper transition-vintage"
+          >
+            <SlidersHorizontal className="w-4 h-4 text-petrol" />
+            {selectedMonth === ALL_MONTHS_VALUE
+              ? (selectedYear === ALL_YEARS_VALUE ? 'Todos' : String(selectedYear))
+              : `${getMonthLabel(selectedMonth).slice(0, 3)} ${selectedYear !== ALL_YEARS_VALUE ? selectedYear : ''}`}
+            <ChevronDown className={`w-3.5 h-3.5 text-ink/40 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+          </button>
+          <div className="flex items-center h-[38px] bg-white border border-border rounded-[10px] px-3 gap-2 flex-1 max-w-[380px]">
+            <Search className="w-4 h-4 text-petrol shrink-0" />
+            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Buscar por nome ou categoria..." className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none" />
+          </div>
+          <div className="flex-1" />
+          <button onClick={() => setIsCategorySettingsOpen(true)} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage">
+            <Tag className="w-4 h-4" /> Categorias
+          </button>
+          <button onClick={handleExportPdf} disabled={!filteredIncomes.length || exportingFormat !== null} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage disabled:opacity-40">
+            <Upload className="w-4 h-4" /> Exportar
+          </button>
+          <button onClick={() => openModal()} className="flex items-center gap-1.5 h-[38px] px-4 rounded-[10px] text-white text-[13px] font-semibold transition-vintage" style={{ background: '#3E8E5C' }}>
+            <Plus className="w-4 h-4" /> Nova receita
+          </button>
+
+          {/* Kept for compat but hidden */}
+          <div className="hidden">
+          <div className="relative">
+          <div className="">
                   <button
                     type="button"
                     onClick={() => setAddMenuOpen((prev) => !prev)}
@@ -957,15 +994,48 @@ export default function Incomes() {
                     </>
                   )}
                 </div>
+          </div>
+          </div>
+          </div>
+
+        {/* Desktop filter panel — outside scroll so dropdowns don't clip */}
+        {filtersOpen && (
+          <div className="hidden md:block bg-bg/60 border-b border-border">
+            <div className="px-6 py-3 flex flex-wrap gap-3 items-end">
+              <MonthYearPicker
+                month={selectedMonth}
+                year={selectedYear}
+                onChange={(m, y) => { setSelectedMonth(m); setSelectedYear(y) }}
+              />
+              <div className="min-w-[160px] max-w-[260px]">
+                <Select
+                  variant="filter"
+                  label="Categoria"
+                  value={selectedCategoryId}
+                  onChange={setSelectedCategoryId}
+                  options={[{ value: '', label: 'Todas' }, ...categoryOptions]}
+                />
               </div>
-            }
-          />
-        </div>
+              <div className="min-w-[140px]">
+                <Select
+                  variant="filter"
+                  label="Status"
+                  value={selectedStatus}
+                  onChange={(v) => setSelectedStatus(v as '' | IncomeStatus)}
+                  options={[{ value: '', label: 'Todos' }, { value: 'received', label: 'Recebido' }, { value: 'pending', label: 'A receber' }]}
+                />
+              </div>
+              {activeFiltersCount > 0 && (
+                <button onClick={clearFilters} className="text-xs text-[#B05C3A] hover:underline self-end pb-2">Limpar filtros</button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Scrollable cards area - mobile only internal scroll */}
         <div className="flex-1 min-h-0 overflow-y-auto md:overflow-visible">
-          <div className={`w-full flex flex-col md:flex-row md:px-6 md:pb-4 ${filtersOpen ? 'md:gap-4' : 'md:gap-0'} md:items-stretch`}>
-            <div className="hidden md:contents">
+          <div className="w-full flex flex-col pt-3 pb-4 md:px-6 md:pt-4 md:pb-4">
+            <div className="hidden">
               <FilterSidebar
                 open={filtersOpen}
                 onOpenChange={setFiltersOpen}
@@ -1054,17 +1124,34 @@ export default function Incomes() {
                         <div className="h-[140px] flex items-center justify-center text-sm text-ink/40">Carregando...</div>
                       )}
                     </div>
-                    <div className="bg-white rounded-xl border border-border shadow-soft p-4">
-                      <h3 className="text-sm font-semibold text-ink font-serif mb-3">Receitas por categoria</h3>
-                      {categoryDonutSlices.length > 0 ? (
-                        <DonutChart
-                          slices={categoryDonutSlices}
-                          center={formatBRL(total).replace('R$ ', '')}
-                        />
-                      ) : (
-                        <div className="text-sm text-ink/40 italic">Sem dados</div>
-                      )}
-                    </div>
+                    {categoryDonutSlices.length > 0 ? (
+                      <ExpandableDonut
+                        slices={categoryDonutSlices}
+                        total={total}
+                        title="Receitas por categoria"
+                        modalTitle="Receitas por categoria"
+                        items={filteredIncomes.map(i => ({
+                          id: i.id,
+                          description: i.description,
+                          amount_cents: i.amount_cents,
+                          date: i.date,
+                          status: i.status === 'received' ? 'Recebido' : 'A receber',
+                          payment_method: null,
+                          category_name: i.category_name,
+                          category_id: i.category_id,
+                        }))}
+                        getCategoryLabel={getCategoryLabel}
+                        getCatRailColor={(label) => {
+                          const root = label.split(' / ')[0].split(' > ')[0].trim()
+                          if (/sal.rio|renda/i.test(root)) return '#3E8E5C'
+                          if (/aluguel/i.test(root)) return '#3F6E7A'
+                          if (/extra|freelance|b.nus|bonus/i.test(root)) return '#C2A45D'
+                          return '#6FBF8A'
+                        }}
+                      />
+                    ) : (
+                      <div className="text-sm text-ink/40 italic p-2">Sem dados</div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1083,11 +1170,18 @@ export default function Incomes() {
                   <div key={group.label} className="space-y-3">
                     {groupedIncomes.length > 1 && (
                       <div className="flex items-center gap-3">
-                        <div className="h-px flex-1 bg-border/70" />
-                        <span className="rounded-full border border-border bg-paper px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.11em] text-ink/65 shadow-sm">
+                        <div className="h-px flex-1" style={{ background: 'rgba(62,142,92,0.22)' }} />
+                        <span
+                          className="rounded-full border px-3 py-1 text-[10.5px] font-bold uppercase tracking-[0.18em]"
+                          style={{
+                            borderColor: 'rgba(62,142,92,0.3)',
+                            background: 'rgba(62,142,92,0.06)',
+                            color: '#3E8E5C',
+                          }}
+                        >
                           {group.label}
                         </span>
-                        <div className="h-px flex-1 bg-border/70" />
+                        <div className="h-px flex-1" style={{ background: 'rgba(62,142,92,0.22)' }} />
                       </div>
                     )}
                     <div className="space-y-3">
@@ -1174,10 +1268,10 @@ export default function Incomes() {
                             </div>
 
                             {/* ── DESKTOP card ── */}
-                            <div className="hidden md:flex items-start gap-3 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage">
+                            <div className="hidden md:flex items-start gap-3 p-4 bg-offWhite rounded-lg border border-border hover:shadow-soft transition-vintage cursor-pointer" onClick={() => openModal(income)}>
                               <button
                                 type="button"
-                                onClick={() => handleToggleReceived(income)}
+                                onClick={e => { e.stopPropagation(); handleToggleReceived(income) }}
                                 disabled={isUpdating}
                                 className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-vintage disabled:opacity-50 ${
                                   isReceived ? 'border-olive bg-olive' : 'border-amber-400 bg-transparent hover:border-olive'
@@ -1217,15 +1311,17 @@ export default function Incomes() {
                                   <span className={`font-numbers text-lg font-semibold ${isReceived ? 'text-sidebar/60' : 'text-sidebar'}`}>
                                     {formatBRL(income.amount_cents)}
                                   </span>
-                                  <ActionMenu
-                                    onView={() => openDetails(income)}
-                                    onEdit={() => openModal(income)}
-                                    onDelete={() => handleDelete(income.id)}
-                                    onAttach={(file) => handleAttachIncome(income, file)}
-                                    onToggleStatus={() => handleToggleReceived(income)}
-                                    toggleStatusLabel={isReceived ? 'Marcar como A receber' : 'Marcar como Recebido'}
-                                    disabled={isUpdating}
-                                  />
+                                  <div onClick={e => e.stopPropagation()}>
+                                    <ActionMenu
+                                      onView={() => openDetails(income)}
+                                      onEdit={() => openModal(income)}
+                                      onDelete={() => handleDelete(income.id)}
+                                      onAttach={(file) => handleAttachIncome(income, file)}
+                                      onToggleStatus={() => handleToggleReceived(income)}
+                                      toggleStatusLabel={isReceived ? 'Marcar como A receber' : 'Marcar como Recebido'}
+                                      disabled={isUpdating}
+                                    />
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -1273,10 +1369,12 @@ export default function Incomes() {
         previewLabel="Preview do PDF"
       />
 
-      <Modal
+      <RightDrawer
         isOpen={isModalOpen}
         onClose={closeModal}
         title={editingIncome ? 'Editar Receita' : 'Nova Receita'}
+        subtitle="Cada renda é uma colheita do que se planta."
+        accent="#3E8E5C"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -1387,6 +1485,9 @@ export default function Incomes() {
             </div>
           )}
 
+          {formError && (
+            <p className="text-[12.5px] text-[#B05C3A] rounded-lg bg-[#B05C3A]/8 border border-[#B05C3A]/25 px-3 py-2">{formError}</p>
+          )}
           <div className="flex gap-3 pt-4">
             <button
               type="button"
@@ -1403,7 +1504,18 @@ export default function Incomes() {
             </button>
           </div>
         </form>
-      </Modal>
+      </RightDrawer>
+
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={confirmDelete}
+        title="Excluir receita"
+        message="Esta receita será removida permanentemente."
+        confirmLabel="Excluir"
+        confirmAccent="#3E8E5C"
+        loading={deleting}
+      />
 
       <Modal
         isOpen={isDetailOpen}
@@ -1510,6 +1622,25 @@ export default function Incomes() {
           setSelectedStatus((status as IncomeStatus) || '')
         }}
       />
+
+      <Modal isOpen={showPaywallModal} onClose={() => setShowPaywallModal(false)} title="Limite atingido">
+        <div className="space-y-4">
+          <p className="text-ink/80 text-sm">
+            Você atingiu o limite de 3 exportações/importações gratuitas este mês.
+          </p>
+          <p className="text-ink/60 text-sm">
+            Assine o Florim Pro para exportações ilimitadas e outros recursos avançados.
+          </p>
+          <div className="flex gap-3 pt-2">
+            <button onClick={() => setShowPaywallModal(false)} className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage text-sm">
+              Fechar
+            </button>
+            <a href="/settings/billing" className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg text-sm font-semibold text-center hover:bg-coffee/90 transition-vintage">
+              Ver planos
+            </a>
+          </div>
+        </div>
+      </Modal>
     </>
   )
 }

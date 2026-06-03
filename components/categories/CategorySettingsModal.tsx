@@ -465,15 +465,33 @@ export default function CategorySettingsModal({
                 {formatBRL(limit)}
                 <Pencil className="w-3 h-3 opacity-35 group-hover:opacity-70 transition-opacity" />
               </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => startEditLimit(item)}
-                className="text-sm text-petrol/80 hover:text-petrol transition-colors"
-              >
-                + Definir
-              </button>
-            )}
+            ) : (() => {
+              const childrenWithLimit = hasChildren
+                ? (item as NodeItem & { children?: NodeItem[] }).children?.filter(c => c.monthly_limit_cents) ?? []
+                : []
+              return (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => startEditLimit(item)}
+                    className="text-sm text-petrol/80 hover:text-petrol transition-colors"
+                  >
+                    + Definir
+                  </button>
+                  {childrenWithLimit.length > 0 && !isExpanded && (
+                    <button
+                      type="button"
+                      onClick={() => toggleExpandMain(item.id)}
+                      title={`${childrenWithLimit.length} subcategoria${childrenWithLimit.length > 1 ? 's têm' : ' tem'} limite definido`}
+                      className="flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-gold/15 text-gold hover:bg-gold/25 transition-colors"
+                    >
+                      <span>↓</span>
+                      <span>{childrenWithLimit.length} limite{childrenWithLimit.length > 1 ? 's' : ''}</span>
+                    </button>
+                  )}
+                </div>
+              )
+            })()}
           </td>
           <td className="px-3 py-2.5 w-48">
             {limit ? (

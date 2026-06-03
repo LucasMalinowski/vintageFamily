@@ -13,20 +13,23 @@ interface DonutChartProps {
   slices: DonutSlice[]
   center: string
   currency?: boolean
+  showLegend?: boolean
 }
 
-export default function DonutChart({ slices, center, currency = true }: DonutChartProps) {
+export default function DonutChart({ slices, center, currency = true, showLegend = true }: DonutChartProps) {
   const r = 52
   const cx = 70
   const cy = 70
   const stroke = 22
   const circ = 2 * Math.PI * r
 
+  const GAP = slices.length > 1 ? 0.7 : 0
   let off = 0
   const arcs = slices.map((s) => {
-    const dash = (s.pct / 100) * circ
-    const arc = { ...s, off, dash, gap: circ - dash }
-    off += dash
+    const fullDash = (s.pct / 100) * circ
+    const dash = Math.max(fullDash - GAP, 0)
+    const arc = { ...s, off: off + GAP / 2, dash, gap: circ - dash }
+    off += fullDash
     return arc
   })
 
@@ -62,7 +65,7 @@ export default function DonutChart({ slices, center, currency = true }: DonutCha
           x={cx}
           y={cy + 6}
           textAnchor="middle"
-          fontSize="9.5"
+          fontSize={center.length > 8 ? '8' : '9.5'}
           fill="#2F3B33"
           fontWeight="600"
           fontFamily="Inter,sans-serif"
@@ -71,20 +74,22 @@ export default function DonutChart({ slices, center, currency = true }: DonutCha
         </text>
       </svg>
 
-      <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto pr-1">
-        {slices.map((s, i) => (
-          <div key={i} className="flex items-center gap-2 min-w-0">
-            <div
-              className="w-[9px] h-[9px] rounded-[2px] shrink-0"
-              style={{ background: s.color }}
-            />
-            <span className="flex-1 text-[11px] font-medium text-ink truncate min-w-0">{s.label}</span>
-            <span className="text-[10px] text-ink/50 shrink-0 tabular-nums ml-2">
-              {currency ? formatBRL(s.value) : s.value.toLocaleString('pt-BR')} ({s.pct}%)
-            </span>
-          </div>
-        ))}
-      </div>
+      {showLegend && (
+        <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto pr-1">
+          {slices.map((s, i) => (
+            <div key={i} className="flex items-center gap-2 min-w-0">
+              <div
+                className="w-[9px] h-[9px] rounded-[2px] shrink-0"
+                style={{ background: s.color }}
+              />
+              <span className="flex-1 text-[11px] font-medium text-ink truncate min-w-0">{s.label}</span>
+              <span className="text-[10px] text-ink/50 shrink-0 tabular-nums ml-2">
+                {currency ? formatBRL(s.value) : s.value.toLocaleString('pt-BR')} ({s.pct}%)
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

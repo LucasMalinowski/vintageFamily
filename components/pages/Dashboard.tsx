@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Check, Plus, Trash2 } from 'lucide-react'
+import { Bell, Calendar, Check, Plus, PiggyBank, Receipt, Trash2, TrendingUp, Lightbulb } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '../AuthProvider'
 import Topbar from '../layout/Topbar'
@@ -110,6 +110,92 @@ interface Payable {
   category_name: string
 }
 
+function DesktopHeroCard({
+  familyName,
+  expensePaid,
+  expenseOpen,
+  expenseOverdue,
+  incomeTotal,
+}: {
+  familyName: string
+  expensePaid: number
+  expenseOpen: number
+  expenseOverdue: number
+  incomeTotal: number
+}) {
+  const totalExpenses = expensePaid + expenseOpen + expenseOverdue
+  const balance = incomeTotal - totalExpenses
+  const paidPct = totalExpenses > 0 ? Math.round((expensePaid / totalExpenses) * 100) : 0
+  const openPct = totalExpenses > 0 ? Math.round((expenseOpen / totalExpenses) * 100) : 0
+  const overduePct = totalExpenses > 0 ? Math.round((expenseOverdue / totalExpenses) * 100) : 0
+  const now = new Date()
+  const monthLabel = now.toLocaleString('pt-BR', { month: 'long' })
+  const yearLabel = now.getFullYear()
+
+  return (
+    <div
+      className="rounded-[18px] overflow-hidden px-7 py-7 relative"
+      style={{
+        background: 'linear-gradient(135deg, #3E5F4B 0%, #344e3f 55%, #2a4034 100%)',
+        boxShadow: '0 14px 28px rgba(62,95,75,0.18)',
+      }}
+    >
+      {/* Diagonal stripes */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ backgroundImage: 'repeating-linear-gradient(135deg, rgba(194,164,93,0.04) 0 1px, transparent 1px 22px)' }}
+      />
+      {/* Gold thread */}
+      <span className="absolute left-[15%] right-[15%] bottom-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(194,164,93,0.55), transparent)' }} />
+
+      <div className="relative flex items-start justify-between gap-6">
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] tracking-[0.2em] uppercase font-semibold text-white/55 mb-1">
+            Família {familyName || '-'} · {monthLabel} {yearLabel}
+          </p>
+          <p className="font-serif font-light text-[28px] text-white/90 leading-tight mb-4">
+            Livro de Finanças da Família
+          </p>
+          <p className="font-numbers font-bold text-[42px] text-white leading-none tracking-[-1px] tabular-nums">
+            {formatBRL(Math.max(balance, 0))}
+          </p>
+          <p className="text-[12.5px] text-white/60 mt-1">Saldo estimado do mês</p>
+        </div>
+        <p className="font-serif italic text-[13px] text-white/65 max-w-[220px] text-right leading-relaxed hidden lg:block">
+          "Organizar o dinheiro é cuidar do tempo que ainda vamos viver."
+        </p>
+      </div>
+
+      {/* 3-segment bar */}
+      {totalExpenses > 0 && (
+        <div className="relative mt-6">
+          <div className="flex h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.12)' }}>
+            <div style={{ width: `${paidPct}%`, background: '#6FBF8A' }} />
+            <div style={{ width: `${openPct}%`, background: '#C2A45D' }} />
+            <div style={{ width: `${overduePct}%`, background: '#B05C3A' }} />
+          </div>
+          <div className="flex gap-5 mt-2.5">
+            {[
+              { label: 'Pago',      color: '#6FBF8A', pct: paidPct,    val: expensePaid },
+              { label: 'Em aberto', color: '#C2A45D', pct: openPct,    val: expenseOpen },
+              { label: 'Atrasado',  color: '#B05C3A', pct: overduePct, val: expenseOverdue },
+            ].map((seg) => (
+              <div key={seg.label} className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: seg.color }} />
+                <span className="text-[12px] text-white/70 font-medium">
+                  {seg.label} ·{' '}
+                  <b className="text-white font-numbers tabular-nums">{formatBRL(seg.val)}</b>
+                  <span className="ml-1 text-white/40">{seg.pct}%</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const { displayed, cursor } = useTypewriter()
   const { familyId, user } = useAuth()
@@ -122,6 +208,13 @@ export default function Dashboard() {
   const [reminderFilter, setReminderFilter] = useState<ReminderFilter>(null)
   const [limitRows, setLimitRows] = useState<CategoryLimitRow[]>([])
   const [loadingLimits, setLoadingLimits] = useState(true)
+  const [monthStats, setMonthStats] = useState<{
+    incomeTotal: number
+    expensePaid: number
+    expenseOpen: number
+    expenseOverdue: number
+  } | null>(null)
+  const [topSavings, setTopSavings] = useState<Array<{ id: string; name: string; balance: number; target: number | null; delta: number }>>([])
   const [reminderForm, setReminderForm] = useState({
     title: '',
     due_date: '',
@@ -136,6 +229,8 @@ export default function Dashboard() {
       loadCategoryLimitsForMonth(familyId, now.getFullYear(), now.getMonth() + 1)
         .then(setLimitRows)
         .finally(() => setLoadingLimits(false))
+      loadMonthStats(familyId)
+      loadTopSavings(familyId)
     } else {
       setLoading(false)
       setLoadingPayables(false)
@@ -143,6 +238,41 @@ export default function Dashboard() {
     }
     loadFamilyName()
   }, [familyId, user?.id])
+
+  async function loadMonthStats(fid: string) {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth() + 1
+    const firstDay = `${year}-${String(month).padStart(2, '0')}-01`
+    const lastDay = new Date(year, month, 0).toISOString().slice(0, 10)
+    const today = now.toISOString().slice(0, 10)
+    const [expRes, incRes] = await Promise.all([
+      supabase.from('expenses').select('amount_cents,status,date').eq('family_id', fid).gte('date', firstDay).lte('date', lastDay),
+      supabase.from('incomes').select('amount_cents').eq('family_id', fid).gte('date', firstDay).lte('date', lastDay),
+    ])
+    const exps = expRes.data ?? []
+    const expensePaid = exps.filter(e => e.status === 'paid').reduce((s, e) => s + e.amount_cents, 0)
+    const expenseOpen = exps.filter(e => e.status !== 'paid' && e.date >= today).reduce((s, e) => s + e.amount_cents, 0)
+    const expenseOverdue = exps.filter(e => e.status !== 'paid' && e.date < today).reduce((s, e) => s + e.amount_cents, 0)
+    const incomeTotal = (incRes.data ?? []).reduce((s, e) => s + e.amount_cents, 0)
+    setMonthStats({ incomeTotal, expensePaid, expenseOpen, expenseOverdue })
+  }
+
+  async function loadTopSavings(fid: string) {
+    const { data: savingsData } = await supabase.from('savings').select('id,name,target_cents,parent_id').eq('family_id', fid).is('parent_id', null).order('name').limit(4)
+    if (!savingsData?.length) return
+    const ids = savingsData.map(s => s.id)
+    const { data: contribs } = await supabase.from('savings_contributions').select('saving_id,amount_cents,type').eq('family_id', fid).in('saving_id', ids)
+    const now = new Date()
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+    const { data: monthContribs } = await supabase.from('savings_contributions').select('saving_id,amount_cents,type').eq('family_id', fid).in('saving_id', ids).gte('date', monthStart)
+    setTopSavings(savingsData.map(s => {
+      const allDep = (contribs ?? []).filter(c => c.saving_id === s.id && c.type !== 'withdrawal').reduce((acc, c) => acc + c.amount_cents, 0)
+      const allWit = (contribs ?? []).filter(c => c.saving_id === s.id && c.type === 'withdrawal').reduce((acc, c) => acc + c.amount_cents, 0)
+      const delta = (monthContribs ?? []).filter(c => c.saving_id === s.id && c.type !== 'withdrawal').reduce((acc, c) => acc + c.amount_cents, 0)
+      return { id: s.id, name: s.name, balance: allDep - allWit, target: s.target_cents, delta }
+    }))
+  }
 
   const pendingReminders = reminders.filter((reminder) => !reminder.is_done)
   const completedReminders = reminders.filter((reminder) => reminder.is_done)
@@ -336,7 +466,8 @@ export default function Dashboard() {
     <>
       <Topbar
         title="Início"
-        subtitle="Espaço financeiro familiar"
+        subtitle="Espaço financeiro familiar — calma e clareza."
+        accent="#3E5F4B"
         variant="textured"
       />
       <div className="bg-paper">
@@ -352,13 +483,131 @@ export default function Dashboard() {
         </div>
 
         <div className="max-w-7xl mx-auto px-6 pb-8">
-          {/* Desktop hero - inside container with rounded corners */}
-          <div className="hidden md:block rounded-[20px] overflow-hidden mb-8 bg-[url('/texture-green.png')] bg-cover bg-center py-8 text-center text-paper">
-            <h1 className="text-4xl font-serif font-thin text-paper leading-snug px-6">
-              Livro de Finanças<br/>da Família {familyName || '-'}
-            </h1>
-            <div className="w-10 h-px bg-gold/60 mx-auto mt-5" />
+          {/* Desktop hero v2 — gradient card with 3-segment bar */}
+          {monthStats && (
+            <div className="hidden md:block mb-6 mt-4">
+              <DesktopHeroCard
+                familyName={familyName}
+                expensePaid={monthStats.expensePaid}
+                expenseOpen={monthStats.expenseOpen}
+                expenseOverdue={monthStats.expenseOverdue}
+                incomeTotal={monthStats.incomeTotal}
+              />
+            </div>
+          )}
+
+          {/* Quick actions — desktop only */}
+          <div className="hidden md:grid grid-cols-4 gap-3 mb-4">
+            {[
+              { label: 'Nova despesa', sub: 'Conta, compra, parcela', color: '#B05C3A', href: '/expenses', Icon: Receipt },
+              { label: 'Nova receita', sub: 'Salário, freelance',      color: '#3E8E5C', href: '/incomes',  Icon: TrendingUp },
+              { label: 'Guardar',      sub: 'Aporte num sonho',        color: '#3F6E7A', href: '/savings',  Icon: PiggyBank },
+              { label: 'Lembrete',     sub: 'Algo a não esquecer',     color: '#3E5F4B', href: '/reminders',Icon: Calendar },
+            ].map((a) => (
+              <a
+                key={a.label}
+                href={a.href}
+                className="flex items-center gap-3 bg-white border border-border rounded-[10px] px-4 py-3.5 hover:shadow-soft transition-vintage"
+                style={{ borderLeft: `3px solid ${a.color}` }}
+              >
+                <div
+                  className="w-9 h-9 rounded-[9px] flex items-center justify-center shrink-0"
+                  style={{ background: `${a.color}18`, color: a.color }}
+                >
+                  <a.Icon className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13.5px] font-semibold text-ink">{a.label}</p>
+                  <p className="text-[11px] text-ink/50 mt-0.5">{a.sub}</p>
+                </div>
+                <Plus className="w-3.5 h-3.5 text-ink/30 shrink-0" />
+              </a>
+            ))}
           </div>
+
+          {/* Insights promo — desktop only */}
+          <div
+            className="hidden md:flex items-center gap-4 rounded-xl border p-4 mb-4"
+            style={{ background: 'linear-gradient(135deg, rgba(63,110,122,0.06) 0%, rgba(194,164,93,0.05) 100%)', borderColor: 'rgba(63,110,122,0.2)' }}
+          >
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: 'rgba(63,110,122,0.12)', color: '#3F6E7A' }}
+            >
+              <Lightbulb className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="font-serif text-[16px] text-coffee">Insights da família</p>
+                <span className="text-[9px] font-bold uppercase tracking-[0.08em] px-1.5 py-0.5 rounded bg-gold/20 text-gold">NOVO</span>
+              </div>
+              <p className="text-[12.5px] text-ink/60 mt-0.5">
+                O Florim analisou seus últimos 90 dias e pode encontrar oportunidades de economia.
+              </p>
+            </div>
+            <a
+              href="/insights"
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-[10px] bg-coffee text-paper text-[13px] font-semibold hover:bg-coffee/90 transition-vintage shrink-0"
+            >
+              Ver insights
+            </a>
+          </div>
+
+          {/* Sonhos em curso strip — desktop only */}
+          {topSavings.length > 0 && (
+            <div className="hidden md:block mb-4">
+              <div className="flex items-baseline justify-between mb-2.5">
+                <div className="flex items-baseline gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-5 h-px bg-coffee/40" />
+                    <span className="text-[10.5px] tracking-[0.18em] uppercase font-semibold text-coffee/70">Sonhos em curso</span>
+                  </div>
+                  <p className="text-[12.5px] italic font-serif text-ink/50">Pequenos passos viram caminhos.</p>
+                </div>
+                <a href="/savings" className="text-[12px] text-petrol font-semibold hover:underline">Ver poupança →</a>
+              </div>
+              <div className="grid grid-cols-4 gap-3">
+                {topSavings.map((s, i) => {
+                  const pct = s.target ? Math.min(100, Math.round((s.balance / s.target) * 100)) : null
+                  const colors = ['#6FBF8A', '#C2A45D', '#3F6E7A', '#B05C3A']
+                  const c = colors[i % colors.length]
+                  return (
+                    <a key={s.id} href="/savings" className="bg-white rounded-xl border overflow-hidden hover:shadow-soft transition-vintage block" style={{ borderColor: `${c}33` }}>
+                      <div className="h-[5px]" style={{ background: c }} />
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <p className="font-serif text-[15px] text-coffee leading-tight">{s.name}</p>
+                          {pct !== null && (
+                            <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ background: `${c}20`, color: c }}>{pct}%</span>
+                          )}
+                        </div>
+                        <p className="font-numbers font-bold text-[20px] text-coffee tabular-nums">{formatBRL(s.balance)}</p>
+                        {s.target && <p className="text-[11px] text-ink/50 mt-0.5">de {formatBRL(s.target)}</p>}
+                        {pct !== null && (
+                          <div className="mt-2.5 h-[5px] rounded-full overflow-hidden" style={{ background: `${c}20` }}>
+                            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: c }} />
+                          </div>
+                        )}
+                        {s.delta > 0 && (
+                          <p className="text-[11px] font-semibold mt-2" style={{ color: c }}>+ {formatBRL(s.delta)} sem.</p>
+                        )}
+                      </div>
+                    </a>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Fallback: show old hero when month stats haven't loaded */}
+          {!monthStats && (
+            <div className="hidden md:block rounded-[20px] overflow-hidden mb-6 bg-[url('/texture-green.png')] bg-cover bg-center py-8 text-center text-paper">
+              <h1 className="text-4xl font-serif font-thin text-paper leading-snug px-6">
+                Livro de Finanças<br/>da Família {familyName || '-'}
+              </h1>
+              <div className="w-10 h-px bg-gold/60 mx-auto mt-5" />
+            </div>
+          )}
 
           <div className="flex justify-center pt-4 md:pt-0">
             <p className="max-w-xl text-center text-ink/60 font-ptSerif italic text-base md:text-lg leading-relaxed min-h-[2.5em]">
