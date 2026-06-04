@@ -44,14 +44,18 @@ type PendingActionPayload =
 
 function buildPhoneCandidates(phone: string): string[] {
   const digits = phone.replace(/\D/g, '')
-  const candidates = new Set<string>([digits])
+  const raw = new Set<string>([digits])
   if (digits.startsWith('55') && digits.length === 12) {
-    candidates.add(digits.slice(0, 4) + '9' + digits.slice(4))
+    raw.add(digits.slice(0, 4) + '9' + digits.slice(4))
   }
   if (digits.startsWith('55') && digits.length === 13 && digits[4] === '9') {
-    candidates.add(digits.slice(0, 4) + digits.slice(5))
+    raw.add(digits.slice(0, 4) + digits.slice(5))
   }
-  return Array.from(candidates)
+  const candidates: string[] = []
+  for (const d of raw) {
+    candidates.push(d, '+' + d)
+  }
+  return candidates
 }
 
 function getFallbackCategory(
