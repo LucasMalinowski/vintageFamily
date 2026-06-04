@@ -4,7 +4,7 @@ export interface AIExtractedRecord {
   amount: number  // in reais (e.g. 100 → 100, 10.50 → 10.5); converted to cents in saveRecord
   date: string
   category_name: string | null
-  payment_method: 'PIX' | 'Credito' | 'Debito' | null
+  payment_method: 'PIX' | 'Credito' | 'Debito' | 'ValeAlimentacao' | 'ValeRefeicao' | null
   status?: 'paid' | 'open'
   installments?: number
   saving_name?: string
@@ -129,7 +129,7 @@ Tipos de registro:
 
 "expense" - gastos, compras, pagamentos ("gastei", "paguei", "comprei"):
   - amount: valor em reais exatamente como mencionado pelo usuário (ex: "50" → 50, "10,50" → 10.5, "1500" → 1500). NUNCA converta para centavos.
-  - payment_method: "PIX" | "Credito" | "Debito" | null. Use "Credito" para parcelado.
+  - payment_method: "PIX" | "Credito" | "Debito" | "ValeAlimentacao" | "ValeRefeicao" | null. Use "Credito" para parcelado. Use "ValeAlimentacao" para vale alimentação/benefício alimentação. Use "ValeRefeicao" para vale refeição.
   - status: "paid" (padrão - já pagou/comprou) | "open" (ainda precisa pagar: "tenho que pagar", "vou pagar")
   - installments: número de parcelas. Padrão 1. "2x"→2, "3x"→3.
     IMPORTANTE: amount é o valor TOTAL em reais (ex: "150 em 3x" → amount:150, installments:3)
@@ -174,6 +174,9 @@ Exemplos (datas ilustrativas - use as datas reais do contexto fornecido):
 
 "me lembra de pagar o IPVA na sexta"
 → {"records":[{"type":"reminder","description":"Pagar IPVA","amount":0,"date":"2025-06-13","category_name":null,"payment_method":null}]}
+
+"45,73 mercado vale alimentação"
+→ {"records":[{"type":"expense","description":"Mercado","amount":45.73,"date":"2025-06-10","category_name":"Mercado","payment_method":"ValeAlimentacao","status":"paid","installments":1}]}
 
 "oi tudo bem?"
 → {"records":[]}`

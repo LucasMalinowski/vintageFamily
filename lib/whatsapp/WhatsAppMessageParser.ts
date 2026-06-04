@@ -580,10 +580,12 @@ async function saveRecord(
 
   // ── Category resolution (expense, income) ───────────────────────────────────
   const kind = record.type === 'income' ? 'income' : 'expense'
+  const kindFilteredCategories = categoryList.filter((c) => c.kind === kind)
+  const kindFilteredLabelMap = buildCategoryLabelMap(kindFilteredCategories)
 
   let categoryId = record.category_name
-    ? (findCategoryIdByStoredName(categoryList, record.category_name) ??
-       findCategoryIdByLabel(categoryList, labelMap, record.category_name))
+    ? (findCategoryIdByStoredName(kindFilteredCategories, record.category_name) ??
+       findCategoryIdByLabel(kindFilteredCategories, kindFilteredLabelMap, record.category_name))
     : null
 
   let categoryName = record.category_name
@@ -594,7 +596,7 @@ async function saveRecord(
     categoryName = fallback?.name ?? (kind === 'expense' ? 'Outros' : 'Outras Receitas')
   }
 
-  const resolvedLabel = categoryId ? (labelMap.get(categoryId) ?? categoryName) : categoryName
+  const resolvedLabel = categoryId ? (kindFilteredLabelMap.get(categoryId) ?? categoryName) : categoryName
 
   // ── Expense ─────────────────────────────────────────────────────────────────
   if (record.type === 'expense') {
