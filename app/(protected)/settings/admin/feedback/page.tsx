@@ -12,7 +12,7 @@ const LOCATIONS = [
   'WhatsApp - Editar/Apagar registro',
   'App - Despesas',
   'App - Receitas',
-  'App - Poupanças',
+  'App - Objetivos',
   'App - Lembretes',
   'App - Importar Extrato',
   'App - Configurações',

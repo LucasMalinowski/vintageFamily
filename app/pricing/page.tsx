@@ -34,7 +34,7 @@ const PLAN_CONTENT: Record<PlanSetting['plan_code'], PlanContent> = {
     benefitsTitle: 'Benefícios:',
     benefits: [
       'Controle ilimitado de Despesas e receitas',
-      'Organização de sonhos e poupanças',
+      'Organização de sonhos e objetivos',
       'Visão clara de saldo mensal',
       'Comparativos históricos completos',
       'WhatsApp ilimitado + consultas com IA',

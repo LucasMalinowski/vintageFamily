@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     default: 'Florim - Gestão financeira familiar',
     template: '%s | Florim',
   },
-  description: 'Gestão financeira familiar com alma vintage. Controle suas finanças em família, com despesas, receitas, metas de poupança e insights semanais.',
+  description: 'Gestão financeira familiar com alma vintage. Controle suas finanças em família, com despesas, receitas, objetivos financeiros e insights semanais.',
   metadataBase: new URL('https://florim.app'),
   alternates: {
     canonical: '/',
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
   openGraph: {
     siteName: 'Florim',
     title: 'Florim - Gestão financeira familiar',
-    description: 'Gestão financeira familiar com alma vintage. Controle suas finanças em família, com despesas, receitas, metas de poupança e insights semanais.',
+    description: 'Gestão financeira familiar com alma vintage. Controle suas finanças em família, com despesas, receitas, objetivos financeiros e insights semanais.',
     url: 'https://florim.app',
     type: 'website',
     locale: 'pt_BR',

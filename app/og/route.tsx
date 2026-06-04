@@ -70,7 +70,7 @@ export async function GET() {
         >
           {/* Feature pills */}
           <div style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
-            {['Despesas', 'Receitas', 'Poupança', 'Insights IA'].map((label) => (
+            {['Despesas', 'Receitas', 'Objetivos', 'Insights IA'].map((label) => (
               <div
                 key={label}
                 style={{

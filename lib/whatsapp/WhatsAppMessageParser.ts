@@ -15,7 +15,7 @@ const USAGE_HINT = `Olá! 👋 Para registrar suas finanças, envie mensagens co
 💸 *Despesa:* "Gastei 50 reais no mercado no pix"
 💸 *Parcelado:* "Comprei um tênis de 150 em 3x"
 💰 *Receita:* "Recebi 1500 de salário"
-⭐ *Poupança:* "Guardei 200 para a viagem"
+⭐ *Objetivo:* "Guardei 200 para a viagem"
 📝 *Lembrete:* "Me lembre de pagar o aluguel"
 
 Você também pode combinar: "Gastei 30 na farmácia e 55 de gasolina"`
@@ -118,7 +118,7 @@ function formatRecordSummary(record: AIExtractedRecord): string {
   }
 
   if (record.type === 'savings_contribution') {
-    return `${formatBRL(Math.round((record.amount ?? 0) * 100))} para ${record.saving_name ?? record.description} (Poupança)`
+    return `${formatBRL(Math.round((record.amount ?? 0) * 100))} para ${record.saving_name ?? record.description} (Objetivo)`
   }
 
   const category = record.category_name ? ` (${record.category_name})` : ''
@@ -715,7 +715,7 @@ async function saveRecord(
   const saving = exactMatches?.[0] ?? partialMatches?.[0] ?? null
 
   if (!saving) {
-    return { ok: false, line: `⭐ ${formatBRL(amount_cents)} - Poupança "${savingName}" não encontrada no Florim` }
+    return { ok: false, line: `⭐ ${formatBRL(amount_cents)} - Objetivo "${savingName}" não encontrado no Florim` }
   }
 
   const { data, error } = await supabaseAdmin
@@ -731,7 +731,7 @@ async function saveRecord(
     .select('id')
     .single()
 
-  const line = `⭐ ${formatBRL(amount_cents)} - ${saving.name} (Poupança)`
+  const line = `⭐ ${formatBRL(amount_cents)} - ${saving.name} (Objetivo)`
   if (error || !data?.id) {
     console.error('[WA] savings insert error:', error?.message)
     return { ok: false, line }

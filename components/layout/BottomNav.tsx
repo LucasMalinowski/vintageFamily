@@ -8,7 +8,7 @@ const tabs = [
   { icon: Home, label: 'Início', href: '/inicio' },
   { icon: BanknoteArrowUp, label: 'Despesas', href: '/expenses' },
   { icon: BanknoteArrowDown, label: 'Receitas', href: '/incomes' },
-  { icon: PiggyBank, label: 'Poupança', href: '/savings' },
+  { icon: PiggyBank, label: 'Objetivos', href: '/savings' },
   { icon: ChartColumnBig, label: 'Comparativos', href: '/comparatives' },
 ]
 

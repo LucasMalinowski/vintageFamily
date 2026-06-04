@@ -285,7 +285,7 @@ export class WhatsAppQueryHandler {
   }
 
   private static buildSavingsMessage(savings: InternalSaving[], period: string): string {
-    const lines = ['Suas poupanças:\n']
+    const lines = ['Seus objetivos:\n']
 
     const periodStr = period ? ` ${period}` : ''
     savings.forEach(d => {

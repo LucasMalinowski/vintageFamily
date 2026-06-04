@@ -59,7 +59,7 @@ Exemplos:
 "Quanto gastei em comida esse mês?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":"comida","status_filter":null,"item_index":null,"edit_amount":null}
 "Qual meu maior gasto essa semana?" → {"type":"query","data_needed":["expenses"],"time_range":"last_7_days","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
 "Quanto recebi esse ano?" → {"type":"query","data_needed":["incomes"],"time_range":"current_year","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
-"Me mostra minha poupança" → {"type":"query","data_needed":["savings"],"time_range":"all","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
+"Me mostra meus objetivos" → {"type":"query","data_needed":["savings"],"time_range":"all","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
 "Quais meus lembretes essa semana?" → {"type":"query","data_needed":["reminders"],"time_range":"next_7_days","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
 "O que tenho pendente pra pagar?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":null,"status_filter":"open","item_index":null,"edit_amount":null}
 "Quais contas tenho a pagar?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":null,"status_filter":"open","item_index":null,"edit_amount":null}
@@ -138,8 +138,8 @@ Tipos de registro:
   - amount: valor em reais exatamente como mencionado (ex: "100" → 100, "1500" → 1500)
   - payment_method: sempre null (método de recebimento não é rastreado)
 
-"savings_contribution" - poupança para objetivo ("guardei para", "poupei para", "separei para", "reservei para"):
-  - saving_name: nome da poupança mencionada
+"savings_contribution" - aporte para objetivo ("guardei para", "poupei para", "separei para", "reservei para"):
+  - saving_name: nome do objetivo mencionado
   - amount: valor em reais
 
 "reminder" - lembretes e tarefas ("me lembra de", "não esquecer de", "lembrete para", "preciso lembrar de", "tenho que lembrar de", "não posso esquecer de", "coloca um lembrete", "me avisa de"):
@@ -167,7 +167,7 @@ Exemplos (datas ilustrativas - use as datas reais do contexto fornecido):
 → {"records":[{"type":"income","description":"Formatação","amount":100,"date":"2025-06-10","category_name":"Outras Receitas","payment_method":null}]}
 
 "guardei 200 para a viagem e gastei 30 no almoço"
-→ {"records":[{"type":"savings_contribution","description":"Poupança viagem","amount":200,"date":"2025-06-10","category_name":null,"payment_method":null,"saving_name":"viagem"},{"type":"expense","description":"Almoço","amount":30,"date":"2025-06-10","category_name":"Alimentação","payment_method":null,"status":"paid","installments":1}]}
+→ {"records":[{"type":"savings_contribution","description":"Objetivo viagem","amount":200,"date":"2025-06-10","category_name":null,"payment_method":null,"saving_name":"viagem"},{"type":"expense","description":"Almoço","amount":30,"date":"2025-06-10","category_name":"Alimentação","payment_method":null,"status":"paid","installments":1}]}
 
 "me lembre de comprar ovo"
 → {"records":[{"type":"reminder","description":"Comprar ovo","amount":0,"date":"2025-06-10","category_name":null,"payment_method":null}]}

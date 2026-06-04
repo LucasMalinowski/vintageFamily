@@ -194,6 +194,15 @@ export default function CategorySettingsModal({
     () => tree.find((main) => main.id === selectedMainId) || null,
     [tree, selectedMainId]
   )
+  const isSavingsScope = scope === 'savings'
+  const entityLabel = isSavingsScope ? 'objetivo' : 'categoria'
+  const entityLabelTitle = isSavingsScope ? 'Objetivo' : 'Categoria'
+  const mainEntityLabel = isSavingsScope ? 'objetivo principal' : 'categoria principal'
+  const mainEntityLabelTitle = isSavingsScope ? 'Objetivo Principal' : 'Categoria Principal'
+  const childEntityLabel = isSavingsScope ? 'subobjetivo' : 'subcategoria'
+  const childEntityLabelTitle = isSavingsScope ? 'Subobjetivo' : 'Subcategoria'
+  const mainEntityPluralTitle = isSavingsScope ? 'Objetivos principais' : 'Categorias principais'
+  const childEntityPluralTitle = isSavingsScope ? 'Subobjetivos' : 'Subcategorias'
 
   useEffect(() => {
     if (tree.length === 0) {
@@ -224,7 +233,7 @@ export default function CategorySettingsModal({
 
   const startCreateChild = () => {
     if (!selectedMain) {
-      alert('Selecione uma categoria principal primeiro.')
+      alert(`Selecione um ${mainEntityLabel} primeiro.`)
       return
     }
     setComposerMode('child')
@@ -261,7 +270,7 @@ export default function CategorySettingsModal({
     if (!familyId) return
     const name = normalizeCategoryName(draftName)
     if (!name) {
-      alert('Informe o nome da categoria.')
+      alert(`Informe o nome d${isSavingsScope ? 'o' : 'a'} ${entityLabel}.`)
       return
     }
     setSaving(true)
@@ -326,7 +335,7 @@ export default function CategorySettingsModal({
 
   const handleDelete = async (item: NodeItem) => {
     if (!familyId) return
-    if (!confirm(`Excluir a categoria "${item.name}"?`)) return
+    if (!confirm(`Excluir ${isSavingsScope ? 'o' : 'a'} ${entityLabel} "${item.name}"?`)) return
 
 	    if (scope === 'savings') {
 	      const childIds: string[] = []
@@ -371,7 +380,7 @@ export default function CategorySettingsModal({
           value={draftName}
           onChange={(event) => setDraftName(event.target.value)}
           autoFocus
-          aria-label="Nome da categoria"
+          aria-label={`Nome d${isSavingsScope ? 'o' : 'a'} ${entityLabel}`}
           className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50"
           placeholder={placeholder}
         />
@@ -562,7 +571,7 @@ export default function CategorySettingsModal({
     )
   }
 
-  const modalTitle = isExpenseTable ? 'Gerenciar categorias · Despesas' : 'Categorias'
+  const modalTitle = isExpenseTable ? 'Gerenciar categorias · Despesas' : (isSavingsScope ? 'Objetivos' : 'Categorias')
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} size="xl">
@@ -575,15 +584,15 @@ export default function CategorySettingsModal({
           <p className="text-sm text-ink/60 p-4">Carregando…</p>
         ) : tree.length === 0 ? (
           <div className="space-y-3 p-4">
-            <p className="text-sm text-ink/60">Nenhuma categoria cadastrada.</p>
+            <p className="text-sm text-ink/60">Nenhum{isSavingsScope ? '' : 'a'} {entityLabel} cadastrad{isSavingsScope ? 'o' : 'a'}.</p>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={draftName}
                 onChange={(event) => setDraftName(event.target.value)}
-                aria-label="Nova Categoria Principal"
+                aria-label={`Nov${isSavingsScope ? 'o' : 'a'} ${mainEntityLabelTitle}`}
                 className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-                placeholder="Nova Categoria Principal"
+                placeholder={`Nov${isSavingsScope ? 'o' : 'a'} ${mainEntityLabelTitle}`}
               />
               <button
                 type="button"
@@ -656,7 +665,7 @@ export default function CategorySettingsModal({
 
                     {isEditingThis ? (
                       <div className="px-3 py-3">
-                        <ComposerForm placeholder="Nome da categoria" showIconPicker onCancel={resetComposer} />
+                        <ComposerForm placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${entityLabel}`} showIconPicker onCancel={resetComposer} />
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 px-3 py-3">
@@ -665,7 +674,7 @@ export default function CategorySettingsModal({
                           {main.icon && <CategoryIcon name={main.icon} className="w-4 h-4 shrink-0 text-sidebar/60" />}
                           <div className="min-w-0">
                             <span className="block font-semibold text-sidebar truncate">{main.name}</span>
-                            <span className="text-[10px] text-ink/40">{(main as NodeItem & { children?: NodeItem[] }).children?.length ?? 0} subcategorias{main.is_system ? ' · Sistema' : ''}</span>
+                            <span className="text-[10px] text-ink/40">{(main as NodeItem & { children?: NodeItem[] }).children?.length ?? 0} {childEntityLabel}{(main as NodeItem & { children?: NodeItem[] }).children?.length === 1 ? '' : 's'}{main.is_system ? ' · Sistema' : ''}</span>
                           </div>
                         </button>
                         <div className="flex items-center gap-1 shrink-0">
@@ -688,7 +697,7 @@ export default function CategorySettingsModal({
                               <div className="h-0.5 bg-gradient-to-r from-petrol via-olive to-gold" />
                               {isEditingChild ? (
                                 <div className="px-3 py-2">
-                                  <ComposerForm placeholder="Nome da subcategoria" onCancel={resetComposer} />
+                                  <ComposerForm placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${childEntityLabel}`} onCancel={resetComposer} />
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-2 px-3 py-2">
@@ -711,12 +720,12 @@ export default function CategorySettingsModal({
                         })}
                         {isNewChildHere ? (
                           <div className="ml-5 px-3 py-2 rounded-[14px] border-2 border-coffee/30 bg-offWhite">
-                            <ComposerForm placeholder="Nome da subcategoria" onCancel={resetComposer} />
+                            <ComposerForm placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${childEntityLabel}`} onCancel={resetComposer} />
                           </div>
                         ) : (
                           <button type="button" onClick={() => startCreateChildFor(main.id)} className="ml-5 flex items-center gap-1.5 text-xs text-petrol px-2 py-1.5 rounded-lg border border-petrol/30 hover:bg-petrol/5 transition-vintage">
                             <Plus className="w-3 h-3" />
-                            Nova subcategoria
+                            Nov{isSavingsScope ? 'o' : 'a'} {childEntityLabel}
                           </button>
                         )}
                       </div>
@@ -727,11 +736,11 @@ export default function CategorySettingsModal({
 
               <div className="pt-1 space-y-2">
                 <button type="button" onClick={startCreateMain} className="w-full px-3 py-2.5 rounded-lg bg-petrol text-white text-sm hover:bg-petrol/90 transition-vintage">
-                  + Nova Categoria Principal
+                  + Nov{isSavingsScope ? 'o' : 'a'} {mainEntityLabelTitle}
                 </button>
                 {isMainComposer && !editingId && (
                   <div className="px-3 py-3 rounded-lg border-2 border-coffee/30 bg-offWhite">
-                    <ComposerForm placeholder="Nome da categoria principal" showIconPicker onCancel={resetComposer} />
+                    <ComposerForm placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${mainEntityLabel}`} showIconPicker onCancel={resetComposer} />
                   </div>
                 )}
               </div>
@@ -741,7 +750,7 @@ export default function CategorySettingsModal({
             <div className="hidden md:grid grid-cols-2 gap-3 flex-1 p-4">
               {/* Left: main categories */}
               <div className="rounded-lg border border-border/80 bg-bg/50 p-2">
-                <p className="text-xs uppercase tracking-wide text-ink/50 px-2 py-1">Categorias principais</p>
+                <p className="text-xs uppercase tracking-wide text-ink/50 px-2 py-1">{mainEntityPluralTitle}</p>
                 <div className="space-y-1 max-h-[56vh] overflow-auto pr-1">
                   {tree.map((main) => {
                     const active = selectedMainId === main.id
@@ -754,7 +763,7 @@ export default function CategorySettingsModal({
                           <div className="px-3 py-3 space-y-2">
                             <div className="flex gap-2 items-center">
                               <IconPicker value={draftIcon} onSelect={setDraftIcon} />
-                              <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label="Nome da categoria" className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder="Nome da categoria" />
+                              <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label={`Nome d${isSavingsScope ? 'o' : 'a'} ${entityLabel}`} className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${entityLabel}`} />
                             </div>
                             <div className="flex gap-2">
                               <button type="button" onClick={resetComposer} className="px-3 py-1.5 rounded-lg border border-border text-sm text-ink/70">Cancelar</button>
@@ -791,13 +800,13 @@ export default function CategorySettingsModal({
                 </div>
                 <div className="mt-3 pt-2 border-t border-border/70 space-y-2">
                   <button type="button" onClick={startCreateMain} className="w-full px-3 py-2 rounded-md bg-petrol text-white text-sm hover:bg-petrol/90 transition-vintage">
-                    Nova Categoria Principal
+                    Nov{isSavingsScope ? 'o' : 'a'} {mainEntityLabelTitle}
                   </button>
                   {isMainComposer && !editingId ? (
                     <div className="space-y-2">
                       <div className="flex gap-2 items-center">
                         <IconPicker value={draftIcon} onSelect={setDraftIcon} />
-                        <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label="Nome da categoria principal" className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder="Nome da categoria principal" />
+                        <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label={`Nome d${isSavingsScope ? 'o' : 'a'} ${mainEntityLabel}`} className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${mainEntityLabel}`} />
                       </div>
                       <div className="flex gap-2">
                         <button type="button" onClick={resetComposer} className="px-3 py-2 rounded-lg border border-border text-sm text-ink/70">Cancelar</button>
@@ -810,11 +819,11 @@ export default function CategorySettingsModal({
 
               {/* Right: subcategories */}
               <div className="rounded-lg border border-border/80 bg-bg/50 p-2">
-                <p className="text-xs uppercase tracking-wide text-ink/50 px-2 py-1">{selectedMain ? `Subcategorias de ${selectedMain.name}` : 'Subcategorias'}</p>
+                <p className="text-xs uppercase tracking-wide text-ink/50 px-2 py-1">{selectedMain ? `${childEntityPluralTitle} de ${selectedMain.name}` : childEntityPluralTitle}</p>
                 {!selectedMain ? (
-                  <p className="text-sm text-ink/60 px-2 py-3">Selecione uma categoria principal.</p>
+                  <p className="text-sm text-ink/60 px-2 py-3">Selecione um{isSavingsScope ? '' : 'a'} {mainEntityLabel}.</p>
                 ) : (selectedMain as NodeItem & { children?: NodeItem[] }).children?.length === 0 && !(isChildComposer && !editingId) ? (
-                  <p className="text-sm text-ink/60 px-2 py-3">Sem subcategorias.</p>
+                  <p className="text-sm text-ink/60 px-2 py-3">Sem {childEntityLabel}s.</p>
                 ) : (
                   <div className="space-y-3 max-h-[56vh] overflow-auto pr-1">
                     <div className={`overflow-hidden rounded-[18px] border-2 ${mainStackTone} shadow-soft`}>
@@ -823,7 +832,7 @@ export default function CategorySettingsModal({
                         <div className="min-w-0 flex items-center gap-2">
                           {selectedMain.icon && <CategoryIcon name={selectedMain.icon} className="w-5 h-5 shrink-0 text-sidebar/60" />}
                           <div className="min-w-0">
-                            <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">Categoria base</p>
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">{entityLabelTitle} base</p>
                             <h5 className="text-lg font-semibold text-sidebar truncate">{selectedMain.name}</h5>
                           </div>
                         </div>
@@ -837,7 +846,7 @@ export default function CategorySettingsModal({
                           <div className="h-1 bg-gradient-to-r from-petrol via-olive to-gold" />
                           {isEditingChild ? (
                             <div className="px-4 py-3 space-y-2">
-                              <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label="Nome da subcategoria" className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder="Nome da subcategoria" />
+                              <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label={`Nome d${isSavingsScope ? 'o' : 'a'} ${childEntityLabel}`} className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${childEntityLabel}`} />
                               <div className="flex gap-2">
                                 <button type="button" onClick={resetComposer} className="px-3 py-1.5 rounded-lg border border-border text-sm text-ink/70">Cancelar</button>
                                 <button type="button" onClick={saveComposer} disabled={saving} className="px-3 py-1.5 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60">{saving ? 'Salvando...' : 'Salvar'}</button>
@@ -847,7 +856,7 @@ export default function CategorySettingsModal({
                             <>
                               <div className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left">
                                 <div className="min-w-0">
-                                  <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">Subcategoria</p>
+                                  <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">{childEntityLabelTitle}</p>
                                   <span className="block text-sm font-semibold text-ink/80 truncate">{child.name}</span>
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0">
@@ -872,11 +881,11 @@ export default function CategorySettingsModal({
 
                 <div className="mt-3 pt-2 border-t border-border/70 space-y-2">
                   <button type="button" onClick={startCreateChild} className="w-full px-3 py-2 rounded-md bg-petrol text-white text-sm hover:bg-petrol/90 transition-vintage" disabled={!selectedMain}>
-                    Nova Subcategoria
+                    Nov{isSavingsScope ? 'o' : 'a'} {childEntityLabelTitle}
                   </button>
                   {isChildComposer && !editingId ? (
                     <div className="space-y-2">
-                      <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label="Nova subcategoria" className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder="Nome da subcategoria" />
+                      <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label={`Nov${isSavingsScope ? 'o' : 'a'} ${childEntityLabel}`} className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${childEntityLabel}`} />
                       <div className="flex gap-2">
                         <button type="button" onClick={resetComposer} className="px-3 py-2 rounded-lg border border-border text-sm text-ink/70">Cancelar</button>
                         <button type="button" onClick={saveComposer} disabled={saving} className="px-3 py-2 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60">{saving ? 'Salvando...' : 'Criar'}</button>

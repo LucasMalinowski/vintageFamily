@@ -561,11 +561,11 @@ export default function Dashboard() {
                 <div className="flex items-baseline gap-3">
                   <div className="flex items-center gap-2.5">
                     <span className="w-5 h-px bg-coffee/40" />
-                    <span className="text-[10.5px] tracking-[0.18em] uppercase font-semibold text-coffee/70">Sonhos em curso</span>
+                    <span className="text-[10.5px] tracking-[0.18em] uppercase font-semibold text-coffee/70">Objetivos em curso</span>
                   </div>
                   <p className="text-[12.5px] italic font-serif text-ink/50">Pequenos passos viram caminhos.</p>
                 </div>
-                <Link href="/savings" className="text-[12px] text-petrol font-semibold hover:underline">Ver poupança →</Link>
+                <Link href="/savings" className="text-[12px] text-petrol font-semibold hover:underline">Ver objetivos →</Link>
               </div>
               <div className="grid grid-cols-4 gap-3">
                 {topSavings.map((s, i) => {

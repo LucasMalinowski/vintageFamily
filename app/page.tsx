@@ -52,7 +52,7 @@ const WA_EXAMPLES = [
   { msg: 'Gastei 50 no mercado no pix', result: 'Despesa registrada automaticamente' },
   { msg: 'Comprei um tênis de 150 em 3x', result: '3 parcelas criadas no sistema' },
   { msg: 'Recebi 1500 de salário', result: 'Receita lançada na família' },
-  { msg: 'Guardei 200 para a viagem', result: 'Poupança atualizada' },
+  { msg: 'Guardei 200 para a viagem', result: 'Objetivo atualizado' },
   { msg: 'Quanto gastei esse mês?', result: 'Resumo enviado em segundos' },
 ]
 
@@ -69,7 +69,7 @@ const FEATURES = [
   },
   {
     icon: PiggyBank,
-    title: 'Poupança & Sonhos',
+    title: 'Objetivos & Sonhos',
     copy: 'Metas com nome e valor: viagem, escola, reforma. Os sonhos ficam à vista.',
   },
   {
@@ -123,7 +123,7 @@ const STEPS = [
   {
     number: '02',
     title: 'Registre receitas e despesas',
-    body: 'Lance contas, parcelas e poupanças no app, ou mande uma mensagem no WhatsApp.',
+    body: 'Lance contas, parcelas e objetivos no app, ou mande uma mensagem no WhatsApp.',
   },
   {
     number: '03',
@@ -142,7 +142,7 @@ const PLANS = [
     savingsBadge: null,
     bullets: [
       'Despesas e Receitas',
-      'Poupança e sonhos',
+      'Objetivos e sonhos',
       '25 registros por WhatsApp/mês',
       '7 consultas com IA/mês',
       '3 insights sob demanda/mês',
@@ -306,7 +306,7 @@ export default function Home() {
                 Cuide das finanças<br />da família, juntos.
               </h1>
               <p className="text-sidebar/70 font-light text-[17px] leading-relaxed mb-7 max-w-[440px]">
-                O Florim organiza contas, receitas, poupanças, lembretes e insights com IA
+                O Florim organiza contas, receitas, objetivos, lembretes e insights com IA
                 com dados compartilhados em tempo real. Comece grátis e evolua quando fizer sentido.
               </p>
               <div className="flex gap-3 mb-7">
@@ -371,7 +371,7 @@ export default function Home() {
               </h2>
               <p className="text-[14px] md:text-[16px] font-light text-ink/65 leading-relaxed mb-7">
                 Sem precisar abrir o app. É só mandar uma mensagem como você falaria com alguém.
-                O Florim entende e lança despesas, receitas, parcelas, poupanças e lembretes,
+                O Florim entende e lança despesas, receitas, parcelas, objetivos e lembretes,
                 sugere categorias e responde perguntas sobre os números da família.
               </p>
               <ul className="space-y-3">

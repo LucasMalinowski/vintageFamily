@@ -174,7 +174,7 @@ export default function Savings() {
   }, [savings, selectedSavingId])
 
   const getSavingLabel = (savingId: string) =>
-    savingLabelMap.get(savingId) || savings.find((s) => s.id === savingId)?.name || 'Categoria'
+    savingLabelMap.get(savingId) || savings.find((s) => s.id === savingId)?.name || 'Objetivo'
 
   async function loadSavings() {
     const { data } = await supabase
@@ -449,15 +449,15 @@ export default function Savings() {
 
   const exportSubtitle = [
     `Período: ${selectedMonth === ALL_MONTHS_VALUE ? 'todos os meses' : getMonthLabel(selectedMonth)} / ${selectedYear === ALL_YEARS_VALUE ? 'todos os anos' : getYearLabel(selectedYear)}`,
-    selectedSavingId ? `Categoria: ${getSavingLabel(selectedSavingId)}` : null,
+    selectedSavingId ? `Objetivo: ${getSavingLabel(selectedSavingId)}` : null,
     searchTerm ? `Busca: ${searchTerm}` : null,
   ]
     .filter(Boolean)
     .join(' • ')
 
   const exportTable = {
-    filename: `poupancas-${format(new Date(), 'yyyy-MM-dd')}`,
-    title: 'Poupanças',
+    filename: `objetivos-${format(new Date(), 'yyyy-MM-dd')}`,
+    title: 'Objetivos',
     subtitle: exportSubtitle,
     headers: ['Nome', 'Tipo', 'Meta', 'Total', 'Movimentos', 'Última atualização'],
     rows: exportRows,
@@ -467,14 +467,14 @@ export default function Savings() {
     const totalSaved = visibleSavings.reduce((sum, s) => sum + (savingTotals.get(s.id)?.total ?? 0), 0)
     const totalTarget = visibleSavings.reduce((sum, s) => sum + (s.target_cents ?? 0), 0)
     return buildBrandedPdfBlob({
-      title: 'Poupanças',
+      title: 'Objetivos',
       filterSummary: exportSubtitle || 'Sem filtros ativos',
       headers: ['Nome', 'Tipo', 'Meta', 'Movimentos', 'Ultima atualizacao', 'Total'],
       rows: exportRows,
       cards: [
         { label: 'TOTAL GUARDADO', value: formatBRL(totalSaved) },
         ...(totalTarget > 0 ? [{ label: 'META TOTAL', value: formatBRL(totalTarget) }] : []),
-        { label: 'POUPANÇAS', value: String(visibleSavings.length) },
+        { label: 'OBJETIVOS', value: String(visibleSavings.length) },
       ],
       generatedDate: formatDate(new Date()),
       accentColor: '#3F6E7A',
@@ -529,8 +529,8 @@ export default function Savings() {
     <>
       <div className="flex flex-col h-full md:min-h-screen">
         <Topbar
-          title="Poupança"
-          subtitle="Guardar é uma forma silenciosa de cuidar."
+          title="Objetivos"
+          subtitle="Transforme planos em conquistas acompanháveis."
           accent="#3F6E7A"
           variant="textured"
         />
@@ -560,7 +560,7 @@ export default function Savings() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Buscar..."
                   autoFocus
-                  aria-label="Buscar poupanças"
+                  aria-label="Buscar objetivos"
                   className="h-[38px] w-full rounded-[10px] border border-border bg-bg pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-petrol/30"
                 />
               </div>
@@ -615,7 +615,7 @@ export default function Savings() {
                     <TrendingUp className="w-4 h-4 text-ink/60" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-ink">Guardar em poupança</p>
+                    <p className="text-sm font-medium text-ink">Guardar no objetivo</p>
                     <p className="text-xs text-ink/45">Registrar depósito</p>
                   </div>
                 </button>
@@ -628,7 +628,7 @@ export default function Savings() {
                     <TrendingDown className="w-4 h-4 text-ink/60" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-ink">Resgatar da poupança</p>
+                    <p className="text-sm font-medium text-ink">Resgatar do objetivo</p>
                     <p className="text-xs text-ink/45">Registrar retirada</p>
                   </div>
                 </button>
@@ -641,8 +641,8 @@ export default function Savings() {
                     <Tag className="w-4 h-4 text-ink/60" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-ink">Categorias</p>
-                    <p className="text-xs text-ink/45">Gerenciar poupanças</p>
+                    <p className="text-sm font-medium text-ink">Objetivos</p>
+                    <p className="text-xs text-ink/45">Gerenciar objetivos</p>
                   </div>
                 </button>
                 <button
@@ -693,17 +693,17 @@ export default function Savings() {
           </button>
           <div className="flex items-center h-[38px] bg-white border border-border rounded-[10px] px-3 gap-2 flex-1 max-w-[380px]">
             <Search className="w-4 h-4 text-petrol shrink-0" />
-            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Buscar por nome ou categoria..." aria-label="Buscar por nome ou categoria" className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none" />
+            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Buscar por nome ou objetivo..." aria-label="Buscar por nome ou objetivo" className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none" />
           </div>
           <div className="flex-1" />
           <button type="button" onClick={() => setIsSavingSettingsOpen(true)} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage">
-            <Tag className="w-4 h-4" /> Categorias
+            <Tag className="w-4 h-4" /> Objetivos
           </button>
           <button type="button" onClick={handleExportPdf} disabled={!visibleSavings.length || exportingFormat !== null} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage disabled:opacity-40">
             <Upload className="w-4 h-4" /> Exportar
           </button>
           <button type="button" onClick={() => setIsSavingSettingsOpen(true)} className="flex items-center gap-1.5 h-[38px] px-4 rounded-[10px] text-white text-[13px] font-semibold transition-vintage" style={{ background: '#3F6E7A' }}>
-            <Plus className="w-4 h-4" /> Novo sonho
+            <Plus className="w-4 h-4" /> Novo objetivo
           </button>
         </div>
 
@@ -719,10 +719,10 @@ export default function Savings() {
               <div className="min-w-[160px] max-w-[260px]">
                 <Select
                   variant="filter"
-                  label="Poupança"
+                  label="Objetivo"
                   value={selectedSavingId}
                   onChange={setSelectedSavingId}
-                  options={[{ value: '', label: 'Todas' }, ...savingOptions]}
+                  options={[{ value: '', label: 'Todos' }, ...savingOptions]}
                 />
               </div>
               {activeFiltersCount > 0 && (
@@ -751,10 +751,10 @@ export default function Savings() {
                 />
                 <Select
                   variant="filter"
-                  label="Categoria"
+                  label="Objetivo"
                   value={selectedSavingId}
                   onChange={setSelectedSavingId}
-                  options={[{ value: '', label: 'Todas' }, ...savingOptions]}
+                  options={[{ value: '', label: 'Todos' }, ...savingOptions]}
                 />
               </FilterSidebar>
             </div>
@@ -781,9 +781,9 @@ export default function Savings() {
                       />
                     ) : (
                       <AnalyticsKpiCard
-                        label="Poupanças"
+                        label="Objetivos"
                         value={String(savings.filter(s => !s.parent_id).length)}
-                        sub="categorias ativas"
+                        sub="objetivos ativos"
                         iconTheme="blue"
                         icon={Folder}
                       />
@@ -843,7 +843,7 @@ export default function Savings() {
                 <div className="hidden md:block mb-5">
                   <div className="flex items-center gap-2.5 mb-3">
                     <span className="w-5 h-px bg-petrol/40" />
-                    <span className="text-[10.5px] tracking-[0.18em] uppercase font-semibold text-petrol/70">Poupanças</span>
+                    <span className="text-[10.5px] tracking-[0.18em] uppercase font-semibold text-petrol/70">Objetivos</span>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     {savingTree.map((savingNode, i) => {
@@ -924,7 +924,7 @@ export default function Savings() {
               {/* Mobile per-saving cards - desktop has the table above */}
               {!loading && perSavingAnalytics.length > 0 && (
                 <div className="md:hidden space-y-2.5">
-                  <h3 className="text-sm font-semibold text-ink font-serif">Poupanças</h3>
+                  <h3 className="text-sm font-semibold text-ink font-serif">Objetivos</h3>
                   {perSavingAnalytics.map(({ saving, balance }) => {
                     const pct = saving.target_cents
                       ? Math.min(100, Math.round((balance / saving.target_cents) * 100))
@@ -981,7 +981,7 @@ export default function Savings() {
         {/* Mobile footer - sticky outside scroll */}
         <div className="md:hidden shrink-0 h-[42px] flex items-center justify-center border-t border-border bg-offWhite">
           <p className="text-center text-[13px] text-gold italic">
-            Poupança é um abraço longo no amanhã.
+            Objetivo é o amanhã ganhando forma.
           </p>
         </div>
 
@@ -989,7 +989,7 @@ export default function Savings() {
         <footer className="hidden md:block mt-auto w-full">
           <div className="h-[56px] bg-paper flex items-center justify-center px-6">
             <p className="text-center text-[13px] text-gold italic">
-                Poupança é um abraço longo no amanhã.
+                Objetivo é o amanhã ganhando forma.
             </p>
           </div>
         </footer>
@@ -1008,10 +1008,10 @@ export default function Savings() {
       />
 
       {/* Guardar drawer */}
-      <RightDrawer isOpen={isDepositOpen} onClose={() => { setIsDepositOpen(false); setDepositForm(emptyTxForm()) }} title="Guardar na Poupança" subtitle="Guardar é uma forma silenciosa de cuidar." accent="#3F6E7A">
+      <RightDrawer isOpen={isDepositOpen} onClose={() => { setIsDepositOpen(false); setDepositForm(emptyTxForm()) }} title="Guardar no Objetivo" subtitle="Cada aporte deixa o plano mais perto." accent="#3F6E7A">
         <form onSubmit={handleDepositSubmit} className="space-y-4">
           <Select
-            label="Categoria"
+            label="Objetivo"
             value={depositForm.savingId}
             onChange={(value) => setDepositForm({ ...depositForm, savingId: value })}
             options={savingOptions}
@@ -1068,10 +1068,10 @@ export default function Savings() {
       </RightDrawer>
 
       {/* Resgatar drawer */}
-      <RightDrawer isOpen={isWithdrawalOpen} onClose={() => { setIsWithdrawalOpen(false); setWithdrawalForm(emptyTxForm()) }} title="Resgatar da Poupança" subtitle="Cada resgate é uma conquista que voltou para a vida." accent="#3F6E7A">
+      <RightDrawer isOpen={isWithdrawalOpen} onClose={() => { setIsWithdrawalOpen(false); setWithdrawalForm(emptyTxForm()) }} title="Resgatar do Objetivo" subtitle="Use o que foi planejado quando chegar a hora." accent="#3F6E7A">
         <form onSubmit={handleWithdrawalSubmit} className="space-y-4">
           <Select
-            label="Categoria"
+            label="Objetivo"
             value={withdrawalForm.savingId}
             onChange={(value) => setWithdrawalForm({ ...withdrawalForm, savingId: value })}
             options={savingOptions}
@@ -1132,7 +1132,7 @@ export default function Savings() {
         isOpen={!!detailsSaving}
         onClose={() => { setDetailsSaving(null); setDetailsContributions([]) }}
         title={detailsSaving ? getSavingLabel(detailsSaving.id) : ''}
-        subtitle="Movimentações desta poupança."
+        subtitle="Movimentações deste objetivo."
         accent="#3F6E7A"
       >
         {detailsLoading ? (
@@ -1166,12 +1166,12 @@ export default function Savings() {
         )}
       </RightDrawer>
 
-      {/* Editar poupança drawer */}
+      {/* Editar objetivo drawer */}
       <RightDrawer
         isOpen={!!editingSaving}
         onClose={() => setEditingSaving(null)}
-        title="Editar Poupança"
-        subtitle="Ajuste o nome ou a meta da poupança."
+        title="Editar Objetivo"
+        subtitle="Ajuste o nome ou a meta do objetivo."
         accent="#3F6E7A"
       >
         <form onSubmit={handleEditSavingSubmit} className="space-y-4">
@@ -1185,7 +1185,7 @@ export default function Savings() {
               required
               value={editForm.name}
               onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-              aria-label="Nome da poupança"
+              aria-label="Nome do objetivo"
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>

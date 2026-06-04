@@ -36,7 +36,7 @@ const PLAN_CONTENT: Record<PlanSetting['plan_code'], PlanContent> = {
     benefitsTitle: 'Benefícios:',
     benefits: [
       'Controle de Despesas e Receitas',
-      'Organização de sonhos e poupanças',
+      'Organização de sonhos e objetivos',
       'Visão clara de saldo mensal',
       'Comparativos financeiros',
       'Interface intuitiva e acolhedora',

@@ -10,7 +10,7 @@ Aplicativo de gestão financeira familiar com design vintage e alma moderna.
 - 📊 Controle completo de receitas, despesas e sonhos
 - 📈 Relatórios e comparativos visuais
 - 🔔 Sistema de lembretes com recorrência
-- 🎯 Gestão de metas e poupança
+- 🎯 Gestão de metas e objetivos
 
 ## 🚀 Stack Tecnológica
 
