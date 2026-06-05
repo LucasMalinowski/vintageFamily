@@ -1288,7 +1288,7 @@ export default function Expenses() {
                   label="Método"
                   value={selectedPaymentMethod}
                   onChange={setSelectedPaymentMethod}
-                  options={[{ value: '', label: 'Todos' }, { value: 'PIX', label: 'PIX' }, { value: 'Credito', label: 'Crédito' }, { value: 'Debito', label: 'Débito' }]}
+                  options={[{ value: '', label: 'Todos' }, { value: 'PIX', label: 'PIX' }, { value: 'Credito', label: 'Crédito' }, { value: 'Debito', label: 'Débito' }, { value: 'ValeAlimentacao', label: 'Vale Alimentação' }]}
                 />
               </div>
               <div className="flex items-center gap-2 text-[13px] text-ink select-none">
