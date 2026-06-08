@@ -23,10 +23,12 @@ export default function DonutChart({ slices, center, currency = true, showLegend
   const stroke = 22
   const circ = 2 * Math.PI * r
 
+  const totalValue = slices.reduce((sum, s) => sum + s.value, 0)
   const GAP = slices.length > 1 ? 0.7 : 0
   let off = 0
   const arcs = slices.map((s) => {
-    const fullDash = (s.pct / 100) * circ
+    const fraction = totalValue > 0 ? s.value / totalValue : 0
+    const fullDash = fraction * circ
     const dash = Math.max(fullDash - GAP, 0)
     const arc = { ...s, off: off + GAP / 2, dash, gap: circ - dash }
     // eslint-disable-next-line react-hooks/immutability

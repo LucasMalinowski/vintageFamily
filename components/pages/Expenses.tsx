@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import Topbar from '@/components/layout/Topbar'
@@ -239,8 +239,11 @@ export default function Expenses() {
     installments: 1,
     isRecurring: false,
     recurrenceFrequency: 'monthly',
+    isFixedAmount: true,
   })
   const [suggestedCategoryId, setSuggestedCategoryId] = useState<string | null>(null)
+  const currentCategoryIdRef = useRef(formData.categoryId)
+  currentCategoryIdRef.current = formData.categoryId
   const [categoryLimitInfo, setCategoryLimitInfo] = useState<{
     limitCents: number
     spentCents: number
@@ -306,7 +309,7 @@ export default function Expenses() {
           body: JSON.stringify({ description: desc, kind: 'expense' }),
         })
         const data = await res.json()
-        if (data.categoryId && !formData.categoryId) setSuggestedCategoryId(data.categoryId)
+        if (data.categoryId && !currentCategoryIdRef.current) setSuggestedCategoryId(data.categoryId)
       } catch { /* silent */ }
     }, 150)
     return () => clearTimeout(timer)
@@ -600,13 +603,15 @@ export default function Expenses() {
       const nextDate = new Date(dateObj)
       nextDate.setDate(nextDate.getDate() + (freqDays[freq] ?? 30))
       const toISO = (d: Date) => d.toISOString().slice(0, 10)
-      await supabase.from('recurring_patterns').upsert(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from('recurring_patterns').upsert(
         {
           family_id: familyId!,
           description_pattern: formData.description.toLowerCase().trim(),
           kind: 'expense',
           category_id: category.id,
-          estimated_amount_cents: amountCents,
+          estimated_amount_cents: formData.isFixedAmount ? amountCents : 0,
+          amount_is_fixed: formData.isFixedAmount,
           frequency: freq,
           source: 'user',
           day_of_month: Math.min(dateObj.getDate(), 28),
@@ -718,6 +723,7 @@ export default function Expenses() {
         installments: expense.installments || 1,
         isRecurring: false,
         recurrenceFrequency: 'monthly',
+        isFixedAmount: true,
       })
     } else {
       setEditingExpense(null)
@@ -733,6 +739,7 @@ export default function Expenses() {
         installments: 1,
         isRecurring: false,
         recurrenceFrequency: 'monthly',
+        isFixedAmount: true,
       })
     }
     loadCategories()  // always refresh so latest limits are loaded
@@ -1710,7 +1717,7 @@ export default function Expenses() {
               type="text"
               required
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value, categoryId: '' })}
+              onChange={(e) => { const v = e.target.value; setFormData(prev => ({ ...prev, description: v })) }}
               aria-label="Descrição da despesa"
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder="Ex: Conta de luz"
@@ -1868,7 +1875,7 @@ export default function Expenses() {
           </div>
 
           {!editingExpense && (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -1879,14 +1886,46 @@ export default function Expenses() {
                 <span className="text-sm font-body text-ink">Despesa recorrente</span>
               </label>
               {formData.isRecurring && (
-                <Select
-                  label="Recorrência"
-                  value={formData.recurrenceFrequency}
-                  onChange={(v) => setFormData({ ...formData, recurrenceFrequency: v })}
-                  options={RECURRENCE_OPTIONS}
-                  required
-                  variant="modal"
-                />
+                <div className="space-y-3 pl-7">
+                  <Select
+                    label="Recorrência"
+                    value={formData.recurrenceFrequency}
+                    onChange={(v) => setFormData({ ...formData, recurrenceFrequency: v })}
+                    options={RECURRENCE_OPTIONS}
+                    required
+                    variant="modal"
+                  />
+                  <div>
+                    <label className="block text-sm font-body text-ink mb-2">Valor recorrente</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, isFixedAmount: true })}
+                        className={`p-3 rounded-lg border text-left transition-vintage ${
+                          formData.isFixedAmount ? 'border-coffee bg-coffee/5' : 'border-border hover:bg-paper'
+                        }`}
+                      >
+                        <div className={`text-sm font-semibold mb-0.5 ${formData.isFixedAmount ? 'text-coffee' : 'text-ink'}`}>Mesmo valor</div>
+                        <div className="text-xs text-ink/60">repete com o valor atual</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, isFixedAmount: false })}
+                        className={`p-3 rounded-lg border text-left transition-vintage ${
+                          !formData.isFixedAmount ? 'border-petrol bg-petrol/5' : 'border-border hover:bg-paper'
+                        }`}
+                      >
+                        <div className={`text-sm font-semibold mb-0.5 ${!formData.isFixedAmount ? 'text-petrol' : 'text-ink'}`}>Valor variável</div>
+                        <div className="text-xs text-ink/60">informar a cada mês</div>
+                      </button>
+                    </div>
+                    {!formData.isFixedAmount && (
+                      <p className="mt-2 text-xs text-petrol bg-petrol/5 border border-petrol/20 rounded-lg p-2">
+                        📋 Cada ocorrência será criada com valor a preencher.
+                      </p>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           )}
