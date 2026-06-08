@@ -181,7 +181,7 @@ export default function Topbar({
 
   return (
     <div
-      className={`${variant === 'textured' ? 'bg-paper' : 'bg-bg'} px-4 md:px-6 py-3 md:py-0`}
+      className={`sticky top-0 z-10 ${variant === 'textured' ? 'bg-paper' : 'bg-bg'} px-4 md:px-6 py-3 md:py-0`}
       style={accent ? { borderLeft: `3px solid ${accent}` } : undefined}
     >
       <div className={`${filters ? 'flex flex-col gap-2' : ''}`}>

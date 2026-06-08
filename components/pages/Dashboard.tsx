@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Bell, Calendar, Check, Plus, PiggyBank, Receipt, Trash2, TrendingUp, Lightbulb } from 'lucide-react'
+import { BarChart3, Bell, Calendar, Check, Plus, PiggyBank, Receipt, Sparkles, Trash2, TrendingUp, Lightbulb } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '../AuthProvider'
 import Topbar from '../layout/Topbar'
+import CalmaView from '@/components/inicio/CalmaView'
 import VintageCard from '../ui/VintageCard'
 import Modal from '../ui/Modal'
 import Select from '../ui/Select'
@@ -199,6 +200,36 @@ function DesktopHeroCard({
 
 export default function Dashboard() {
   const { displayed, cursor } = useTypewriter()
+
+  // ── Vista Calma ────────────────────────────────────────────────
+  const [calmaMode, setCalmaMode] = useState(() =>
+    typeof window !== 'undefined' && localStorage.getItem('@florim:calmaMode') === 'true'
+  )
+  const [showPillHint, setShowPillHint] = useState(false)
+
+  useEffect(() => {
+    localStorage.setItem('@florim:calmaMode', calmaMode ? 'true' : 'false')
+  }, [calmaMode])
+
+  useEffect(() => {
+    if (!localStorage.getItem('@florim:calmaTipSeen')) setShowPillHint(true)
+  }, [])
+
+  useEffect(() => {
+    if (!showPillHint) return
+    const t = setTimeout(() => {
+      setShowPillHint(false)
+      localStorage.setItem('@florim:calmaTipSeen', '1')
+    }, 4500)
+    return () => clearTimeout(t)
+  }, [showPillHint])
+
+  function handleModeChange(next: 'calma' | 'informativo') {
+    setShowPillHint(false)
+    localStorage.setItem('@florim:calmaTipSeen', '1')
+    setCalmaMode(next === 'calma')
+  }
+
   const { familyId, user } = useAuth()
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [pendingPayables, setPendingPayables] = useState<Payable[]>([])
@@ -470,8 +501,68 @@ export default function Dashboard() {
         subtitle="Espaço financeiro familiar — calma e clareza."
         accent="#3E5F4B"
         variant="textured"
+        actions={
+          <div className="relative">
+            {/* Segmented pill toggle */}
+            <div className="flex items-center rounded-full border border-border/50 bg-paper p-0.5 gap-0">
+              <button
+                type="button"
+                onClick={() => handleModeChange('calma')}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] transition-colors ${
+                  calmaMode
+                    ? 'bg-coffee text-paper font-semibold'
+                    : 'text-ink/50 font-medium hover:text-ink/70'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Aconchego
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange('informativo')}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] transition-colors ${
+                  !calmaMode
+                    ? 'bg-coffee text-paper font-semibold'
+                    : 'text-ink/50 font-medium hover:text-ink/70'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                Informativo
+              </button>
+            </div>
+
+            {/* One-time hint — appears below pill on first visit */}
+            {showPillHint && (
+              <div
+                className="absolute top-full left-1/2 -translate-x-1/2 mt-2 pointer-events-none z-50"
+                style={{ animation: 'calma-hint 4.5s ease forwards' }}
+              >
+                <div className="flex justify-center">
+                  <div style={{
+                    width: 0, height: 0,
+                    borderLeft: '7px solid transparent',
+                    borderRight: '7px solid transparent',
+                    borderBottom: '8px solid #C2A45D',
+                  }} />
+                </div>
+                <div
+                  className="rounded-[10px] px-3 py-2 text-center whitespace-nowrap"
+                  style={{
+                    background: '#C2A45D', color: '#2a4034',
+                    fontSize: 12, fontWeight: 500, lineHeight: 1.45,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                  }}
+                >
+                  Alterne entre a vista<br />
+                  <strong>Aconchego</strong> e <strong>Informativa</strong>
+                </div>
+              </div>
+            )}
+          </div>
+        }
       />
-      <div className="bg-paper">
+      {calmaMode && <CalmaView displayed={displayed} cursor={cursor} />}
+      <div className={`bg-paper ${calmaMode ? 'hidden' : ''}`}>
         {/* Mobile hero - full-width, no rounded corners */}
         <div className="md:hidden bg-[url('/texture-green.png')] bg-cover bg-center py-8 text-center text-paper">
           <p className="text-[10px] tracking-[0.22em] uppercase text-paper/60 mb-3 font-medium">
@@ -907,6 +998,7 @@ export default function Dashboard() {
           </div>
         </form>
       </Modal>
+
     </>
   )
 }
