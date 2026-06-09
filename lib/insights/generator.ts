@@ -5,6 +5,7 @@ type CategoryTotal = {
   category_name: string
   total_cents: number
   count: number
+  limit_cents?: number | null
 }
 
 type SpendingData = {
@@ -14,6 +15,10 @@ type SpendingData = {
   previousPeriodLabel: string
   currentTotal: number
   previousTotal: number
+  currentMonthIncome: number
+  previousMonthIncome: number
+  dayOfMonth: number
+  daysInMonth: number
 }
 
 const MONTH_NAMES_PT = [
@@ -42,7 +47,7 @@ async function fetchSpendingData(familyId: string): Promise<SpendingData> {
     return `${fmt(y, m)}-${String(last).padStart(2, '0')}`
   }
 
-  const [curResult, prevResult] = await Promise.all([
+  const [curExpenses, prevExpenses, curIncome, prevIncome, categoryLimits] = await Promise.all([
     supabaseAdmin
       .from('expenses')
       .select('category_name, amount_cents')
@@ -57,6 +62,26 @@ async function fetchSpendingData(familyId: string): Promise<SpendingData> {
       .neq('status', 'pending_confirmation')
       .gte('date', firstOfMonth(prevYear, prevMonth))
       .lte('date', lastOfMonth(prevYear, prevMonth)),
+    supabaseAdmin
+      .from('incomes')
+      .select('amount_cents')
+      .eq('family_id', familyId)
+      .eq('status', 'received')
+      .gte('date', firstOfMonth(currentYear, currentMonth))
+      .lte('date', lastOfMonth(currentYear, currentMonth)),
+    supabaseAdmin
+      .from('incomes')
+      .select('amount_cents')
+      .eq('family_id', familyId)
+      .eq('status', 'received')
+      .gte('date', firstOfMonth(prevYear, prevMonth))
+      .lte('date', lastOfMonth(prevYear, prevMonth)),
+    supabaseAdmin
+      .from('categories')
+      .select('name, monthly_limit_cents')
+      .eq('family_id', familyId)
+      .eq('kind', 'expense')
+      .not('monthly_limit_cents', 'is', null),
   ])
 
   const aggregate = (rows: { category_name: string; amount_cents: number }[]): CategoryTotal[] => {
@@ -71,8 +96,20 @@ async function fetchSpendingData(familyId: string): Promise<SpendingData> {
       .sort((a, b) => b.total_cents - a.total_cents)
   }
 
-  const currentData = aggregate((curResult.data ?? []) as { category_name: string; amount_cents: number }[])
-  const previousData = aggregate((prevResult.data ?? []) as { category_name: string; amount_cents: number }[])
+  const limitMap = new Map<string, number>(
+    (categoryLimits.data ?? [])
+      .filter((c): c is { name: string; monthly_limit_cents: number } => c.monthly_limit_cents !== null)
+      .map(c => [c.name, c.monthly_limit_cents])
+  )
+
+  const currentData = aggregate((curExpenses.data ?? []) as { category_name: string; amount_cents: number }[])
+    .map(c => ({ ...c, limit_cents: limitMap.get(c.category_name) ?? null }))
+  const previousData = aggregate((prevExpenses.data ?? []) as { category_name: string; amount_cents: number }[])
+
+  const currentMonthIncome = ((curIncome.data ?? []) as { amount_cents: number }[])
+    .reduce((s, r) => s + r.amount_cents, 0)
+  const previousMonthIncome = ((prevIncome.data ?? []) as { amount_cents: number }[])
+    .reduce((s, r) => s + r.amount_cents, 0)
 
   return {
     currentMonth: currentData,
@@ -81,60 +118,102 @@ async function fetchSpendingData(familyId: string): Promise<SpendingData> {
     previousPeriodLabel: monthLabel(fmt(prevYear, prevMonth)),
     currentTotal: currentData.reduce((s, r) => s + r.total_cents, 0),
     previousTotal: previousData.reduce((s, r) => s + r.total_cents, 0),
+    currentMonthIncome,
+    previousMonthIncome,
+    dayOfMonth: now.getDate(),
+    daysInMonth: new Date(currentYear, currentMonth, 0).getDate(),
   }
 }
 
+const SYSTEM_PROMPT = `Você é um consultor financeiro pessoal especializado em famílias brasileiras. Sua função é revelar padrões, riscos e oportunidades nos dados — não resumir números que o usuário já pode ver.
+
+OBRIGATÓRIO em cada insight:
+✓ Quando há renda: expresse o gasto como % da renda ("representa X% da renda")
+✓ Quando o mês não acabou: use a projeção fornecida ("no ritmo atual vai fechar em R$X")
+✓ Quando há variação: cite o número absoluto E o percentual ("subiu R$250 — 45% a mais que maio")
+✓ Encerre com uma ação concreta e específica ("considere X" ou "vale revisar Y")
+✓ Quando uma categoria está acima de 80% do limite: sinalize isso claramente
+
+PROIBIDO:
+✗ Reafirmar o que já está nos dados: "a família gastou R$809 em supermercado"
+✗ Linguagem de dúvida: "pode indicar", "pode ser um sinal", "talvez", "possivelmente"
+✗ Conclusões sem ação: "há uma necessidade de revisão dos gastos"
+✗ Inventar dados ou fazer suposições além dos dados fornecidos
+
+EXEMPLO RUIM: "A alimentação apresentou aumento significativo com R$809 gastos, o que pode indicar necessidade de revisão."
+EXEMPLO BOM: "Supermercado saltou de R$600 para R$809 (+35%) e, no ritmo do dia 9, projeta R$2.700 até o fim de junho — 22% da renda. Defina um teto semanal de R$200 por visita para conter."
+
+Responda somente em português do Brasil.`
+
 function buildInsightPrompt(data: SpendingData, question?: string): string {
-  const top5Current = data.currentMonth.slice(0, 5)
-  const top5Previous = data.previousMonth.slice(0, 5)
+  const { dayOfMonth, daysInMonth, currentTotal, previousTotal, currentMonthIncome, previousMonthIncome } = data
+  const monthComplete = dayOfMonth >= daysInMonth
 
-  const currentLines = top5Current
-    .map((c, i) => {
-      const prev = data.previousMonth.find(p => p.category_name === c.category_name)
-      const delta = prev ? ((c.total_cents - prev.total_cents) / prev.total_cents) * 100 : null
-      const deltaStr = delta !== null ? ` (${delta > 0 ? '+' : ''}${Math.round(delta)}% vs ${data.previousPeriodLabel})` : ' (sem comparativo)'
-      return `${i + 1}. ${c.category_name}: ${formatBRL(c.total_cents)}${deltaStr} - ${c.count} lançamentos`
-    })
-    .join('\n')
+  const projectedTotal = !monthComplete && dayOfMonth > 0
+    ? Math.round((currentTotal / dayOfMonth) * daysInMonth)
+    : null
 
-  const previousLines = top5Previous
-    .map((c, i) => `${i + 1}. ${c.category_name}: ${formatBRL(c.total_cents)}`)
-    .join('\n')
-
-  const totalDelta = data.previousTotal > 0
-    ? ` (${data.currentTotal > data.previousTotal ? '+' : ''}${Math.round(((data.currentTotal - data.previousTotal) / data.previousTotal) * 100)}% vs mês anterior)`
+  const totalVsPrev = previousTotal > 0
+    ? ` (${currentTotal > previousTotal ? '+' : ''}${Math.round(((currentTotal - previousTotal) / previousTotal) * 100)}% vs ${data.previousPeriodLabel})`
     : ''
 
-  const base = `Dados financeiros da família (top 5 categorias por gasto — outras categorias menores não estão listadas):
+  const incomeContext = currentMonthIncome > 0
+    ? `Renda recebida: ${formatBRL(currentMonthIncome)} | Comprometimento atual: ${Math.round((currentTotal / currentMonthIncome) * 100)}% da renda${projectedTotal ? ` | Projeção fim do mês: ${Math.round((projectedTotal / currentMonthIncome) * 100)}% da renda` : ''}`
+    : 'Renda do mês: não registrada'
 
-Mês atual (${data.currentPeriodLabel}) - Total: ${formatBRL(data.currentTotal)}${totalDelta}
-${currentLines}
+  const prevIncomeContext = previousMonthIncome > 0
+    ? `Renda ${data.previousPeriodLabel}: ${formatBRL(previousMonthIncome)}`
+    : ''
 
-Mês anterior (${data.previousPeriodLabel}) - Total: ${formatBRL(data.previousTotal)}
+  const periodHeader = monthComplete
+    ? `${data.currentPeriodLabel} (mês completo, ${daysInMonth} dias)`
+    : `${data.currentPeriodLabel} — dia ${dayOfMonth} de ${daysInMonth} | Projeção fim do mês: ${projectedTotal ? formatBRL(projectedTotal) : 'indisponível'}`
+
+  const categoryLines = data.currentMonth.map(c => {
+    const prev = data.previousMonth.find(p => p.category_name === c.category_name)
+    const delta = prev ? ((c.total_cents - prev.total_cents) / prev.total_cents) * 100 : null
+    const deltaStr = delta !== null
+      ? ` | ${delta > 0 ? '+' : ''}${Math.round(delta)}% vs ${data.previousPeriodLabel} (era ${formatBRL(prev!.total_cents)})`
+      : ` | sem dado em ${data.previousPeriodLabel}`
+    const pctIncome = currentMonthIncome > 0
+      ? ` | ${Math.round((c.total_cents / currentMonthIncome) * 100)}% da renda`
+      : ''
+    const limitStr = c.limit_cents
+      ? ` | LIMITE: ${formatBRL(c.limit_cents)} (${Math.round((c.total_cents / c.limit_cents) * 100)}% usado)`
+      : ''
+    return `  - ${c.category_name}: ${formatBRL(c.total_cents)} em ${c.count} lançamento${c.count !== 1 ? 's' : ''}${deltaStr}${pctIncome}${limitStr}`
+  }).join('\n')
+
+  const previousLines = data.previousMonth.slice(0, 8).map(c =>
+    `  - ${c.category_name}: ${formatBRL(c.total_cents)} (${c.count} lançamentos)`
+  ).join('\n')
+
+  const base = `PERÍODO: ${periodHeader}
+${incomeContext}
+${prevIncomeContext ? prevIncomeContext + '\n' : ''}
+GASTOS ${data.currentPeriodLabel.toUpperCase()} — Total: ${formatBRL(currentTotal)}${totalVsPrev}
+${categoryLines}
+
+GASTOS ${data.previousPeriodLabel.toUpperCase()} — Total: ${formatBRL(previousTotal)}
 ${previousLines}`
 
   if (question) {
     return `${base}
 
-Pergunta do usuário: ${question}
+Pergunta: ${question}
 
-Responda em português, de forma direta e específica, citando valores reais dos dados acima. Máximo 2 sentenças curtas. Se a pergunta não puder ser respondida com os dados disponíveis, diga "Não tenho dados suficientes para responder isso."`
+Responda de forma direta e específica citando valores reais dos dados. Máximo 2 sentenças. Se os dados forem insuficientes, diga claramente.`
   }
 
-  const currentMonthEntries = data.currentMonth.reduce((s, c) => s + c.count, 0)
-  const sparseDataNote = currentMonthEntries < 10
-    ? `\nObs: o mês atual tem poucos lançamentos (${currentMonthEntries}). Se os dados forem insuficientes para um insight útil, priorize comparações com o mês anterior.`
+  const entriesCount = data.currentMonth.reduce((s, c) => s + c.count, 0)
+  const sparseNote = entriesCount < 10
+    ? `\nObs: mês atual com poucos lançamentos (${entriesCount}). Se insuficiente para insights relevantes, priorize projeções ou dados do mês anterior.`
     : ''
 
   return `${base}
-${sparseDataNote}
-Gere exatamente 2 insights financeiros em português para essa família. Regras:
-- Cada insight deve ter no máximo 2 sentenças curtas
-- Cite valores reais (ex: R$ 820,00, 30%, 4 lançamentos)
-- Seja específico, nunca genérico como "você gastou muito"
-- Foque em variações, tendências, ou situações que merecem atenção
-- Se os dados são positivos, também mencione (ex: você gastou 15% menos em X)
-- Formato: retorne um JSON array com exatamente 2 strings: ["insight 1", "insight 2"]`
+${sparseNote}
+Gere exatamente 2 insights financeiros independentes e acionáveis para essa família. Cada insight: máximo 2 sentenças diretas. Escolha os 2 dados mais impactantes — anomalias, riscos de limite, tendências preocupantes ou economias expressivas.
+Formato de resposta: JSON array com exatamente 2 strings: ["insight 1", "insight 2"]`
 }
 
 export async function generateProactiveInsights(familyId: string): Promise<string[]> {
@@ -156,13 +235,13 @@ export async function generateProactiveInsights(familyId: string): Promise<strin
       signal: controller.signal,
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'llama-3.3-70b-versatile',
         messages: [
-          { role: 'system', content: 'Você é um consultor financeiro pessoal. Gere insights APENAS com base nos dados fornecidos. Cite valores exatos. Nunca invente dados ou faça afirmações genéricas. Responda somente em português.' },
+          { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: prompt },
         ],
-        temperature: 0.4,
-        max_tokens: 512,
+        temperature: 0.3,
+        max_tokens: 1024,
       }),
     })
   } catch {
@@ -201,12 +280,12 @@ export async function generateOnDemandInsight(familyId: string, question: string
       signal: controller.signal,
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'llama-3.3-70b-versatile',
         messages: [
-          { role: 'system', content: 'Você é um consultor financeiro pessoal. Responda APENAS com base nos dados fornecidos. Cite valores exatos. Se a pergunta não puder ser respondida com os dados disponíveis, diga isso claramente. Responda somente em português.' },
+          { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: prompt },
         ],
-        temperature: 0.4,
+        temperature: 0.3,
         max_tokens: 512,
       }),
     })
