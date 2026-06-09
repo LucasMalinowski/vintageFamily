@@ -97,7 +97,9 @@ async function fetchSpendingData(familyId: string): Promise<SpendingData> {
   }
 
   const limitMap = new Map<string, number>(
-    (categoryLimits.data ?? []).map((c: { name: string; monthly_limit_cents: number }) => [c.name, c.monthly_limit_cents])
+    (categoryLimits.data ?? [])
+      .filter((c): c is { name: string; monthly_limit_cents: number } => c.monthly_limit_cents !== null)
+      .map(c => [c.name, c.monthly_limit_cents])
   )
 
   const currentData = aggregate((curExpenses.data ?? []) as { category_name: string; amount_cents: number }[])
