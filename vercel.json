@@ -20,7 +20,7 @@
     },
     {
       "path": "/api/cron/insights-dispatch",
-      "schedule": "0 9 * * 1"
+      "schedule": "0 9 * * *"
     },
     {
       "path": "/api/cron/due-notifications",

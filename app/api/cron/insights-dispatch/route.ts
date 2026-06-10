@@ -27,7 +27,6 @@ export async function GET(request: NextRequest) {
   const force = isLocalOverrideAllowed && request.nextUrl.searchParams.get('force') === '1'
   const familyId = isLocalOverrideAllowed ? request.nextUrl.searchParams.get('family_id') : null
   const today = new Date()
-  const dayOfWeek = today.getDay() // 1 = Monday
 
   let familiesQuery = supabaseAdmin
     .from('families')
@@ -70,35 +69,40 @@ export async function GET(request: NextRequest) {
       const access = await hasBillingAccess({ familyId: family.id })
       const hasFullInsightAccess = access.isPaidTier || access.hasActiveTrial
 
-      // Free tier: monthly dispatch only (run on 1st of month, dayOfWeek check skipped)
-      // Paid/trial tier: weekly dispatch (every Monday)
+      // Free tier: monthly dispatch only (run on 1st of month)
+      // Paid/trial tier: user-configurable interval (weekly/bi-weekly/monthly), checked daily
       const isFirstOfMonth = today.getDate() === 1
       if (!force && !hasFullInsightAccess && !isFirstOfMonth) continue
-      if (!force && hasFullInsightAccess && dayOfWeek !== 1) continue
 
-      // Check interval preference (paid/trial-tier user-configurable)
-      if (!force && hasFullInsightAccess && members[0]) {
+      // Determine interval preference (paid/trial-tier) and whether this is the
+      // first proactive dispatch of the calendar month (used to attach the
+      // next-month forecast).
+      let isMonthlyDispatch = isFirstOfMonth
+
+      if (hasFullInsightAccess && members[0]) {
         const intervalDays = members[0].insight_interval_days ?? 30
         const { data: lastInsight } = await supabaseAdmin
           .from('insights')
-          .select('created_at')
+          .select('created_at, period')
           .eq('family_id', family.id)
           .eq('type', 'proactive')
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle()
 
-        if (lastInsight?.created_at) {
+        if (!force && lastInsight?.created_at) {
           const daysSinceLast = (today.getTime() - new Date(lastInsight.created_at).getTime()) / 86_400_000
           if (daysSinceLast < intervalDays) continue
         }
+
+        isMonthlyDispatch = !lastInsight || lastInsight.period !== periodLabel
       }
 
       if (!force && !(await acquireFamilyJobLock(family.id, 'insights-dispatch', lockPeriod))) {
         continue
       }
 
-      const insights = await generateProactiveInsights(family.id)
+      const insights = await generateProactiveInsights(family.id, isMonthlyDispatch)
       if (!insights.length) continue
 
       await dispatchInsights(family.id, insights, periodLabel, 'proactive')

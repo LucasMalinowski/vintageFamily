@@ -17,7 +17,7 @@ const COMPARISON_ROWS = [
   { label: 'WhatsApp para registrar lançamentos', free: '25/mês', pro: 'Ilimitado' },
   { label: 'Consultas com IA pelo WhatsApp', free: '7/mês', pro: 'Ilimitado' },
   { label: 'Insights sob demanda', free: '3/mês', pro: 'Ilimitado' },
-  { label: 'Insights automáticos', free: '2/mês', pro: 'Frequência ajustável' },
+  { label: 'Insights automáticos', free: '1/mês + previsão', pro: 'Semanal, quinzenal ou mensal' },
   { label: 'Sugestão de categorias com IA', free: true, pro: true },
   { label: 'Detecção de registros recorrentes', free: true, pro: true },
   { label: 'Importação e exportação', free: '3/mês', pro: 'Ilimitado' },

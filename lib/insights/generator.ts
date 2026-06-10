@@ -1,5 +1,8 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { formatBRL } from '@/lib/money'
+import { computeNextMonthForecast } from '@/lib/forecast/engine'
+import { detectSpendingAnomalies } from '@/lib/forecast/anomaly'
+import { generateForecastNarrative } from '@/lib/forecast/narrator'
 
 type CategoryTotal = {
   category_name: string
@@ -29,6 +32,12 @@ const MONTH_NAMES_PT = [
 function monthLabel(yyyyMM: string): string {
   const [, m] = yyyyMM.split('-').map(Number)
   return MONTH_NAMES_PT[m - 1] ?? yyyyMM
+}
+
+function nextMonthLabel(): string {
+  const now = new Date()
+  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  return MONTH_NAMES_PT[next.getMonth()]
 }
 
 async function fetchSpendingData(familyId: string): Promise<SpendingData> {
@@ -216,7 +225,25 @@ Gere exatamente 2 insights financeiros independentes e acionáveis para essa fam
 Formato de resposta: JSON array com exatamente 2 strings: ["insight 1", "insight 2"]`
 }
 
-export async function generateProactiveInsights(familyId: string): Promise<string[]> {
+async function buildForecastInsight(familyId: string): Promise<string | null> {
+  try {
+    const [forecast, anomalies] = await Promise.all([
+      computeNextMonthForecast(familyId),
+      detectSpendingAnomalies(familyId),
+    ])
+    if (forecast.confidence === 'insufficient') return null
+
+    const narrative = await generateForecastNarrative(forecast, anomalies)
+    const totalStr = formatBRL(forecast.grandTotal)
+    return narrative
+      ? `📊 Previsão para ${nextMonthLabel()}: ${narrative}`
+      : `📊 Previsão para ${nextMonthLabel()}: você deve gastar aproximadamente ${totalStr}.`
+  } catch {
+    return null
+  }
+}
+
+export async function generateProactiveInsights(familyId: string, includeForecast = false): Promise<string[]> {
   const data = await fetchSpendingData(familyId)
 
   if (data.currentMonth.length === 0) return []
@@ -252,16 +279,24 @@ export async function generateProactiveInsights(familyId: string): Promise<strin
 
   if (!response.ok) return []
 
+  let insights: string[]
   try {
     const json = await response.json()
     const content: string = json.choices?.[0]?.message?.content ?? ''
     const match = content.match(/\[[\s\S]*\]/)
     if (!match) { console.warn('[AI] proactive insights: expected JSON array, got raw text'); return [] }
     const parsed = JSON.parse(match[0])
-    return Array.isArray(parsed) ? parsed.filter((s): s is string => typeof s === 'string') : []
+    insights = Array.isArray(parsed) ? parsed.filter((s): s is string => typeof s === 'string') : []
   } catch {
     return []
   }
+
+  if (includeForecast && insights.length > 0) {
+    const forecastInsight = await buildForecastInsight(familyId)
+    if (forecastInsight) insights.push(forecastInsight)
+  }
+
+  return insights
 }
 
 export async function generateOnDemandInsight(familyId: string, question: string): Promise<string> {

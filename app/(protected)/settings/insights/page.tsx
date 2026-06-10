@@ -31,7 +31,10 @@ export default function InsightsSettingsPage() {
       .then(({ data }) => {
         if (data) {
           setInsightsEnabled(data.insights_enabled ?? true)
-          setIntervalDays(data.insight_interval_days ?? 30)
+          const stored = data.insight_interval_days ?? 30
+          // Snap legacy free-form values (e.g. 3) to the nearest supported option
+          const validOptions = [7, 14, 30]
+          setIntervalDays(validOptions.includes(stored) ? stored : 30)
           setChannels(data.insight_channels ?? ['whatsapp', 'email'])
         }
         setLoading(false)
@@ -52,7 +55,7 @@ export default function InsightsSettingsPage() {
       .from('users')
       .update({
         insights_enabled: insightsEnabled,
-        insight_interval_days: hasFullInsightAccess ? Math.max(3, intervalDays) : 30,
+        insight_interval_days: hasFullInsightAccess ? intervalDays : 30,
         insight_channels: channels,
       })
       .eq('id', user.id)
@@ -112,30 +115,37 @@ export default function InsightsSettingsPage() {
               {!hasFullInsightAccess && <Lock className="w-3.5 h-3.5 text-gold" />}
             </div>
             <p className="text-xs text-ink/50 mt-0.5">
-              {hasFullInsightAccess ? 'Dias mínimos entre insights (mín. 3)' : 'Disponível no plano Pro'}
+              {hasFullInsightAccess ? 'Com que frequência você quer receber' : 'Disponível no plano Pro'}
             </p>
           </div>
-          <input
-            type="number"
-            min={3}
-            max={365}
+          <select
             value={intervalDays}
-            aria-label="Frequência de insights em dias"
+            aria-label="Frequência de insights"
             onChange={(e) => {
               if (!hasFullInsightAccess) { setUpsellOpen(true); return }
-              setIntervalDays(Math.max(3, Number(e.target.value)))
+              setIntervalDays(Number(e.target.value))
             }}
             onFocus={() => { if (!hasFullInsightAccess) setUpsellOpen(true) }}
-            className={`w-20 px-3 py-2 border rounded-lg text-sm text-center transition-vintage focus:outline-none ${
+            className={`px-3 py-2 border rounded-lg text-sm text-center transition-vintage focus:outline-none ${
               hasFullInsightAccess
                 ? 'border-border bg-paper text-ink focus:ring-2 focus:ring-paper-2/50'
                 : 'border-border bg-paper/60 text-ink/40 cursor-not-allowed'
             }`}
-            readOnly={!hasFullInsightAccess}
-          />
+            disabled={!hasFullInsightAccess}
+          >
+            <option value={7}>Semanal</option>
+            <option value={14}>Quinzenal</option>
+            <option value={30}>Mensal</option>
+          </select>
         </div>
         <p className="text-xs text-ink/30">
-          {hasFullInsightAccess ? `Insights a cada ${intervalDays} dia${intervalDays !== 1 ? 's' : ''} no mínimo.` : 'Plano gratuito: 2 insights automáticos por mês.'}
+          {hasFullInsightAccess
+            ? intervalDays === 7
+              ? 'Insights a cada semana.'
+              : intervalDays === 14
+                ? 'Insights a cada 2 semanas.'
+                : 'Insights uma vez por mês.'
+            : 'Plano gratuito: 1 análise automática por mês, com previsão para o mês seguinte.'}
         </p>
       </div>
 
@@ -176,10 +186,10 @@ export default function InsightsSettingsPage() {
       <Modal isOpen={upsellOpen} onClose={() => setUpsellOpen(false)} title="Recurso Pro">
         <div className="space-y-4">
           <p className="text-sm text-ink/70">
-            A configuração de frequência de insights é exclusiva do teste gratuito e do plano <strong>Florim Pro</strong>. Com ele você pode receber análises com a frequência que quiser, a partir de 3 dias.
+            A configuração de frequência de insights é exclusiva do teste gratuito e do plano <strong>Florim Pro</strong>. Com ele você escolhe receber análises semanal, quinzenal ou mensalmente.
           </p>
           <p className="text-sm text-ink/70">
-            No plano gratuito, você recebe 2 insights automáticos por mês.
+            No plano gratuito, você recebe 1 análise automática por mês, com previsão para o mês seguinte.
           </p>
           <Link
             href="/settings/billing"
