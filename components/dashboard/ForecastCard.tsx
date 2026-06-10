@@ -108,7 +108,7 @@ export default function ForecastCard() {
     )
   }
 
-  if (!forecast || forecast.confidence === 'insufficient') return null
+  if (!forecast) return null
 
   const badge = CONFIDENCE_BADGE[forecast.confidence]
   const pendingAnomalies = anomalies.filter(a => !dismissedAnomalies.has(a.category_name)).slice(0, 2)
@@ -143,6 +143,14 @@ export default function ForecastCard() {
         <p className="font-numbers font-bold text-[34px] text-ink leading-none tracking-[-1px] tabular-nums mb-1">
           {formatBRL(forecast.grandTotal)}
         </p>
+
+        {/* Low-confidence warning */}
+        {(forecast.confidence === 'insufficient' || forecast.confidence === 'low') && (
+          <p className="text-[12px] text-terracotta leading-snug mt-2 mb-3 bg-terracotta/10 rounded-lg px-3 py-2">
+            ⚠️ Estimativa preliminar — ainda não temos dados suficientes dos meses anteriores para um cálculo
+            preciso. Conforme você for registrando despesas, a previsão fica mais precisa.
+          </p>
+        )}
 
         {/* AI narrative */}
         {narrative && (
