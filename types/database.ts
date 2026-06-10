@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      annual_events: {
+        Row: {
+          id: string
+          family_id: string
+          description: string
+          category_id: string | null
+          category_name: string | null
+          typical_month: number
+          typical_amount_cents: number
+          is_active: boolean
+          confirmed_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          family_id: string
+          description: string
+          category_id?: string | null
+          category_name?: string | null
+          typical_month: number
+          typical_amount_cents: number
+          is_active?: boolean
+          confirmed_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          family_id?: string
+          description?: string
+          category_id?: string | null
+          category_name?: string | null
+          typical_month?: number
+          typical_amount_cents?: number
+          is_active?: boolean
+          confirmed_at?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       app_config: {
         Row: {
           key: string

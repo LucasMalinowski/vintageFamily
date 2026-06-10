@@ -1,13 +1,14 @@
 'use client'
 
 import Image from 'next/image'
-import { Bell, BanknoteArrowDown, BanknoteArrowUp, ChartColumnBig, ChevronDown, ChevronLeft, Home, Info, PiggyBank, Settings } from 'lucide-react'
+import { Bell, BanknoteArrowDown, BanknoteArrowUp, ChartColumnBig, ChevronDown, ChevronLeft, Home, Info, PiggyBank, Settings, TrendingUp } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { useEffect, useRef, useState } from 'react'
 import { getAuthBearerToken, getBillingMe } from '@/lib/billing/client'
 import ProfileSheet from '@/components/layout/ProfileSheet'
+import ForecastSheet from '@/components/layout/ForecastSheet'
 import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
 
 const PAGE_ICONS: Record<string, React.ElementType> = {
@@ -53,6 +54,7 @@ export default function Topbar({
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileSheetOpen, setProfileSheetOpen] = useState(false)
+  const [forecastOpen, setForecastOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -229,6 +231,14 @@ export default function Topbar({
               )}
               <button
                 type="button"
+                onClick={() => setForecastOpen(true)}
+                className="text-coffee hover:text-coffee/80 transition-vintage"
+                aria-label="Previsão do próximo mês"
+              >
+                <TrendingUp className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
                 onClick={() => router.push('/reminders')}
                 className="text-coffee hover:text-coffee/80 transition-vintage"
                 aria-label="Abrir lembretes"
@@ -342,6 +352,11 @@ export default function Topbar({
         onClose={() => setProfileSheetOpen(false)}
         userName={userName}
         familyName={familyName}
+      />
+
+      <ForecastSheet
+        open={forecastOpen}
+        onClose={() => setForecastOpen(false)}
       />
     </div>
   )

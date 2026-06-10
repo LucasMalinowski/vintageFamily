@@ -11,7 +11,7 @@ export interface AIExtractedRecord {
 }
 
 export interface IntentClassification {
-  type: 'query' | 'record' | 'delete' | 'edit'
+  type: 'query' | 'record' | 'delete' | 'edit' | 'forecast'
   data_needed: Array<'expenses' | 'incomes' | 'savings' | 'reminders'>
   time_range: 'current_month' | 'last_month' | 'current_year' | 'last_7_days' | 'next_7_days' | 'all'
   focus: string | null
@@ -45,15 +45,19 @@ Formato obrigatório:
 {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
 
 Campos:
-- type: "record" se registrando/criando algo. "query" se consultando dados existentes. "delete" se apagando um item numerado da última lista. "edit" se editando o valor de um item numerado.
-- data_needed: vazio para "record"/"delete"/"edit". Para "query": ["expenses"], ["incomes"], ["savings"], ["reminders"]
+- type: "record" se registrando/criando algo. "query" se consultando dados existentes (histórico). "forecast" se perguntando uma ESTIMATIVA/PREVISÃO de gastos futuros (mês que vem, próximo mês). "delete" se apagando um item numerado da última lista. "edit" se editando o valor de um item numerado.
+- data_needed: vazio para "record"/"delete"/"edit"/"forecast". Para "query": ["expenses"], ["incomes"], ["savings"], ["reminders"]
 - time_range: "current_month" (padrão), "last_month", "current_year", "last_7_days", "next_7_days", "all"
   Use "next_7_days" para lembretes futuros ("essa semana", "próximos dias")
-  Para "record"/"delete"/"edit": sempre "current_month" (campo irrelevante nesses casos)
-- focus: palavra-chave do filtro para "query". Sempre null para "record"/"delete"/"edit".
+  Para "record"/"delete"/"edit"/"forecast": sempre "current_month" (campo irrelevante nesses casos)
+- focus: palavra-chave do filtro para "query". Sempre null para "record"/"delete"/"edit"/"forecast".
 - status_filter: null (padrão). Use "open" quando o usuário perguntar sobre despesas pendentes/a pagar ("pendente pra pagar", "contas a pagar", "o que tenho pra pagar", "tenho que pagar", "despesas")
 - item_index: número do item (1-based) para "delete" e "edit". null nos demais casos.
 - edit_amount: novo valor em reais para "edit". null nos demais casos.
+
+Diferença importante entre "query" e "forecast":
+- "query" = perguntas sobre o que JÁ aconteceu ou contas JÁ cadastradas ("quanto gastei", "o que tenho pra pagar", "minhas contas desse mês")
+- "forecast" = perguntas sobre uma ESTIMATIVA do futuro, algo que ainda não foi todo registrado ("quanto vou gastar", "quanto devo gastar", "como vai ficar meu mês que vem", "previsão de gastos")
 
 Exemplos:
 "Quanto gastei em comida esse mês?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":"comida","status_filter":null,"item_index":null,"edit_amount":null}
@@ -72,7 +76,11 @@ Exemplos:
 "remove o 1" → {"type":"delete","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":1,"edit_amount":null}
 "edita o 2 para 60" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":2,"edit_amount":60}
 "muda o 1 para R$ 30,50" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":1,"edit_amount":30.5}
-"altera o 3 para 25 reais" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":3,"edit_amount":25}`
+"altera o 3 para 25 reais" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":3,"edit_amount":25}
+"Quanto vou gastar mês que vem?" → {"type":"forecast","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
+"Quanto será meu gasto no próximo mês?" → {"type":"forecast","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
+"Qual minha previsão de gastos?" → {"type":"forecast","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
+"Como vai ficar meu mês que vem?" → {"type":"forecast","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}`
 
 // Static - focus is injected into the user message instead so Groq can cache this prefix globally
 const CLASSIFIER_SYSTEM_PROMPT = `Você é um classificador de consultas financeiras. Responda APENAS com JSON válido, sem texto adicional.
@@ -253,7 +261,7 @@ export class NvidiaAIService {
       const jsonMatch = content.match(/\{[\s\S]*\}/)
       if (!jsonMatch) return DEFAULT_INTENT
       const parsed = JSON.parse(jsonMatch[0])
-      const validTypes = ['query', 'record', 'delete', 'edit']
+      const validTypes = ['query', 'record', 'delete', 'edit', 'forecast']
       if (!validTypes.includes(parsed.type)) return DEFAULT_INTENT
       return parsed as IntentClassification
     } catch {

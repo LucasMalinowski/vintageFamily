@@ -7,6 +7,9 @@ import { whatsAppQueryHandler } from '@/lib/whatsapp/WhatsAppQueryHandler'
 import { formatBRL } from '@/lib/money'
 import { hasBillingAccess } from '@/lib/billing/access'
 import { checkAndIncrementWhatsAppRecording, checkAndIncrementAIQuery } from '@/lib/billing/free-tier'
+import { computeNextMonthForecast } from '@/lib/forecast/engine'
+import { detectSpendingAnomalies } from '@/lib/forecast/anomaly'
+import { generateForecastNarrative } from '@/lib/forecast/narrator'
 
 const FEEDBACK_LINE = '\n\n_Algo deu errado? Nos conte: https://florim.app/feedback_'
 
@@ -41,6 +44,68 @@ type ProcessOptions = {
 type PendingActionPayload =
   | { records: AIExtractedRecord[] }
   | { intent: IntentClassification }
+
+const MONTH_NAMES_PT = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+]
+
+const FORECAST_CONFIDENCE_NOTE: Record<string, string> = {
+  high: 'Previsão com boa confiança, baseada no seu histórico recente.',
+  medium: 'Previsão com confiança média - ainda temos poucos meses de histórico.',
+  low: 'Previsão com baixa confiança - poucos dados disponíveis ainda.',
+}
+
+function monthNamePT(yyyyMM: string): string {
+  const m = parseInt(yyyyMM.split('-')[1], 10)
+  return MONTH_NAMES_PT[m - 1] ?? yyyyMM
+}
+
+async function buildForecastReply(familyId: string): Promise<string> {
+  const [forecast, anomalies] = await Promise.all([
+    computeNextMonthForecast(familyId),
+    detectSpendingAnomalies(familyId),
+  ])
+
+  if (forecast.confidence === 'insufficient') {
+    return 'Ainda não tenho dados suficientes para estimar seus gastos do mês que vem. Continue registrando suas despesas que em breve eu consigo te ajudar com isso! 📊'
+  }
+
+  const narrative = await generateForecastNarrative(forecast, anomalies)
+
+  const lines = [`📊 *Previsão para ${monthNamePT(forecast.targetMonth)}*`, '']
+  lines.push(`Você deve gastar aproximadamente *${formatBRL(forecast.grandTotal)}* no total.`)
+
+  if (narrative) {
+    lines.push('', `_${narrative}_`)
+  }
+
+  const breakdown = [
+    { label: 'Fixos recorrentes', value: forecast.fixedTotal },
+    { label: 'Parcelas em curso', value: forecast.installmentsTotal },
+    { label: 'Variáveis (estimado)', value: forecast.variableEstimate },
+    { label: 'Eventos sazonais', value: forecast.annualEventsTotal },
+  ].filter(item => item.value > 0)
+
+  if (breakdown.length > 0) {
+    lines.push('', '*Detalhamento:*')
+    breakdown.forEach(item => lines.push(`- ${item.label}: ${formatBRL(item.value)}`))
+  }
+
+  const confidenceNote = FORECAST_CONFIDENCE_NOTE[forecast.confidence]
+  if (confidenceNote) lines.push('', `_${confidenceNote}_`)
+
+  const unconfirmed = anomalies.filter(a => !a.alreadyConfirmed)
+  if (unconfirmed.length > 0) {
+    const a = unconfirmed[0]
+    lines.push(
+      '',
+      `💡 Notei que *${a.category_name}* teve um pico em ${monthNamePT(a.month)} (${formatBRL(a.amount_cents)} acima do normal). Se isso se repete todo ano, confirme pelo app para eu considerar nas próximas previsões.`
+    )
+  }
+
+  return lines.join('\n')
+}
 
 function buildPhoneCandidates(phone: string): string[] {
   const digits = phone.replace(/\D/g, '')
@@ -217,6 +282,27 @@ export async function processWhatsAppMessage(
 
     const reply = await handleMutation(fromPhone, familyId, intent)
     await whatsAppService.sendTextMessage(fromPhone, reply)
+    return
+  }
+
+  if (intent.type === 'forecast') {
+    const access = await hasBillingAccess({ familyId })
+    if (access.isFreeTier) {
+      const usage = await checkAndIncrementAIQuery(familyId)
+      if (!usage.allowed) {
+        await whatsAppService.sendTextMessage(
+          fromPhone,
+          'Você usou todas as 7 consultas gratuitas deste mês. 🎯\n\nAssine o Florim Pro para consultas ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.'
+        )
+        return
+      }
+    }
+    try {
+      const reply = await buildForecastReply(familyId)
+      await whatsAppService.sendTextMessage(fromPhone, reply + FEEDBACK_LINE)
+    } catch {
+      await whatsAppService.sendTextMessage(fromPhone, 'Não consegui calcular sua previsão agora. Tente novamente em instantes. 🔄')
+    }
     return
   }
 

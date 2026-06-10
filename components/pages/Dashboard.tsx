@@ -14,6 +14,7 @@ import { formatDate, isDueDateToday, isDueDateOverdue, getCurrentMonth, getCurre
 import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
 import { loadCategoryLimitsForMonth, type CategoryLimitRow, limitBarColor, formatLimitBadge } from '@/lib/categoryLimits'
 import { formatBRL } from '@/lib/money'
+import ForecastCard from '@/components/dashboard/ForecastCard'
 
 const PHRASES = [
   'Organizar o dinheiro é cuidar do tempo que ainda vamos viver.',
@@ -710,6 +711,11 @@ export default function Dashboard() {
                 }`}
               />
             </p>
+          </div>
+
+          {/* Forecast card — visible on all screen sizes */}
+          <div className="mt-6">
+            <ForecastCard />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
