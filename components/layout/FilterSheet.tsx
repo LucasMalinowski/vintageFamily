@@ -31,6 +31,9 @@ const METHOD_OPTIONS = [
   { value: 'Credito', label: 'Crédito' },
   { value: 'Debito', label: 'Débito' },
   { value: 'ValeAlimentacao', label: 'Vale Alimentação' },
+  { value: 'Dinheiro', label: 'Dinheiro' },
+  { value: 'Cheque', label: 'Cheque' },
+  { value: 'Transferência', label: 'Transferência' },
 ]
 
 export default function FilterSheet({

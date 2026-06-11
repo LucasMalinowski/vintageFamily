@@ -305,9 +305,10 @@ export default function Comparatives() {
     }
     const methodTotal = Array.from(methodMap.values()).reduce((s, v) => s + v, 0) || 1
     const METHOD_COLORS: Record<string, string> = {
-      PIX: '#6FBF8A', Credito: '#2F6F7E', Debito: '#3689B5', ValeAlimentacao: '#16A34A', Outro: '#C2A45D',
+      PIX: '#6FBF8A', Credito: '#2F6F7E', Debito: '#3689B5', ValeAlimentacao: '#16A34A',
+      Dinheiro: '#3E5F4B', Cheque: '#7A66A1', Transferência: '#3E8E5C', Outro: '#C2A45D',
     }
-    const allMethods = ['PIX', 'Credito', 'Debito', 'ValeAlimentacao', 'Outro']
+    const allMethods = ['PIX', 'Credito', 'Debito', 'ValeAlimentacao', 'Dinheiro', 'Cheque', 'Transferência', 'Outro']
     const paymentItems: HBarItem[] = []
     for (const m of allMethods) {
       const val = methodMap.get(m) || 0

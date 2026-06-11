@@ -4,7 +4,7 @@ export interface AIExtractedRecord {
   amount: number  // in reais (e.g. 100 → 100, 10.50 → 10.5); converted to cents in saveRecord
   date: string
   category_name: string | null
-  payment_method: 'PIX' | 'Credito' | 'Debito' | 'ValeAlimentacao' | 'ValeRefeicao' | null
+  payment_method: 'PIX' | 'Credito' | 'Debito' | 'ValeAlimentacao' | 'ValeRefeicao' | 'Dinheiro' | 'Cheque' | 'Transferência' | null
   status?: 'paid' | 'open'
   installments?: number
   saving_name?: string
@@ -137,7 +137,7 @@ Tipos de registro:
 
 "expense" - gastos, compras, pagamentos ("gastei", "paguei", "comprei"):
   - amount: valor em reais exatamente como mencionado pelo usuário (ex: "50" → 50, "10,50" → 10.5, "1500" → 1500). NUNCA converta para centavos.
-  - payment_method: "PIX" | "Credito" | "Debito" | "ValeAlimentacao" | "ValeRefeicao" | null. Use "Credito" para parcelado. Use "ValeAlimentacao" para vale alimentação/benefício alimentação. Use "ValeRefeicao" para vale refeição.
+  - payment_method: "PIX" | "Credito" | "Debito" | "ValeAlimentacao" | "ValeRefeicao" | "Dinheiro" | "Cheque" | "Transferência" | null. Use "Credito" para parcelado. Use "ValeAlimentacao" para vale alimentação/benefício alimentação. Use "ValeRefeicao" para vale refeição. Use "Dinheiro" para pagamentos em espécie. Use "Cheque" para cheque. Use "Transferência" para TED/DOC/transferência bancária.
   - status: "paid" (padrão - já pagou/comprou) | "open" (ainda precisa pagar: "tenho que pagar", "vou pagar")
   - installments: número de parcelas. Padrão 1. "2x"→2, "3x"→3.
     IMPORTANTE: amount é o valor TOTAL em reais (ex: "150 em 3x" → amount:150, installments:3)

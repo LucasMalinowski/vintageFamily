@@ -13,7 +13,7 @@ import {
   // Finance & Money
   Wallet, WalletCards, Banknote, CreditCard, PiggyBank, TrendingUp,
   TrendingDown, DollarSign, Receipt, BadgeDollarSign, Coins, BarChart2,
-  PieChart, Landmark, HandCoins,
+  PieChart, Landmark, HandCoins, Shield,
   // Education
   Book, BookOpen, GraduationCap, School, Pencil, NotebookPen, Library,
   // Entertainment & Leisure
@@ -113,6 +113,7 @@ export const ICON_REGISTRY: IconEntry[] = [
   { name: 'PieChart', component: PieChart },
   { name: 'Landmark', component: Landmark },
   { name: 'HandCoins', component: HandCoins },
+  { name: 'Shield', component: Shield },
   // Education
   { name: 'Book', component: Book },
   { name: 'BookOpen', component: BookOpen },

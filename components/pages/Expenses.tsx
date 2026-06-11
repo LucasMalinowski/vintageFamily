@@ -55,7 +55,7 @@ import { usePlan } from '@/lib/billing/plan-context'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
 
-type PaymentMethod = 'PIX' | 'Credito' | 'Debito' | 'ValeAlimentacao'
+type PaymentMethod = 'PIX' | 'Credito' | 'Debito' | 'ValeAlimentacao' | 'Dinheiro' | 'Cheque' | 'Transferência'
 
 interface DonutExpensePanelProps {
   slices: DonutSlice[]
@@ -130,7 +130,10 @@ function getCatRailColor(label: string): string {
 const DONUT_PALETTE = ['#B05C3A', '#3F6E7A', '#6FBF8A', '#C2A45D', '#3E5F4B', '#7A66A1', '#3E8E5C', '#A58E5F']
 
 const normalizePaymentMethod = (method: string | null): PaymentMethod | null => {
-  if (method === 'PIX' || method === 'Credito' || method === 'Debito' || method === 'ValeAlimentacao') {
+  if (
+    method === 'PIX' || method === 'Credito' || method === 'Debito' || method === 'ValeAlimentacao' ||
+    method === 'Dinheiro' || method === 'Cheque' || method === 'Transferência'
+  ) {
     return method
   }
   return null
@@ -162,6 +165,9 @@ const formatPaymentLabel = (method: PaymentMethod | null, installments: number |
   if (method === 'Debito') return 'Debito'
   if (method === 'PIX') return 'PIX'
   if (method === 'ValeAlimentacao') return 'Vale Alimentação'
+  if (method === 'Dinheiro') return 'Dinheiro'
+  if (method === 'Cheque') return 'Cheque'
+  if (method === 'Transferência') return 'Transferência'
   return 'Não definido'
 }
 
@@ -1295,7 +1301,7 @@ export default function Expenses() {
                   label="Método"
                   value={selectedPaymentMethod}
                   onChange={setSelectedPaymentMethod}
-                  options={[{ value: '', label: 'Todos' }, { value: 'PIX', label: 'PIX' }, { value: 'Credito', label: 'Crédito' }, { value: 'Debito', label: 'Débito' }, { value: 'ValeAlimentacao', label: 'Vale Alimentação' }]}
+                  options={[{ value: '', label: 'Todos' }, { value: 'PIX', label: 'PIX' }, { value: 'Credito', label: 'Crédito' }, { value: 'Debito', label: 'Débito' }, { value: 'ValeAlimentacao', label: 'Vale Alimentação' }, { value: 'Dinheiro', label: 'Dinheiro' }, { value: 'Cheque', label: 'Cheque' }, { value: 'Transferência', label: 'Transferência' }]}
                 />
               </div>
               <div className="flex items-center gap-2 text-[13px] text-ink select-none">
@@ -1445,6 +1451,7 @@ export default function Expenses() {
                         const methodLabel = expense.payment_method === 'Credito' ? 'Crédito'
                           : expense.payment_method === 'Debito' ? 'Débito'
                           : expense.payment_method === 'ValeAlimentacao' ? 'Vale'
+                          : expense.payment_method === 'Transferência' ? 'Transferência'
                           : expense.payment_method ?? ''
                         const installmentBadge = expense.payment_method === 'Credito' && expense.installments && expense.installments > 1
                           ? `${expense.installment_index ?? 1}/${expense.installments}x` : null
@@ -1803,13 +1810,13 @@ export default function Expenses() {
 
           <div>
             <span className="block font-body text-ink mb-2">Método</span>
-            <div className="flex gap-2">
-              {(['PIX', 'Credito', 'Debito', 'ValeAlimentacao'] as PaymentMethod[]).map((method) => (
+            <div className="flex flex-wrap gap-2">
+              {(['PIX', 'Credito', 'Debito', 'ValeAlimentacao', 'Dinheiro', 'Cheque', 'Transferência'] as PaymentMethod[]).map((method) => (
                 <button
                   key={method}
                   type="button"
                   onClick={() => setFormData({ ...formData, paymentMethod: method, installments: method === 'Credito' ? formData.installments : 1 })}
-                  className={`flex-1 py-2.5 rounded-lg border text-sm font-medium transition-vintage ${
+                  className={`flex-1 min-w-[90px] py-2.5 rounded-lg border text-sm font-medium transition-vintage ${
                     formData.paymentMethod === method
                       ? 'border-sidebar bg-sidebar text-paper'
                       : 'border-border bg-bg text-ink hover:bg-paper'
