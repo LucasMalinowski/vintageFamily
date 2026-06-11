@@ -22,6 +22,15 @@ const FREQUENCY_DAYS: Record<string, number> = {
   annual: 365,
 }
 
+// In-memory equivalent of Postgres ILIKE for the batched duplicate check
+function matchesLikePattern(text: string, likePattern: string): boolean {
+  const regex = new RegExp(
+    '^' + likePattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*').replace(/_/g, '.') + '$',
+    'i'
+  )
+  return regex.test(text)
+}
+
 export async function launchDueRecurringItems(familyId?: string): Promise<number> {
   const today = toISO(new Date())
   const lookAheadDate = toISO(addDays(new Date(), 2))
@@ -67,27 +76,48 @@ export async function launchDueRecurringItems(familyId?: string): Promise<number
     }
   }
 
+  // Batch prefetch existing pending_confirmation rows for all patterns at once
+  // (one query per table instead of one per pattern), then dedupe in memory.
+  const cycleWindows = patterns.map((p) => {
+    const baseDate = p.next_expected_date ?? today
+    const tolerance = p.tolerance_days ?? 5
+    return {
+      start: toISO(addDays(new Date(baseDate), -tolerance)),
+      end: toISO(addDays(new Date(baseDate), tolerance)),
+    }
+  })
+  const globalStart = cycleWindows.map((w) => w.start).sort()[0]
+  const globalEnd = cycleWindows.map((w) => w.end).sort().at(-1)!
+
+  type PendingRow = { family_id: string; description: string | null; date: string }
+  const pendingByTable: Record<'expenses' | 'incomes', PendingRow[]> = { expenses: [], incomes: [] }
+  for (const table of ['expenses', 'incomes'] as const) {
+    const { data } = await supabaseAdmin
+      .from(table)
+      .select('family_id,description,date')
+      .in('family_id', uniqueFamilyIds)
+      .eq('status', 'pending_confirmation')
+      .gte('date', globalStart)
+      .lte('date', globalEnd)
+    pendingByTable[table] = data ?? []
+  }
+
   let launched = 0
 
-  for (const pattern of patterns) {
+  for (const [index, pattern] of patterns.entries()) {
     // Check if a pending_confirmation entry already exists for this pattern this cycle
-    const baseDate = pattern.next_expected_date ?? today
-    const cycleStart = toISO(addDays(new Date(baseDate), -(pattern.tolerance_days ?? 5)))
-    const cycleEnd = toISO(addDays(new Date(baseDate), pattern.tolerance_days ?? 5))
-
+    const { start: cycleStart, end: cycleEnd } = cycleWindows[index]
     const table = pattern.kind === 'income' ? 'incomes' : 'expenses'
 
-    const { data: existing } = await supabaseAdmin
-      .from(table)
-      .select('id')
-      .eq('family_id', pattern.family_id)
-      .eq('status', 'pending_confirmation')
-      .ilike('description', pattern.description_pattern)
-      .gte('date', cycleStart)
-      .lte('date', cycleEnd)
-      .limit(1)
+    const existing = pendingByTable[table].some(
+      (row) =>
+        row.family_id === pattern.family_id &&
+        row.date >= cycleStart &&
+        row.date <= cycleEnd &&
+        matchesLikePattern(row.description ?? '', pattern.description_pattern)
+    )
 
-    if (existing?.length) continue
+    if (existing) continue
 
     // Insert pending_confirmation entry
     const entryData = {
@@ -115,6 +145,14 @@ export async function launchDueRecurringItems(familyId?: string): Promise<number
     } else {
       await supabaseAdmin.from('expenses').insert(safeEntryData)
     }
+
+    // Keep the in-memory snapshot consistent so a near-identical pattern
+    // later in this run still sees this insert as a duplicate
+    pendingByTable[table].push({
+      family_id: pattern.family_id,
+      description: safeEntryData.description,
+      date: safeEntryData.date,
+    })
 
     const phone = familyPhoneMap.get(pattern.family_id)
     if (phone) {

@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { checkIpRateLimit } from '@/lib/billing/rate-limit'
 import { flushPostHogLogs, posthogLogs } from '@/lib/posthog-logs'
 
 const VALID_TYPES = ['bug', 'feedback', 'suggestion'] as const
 
 export async function POST(request: Request) {
+  // Public form — throttle by IP to prevent DB-fill spam
+  const allowed = await checkIpRateLimit(request, 'feedback', 5)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Muitas tentativas. Aguarde um momento.' }, { status: 429 })
+  }
+
   let body: Record<string, unknown>
   try {
     body = await request.json()

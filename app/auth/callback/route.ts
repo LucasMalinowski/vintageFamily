@@ -12,10 +12,19 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database'
 
+function sanitizeNextPath(raw: string | null): string {
+  // Only allow same-origin paths: "//evil.com", "/\evil.com" and "@evil.com"
+  // would otherwise escape the origin when concatenated into the redirect URL.
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) {
+    return '/inicio'
+  }
+  return raw
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/inicio'
+  const next = sanitizeNextPath(searchParams.get('next'))
   const errorParam = searchParams.get('error')
   const errorDescription = searchParams.get('error_description')
 

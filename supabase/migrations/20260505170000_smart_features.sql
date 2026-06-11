@@ -72,9 +72,18 @@ alter table public.expenses
   add constraint expenses_status_check
     check (status in ('open', 'paid', 'pending_confirmation'));
 
--- Add on_demand_insights counter to usage_counters
-alter table public.usage_counters
-  add column if not exists on_demand_insights int not null default 0;
+-- Add on_demand_insights counter to usage_counters.
+-- Guarded: this statement was retro-added after usage_counters had been
+-- created by the later 20260513120000 migration (which already includes the
+-- column). On a fresh replay the table doesn't exist yet, so skip — the
+-- later migration creates it with on_demand_insights included.
+do $$
+begin
+  if to_regclass('public.usage_counters') is not null then
+    alter table public.usage_counters
+      add column if not exists on_demand_insights int not null default 0;
+  end if;
+end $$;
 
 -- RLS for recurring_patterns
 alter table public.recurring_patterns enable row level security;

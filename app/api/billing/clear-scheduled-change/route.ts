@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
+import { checkRateLimit } from '@/lib/billing/rate-limit'
 import { stripe } from '@/lib/billing/stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
 
@@ -11,6 +12,11 @@ export async function POST(request: Request) {
 
     if (!auth.user) {
       return NextResponse.json({ error: auth.error }, { status: auth.status })
+    }
+
+    const allowed = await checkRateLimit(auth.user.id, 'clear-scheduled-change', 5)
+    if (!allowed) {
+      return NextResponse.json({ error: 'Muitas tentativas. Aguarde um momento e tente novamente.' }, { status: 429 })
     }
 
     const profile = await getProfileByUserId(auth.user.id)

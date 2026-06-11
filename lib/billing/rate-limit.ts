@@ -1,4 +1,5 @@
 import { supabaseService } from './supabase-service'
+import { sha256Hex } from '@/lib/security/tokens'
 
 /**
  * Increments the request counter for the given user+endpoint within the current
@@ -34,5 +35,39 @@ export async function checkRateLimit(
     return Boolean(data)
   } catch {
     return true // fail open on unexpected errors
+  }
+}
+
+/**
+ * IP-keyed variant for unauthenticated endpoints (feedback, token exchange).
+ * Stores only a sha256 of the IP. Backed by the check_ip_rate_limit RPC.
+ */
+export async function checkIpRateLimit(
+  request: Request,
+  endpoint: string,
+  maxCount: number,
+  windowSeconds = 60,
+): Promise<boolean> {
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    'unknown'
+
+  try {
+    const { data, error } = await supabaseService.rpc('check_ip_rate_limit', {
+      p_key: sha256Hex(ip),
+      p_endpoint: endpoint,
+      p_max_count: maxCount,
+      p_window_seconds: windowSeconds,
+    })
+
+    if (error) {
+      console.error('ip-rate-limit check failed', { endpoint, error })
+      return true // fail open
+    }
+
+    return Boolean(data)
+  } catch {
+    return true // fail open
   }
 }

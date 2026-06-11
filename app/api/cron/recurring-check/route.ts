@@ -4,10 +4,10 @@ import { detectAndUpsertRecurringPatterns } from '@/lib/recurring/detector'
 import { launchDueRecurringItems } from '@/lib/recurring/launcher'
 import { flushPostHogLogs, posthogLogs } from '@/lib/posthog-logs'
 import { acquireFamilyJobLock, getDailyJobPeriod } from '@/lib/jobs/locks'
+import { isAuthorizedCronRequest } from '@/lib/security/cron'
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

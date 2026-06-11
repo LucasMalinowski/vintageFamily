@@ -9,6 +9,14 @@ type SyncSessionBody = {
 }
 
 export async function POST(request: Request) {
+  // Login-CSRF guard: a cross-site page could POST attacker tokens (as
+  // text/plain to skip the CORS preflight) and plant a session in the
+  // victim's browser. Only accept same-origin requests.
+  const origin = request.headers.get('origin')
+  if (origin && origin !== new URL(request.url).origin) {
+    return NextResponse.json({ error: 'Origem inválida.' }, { status: 403 })
+  }
+
   const response = NextResponse.json({ ok: true })
   const { access_token: accessToken, refresh_token: refreshToken } = (await request
     .json()

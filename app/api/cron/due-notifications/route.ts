@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { acquireFamilyJobLock, getDailyJobPeriod } from '@/lib/jobs/locks'
 import { sendExpoPushNotifications, type ExpoPushMessage } from '@/lib/notifications/push'
 import { flushPostHogLogs, posthogLogs } from '@/lib/posthog-logs'
+import { isAuthorizedCronRequest } from '@/lib/security/cron'
 
 /**
  * GET /api/cron/due-notifications
@@ -15,8 +16,7 @@ import { flushPostHogLogs, posthogLogs } from '@/lib/posthog-logs'
  * Uses family_job_locks to guarantee at-most-once delivery per family per day.
  */
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

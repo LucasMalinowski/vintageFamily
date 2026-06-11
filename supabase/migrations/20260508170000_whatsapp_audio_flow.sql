@@ -45,5 +45,12 @@ create policy "pending_whatsapp_actions_deny_clients"
   using (false)
   with check (false);
 
-alter table public.usage_counters
-  add column if not exists audio_messages int not null default 0;
+-- Guarded: retro-added before usage_counters existed; the later
+-- 20260513120000 migration creates the table with audio_messages included.
+do $$
+begin
+  if to_regclass('public.usage_counters') is not null then
+    alter table public.usage_counters
+      add column if not exists audio_messages int not null default 0;
+  end if;
+end $$;

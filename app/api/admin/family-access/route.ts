@@ -92,27 +92,45 @@ async function deleteByUserIds(table: string, userIds: string[]) {
   if (error) throw new Error(`${table}: ${error.message}`)
 }
 
+const FAMILIES_PAGE_SIZE = 200
+
 export async function GET(request: Request) {
   const admin = await requireSuperAdmin(request)
   if (!admin.ok) return admin.response
 
-  const [{ data: families, error: familiesError }, { data: users, error: usersError }, { data: subs, error: subsError }] = await Promise.all([
-    supabaseService
-      .from('families')
-      .select('id,name,trial_expires_at,lifetime_access,founders_enabled')
-      .order('created_at', { ascending: true }),
-    supabaseService
-      .from('users')
-      .select('id,family_id,name,email')
-      .order('created_at', { ascending: true }),
-    supabaseService
-      .from('subscriptions')
-      .select('family_id,status')
-      .order('updated_at', { ascending: false }),
-  ])
+  const url = new URL(request.url)
+  const page = Math.max(1, Math.min(10000, parseInt(url.searchParams.get('page') ?? '1') || 1))
+  const from = (page - 1) * FAMILIES_PAGE_SIZE
 
-  if (familiesError || usersError || subsError) {
-    return NextResponse.json({ error: familiesError?.message || usersError?.message || subsError?.message || 'Não foi possível carregar as famílias.' }, { status: 500 })
+  const { data: families, count: total, error: familiesError } = await supabaseService
+    .from('families')
+    .select('id,name,trial_expires_at,lifetime_access,founders_enabled', { count: 'exact' })
+    .order('created_at', { ascending: true })
+    .range(from, from + FAMILIES_PAGE_SIZE - 1)
+
+  if (familiesError) {
+    return NextResponse.json({ error: familiesError.message }, { status: 500 })
+  }
+
+  const familyIds = (families ?? []).map((f) => f.id)
+
+  const [{ data: users, error: usersError }, { data: subs, error: subsError }] = familyIds.length
+    ? await Promise.all([
+        supabaseService
+          .from('users')
+          .select('id,family_id,name,email')
+          .in('family_id', familyIds)
+          .order('created_at', { ascending: true }),
+        supabaseService
+          .from('subscriptions')
+          .select('family_id,status')
+          .in('family_id', familyIds)
+          .order('updated_at', { ascending: false }),
+      ])
+    : [{ data: [], error: null }, { data: [], error: null }]
+
+  if (usersError || subsError) {
+    return NextResponse.json({ error: usersError?.message || subsError?.message || 'Não foi possível carregar as famílias.' }, { status: 500 })
   }
 
   // Take most-recent subscription per family (already ordered by updated_at desc)
@@ -121,21 +139,20 @@ export async function GET(request: Request) {
     if (!subsByFamily.has(sub.family_id)) subsByFamily.set(sub.family_id, sub.status)
   }
 
-  const rows = (families ?? []).map((family) => {
-    const familyUsers = (users ?? []).filter((user) => user.family_id === family.id)
+  const usersByFamily = new Map<string, { id: string; name: string | null; email: string | null }[]>()
+  for (const user of users ?? []) {
+    const list = usersByFamily.get(user.family_id) ?? []
+    list.push({ id: user.id, name: user.name, email: user.email })
+    usersByFamily.set(user.family_id, list)
+  }
 
-    return {
-      ...family,
-      subscription_status: subsByFamily.get(family.id) ?? null,
-      members: familyUsers.map((user) => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      })),
-    }
-  })
+  const rows = (families ?? []).map((family) => ({
+    ...family,
+    subscription_status: subsByFamily.get(family.id) ?? null,
+    members: usersByFamily.get(family.id) ?? [],
+  }))
 
-  return NextResponse.json({ families: rows })
+  return NextResponse.json({ families: rows, total: total ?? rows.length, page, pageSize: FAMILIES_PAGE_SIZE })
 }
 
 export async function PATCH(request: Request) {

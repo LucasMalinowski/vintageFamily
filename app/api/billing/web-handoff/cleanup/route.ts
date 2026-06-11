@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { supabaseService } from '@/lib/billing/supabase-service'
+import { isAuthorizedCronRequest } from '@/lib/security/cron'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
-  const secret = request.headers.get('x-cron-secret')
-  if (secret !== process.env.CRON_SECRET) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

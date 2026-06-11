@@ -5,6 +5,7 @@ import { generateProactiveInsights } from '@/lib/insights/generator'
 import { dispatchInsights } from '@/lib/insights/dispatcher'
 import { flushPostHogLogs, posthogLogs } from '@/lib/posthog-logs'
 import { acquireFamilyJobLock, getDailyJobPeriod } from '@/lib/jobs/locks'
+import { isAuthorizedCronRequest } from '@/lib/security/cron'
 
 function getCurrentPeriodLabel(): string {
   const now = new Date()
@@ -18,8 +19,7 @@ function getCurrentPeriod(): string {
 }
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

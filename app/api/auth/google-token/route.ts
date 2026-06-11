@@ -8,9 +8,16 @@
  * appears on the Google consent screen.
  */
 import { NextResponse } from 'next/server'
+import { checkIpRateLimit } from '@/lib/billing/rate-limit'
 
 export async function POST(request: Request) {
   try {
+    // Unauthenticated proxy to Google's token endpoint — throttle by IP
+    const allowed = await checkIpRateLimit(request, 'google-token', 10)
+    if (!allowed) {
+      return NextResponse.json({ error: 'Muitas tentativas. Aguarde um momento.' }, { status: 429 })
+    }
+
     const { code } = (await request.json()) as { code?: string }
     if (!code) {
       return NextResponse.json({ error: 'Missing code' }, { status: 400 })

@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import {
+  getAccessTokenFromAuthHeader,
+  getAccessTokenFromCookieStore,
+  requireUserByAccessToken,
+  getProfileByUserId,
+} from '@/lib/billing/auth'
 import { sendExpoPushNotifications } from '@/lib/notifications/push'
 import { dispatchInsights } from '@/lib/insights/dispatcher'
 import { formatBRL } from '@/lib/money'
@@ -74,16 +81,30 @@ async function generateInsight(
 }
 
 export async function POST(request: NextRequest) {
-  let body: { familyId?: string; categoryId?: string } = {}
+  const cookieStore = await cookies()
+  const token = getAccessTokenFromAuthHeader(request) ?? getAccessTokenFromCookieStore(cookieStore)
+  const { error: authError, user } = await requireUserByAccessToken(token)
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+  }
+
+  const profile = await getProfileByUserId(user.id)
+  if (!profile?.family_id) {
+    return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 404 })
+  }
+
+  let body: { categoryId?: string } = {}
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
   }
 
-  const { familyId, categoryId } = body
-  if (!familyId || !categoryId) {
-    return NextResponse.json({ error: 'familyId and categoryId required' }, { status: 400 })
+  // familyId always comes from the authenticated profile — never from the body
+  const familyId = profile.family_id
+  const { categoryId } = body
+  if (!categoryId) {
+    return NextResponse.json({ error: 'categoryId required' }, { status: 400 })
   }
 
   // Load the category and its children to resolve the right limit
@@ -212,18 +233,13 @@ export async function POST(request: NextRequest) {
 
   // WhatsApp via dispatchInsights
   const monthLabel = now.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
-  let whatsappResult = 'not attempted'
   try {
     await dispatchInsights(familyId, [insight], monthLabel, 'limit_alert')
-    whatsappResult = 'dispatched'
     console.log('[limit-alert] dispatchInsights completed')
   } catch (err) {
-    whatsappResult = String(err)
     console.error('[limit-alert] dispatchInsights error', err)
   }
 
-  return NextResponse.json({
-    ok: true, level, pct, alerted: true, message: insight,
-    debug: { pushTokenCount, pushSent, whatsappResult },
-  })
+  console.log(`[limit-alert] push tokens=${pushTokenCount} sent=${pushSent}`)
+  return NextResponse.json({ ok: true, level, pct, alerted: true })
 }

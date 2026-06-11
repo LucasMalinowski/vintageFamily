@@ -19,11 +19,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
   }
 
-  const { token, name, email } = await request.json()
-  if (!token || !name || !email) {
+  const { token, name } = await request.json()
+  if (!token || !name) {
     return NextResponse.json({ error: 'Dados incompletos.' }, { status: 400 })
   }
-  const normalizedEmail = String(email).trim().toLowerCase()
+  // The invite must match the email of the authenticated account — never an
+  // email supplied in the body, otherwise any account holding a leaked invite
+  // link could join the family (and desync users.email from auth.users.email).
+  const normalizedEmail = (authData.user.email ?? '').trim().toLowerCase()
+  if (!normalizedEmail) {
+    return NextResponse.json({ error: 'Conta sem email verificado.' }, { status: 400 })
+  }
   const tokenHash = sha256Hex(String(token))
 
   const { data: invite, error: inviteError } = await supabaseAdmin
