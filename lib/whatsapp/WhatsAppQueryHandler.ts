@@ -377,6 +377,7 @@ export class WhatsAppQueryHandler {
             .gte('date', dateRange.from)
             .lte('date', dateRange.to)
             .order('date', { ascending: false })
+            .order('created_at', { ascending: false })
             .limit(50)
           if (intent.status_filter === 'open') query = query.eq('status', 'open')
           const { data } = await query
@@ -404,6 +405,7 @@ export class WhatsAppQueryHandler {
             .gte('date', dateRange.from)
             .lte('date', dateRange.to)
             .order('date', { ascending: false })
+            .order('created_at', { ascending: false })
             .limit(50)
           payload.incomes = (data ?? []).map((r, i) => ({
             idx: i,  // reassigned in handle() after parallel fetch completes

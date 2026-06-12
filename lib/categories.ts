@@ -98,6 +98,16 @@ export const buildCategoryOptions = (categories: CategoryRecord[]) => {
   return options
 }
 
+export const getCategoryIdsWithDescendants = (categories: CategoryRecord[], categoryId: string): string[] => {
+  const ids = [categoryId]
+  for (const category of categories) {
+    if (category.parent_id === categoryId) {
+      ids.push(category.id)
+    }
+  }
+  return ids
+}
+
 export const buildCategoryIconMap = (categories: CategoryRecord[]): Map<string, string | null> => {
   const byId = new Map<string, CategoryRecord>(categories.map((c) => [c.id, c]))
   const icons = new Map<string, string | null>()

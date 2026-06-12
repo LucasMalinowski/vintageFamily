@@ -19,6 +19,7 @@ import MonthYearPicker from '@/components/ui/MonthYearPicker'
 import PdfPreviewModal from '@/components/export/PdfPreviewModal'
 import Modal from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
+import { buildDonutSlices } from '@/lib/donut'
 import { useAuth } from '@/components/AuthProvider'
 import { usePlan } from '@/lib/billing/plan-context'
 import { posthog } from '@/lib/posthog'
@@ -67,6 +68,7 @@ interface CategorySlice {
 
 interface BarDetailRow {
   date: string
+  created_at: string
   name: string
   category: string
   value: number
@@ -180,19 +182,19 @@ export default function Comparatives() {
   const loadCategorySlices = async () => {
     let incomeQuery = supabase
       .from('incomes')
-      .select('description,category_name,amount_cents,date')
+      .select('description,category_name,amount_cents,date,created_at')
       .eq('family_id', familyId!)
       .eq('status', 'received')
 
     let paidQuery = supabase
       .from('expenses')
-      .select('description,category_name,amount_cents,date,payment_method')
+      .select('description,category_name,amount_cents,date,payment_method,created_at')
       .eq('family_id', familyId!)
       .eq('status', 'paid')
 
     let dreamQuery = supabase
       .from('savings_contributions')
-      .select('saving_id,amount_cents,date,type')
+      .select('saving_id,amount_cents,date,type,created_at')
       .eq('family_id', familyId!)
 
     if (selectedYear !== ALL_YEARS_VALUE) {
@@ -223,29 +225,31 @@ export default function Comparatives() {
     for (const row of incomeRows.data || []) {
       const detail = {
         date: row.date,
+        created_at: row.created_at,
         name: row.description || 'Sem nome',
         category: row.category_name || 'Sem categoria',
         value: row.amount_cents,
       }
       if (!isDateWithinFilters(detail.date, selectedMonth, selectedYear)) continue
-      if (!matchesSearch(searchTerm, detail.name, detail.category)) continue
+      if (!matchesSearch(searchTerm, detail.name, detail.category, formatBRL(detail.value))) continue
       incomeDetails.push(detail)
     }
-    incomeDetails.sort((a, b) => b.date.localeCompare(a.date))
+    incomeDetails.sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
 
     const paidDetails: BarDetailRow[] = []
     for (const row of paidRows.data || []) {
       const detail = {
         date: row.date,
+        created_at: row.created_at,
         name: row.description || 'Sem nome',
         category: row.category_name || 'Sem categoria',
         value: row.amount_cents,
       }
       if (!isDateWithinFilters(detail.date, selectedMonth, selectedYear)) continue
-      if (!matchesSearch(searchTerm, detail.name, detail.category)) continue
+      if (!matchesSearch(searchTerm, detail.name, detail.category, formatBRL(detail.value))) continue
       paidDetails.push(detail)
     }
-    paidDetails.sort((a, b) => b.date.localeCompare(a.date))
+    paidDetails.sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
 
     const savedDetails: BarDetailRow[] = []
     for (const row of savingsRows.data || []) {
@@ -253,15 +257,16 @@ export default function Comparatives() {
       const savingName = savingNameById.get(row.saving_id) || 'Sem categoria'
       const detail = {
         date: row.date,
+        created_at: row.created_at,
         name: savingName,
         category: savingName,
         value: row.amount_cents,
       }
       if (!isDateWithinFilters(detail.date, selectedMonth, selectedYear)) continue
-      if (!matchesSearch(searchTerm, detail.name, detail.category)) continue
+      if (!matchesSearch(searchTerm, detail.name, detail.category, formatBRL(detail.value))) continue
       savedDetails.push(detail)
     }
-    savedDetails.sort((a, b) => b.date.localeCompare(a.date))
+    savedDetails.sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
 
     const incomeByCategory = new Map<string, number>()
     for (const row of incomeDetails) {
@@ -282,7 +287,7 @@ export default function Comparatives() {
       ...incomeDetails.map((row) => ({ ...row, source: 'Recebido' })),
       ...paidDetails.map((row) => ({ ...row, value: -row.value, source: 'Pago' })),
       ...savedDetails.map((row) => ({ ...row, value: -row.value, source: 'Poupado' })),
-    ].sort((a, b) => b.date.localeCompare(a.date))
+    ].sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
 
     setCategorySlices({
       income: buildColorizedSlices(Array.from(incomeByCategory.entries()).map(([label, value]) => ({ label, value }))),
@@ -404,13 +409,7 @@ export default function Comparatives() {
 
   // Donut for expenses by category
   const expenseDonutSlices = useMemo((): DonutSlice[] => {
-    const total = categorySlices.paid.reduce((s, c) => s + c.value, 0) || 1
-    return categorySlices.paid.slice(0, 8).map((c) => ({
-      label: c.label,
-      value: c.value,
-      pct: Math.round((c.value / total) * 100),
-      color: c.color,
-    }))
+    return buildDonutSlices(categorySlices.paid, 8)
   }, [categorySlices.paid])
 
   // Trend series (multi-line)

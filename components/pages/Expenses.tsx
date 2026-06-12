@@ -30,6 +30,7 @@ import { getBillingCycleRange, getCurrentBillingPeriod } from '@/lib/billing-cyc
 import AnalyticsKpiCard from '@/components/ui/AnalyticsKpiCard'
 import DonutChart, { DonutSlice } from '@/components/ui/DonutChart'
 import DonutCategoryModal from '@/components/ui/DonutCategoryModal'
+import { buildDonutSlices } from '@/lib/donut'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import { toast } from '@/components/ui/Toast'
 import { buildInstallmentDates, splitAmountCents } from '@/lib/installments'
@@ -46,6 +47,7 @@ import {
   buildCategoryOptions,
   CategoryRecord,
   findCategoryIdByStoredName,
+  getCategoryIdsWithDescendants,
 } from '@/lib/categories'
 import { matchesSearch } from '@/lib/filterSearch'
 import CurrencyInput from '@/components/ui/CurrencyInput'
@@ -155,6 +157,7 @@ interface Expense {
   installment_group_id: string | null
   installment_index: number | null
   created_by: string | null
+  created_at: string
 }
 
 const formatPaymentLabel = (method: PaymentMethod | null, installments: number | null) => {
@@ -369,6 +372,7 @@ export default function Expenses() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     familyId,
+    categories,
     selectedMonth,
     selectedYear,
     selectedCategoryId,
@@ -443,10 +447,10 @@ export default function Expenses() {
         .lte('date', format(end, 'yyyy-MM-dd'))
     }
 
-    query = query.order('date', { ascending: false }).limit(2000)
+    query = query.order('date', { ascending: false }).order('created_at', { ascending: false }).limit(2000)
 
     if (selectedCategoryId) {
-      query = query.eq('category_id', selectedCategoryId)
+      query = query.in('category_id', getCategoryIdsWithDescendants(categories, selectedCategoryId))
     }
 
     if (selectedStatus) {
@@ -480,6 +484,7 @@ export default function Expenses() {
         installment_group_id: row.installment_group_id,
         installment_index: row.installment_index,
         created_by: row.created_by ?? null,
+        created_at: row.created_at,
       }))
       setRawYearExpenses(normalized)
       setExpenses(normalized.filter((expense) => isDateInBillingPeriod(expense.date, selectedMonth, selectedYear, billingCycleDay)))
@@ -764,7 +769,8 @@ export default function Expenses() {
     matchesSearch(
       searchTerm,
       expense.description,
-      getCategoryLabel(expense.category_id, expense.category_name)
+      getCategoryLabel(expense.category_id, expense.category_name),
+      formatBRL(expense.amount_cents)
     )
   )
   const total = filteredExpenses.reduce((sum, exp) => sum + exp.amount_cents, 0)
@@ -811,12 +817,14 @@ export default function Expenses() {
 
   const expenseDonutSlices: DonutSlice[] = useMemo(() => {
     if (total === 0) return []
-    return categoryBreakdown.slice(0, 8).map((c, i) => ({
-      label: c.label,
-      value: c.value,
-      pct: Math.round((c.value / total) * 100),
-      color: getCatRailColor(c.label) || DONUT_PALETTE[i % DONUT_PALETTE.length],
-    }))
+    return buildDonutSlices(
+      categoryBreakdown.map((c, i) => ({
+        label: c.label,
+        value: c.value,
+        color: getCatRailColor(c.label) || DONUT_PALETTE[i % DONUT_PALETTE.length],
+      })),
+      8
+    )
   }, [categoryBreakdown, total])
 
 	  const paidCategoryBreakdown = useMemo(() => {
@@ -850,7 +858,9 @@ export default function Expenses() {
     ? getMonthLabel(selectedMonth)
     : 'Todos os meses'
   const [visibleCount, setVisibleCount] = useState(30)
-  const sortedExpenses = filteredExpenses.slice().sort((a, b) => b.date.localeCompare(a.date))
+  const sortedExpenses = filteredExpenses.slice().sort((a, b) =>
+    b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at)
+  )
   const visibleExpenses = sortedExpenses.slice(0, visibleCount)
   const hasMore = sortedExpenses.length > visibleCount
   const groupedExpenses = visibleExpenses.reduce<Array<{ label: string; items: Expense[] }>>((groups, expense) => {
@@ -1248,7 +1258,7 @@ export default function Expenses() {
           <input
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Buscar por nome ou categoria..."
+            placeholder="Buscar por nome, categoria ou valor..."
             aria-label="Buscar por nome ou categoria"
             className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none"
           />
@@ -1360,7 +1370,7 @@ export default function Expenses() {
                 />
                 <AnalyticsKpiCard
                   label="Categorias ativas"
-                  value={String(expenseDonutSlices.length)}
+                  value={String(categoryBreakdown.length)}
                   sub={`${sortedExpenses.length} lançamentos`}
                   iconTheme="purple"
                   icon={Tag}

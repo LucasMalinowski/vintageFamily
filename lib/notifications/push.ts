@@ -45,7 +45,16 @@ export async function sendExpoPushNotifications(messages: ExpoPushMessage[]): Pr
       })
 
       if (res.ok) {
-        sent += chunk.length
+        const body = await res.json()
+        const tickets: Array<{ status: string; message?: string; details?: unknown }> = body?.data ?? []
+        for (const ticket of tickets) {
+          if (ticket.status === 'ok') {
+            sent++
+          } else {
+            failed++
+            console.error('[push] Expo ticket error:', ticket.message, ticket.details)
+          }
+        }
       } else {
         failed += chunk.length
         console.error('[push] Expo API error:', res.status, await res.text())

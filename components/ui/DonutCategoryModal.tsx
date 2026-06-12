@@ -118,9 +118,12 @@ export default function DonutCategoryModal({
   const centerText = formatBRL(total).replace('R$ ', '')
 
   const selectedSlice = slices.find((s) => s.label === selectedCategory)
-  const filteredExpenses = selectedCategory
-    ? expenses.filter((e) => getCategoryLabel(e.category_id, e.category_name) === selectedCategory)
-    : []
+  const visibleLabels = new Set(slices.filter((s) => s.label !== 'Outros').map((s) => s.label))
+  const filteredExpenses = !selectedCategory
+    ? []
+    : selectedCategory === 'Outros'
+      ? expenses.filter((e) => !visibleLabels.has(getCategoryLabel(e.category_id, e.category_name)))
+      : expenses.filter((e) => getCategoryLabel(e.category_id, e.category_name) === selectedCategory)
 
   return (
     <Transition appear show={isOpen} as={Fragment}>

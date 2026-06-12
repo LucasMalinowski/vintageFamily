@@ -48,6 +48,7 @@ import {
   buildCategoryOptions,
   CategoryRecord,
   findCategoryIdByStoredName,
+  getCategoryIdsWithDescendants,
 } from '@/lib/categories'
 import { matchesSearch } from '@/lib/filterSearch'
 import CurrencyInput from '@/components/ui/CurrencyInput'
@@ -69,6 +70,7 @@ interface Income {
   notes: string | null
   attachment_path: string | null
   created_by: string | null
+  created_at: string
 }
 
 function isDateInBillingPeriod(date: string, month: number, year: number, cycleDay: number): boolean {
@@ -195,10 +197,10 @@ export default function Incomes() {
         .lte('date', format(end, 'yyyy-MM-dd'))
     }
 
-    query = query.order('date', { ascending: false }).limit(2000)
+    query = query.order('date', { ascending: false }).order('created_at', { ascending: false }).limit(2000)
 
     if (selectedCategoryId) {
-      query = query.eq('category_id', selectedCategoryId)
+      query = query.in('category_id', getCategoryIdsWithDescendants(categories, selectedCategoryId))
     }
 
     if (selectedStatus) {
@@ -217,7 +219,7 @@ export default function Incomes() {
       setIncomes(normalized.filter((income) => isDateInBillingPeriod(income.date, selectedMonth, selectedYear, billingCycleDay)))
     }
     setLoading(false)
-  }, [familyId, selectedMonth, selectedYear, selectedCategoryId, selectedStatus, billingCycleDay])
+  }, [familyId, categories, selectedMonth, selectedYear, selectedCategoryId, selectedStatus, billingCycleDay])
 
   useEffect(() => {
     if (familyId) {
@@ -515,12 +517,13 @@ export default function Incomes() {
     matchesSearch(
       searchTerm,
       income.description,
-      getCategoryLabel(income.category_id, income.category_name)
+      getCategoryLabel(income.category_id, income.category_name),
+      formatBRL(income.amount_cents)
     )
   )
   const groupedIncomes = filteredIncomes
     .slice()
-    .sort((a, b) => b.date.localeCompare(a.date))
+    .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
     .reduce<Array<{ label: string; items: Income[] }>>((groups, income) => {
       const label = formatMonthYear(income.date)
       const lastGroup = groups[groups.length - 1]
@@ -926,7 +929,7 @@ export default function Incomes() {
           </button>
           <div className="flex items-center h-[38px] bg-white border border-border rounded-[10px] px-3 gap-2 flex-1 max-w-[380px]">
             <Search className="w-4 h-4 text-petrol shrink-0" />
-            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Buscar por nome ou categoria..." aria-label="Buscar por nome ou categoria" className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none" />
+            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Buscar por nome, categoria ou valor..." aria-label="Buscar por nome ou categoria" className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none" />
           </div>
           <div className="flex-1" />
           <button type="button" onClick={() => setIsCategorySettingsOpen(true)} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage">

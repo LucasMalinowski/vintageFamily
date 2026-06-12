@@ -5,6 +5,7 @@ import { Listbox, Transition } from '@headlessui/react'
 import { Check, ChevronDown, Search } from 'lucide-react'
 import clsx from 'clsx'
 import CategoryIcon from '@/components/ui/CategoryIcon'
+import { matchesSearch } from '@/lib/filterSearch'
 
 interface SelectOption {
   value: string
@@ -58,15 +59,15 @@ export default function Select({
   }, [])
   const searchable = options.some((option) => option.meta?.depth === 1 || option.meta?.parentLabel)
   const filteredGroups = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase()
+    const query = searchTerm.trim()
     if (!searchable || !query) {
       return groupedOptions
     }
 
     return groupedOptions
       .map((group) => {
-        const mainMatches = group.main.label.toLowerCase().includes(query)
-        const children = group.children.filter((child) => child.label.toLowerCase().includes(query))
+        const mainMatches = matchesSearch(query, group.main.label)
+        const children = group.children.filter((child) => matchesSearch(query, child.label))
 
         if (!mainMatches && children.length === 0) {
           return null

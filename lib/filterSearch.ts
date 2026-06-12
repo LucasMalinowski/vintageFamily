@@ -1,7 +1,13 @@
-export const matchesSearch = (search: string, name: string, category: string) => {
-  const term = search.trim().toLowerCase()
+const normalizeForSearch = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+
+export const matchesSearch = (search: string, ...fields: string[]) => {
+  const term = normalizeForSearch(search.trim())
   if (!term) return true
-  const haystack = `${name} ${category}`.toLowerCase()
+  const haystack = normalizeForSearch(fields.join(' '))
 
   if (term.includes('&&')) {
     return term

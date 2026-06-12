@@ -123,7 +123,10 @@ export async function POST(request: NextRequest) {
       .eq('kind', 'expense'),
   ])
 
-  if (!cat) return NextResponse.json({ ok: true, reason: 'category not found' })
+  if (!cat) {
+    console.log(`[limit-alert] category not found categoryId=${categoryId} familyId=${familyId}`)
+    return NextResponse.json({ ok: true, reason: 'category not found' })
+  }
 
   // Determine which category holds the relevant limit:
   // Use the category's own limit, or fall back to the parent's limit
@@ -141,6 +144,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (!limitCents) {
+    console.log(`[limit-alert] no limit set categoryId=${categoryId} categoryName=${cat.name} parentId=${cat.parent_id ?? 'none'}`)
     return NextResponse.json({ ok: true, reason: 'no limit set' })
   }
 
@@ -174,6 +178,7 @@ export async function POST(request: NextRequest) {
 
   const level: AlertLevel | null = pct >= 100 ? 'over' : pct >= 80 ? 'warning' : null
   if (!level) {
+    console.log(`[limit-alert] below threshold categoryName=${categoryName} pct=${pct} spent=${spentCents} limit=${limitCents}`)
     return NextResponse.json({ ok: true, reason: 'below threshold', pct })
   }
 
@@ -196,6 +201,7 @@ export async function POST(request: NextRequest) {
     .maybeSingle()
 
   if (silence) {
+    console.log(`[limit-alert] silenced categoryName=${categoryName} pct=${pct} level=${level} period=${billingPeriodKey}`)
     return NextResponse.json({ ok: true, reason: 'silenced', pct, level })
   }
 

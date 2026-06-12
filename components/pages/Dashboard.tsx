@@ -348,6 +348,7 @@ export default function Dashboard() {
         .eq('family_id', familyId!)
         .eq('status', 'open')
         .order('date', { ascending: true })
+        .order('created_at', { ascending: true })
         .limit(5)
 
       if (process.env.NODE_ENV === 'development' && error) {
