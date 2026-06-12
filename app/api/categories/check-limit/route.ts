@@ -9,7 +9,7 @@ import {
 import { checkAndAlertCategoryLimit } from '@/lib/categories/limitAlert'
 
 /**
- * POST /api/categories/limit-alert
+ * POST /api/categories/check-limit
  *
  * Called after an expense is saved (fire-and-forget from client).
  * Checks if the category's monthly limit threshold was just crossed and,

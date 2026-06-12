@@ -8,7 +8,7 @@ import { getCurrentBillingPeriod } from '@/lib/billing-cycle'
  * Checks if the category's monthly limit threshold was just crossed and,
  * if so, sends push notifications + WhatsApp/email via dispatchInsights.
  *
- * Shared by /api/categories/limit-alert (web) and the WhatsApp expense
+ * Shared by /api/categories/check-limit (web) and the WhatsApp expense
  * parser, so every channel that can create an expense triggers the same check.
  */
 

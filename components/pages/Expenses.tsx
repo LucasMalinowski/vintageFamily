@@ -511,7 +511,7 @@ export default function Expenses() {
       if (!familyId) return
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (!session?.access_token) return
-        fetch('/api/categories/limit-alert', {
+        fetch('/api/categories/check-limit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
           body: JSON.stringify({ familyId, categoryId }),
