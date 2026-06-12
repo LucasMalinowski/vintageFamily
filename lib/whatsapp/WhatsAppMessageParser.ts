@@ -10,6 +10,7 @@ import { checkAndIncrementWhatsAppRecording, checkAndIncrementAIQuery } from '@/
 import { computeNextMonthForecast } from '@/lib/forecast/engine'
 import { detectSpendingAnomalies } from '@/lib/forecast/anomaly'
 import { generateForecastNarrative } from '@/lib/forecast/narrator'
+import { checkAndAlertCategoryLimit } from '@/lib/categories/limitAlert'
 
 const FEEDBACK_LINE = '\n\n_Algo deu errado? Nos conte: https://florim.app/feedback_'
 
@@ -718,6 +719,13 @@ async function saveRecord(
         console.error('[WA] installment insert error:', error.message)
         return { ok: false, line }
       }
+      if (categoryId) {
+        try {
+          await checkAndAlertCategoryLimit(familyId, categoryId)
+        } catch (err) {
+          console.error('[WA] limit-alert check error:', err)
+        }
+      }
       return { ok: true, line }
     }
 
@@ -746,6 +754,13 @@ async function saveRecord(
     if (error || !data?.id) {
       console.error('[WA] expense insert error:', error?.message)
       return { ok: false, line }
+    }
+    if (categoryId && status === 'paid') {
+      try {
+        await checkAndAlertCategoryLimit(familyId, categoryId)
+      } catch (err) {
+        console.error('[WA] limit-alert check error:', err)
+      }
     }
     return { ok: true, line }
   }
