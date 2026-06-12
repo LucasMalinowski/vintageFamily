@@ -507,6 +507,18 @@ export default function Expenses() {
     }
     setFormError(null)
 
+    const fireLimitAlertCheck = (categoryId: string) => {
+      if (!familyId) return
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session?.access_token) return
+        fetch('/api/categories/limit-alert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ familyId, categoryId }),
+        }).catch(() => {/* silent */})
+      })
+    }
+
     const expenseData = {
       family_id: familyId!,
       description: formData.description,
@@ -573,6 +585,7 @@ export default function Expenses() {
         setExpenses((prev) => prev.map((e) => e.id === editingExpense.id ? updated : e))
         setRawYearExpenses((prev) => prev.map((e) => e.id === editingExpense.id ? updated : e))
         closeModal()
+        fireLimitAlertCheck(category.id)
         return
       }
     } else {
@@ -600,6 +613,7 @@ export default function Expenses() {
           setRawYearExpenses((prev) => [newRow as Expense, ...prev])
           if (expenses.length === 0) posthog.capture(EVENTS.FIRST_EXPENSE_CREATED)
           closeModal()
+          fireLimitAlertCheck(category.id)
           return
         }
       }
@@ -637,18 +651,7 @@ export default function Expenses() {
 
     closeModal()
     loadExpenses()
-
-    // Fire-and-forget limit alert check
-    if (familyId && category?.id) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (!session?.access_token) return
-        fetch('/api/categories/limit-alert', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-          body: JSON.stringify({ familyId, categoryId: category.id }),
-        }).catch(() => {/* silent */})
-      })
-    }
+    fireLimitAlertCheck(category.id)
   }
 
   const handleDelete = (id: string) => {
