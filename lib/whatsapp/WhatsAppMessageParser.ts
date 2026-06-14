@@ -6,7 +6,8 @@ import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
 import { whatsAppQueryHandler } from '@/lib/whatsapp/WhatsAppQueryHandler'
 import { formatBRL } from '@/lib/money'
 import { hasBillingAccess } from '@/lib/billing/access'
-import { checkAndIncrementWhatsAppRecording, checkAndIncrementAIQuery } from '@/lib/billing/free-tier'
+import { checkAndIncrementWhatsAppRecording, checkAndIncrementAIQuery, getUsageCounters } from '@/lib/billing/free-tier'
+import { FREE_TIER_LIMITS } from '@/lib/billing/constants'
 import { computeNextMonthForecast } from '@/lib/forecast/engine'
 import { detectSpendingAnomalies } from '@/lib/forecast/anomaly'
 import { generateForecastNarrative } from '@/lib/forecast/narrator'
@@ -14,6 +15,10 @@ import { checkAndAlertCategoryLimit } from '@/lib/categories/limitAlert'
 import { notifyWidgetSync } from '@/lib/notifications/widgetSync'
 
 const FEEDBACK_LINE = '\n\n_Algo deu errado? Nos conte: https://florim.app/feedback_'
+
+// Checked before classifyIntent (no Groq call). Specific multi-word phrases so
+// plain financial questions like "quanto gastei" never match this.
+const USAGE_CHECK_KEYWORDS = /\b(meu(s)? limites?|meu plano|minha assinatura|meu uso|quanto (me )?falta|quantas mensagens (ainda )?(tenho|posso)|quantas consultas (ainda )?(tenho|posso))\b/i
 
 const USAGE_HINT = `Olá! 👋 Para registrar suas finanças, envie mensagens como:
 
@@ -23,7 +28,11 @@ const USAGE_HINT = `Olá! 👋 Para registrar suas finanças, envie mensagens co
 ⭐ *Objetivo:* "Guardei 200 para a viagem"
 📝 *Lembrete:* "Me lembre de pagar o aluguel"
 
-Você também pode combinar: "Gastei 30 na farmácia e 55 de gasolina"`
+Você também pode combinar: "Gastei 30 na farmácia e 55 de gasolina"
+
+🔍 *Consultar:* "Quanto gastei esse mês?" ou "Quais minhas contas a pagar?"
+✏️ *Editar/Apagar:* depois de uma lista, "apaga o 2", "edita o 1 para 60" ou "muda a categoria do 3 para Lazer"
+📊 *Seu plano:* envie "meu plano" ou "meus limites" para ver seu uso do mês`
 
 type SaveResult =
   | { ok: true; line: string }
@@ -104,6 +113,34 @@ async function buildForecastReply(familyId: string): Promise<string> {
       '',
       `💡 Notei que *${a.category_name}* teve um pico em ${monthNamePT(a.month)} (${formatBRL(a.amount_cents)} acima do normal). Se isso se repete todo ano, confirme pelo app para eu considerar nas próximas previsões.`
     )
+  }
+
+  return lines.join('\n')
+}
+
+async function buildUsageStatusReply(familyId: string): Promise<string> {
+  const access = await hasBillingAccess({ familyId })
+
+  if (access.isPaidTier) {
+    return '✅ *Plano Pro* — uso ilimitado de mensagens, consultas e áudios. Aproveite! 🚀'
+  }
+
+  const usage = await getUsageCounters(familyId)
+  const limits = FREE_TIER_LIMITS
+
+  const lines = [access.hasActiveTrial ? '🎁 *Período de teste ativo*' : '📊 *Plano gratuito*', '']
+  lines.push(`💬 Mensagens no WhatsApp: ${usage.whatsappRecordings}/${limits.whatsappRecordingsPerMonth}`)
+  lines.push(`🔍 Consultas (IA): ${usage.aiQueries}/${limits.aiQueriesPerMonth}`)
+  lines.push(`🎙️ Áudios: ${usage.audioMessages}/${limits.audioMessagesPerMonth}`)
+
+  const nearLimit = usage.whatsappRecordings >= limits.whatsappRecordingsPerMonth
+    || usage.aiQueries >= limits.aiQueriesPerMonth
+    || usage.audioMessages >= limits.audioMessagesPerMonth
+
+  if (nearLimit) {
+    lines.push('', '🎯 Você está no limite do plano gratuito. Assine o Florim Pro para uso ilimitado: florim.app/pricing')
+  } else if (!access.hasActiveTrial) {
+    lines.push('', '💡 Quer mais? Assine o Florim Pro para uso ilimitado: florim.app/pricing')
   }
 
   return lines.join('\n')
@@ -258,6 +295,16 @@ export async function processWhatsAppMessage(
   }
 
   const billingCycleDay = userRow.billing_cycle_day ?? 7
+
+  if (USAGE_CHECK_KEYWORDS.test(text)) {
+    try {
+      const reply = await buildUsageStatusReply(familyId)
+      await whatsAppService.sendTextMessage(fromPhone, reply)
+    } catch {
+      await whatsAppService.sendTextMessage(fromPhone, 'Não consegui buscar seu uso agora. Tente novamente em instantes. 🔄')
+    }
+    return
+  }
 
   const todayISO = new Date().toISOString().slice(0, 10)
 
@@ -861,6 +908,25 @@ const RECORD_TYPE_TO_TABLE: Record<string, string> = {
   reminder: 'reminders',
 }
 
+const PAYMENT_METHOD_VALUES = ['PIX', 'Credito', 'Debito', 'ValeAlimentacao', 'ValeRefeicao', 'Dinheiro', 'Cheque', 'Transferência'] as const
+
+function normalizePaymentMethodText(text: string): typeof PAYMENT_METHOD_VALUES[number] | null {
+  const trimmed = text.trim()
+  if ((PAYMENT_METHOD_VALUES as readonly string[]).includes(trimmed)) {
+    return trimmed as typeof PAYMENT_METHOD_VALUES[number]
+  }
+  const t = trimmed.toLowerCase()
+  if (/^pix/.test(t)) return 'PIX'
+  if (/(parcel|cr[eé]dito)/.test(t)) return 'Credito'
+  if (/d[eé]bito/.test(t)) return 'Debito'
+  if (/vale.?refei[cç][aã]o/.test(t)) return 'ValeRefeicao'
+  if (/vale.?alimenta[cç][aã]o/.test(t)) return 'ValeAlimentacao'
+  if (/(dinheiro|esp[eé]cie)/.test(t)) return 'Dinheiro'
+  if (/cheque/.test(t)) return 'Cheque'
+  if (/(ted|doc|transfer[eê]ncia)/.test(t)) return 'Transferência'
+  return null
+}
+
 async function handleMutation(
   fromPhone: string,
   familyId: string,
@@ -908,23 +974,93 @@ async function handleMutation(
   }
 
   // edit
-  const newAmountCents = Math.round((intent.edit_amount ?? 0) * 100)
-  if (!Number.isFinite(newAmountCents) || newAmountCents <= 0) {
-    return `Valor inválido. Tente: "edita o ${intent.item_index} para 60"`
+  const setFields = [intent.edit_amount, intent.edit_category, intent.edit_payment_method].filter(v => v != null).length
+
+  if (setFields === 0) {
+    return `Não entendi o que editar no item ${intent.item_index}. Tente: "edita o ${intent.item_index} para 60", "muda a categoria do ${intent.item_index} para Lazer" ou "o ${intent.item_index} foi no pix".`
+  }
+  if (setFields > 1) {
+    return `Por agora só consigo editar uma coisa por vez. Envie um pedido para o valor, outro para a categoria, ou outro para a forma de pagamento do item ${intent.item_index}.`
+  }
+
+  if (intent.edit_amount != null) {
+    const newAmountCents = Math.round(intent.edit_amount * 100)
+    if (!Number.isFinite(newAmountCents) || newAmountCents <= 0) {
+      return `Valor inválido. Tente: "edita o ${intent.item_index} para 60"`
+    }
+
+    const { error } = await db
+      .from(table)
+      .update({ amount_cents: newAmountCents })
+      .eq('id', targetItem.record_id)
+      .eq('family_id', familyId)
+
+    if (error) {
+      console.error('[WA] edit error:', error.message)
+      return 'Não foi possível editar o item. Tente novamente.'
+    }
+
+    return `✅ Atualizado: ${targetItem.description} - ${formatBRL(newAmountCents)}`
+  }
+
+  if (intent.edit_category != null) {
+    if (table !== 'expenses' && table !== 'incomes') {
+      return `Não é possível editar a categoria desse tipo de registro.`
+    }
+    const kind: 'expense' | 'income' = table === 'expenses' ? 'expense' : 'income'
+
+    const { data: categories } = await supabaseAdmin
+      .from('categories')
+      .select('id,name,kind,parent_id,is_system,icon')
+      .eq('family_id', familyId)
+      .eq('kind', kind)
+
+    const categoryList = (categories ?? []) as CategoryRecord[]
+    const labelMap = buildCategoryLabelMap(categoryList)
+
+    const categoryId =
+      findCategoryIdByStoredName(categoryList, intent.edit_category) ??
+      findCategoryIdByLabel(categoryList, labelMap, intent.edit_category)
+
+    if (!categoryId) {
+      return `Não encontrei a categoria "${intent.edit_category}". Verifique o nome e tente de novo.`
+    }
+    const categoryName = labelMap.get(categoryId) ?? intent.edit_category
+
+    const { error } = await db
+      .from(table)
+      .update({ category_id: categoryId, category_name: categoryName })
+      .eq('id', targetItem.record_id)
+      .eq('family_id', familyId)
+
+    if (error) {
+      console.error('[WA] edit category error:', error.message)
+      return 'Não foi possível editar a categoria. Tente novamente.'
+    }
+    return `✅ Categoria atualizada: ${targetItem.description} → ${categoryName}`
+  }
+
+  // edit_payment_method
+  if (table !== 'expenses') {
+    return `Receitas não têm forma de pagamento registrada — apenas despesas. Não há nada para editar aqui.`
+  }
+  const normalized = normalizePaymentMethodText(intent.edit_payment_method!)
+  if (!normalized) {
+    return `Não reconheci a forma de pagamento "${intent.edit_payment_method}". Tente: pix, débito, crédito, dinheiro, vale alimentação, vale refeição, cheque ou transferência.`
   }
 
   const { error } = await db
     .from(table)
-    .update({ amount_cents: newAmountCents })
+    .update({ payment_method: normalized })
     .eq('id', targetItem.record_id)
     .eq('family_id', familyId)
 
   if (error) {
-    console.error('[WA] edit error:', error.message)
-    return 'Não foi possível editar o item. Tente novamente.'
+    console.error('[WA] edit payment_method error:', error.message)
+    return 'Não foi possível editar a forma de pagamento. Tente novamente.'
   }
 
-  return `✅ Atualizado: ${targetItem.description} - ${formatBRL(newAmountCents)}`
+  return `✅ Forma de pagamento atualizada: ${targetItem.description} → ${normalized}`
 }
 
 function findCategoryIdByLabel(

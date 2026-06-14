@@ -18,6 +18,8 @@ export interface IntentClassification {
   status_filter?: 'open' | null
   item_index?: number | null
   edit_amount?: number | null
+  edit_category?: string | null
+  edit_payment_method?: string | null
 }
 
 // Used to send items to the classifier - no amounts (AI doesn't need them)
@@ -36,16 +38,16 @@ export interface ClassifyResult {
   context_label?: string | null // e.g. "transporte em geral"
 }
 
-const DEFAULT_INTENT: IntentClassification = { type: 'record', data_needed: [], time_range: 'current_month', focus: null, status_filter: null, item_index: null, edit_amount: null }
+const DEFAULT_INTENT: IntentClassification = { type: 'record', data_needed: [], time_range: 'current_month', focus: null, status_filter: null, item_index: null, edit_amount: null, edit_category: null, edit_payment_method: null }
 
 // Static - date is injected into the user message instead so Groq can cache this prefix globally
 const ROUTER_SYSTEM_PROMPT = `Você é um classificador de intenção para um app financeiro. Responda APENAS com JSON válido, sem texto adicional.
 
 Formato obrigatório:
-{"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
+{"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
 
 Campos:
-- type: "record" se registrando/criando algo. "query" se consultando dados existentes (histórico). "forecast" se perguntando uma ESTIMATIVA/PREVISÃO de gastos futuros (mês que vem, próximo mês). "delete" se apagando um item numerado da última lista. "edit" se editando o valor de um item numerado.
+- type: "record" se registrando/criando algo. "query" se consultando dados existentes (histórico). "forecast" se perguntando uma ESTIMATIVA/PREVISÃO de gastos futuros (mês que vem, próximo mês). "delete" se apagando um item numerado da última lista. "edit" se editando o valor, a categoria ou a forma de pagamento de um item numerado.
 - data_needed: vazio para "record"/"delete"/"edit"/"forecast". Para "query": ["expenses"], ["incomes"], ["savings"], ["reminders"]
 - time_range: "current_month" (padrão), "last_month", "current_year", "last_7_days", "next_7_days", "all"
   Use "next_7_days" para lembretes futuros ("essa semana", "próximos dias")
@@ -53,34 +55,43 @@ Campos:
 - focus: palavra-chave do filtro para "query". Sempre null para "record"/"delete"/"edit"/"forecast".
 - status_filter: null (padrão). Use "open" quando o usuário perguntar sobre despesas pendentes/a pagar ("pendente pra pagar", "contas a pagar", "o que tenho pra pagar", "tenho que pagar", "despesas")
 - item_index: número do item (1-based) para "delete" e "edit". null nos demais casos.
-- edit_amount: novo valor em reais para "edit". null nos demais casos.
+- edit_amount: novo valor em reais para "edit", quando o usuário pedir para mudar o VALOR de um item. null nos demais casos.
+- edit_category: novo nome de categoria (texto livre, em português) para "edit", quando o usuário pedir para mudar a CATEGORIA de um item (despesa ou receita). null nos demais casos.
+- edit_payment_method: nova forma de pagamento para "edit", quando o usuário pedir para mudar a FORMA DE PAGAMENTO de uma despesa. Use um destes valores: "PIX", "Credito", "Debito", "ValeAlimentacao", "ValeRefeicao", "Dinheiro", "Cheque", "Transferência". null nos demais casos.
+
+Para "edit", apenas UM dos campos edit_amount/edit_category/edit_payment_method deve ser não-nulo por mensagem - o que o usuário pediu para mudar.
 
 Diferença importante entre "query" e "forecast":
 - "query" = perguntas sobre o que JÁ aconteceu ou contas JÁ cadastradas ("quanto gastei", "o que tenho pra pagar", "minhas contas desse mês")
 - "forecast" = perguntas sobre uma ESTIMATIVA do futuro, algo que ainda não foi todo registrado ("quanto vou gastar", "quanto devo gastar", "como vai ficar meu mês que vem", "previsão de gastos")
 
 Exemplos:
-"Quanto gastei em comida esse mês?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":"comida","status_filter":null,"item_index":null,"edit_amount":null}
-"Qual meu maior gasto essa semana?" → {"type":"query","data_needed":["expenses"],"time_range":"last_7_days","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
-"Quanto recebi esse ano?" → {"type":"query","data_needed":["incomes"],"time_range":"current_year","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
-"Me mostra meus objetivos" → {"type":"query","data_needed":["savings"],"time_range":"all","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
-"Quais meus lembretes essa semana?" → {"type":"query","data_needed":["reminders"],"time_range":"next_7_days","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
-"O que tenho pendente pra pagar?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":null,"status_filter":"open","item_index":null,"edit_amount":null}
-"Quais contas tenho a pagar?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":null,"status_filter":"open","item_index":null,"edit_amount":null}
-"Gastei 50 no mercado" → {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
-"Comprei um tênis de 150 em 3x" → {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
-"Me lembre de comprar ovo" → {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
-"oi tudo bem?" → {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
-"apaga o 2" → {"type":"delete","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":2,"edit_amount":null}
-"deleta o item 3" → {"type":"delete","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":3,"edit_amount":null}
-"remove o 1" → {"type":"delete","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":1,"edit_amount":null}
-"edita o 2 para 60" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":2,"edit_amount":60}
-"muda o 1 para R$ 30,50" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":1,"edit_amount":30.5}
-"altera o 3 para 25 reais" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":3,"edit_amount":25}
-"Quanto vou gastar mês que vem?" → {"type":"forecast","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
-"Quanto será meu gasto no próximo mês?" → {"type":"forecast","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
-"Qual minha previsão de gastos?" → {"type":"forecast","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}
-"Como vai ficar meu mês que vem?" → {"type":"forecast","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null}`
+"Quanto gastei em comida esse mês?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":"comida","status_filter":null,"item_index":null,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
+"Qual meu maior gasto essa semana?" → {"type":"query","data_needed":["expenses"],"time_range":"last_7_days","focus":null,"status_filter":null,"item_index":null,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
+"Quanto recebi esse ano?" → {"type":"query","data_needed":["incomes"],"time_range":"current_year","focus":null,"status_filter":null,"item_index":null,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
+"Me mostra meus objetivos" → {"type":"query","data_needed":["savings"],"time_range":"all","focus":null,"status_filter":null,"item_index":null,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
+"Quais meus lembretes essa semana?" → {"type":"query","data_needed":["reminders"],"time_range":"next_7_days","focus":null,"status_filter":null,"item_index":null,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
+"O que tenho pendente pra pagar?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":null,"status_filter":"open","item_index":null,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
+"Quais contas tenho a pagar?" → {"type":"query","data_needed":["expenses"],"time_range":"current_month","focus":null,"status_filter":"open","item_index":null,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
+"Gastei 50 no mercado" → {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
+"Comprei um tênis de 150 em 3x" → {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
+"Me lembre de comprar ovo" → {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
+"oi tudo bem?" → {"type":"record","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
+"apaga o 2" → {"type":"delete","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":2,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
+"deleta o item 3" → {"type":"delete","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":3,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
+"remove o 1" → {"type":"delete","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":1,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
+"edita o 2 para 60" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":2,"edit_amount":60,"edit_category":null,"edit_payment_method":null}
+"muda o 1 para R$ 30,50" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":1,"edit_amount":30.5,"edit_category":null,"edit_payment_method":null}
+"altera o 3 para 25 reais" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":3,"edit_amount":25,"edit_category":null,"edit_payment_method":null}
+"muda a categoria do 2 para Lazer" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":2,"edit_amount":null,"edit_category":"Lazer","edit_payment_method":null}
+"muda a categoria da receita 1 para Salário" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":1,"edit_amount":null,"edit_category":"Salário","edit_payment_method":null}
+"o item 1 foi no débito" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":1,"edit_amount":null,"edit_category":null,"edit_payment_method":"Debito"}
+"muda o pagamento do 3 para pix" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":3,"edit_amount":null,"edit_category":null,"edit_payment_method":"PIX"}
+"o 2 foi no crédito parcelado" → {"type":"edit","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":2,"edit_amount":null,"edit_category":null,"edit_payment_method":"Credito"}
+"Quanto vou gastar mês que vem?" → {"type":"forecast","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
+"Quanto será meu gasto no próximo mês?" → {"type":"forecast","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
+"Qual minha previsão de gastos?" → {"type":"forecast","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null,"edit_category":null,"edit_payment_method":null}
+"Como vai ficar meu mês que vem?" → {"type":"forecast","data_needed":[],"time_range":"current_month","focus":null,"status_filter":null,"item_index":null,"edit_amount":null,"edit_category":null,"edit_payment_method":null}`
 
 // Static - focus is injected into the user message instead so Groq can cache this prefix globally
 const CLASSIFIER_SYSTEM_PROMPT = `Você é um classificador de consultas financeiras. Responda APENAS com JSON válido, sem texto adicional.
