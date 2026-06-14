@@ -11,6 +11,7 @@ import { computeNextMonthForecast } from '@/lib/forecast/engine'
 import { detectSpendingAnomalies } from '@/lib/forecast/anomaly'
 import { generateForecastNarrative } from '@/lib/forecast/narrator'
 import { checkAndAlertCategoryLimit } from '@/lib/categories/limitAlert'
+import { notifyWidgetSync } from '@/lib/notifications/widgetSync'
 
 const FEEDBACK_LINE = '\n\n_Algo deu errado? Nos conte: https://florim.app/feedback_'
 
@@ -726,6 +727,7 @@ async function saveRecord(
           console.error('[WA] limit-alert check error:', err)
         }
       }
+      void notifyWidgetSync(familyId)
       return { ok: true, line }
     }
 
@@ -762,6 +764,7 @@ async function saveRecord(
         console.error('[WA] limit-alert check error:', err)
       }
     }
+    void notifyWidgetSync(familyId)
     return { ok: true, line }
   }
 
@@ -790,6 +793,7 @@ async function saveRecord(
       console.error('[WA] income insert error:', error?.message)
       return { ok: false, line }
     }
+    void notifyWidgetSync(familyId)
     return { ok: true, line }
   }
 

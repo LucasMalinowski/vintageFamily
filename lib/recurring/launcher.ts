@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
 import { formatBRL } from '@/lib/money'
+import { notifyWidgetSync } from '@/lib/notifications/widgetSync'
 
 function toISO(date: Date): string {
   return date.toISOString().slice(0, 10)
@@ -181,6 +182,7 @@ export async function launchDueRecurringItems(familyId?: string): Promise<number
       .eq('id', pattern.id)
 
     launched++
+    void notifyWidgetSync(pattern.family_id)
   }
 
   return launched

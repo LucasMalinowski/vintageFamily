@@ -12,14 +12,19 @@ const CHUNK_SIZE = 100
 
 export interface ExpoPushMessage {
   to: string
-  title: string
-  body: string
+  /** Omit title/body for a silent, data-only push (e.g. widget refresh). */
+  title?: string
+  body?: string
   sound?: 'default' | null
   data?: Record<string, unknown>
   badge?: number
   /** Android only — must match the channel created by expo-notifications plugin.
    *  The 'default' channel uses the custom notification icon + brand colour from app.json. */
   channelId?: string
+  /** iOS — wakes the app in the background to process a silent push. */
+  _contentAvailable?: boolean
+  /** Android — 'high' delivers data-only messages promptly even while idle. */
+  priority?: 'default' | 'normal' | 'high'
 }
 
 export interface PushResult {

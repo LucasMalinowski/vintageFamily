@@ -17,6 +17,7 @@ import {
   inferExpensePaymentMethod,
 } from '@/lib/bank-statements/utils'
 import { buildFileHash, buildTransactionHash } from '@/lib/bank-statements/server-utils'
+import { notifyWidgetSync } from '@/lib/notifications/widgetSync'
 import {
   LOW_CONFIDENCE_THRESHOLD,
   MAX_CSV_SIZE_BYTES,
@@ -296,6 +297,10 @@ export class BankStatementImportService {
         updated_at: new Date().toISOString(),
       })
       .eq('id', batchId)
+
+    if (insertedIncomeCount > 0 || insertedExpenseCount > 0) {
+      void notifyWidgetSync(request.familyId)
+    }
 
     return {
       batchId,

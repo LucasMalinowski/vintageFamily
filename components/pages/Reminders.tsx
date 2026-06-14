@@ -6,6 +6,7 @@ import Modal from '@/components/ui/Modal'
 import RightDrawer from '@/components/ui/RightDrawer'
 import Select from '@/components/ui/Select'
 import { supabase } from '@/lib/supabase'
+import { triggerWidgetSync } from '@/lib/notifications/triggerWidgetSync'
 import { useAuth } from '@/components/AuthProvider'
 import EmptyState from '@/components/ui/EmptyState'
 import { BellRing, Check, Pencil, Trash2 } from 'lucide-react'
@@ -174,6 +175,7 @@ export default function Reminders() {
         reminder.id === id ? { ...reminder, is_done: !isDone } : reminder
       )
     )
+    triggerWidgetSync()
   }
 
   const handleStatusFilterChange = (nextFilter: NonNullable<ReminderFilter>) => {
@@ -189,6 +191,7 @@ export default function Reminders() {
     setReminders(prev => prev.filter(r => r.id !== deleteConfirmId))
     setDeleting(false)
     setDeleteConfirmId(null)
+    triggerWidgetSync()
   }
 
   const openEdit = (reminder: Reminder) => {
@@ -248,6 +251,7 @@ export default function Reminders() {
     }
 
     closeReminderModal()
+    triggerWidgetSync()
   }
 
   const getCategoryColors: Record<string, string> = {

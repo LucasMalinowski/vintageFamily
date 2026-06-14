@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Bell, BellOff, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
+import { triggerWidgetSync } from '@/lib/notifications/triggerWidgetSync'
 import { CategoryKind, normalizeCategoryName } from '@/lib/categories'
 import CategoryIcon from '@/components/ui/CategoryIcon'
 import IconPicker from '@/components/ui/IconPicker'
@@ -315,6 +316,7 @@ export default function CategorySettingsModal({
     resetComposer()
     await loadItems()
     onChanged?.()
+    triggerWidgetSync()
   }
 
   const saveLimit = async (itemId: string) => {
@@ -331,6 +333,7 @@ export default function CategorySettingsModal({
     cancelEditLimit()
     await loadItems()
     onChanged?.()
+    triggerWidgetSync()
   }
 
   const handleDelete = async (item: NodeItem) => {
@@ -356,6 +359,7 @@ export default function CategorySettingsModal({
     if (editingId === item.id) resetComposer()
     await loadItems()
     onChanged?.()
+    triggerWidgetSync()
   }
 
   const isMainComposer = composerMode === 'main'

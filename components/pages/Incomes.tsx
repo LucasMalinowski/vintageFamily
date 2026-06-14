@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { triggerWidgetSync } from '@/lib/notifications/triggerWidgetSync'
 import { useAuth } from '@/components/AuthProvider'
 import AnalyticsKpiCard from '@/components/ui/AnalyticsKpiCard'
 import LineChart, { LineSeries } from '@/components/ui/LineChart'
@@ -343,6 +344,7 @@ export default function Incomes() {
     setUpdatingIds((prev) => [...prev, income.id])
     await supabase.from('incomes').update({ status: nextStatus }).eq('id', income.id)
     setUpdatingIds((prev) => prev.filter((id) => id !== income.id))
+    triggerWidgetSync()
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -384,6 +386,7 @@ export default function Incomes() {
       setIncomes((prev) => prev.map((i) => i.id === editingIncome.id ? updated : i))
       setRawYearIncomes((prev) => prev.map((i) => i.id === editingIncome.id ? updated : i))
       closeModal()
+      triggerWidgetSync()
       return
     } else {
       const { data: newRow } = await supabase.from('incomes').insert({ ...incomeData, created_by: user?.id ?? null }).select().maybeSingle()
@@ -392,6 +395,7 @@ export default function Incomes() {
         setRawYearIncomes((prev) => [newRow as Income, ...prev])
         if (incomes.length === 0) posthog.capture(EVENTS.FIRST_INCOME_CREATED)
         closeModal()
+        triggerWidgetSync()
         return
       }
     }
@@ -428,6 +432,7 @@ export default function Incomes() {
 
     closeModal()
     loadIncomes()
+    triggerWidgetSync()
   }
 
   const handleDelete = (id: string) => { setDeleteConfirmId(id) }
@@ -440,6 +445,7 @@ export default function Incomes() {
     setRawYearIncomes((prev) => prev.filter((i) => i.id !== deleteConfirmId))
     setDeleting(false)
     setDeleteConfirmId(null)
+    triggerWidgetSync()
   }
 
   const openDetails = (income: Income) => {

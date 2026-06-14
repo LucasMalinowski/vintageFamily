@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { triggerWidgetSync } from '@/lib/notifications/triggerWidgetSync'
 import { useAuth } from '@/components/AuthProvider'
 import Topbar from '@/components/layout/Topbar'
 import FilterSidebar from '@/components/layout/FilterSidebar'
@@ -586,6 +587,7 @@ export default function Expenses() {
         setRawYearExpenses((prev) => prev.map((e) => e.id === editingExpense.id ? updated : e))
         closeModal()
         fireLimitAlertCheck(category.id)
+        triggerWidgetSync()
         return
       }
     } else {
@@ -614,6 +616,7 @@ export default function Expenses() {
           if (expenses.length === 0) posthog.capture(EVENTS.FIRST_EXPENSE_CREATED)
           closeModal()
           fireLimitAlertCheck(category.id)
+          triggerWidgetSync()
           return
         }
       }
@@ -652,6 +655,7 @@ export default function Expenses() {
     closeModal()
     loadExpenses()
     fireLimitAlertCheck(category.id)
+    triggerWidgetSync()
   }
 
   const handleDelete = (id: string) => {
@@ -669,6 +673,7 @@ export default function Expenses() {
     setRawYearExpenses((prev) => prev.filter((e) => e.id !== deleteConfirmId))
     setDeleting(false)
     setDeleteConfirmId(null)
+    triggerWidgetSync()
   }
 
   const handleTogglePaid = async (expense: Expense) => {
@@ -689,6 +694,7 @@ export default function Expenses() {
       .update({ status: nextStatus, paid_at: nextPaidAt, updated_at: now })
       .eq('id', expense.id)
     setUpdatingIds((prev) => prev.filter((item) => item !== expense.id))
+    triggerWidgetSync()
   }
 
   const openDetails = (expense: Expense) => {

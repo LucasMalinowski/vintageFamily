@@ -15,6 +15,7 @@ import ActionMenu from '@/components/ui/ActionMenu'
 import CategorySettingsModal from '@/components/categories/CategorySettingsModal'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
+import { triggerWidgetSync } from '@/lib/notifications/triggerWidgetSync'
 import { formatBRL } from '@/lib/money'
 import {
   formatDate,
@@ -271,6 +272,7 @@ export default function Savings() {
     setDepositForm(emptyTxForm())
     loadSavings()
     loadContributions()
+    triggerWidgetSync()
   }
 
   const handleWithdrawalSubmit = async (event: React.FormEvent) => {
@@ -292,6 +294,7 @@ export default function Savings() {
     setWithdrawalForm(emptyTxForm())
     loadSavings()
     loadContributions()
+    triggerWidgetSync()
   }
 
   const handleEditSavingSubmit = async (event: React.FormEvent) => {
