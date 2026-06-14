@@ -27,8 +27,8 @@ async function generateInsight(
 
   // Header line always contains the hard facts — no AI ambiguity
   const header = level === 'over'
-    ? `🚨 *Limite ultrapassado — ${categoryName}*\n\nGasto este mês: *${spent}* de *${limit}* (${pct}%) — *${excess} acima do limite.*`
-    : `⚠️ *Limite próximo — ${categoryName}*\n\nGasto este mês: *${spent}* de *${limit}* (${pct}%).`
+    ? `🚨 Gasto este mês: *${spent}* de *${limit}* (${pct}%) — *${excess} acima do limite.*`
+    : `Gasto este mês: *${spent}* de *${limit}* (${pct}%).`
 
   // AI adds one short practical tip about this specific category — purely optional
   const apiKey = process.env.GROQ_API_KEY
