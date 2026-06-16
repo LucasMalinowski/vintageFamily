@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import ForecastCard from '@/components/dashboard/ForecastCard'
+import { useTranslations } from 'next-intl'
 
 interface ForecastSheetProps {
   open: boolean
@@ -12,6 +13,7 @@ interface ForecastSheetProps {
 export default function ForecastSheet({ open, onClose }: ForecastSheetProps) {
   const [mounted, setMounted] = useState(false)
   const [animated, setAnimated] = useState(false)
+  const t = useTranslations()
 
   useEffect(() => {
     if (open) {
@@ -67,15 +69,15 @@ export default function ForecastSheet({ open, onClose }: ForecastSheetProps) {
         <div className="flex items-center justify-between px-5 py-4 shrink-0 border-b border-border/50">
           <div>
             <p className="text-[11px] font-semibold tracking-[0.15em] uppercase text-ink/40 mb-0.5">
-              Florim · Inteligência
+              {t('forecastSheet.badge')}
             </p>
-            <h2 className="font-serif text-[20px] text-coffee leading-tight">Previsão do próximo mês</h2>
+            <h2 className="font-serif text-[20px] text-coffee leading-tight">{t('forecastSheet.title')}</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-ink/[0.06] flex items-center justify-center hover:bg-ink/[0.12] transition-colors"
-            aria-label="Fechar"
+            aria-label={t('forecastSheet.closeLabel')}
           >
             <X className="w-4 h-4 text-ink/60" />
           </button>
@@ -86,8 +88,9 @@ export default function ForecastSheet({ open, onClose }: ForecastSheetProps) {
           <ForecastCard />
 
           <p className="text-[11px] text-ink/35 text-center mt-5 leading-relaxed">
-            Previsão baseada nos seus histórico de gastos e padrões recorrentes.<br />
-            Atualizada automaticamente a cada mês.
+            {t('forecastSheet.footer').split('\n').map((line, i, arr) => (
+              <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
+            ))}
           </p>
         </div>
       </div>

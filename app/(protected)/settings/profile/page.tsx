@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { useEffect, useMemo, useState } from 'react'
 import { Check, ChevronDown, Search } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import Modal from '@/components/ui/Modal'
@@ -10,8 +11,12 @@ import { useRouter } from 'next/navigation'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
 import { validateImageFile } from '@/lib/security/images'
+import { NEXT_LOCALE_COOKIE, SUPPORTED_LOCALES, type AppLocale } from '@/lib/i18n/getLocale'
 
 type PhoneState = 'none' | 'pending' | 'verified'
+
+const SUPPORTED_CURRENCIES = ['BRL', 'USD', 'EUR'] as const
+type AppCurrency = typeof SUPPORTED_CURRENCIES[number]
 
 const COUNTRY_CODES = [
   { code: '55',  flag: '🇧🇷', name: 'Brasil',          slug: 'BR' },
@@ -78,6 +83,11 @@ function getAuthDisplayName(user: NonNullable<ReturnType<typeof useAuth>['user']
 export default function ProfileSettingsPage() {
   const { user, familyId, signOut } = useAuth()
   const router = useRouter()
+  const t = useTranslations()
+  const [locale, setLocale] = useState<AppLocale>('pt-BR')
+  const [currency, setCurrency] = useState<AppCurrency>('BRL')
+  const [savingLocale, setSavingLocale] = useState(false)
+  const [savingCurrency, setSavingCurrency] = useState(false)
   const [profileName, setProfileName] = useState('')
   const [profileEmail, setProfileEmail] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
@@ -154,7 +164,7 @@ export default function ProfileSettingsPage() {
       const userRow = response.ok ? await response.json() : null
 
       if (!response.ok) {
-        setError('Erro ao carregar configurações.')
+        setError(t('profile.errorLoad'))
       }
 
       if (userRow) {
@@ -163,6 +173,9 @@ export default function ProfileSettingsPage() {
         setAvatarUrl(userRow.avatar_url ?? '')
         setAvatarPreview(userRow.avatar_url ?? '')
         setBillingCycleDay(userRow.billing_cycle_day ?? 7)
+        if (SUPPORTED_LOCALES.includes(userRow.locale)) {
+          setLocale(userRow.locale)
+        }
         if (userRow.phone_number) {
           const resolvedCountry = findCountryByPhone(userRow.phone_number)
           setVerifiedPhone(userRow.phone_number)
@@ -185,6 +198,39 @@ export default function ProfileSettingsPage() {
     loadData()
   }, [user])
 
+  useEffect(() => {
+    const loadFamilyCurrency = async () => {
+      if (!familyId) return
+      const { data } = await (supabase.from('families') as any)
+        .select('currency')
+        .eq('id', familyId)
+        .maybeSingle()
+      if (data?.currency && SUPPORTED_CURRENCIES.includes(data.currency)) {
+        setCurrency(data.currency)
+      }
+    }
+
+    loadFamilyCurrency()
+  }, [familyId])
+
+  const handleChangeLocale = async (next: AppLocale) => {
+    if (!user || next === locale) return
+    setSavingLocale(true)
+    setLocale(next)
+    document.cookie = `${NEXT_LOCALE_COOKIE}=${next}; path=/; max-age=31536000; SameSite=Lax`
+    await (supabase.from('users') as any).update({ locale: next }).eq('id', user.id)
+    setSavingLocale(false)
+    router.refresh()
+  }
+
+  const handleChangeCurrency = async (next: AppCurrency) => {
+    if (!familyId || next === currency) return
+    setSavingCurrency(true)
+    setCurrency(next)
+    await (supabase.from('families') as any).update({ currency: next }).eq('id', familyId)
+    setSavingCurrency(false)
+  }
+
   const handleSendOtp = async () => {
     setPhoneLoading(true)
     setPhoneError(null)
@@ -203,17 +249,17 @@ export default function ProfileSettingsPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setPhoneError(data.error ?? 'Erro ao enviar código.')
+        setPhoneError(data.error ?? t('profile.whatsapp.errorSend'))
       } else {
         setPendingPhone(fullPhone)
         setPendingCountrySlug(selectedCountry.slug)
         setPhoneState('pending')
-        setPhoneSuccess('Código enviado! Verifique seu WhatsApp.')
+        setPhoneSuccess(t('profile.whatsapp.codeSent'))
         setCountryMenuOpen(false)
         setCountrySearch('')
       }
     } catch {
-      setPhoneError('Erro de conexão.')
+      setPhoneError(t('common.connectionError'))
     }
     setPhoneLoading(false)
   }
@@ -234,17 +280,17 @@ export default function ProfileSettingsPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setPhoneError(data.error ?? 'Código inválido.')
+        setPhoneError(data.error ?? t('profile.whatsapp.errorInvalidCode'))
       } else {
         setVerifiedPhone(pendingPhone)
         setVerifiedCountrySlug(pendingCountrySlug || findCountryByPhone(pendingPhone).slug)
         setPhoneState('verified')
         setOtpInput('')
-        setPhoneSuccess('Número verificado com sucesso!')
+        setPhoneSuccess(t('profile.whatsapp.verifiedSuccess'))
         posthog.capture(EVENTS.WHATSAPP_CONNECTED)
       }
     } catch {
-      setPhoneError('Erro de conexão.')
+      setPhoneError(t('common.connectionError'))
     }
     setPhoneLoading(false)
   }
@@ -262,7 +308,7 @@ export default function ProfileSettingsPage() {
         : {},
     })
     if (!res.ok) {
-      setPhoneError('Erro ao remover telefone.')
+      setPhoneError(t('profile.whatsapp.errorRemove'))
       setPhoneLoading(false)
       return
     }
@@ -288,7 +334,7 @@ export default function ProfileSettingsPage() {
       try {
         image = await validateImageFile(avatarFile, 2 * 1024 * 1024)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Avatar inválido.')
+        setError(err instanceof Error ? err.message : t('profile.errorAvatar'))
         setSavingProfile(false)
         return
       }
@@ -300,7 +346,7 @@ export default function ProfileSettingsPage() {
         .upload(filePath, avatarFile, { contentType: image.mime, upsert: true })
 
       if (uploadError) {
-        setError('Erro ao enviar avatar.')
+        setError(t('profile.errorAvatarUpload'))
         setSavingProfile(false)
         return
       }
@@ -315,7 +361,7 @@ export default function ProfileSettingsPage() {
       .eq('id', user.id)
 
     if (updateError) {
-      setError('Erro ao salvar perfil.')
+      setError(t('profile.errorSave'))
     } else {
       setAvatarUrl(nextAvatarUrl)
       setAvatarPreview(nextAvatarUrl)
@@ -351,7 +397,7 @@ export default function ProfileSettingsPage() {
     const session = await supabase.auth.getSession()
     const token = session.data.session?.access_token
     if (!token) {
-      setDeleteError('Sessão expirada. Faça login novamente.')
+      setDeleteError(t('profile.deleteModal.errorSession'))
       setDeletionInfoLoading(false)
       return
     }
@@ -362,7 +408,7 @@ export default function ProfileSettingsPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setDeleteError(data.error ?? 'Erro ao carregar informações.')
+        setDeleteError(data.error ?? t('profile.deleteModal.errorLoad'))
       } else {
         setDeletionInfo(data)
         if (data.otherMembers?.length > 0) {
@@ -370,7 +416,7 @@ export default function ProfileSettingsPage() {
         }
       }
     } catch {
-      setDeleteError('Erro de conexão.')
+      setDeleteError(t('common.connectionError'))
     }
 
     setDeletionInfoLoading(false)
@@ -384,7 +430,7 @@ export default function ProfileSettingsPage() {
     const session = await supabase.auth.getSession()
     const token = session.data.session?.access_token
     if (!token) {
-      setDeleteError('Sessão expirada. Faça login novamente.')
+      setDeleteError(t('profile.deleteModal.errorSession'))
       setDeleting(false)
       return
     }
@@ -403,7 +449,7 @@ export default function ProfileSettingsPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setDeleteError(data.error ?? 'Erro ao excluir conta.')
+        setDeleteError(data.error ?? t('profile.deleteModal.errorDelete'))
         setDeleting(false)
         return
       }
@@ -411,7 +457,7 @@ export default function ProfileSettingsPage() {
       await signOut()
       router.push('/login')
     } catch {
-      setDeleteError('Erro de conexão.')
+      setDeleteError(t('common.connectionError'))
       setDeleting(false)
     }
   }
@@ -425,7 +471,7 @@ export default function ProfileSettingsPage() {
       )}
 
       {loading ? (
-        <div className="py-8 text-center text-sm text-ink/60 font-body">Carregando…</div>
+        <div className="py-8 text-center text-sm text-ink/60 font-body">{t('common.loading')}</div>
       ) : (
         <>
           {/* Avatar + name + email header */}
@@ -442,10 +488,10 @@ export default function ProfileSettingsPage() {
               </div>
             </div>
             <div>
-              <p className="font-serif text-[22px] text-coffee leading-tight">{profileName || 'Seu nome'}</p>
+              <p className="font-serif text-[22px] text-coffee leading-tight">{profileName || t('profile.yourName')}</p>
               <p className="text-sm text-ink/55 mt-1">{profileEmail}</p>
               <label className="mt-2 inline-block cursor-pointer px-3 py-1.5 rounded-lg border border-border text-sm text-ink hover:bg-paper transition-vintage">
-                Trocar foto
+                {t('profile.changePicture')}
                 <input
                   type="file"
                   accept="image/*"
@@ -457,9 +503,9 @@ export default function ProfileSettingsPage() {
           </div>
 
           <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6 space-y-4">
-            <h2 className="text-lg font-serif text-coffee">WhatsApp</h2>
+            <h2 className="text-lg font-serif text-coffee">{t('profile.whatsapp.title')}</h2>
             <p className="text-sm text-ink/60 font-body">
-              Vincule seu número para registrar despesas e receitas pelo WhatsApp.
+              {t('profile.whatsapp.subtitle')}
             </p>
 
             {phoneError && (
@@ -514,7 +560,7 @@ export default function ProfileSettingsPage() {
                                 type="text"
                                 value={countrySearch}
                                 onChange={(event) => setCountrySearch(event.target.value)}
-                                placeholder="Buscar país, código ou sigla"
+                                placeholder={t('profile.whatsapp.searchPlaceholder')}
                                 className="w-full bg-transparent text-sm text-ink placeholder:text-ink/35 focus:outline-none"
                                 autoFocus
                               />
@@ -522,7 +568,7 @@ export default function ProfileSettingsPage() {
                           </div>
                           <div className="max-h-72 overflow-auto space-y-1">
                             {filteredCountries.length === 0 ? (
-                              <div className="px-3 py-4 text-sm text-ink/45">Nenhum resultado.</div>
+                              <div className="px-3 py-4 text-sm text-ink/45">{t('profile.whatsapp.noResults')}</div>
                             ) : (
                               filteredCountries.map((country) => {
                                 const isSelected = country.slug === selectedCountry.slug
@@ -576,7 +622,7 @@ export default function ProfileSettingsPage() {
                   disabled={phoneLoading || !phoneInput.trim()}
                   className="bg-coffee text-paper px-4 py-2 rounded-lg font-body hover:bg-coffee/90 transition-vintage disabled:opacity-50 whitespace-nowrap"
                 >
-                  {phoneLoading ? 'Enviando...' : 'Enviar código'}
+                  {phoneLoading ? t('profile.whatsapp.sending') : t('profile.whatsapp.sendCode')}
                 </button>
               </div>
             )}
@@ -584,7 +630,7 @@ export default function ProfileSettingsPage() {
             {phoneState === 'pending' && (
               <div className="space-y-3">
                 <p className="text-sm text-ink/70">
-                  Código enviado para <strong>{countryLabel(pendingCountry)} · {pendingPhone}</strong>
+                  {t('profile.whatsapp.codeFor')} <strong>{countryLabel(pendingCountry)} · {pendingPhone}</strong>
                 </p>
                 <div className="flex gap-2">
                   <input
@@ -603,7 +649,7 @@ export default function ProfileSettingsPage() {
                     disabled={phoneLoading || otpInput.length !== 6}
                     className="bg-coffee text-paper px-4 py-2 rounded-lg font-body hover:bg-coffee/90 transition-vintage disabled:opacity-50"
                   >
-                    {phoneLoading ? 'Verificando...' : 'Verificar'}
+                    {phoneLoading ? t('profile.whatsapp.verifying') : t('profile.whatsapp.verify')}
                   </button>
                   <button
                     type="button"
@@ -616,7 +662,7 @@ export default function ProfileSettingsPage() {
                     }}
                     className="text-sm text-ink/50 hover:text-ink px-2 py-2"
                   >
-                    Trocar número
+                    {t('profile.whatsapp.changeNumber')}
                   </button>
                 </div>
               </div>
@@ -633,7 +679,7 @@ export default function ProfileSettingsPage() {
                   disabled={phoneLoading}
                   className="text-sm text-terracotta hover:underline disabled:opacity-50"
                 >
-                  Remover
+                  {t('profile.whatsapp.remove')}
                 </button>
               </div>
             )}
@@ -643,19 +689,19 @@ export default function ProfileSettingsPage() {
             <form onSubmit={handleSaveProfile} className="space-y-4">
               <div>
                 <label htmlFor="profile-settings-name" className="block text-sm font-body text-ink mb-1.5">
-                  Nome completo <span className="text-terracotta">*</span>
+                  {t('profile.form.fullName')} <span className="text-terracotta">*</span>
                 </label>
                 <input
                   id="profile-settings-name"
                   value={profileName}
                   onChange={(event) => setProfileName(event.target.value)}
                   className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
-                  placeholder="Seu nome completo"
+                  placeholder={t('profile.form.namePlaceholder')}
                 />
               </div>
               <div>
                 <label htmlFor="profile-settings-email" className="block text-sm font-body text-ink mb-1.5">
-                  E-mail <span className="text-terracotta">*</span>
+                  {t('profile.form.email')} <span className="text-terracotta">*</span>
                 </label>
                 <input
                   id="profile-settings-email"
@@ -671,7 +717,7 @@ export default function ProfileSettingsPage() {
                   disabled={savingProfile}
                   className="bg-coffee text-paper px-5 py-2.5 rounded-lg font-body hover:bg-coffee/90 transition-vintage disabled:opacity-50"
                 >
-                  {savingProfile ? 'Salvando...' : 'Salvar alterações'}
+                  {savingProfile ? t('common.saving') : t('profile.saveChanges')}
                 </button>
               </div>
             </form>
@@ -679,9 +725,9 @@ export default function ProfileSettingsPage() {
 
           <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6 space-y-4">
             <div>
-              <h2 className="text-lg font-serif text-ink">Dia do ciclo financeiro</h2>
+              <h2 className="text-lg font-serif text-ink">{t('profile.billingCycle.title')}</h2>
               <p className="text-sm text-ink/60 font-body mt-1">
-                Informe o dia do mês em que você recebe seu salário. O filtro de &ldquo;mês&rdquo; vai usar esse dia como início do período.
+                {t('profile.billingCycle.subtitle')}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -691,7 +737,7 @@ export default function ProfileSettingsPage() {
                 className="px-4 py-2.5 bg-paper border border-border rounded-lg text-sm text-ink focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
               >
                 {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
-                  <option key={d} value={d}>Dia {d}</option>
+                  <option key={d} value={d}>{t('profile.billingCycle.dayOption', { day: d })}</option>
                 ))}
               </select>
               <button
@@ -700,42 +746,75 @@ export default function ProfileSettingsPage() {
                 disabled={savingCycleDay}
                 className="bg-coffee text-paper px-5 py-2.5 rounded-lg font-body hover:bg-coffee/90 transition-vintage disabled:opacity-50 text-sm"
               >
-                {savingCycleDay ? 'Salvando...' : 'Salvar'}
+                {savingCycleDay ? t('profile.billingCycle.saving') : t('profile.billingCycle.save')}
               </button>
             </div>
             <p className="text-xs text-ink/40">
-              Ex.: se você recebe no dia 21, o &ldquo;mês de maio&rdquo; vai de 21 de abril até 20 de maio.
+              {t('profile.billingCycle.example')}
             </p>
+          </div>
+
+          <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-serif text-coffee">{t('language.title')}</h2>
+              <p className="text-sm text-ink/60 font-body mt-1">{t('language.subtitle')}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-body text-ink mb-1.5">{t('language.languageLabel')}</label>
+              <select
+                value={locale}
+                onChange={(e) => handleChangeLocale(e.target.value as AppLocale)}
+                disabled={savingLocale}
+                className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage text-sm disabled:opacity-50"
+              >
+                {SUPPORTED_LOCALES.map((code) => (
+                  <option key={code} value={code}>{t(`language.names.${code}`)}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-body text-ink mb-1.5">{t('language.currencyLabel')}</label>
+              <select
+                value={currency}
+                onChange={(e) => handleChangeCurrency(e.target.value as AppCurrency)}
+                disabled={savingCurrency || !familyId}
+                className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage text-sm disabled:opacity-50"
+              >
+                {SUPPORTED_CURRENCIES.map((code) => (
+                  <option key={code} value={code}>{t(`language.currencies.${code}`)}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="bg-bg border border-terracotta/30 rounded-vintage shadow-vintage p-6 space-y-4">
             <div>
-              <h2 className="text-lg font-serif text-terracotta">Zona de perigo</h2>
+              <h2 className="text-lg font-serif text-terracotta">{t('profile.dangerZone.title')}</h2>
               <p className="text-sm text-ink/60 font-body mt-1">
-                Ações irreversíveis. Proceda com cuidado.
+                {t('profile.dangerZone.subtitle')}
               </p>
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-body text-ink">Excluir minha conta</p>
-                <p className="text-xs text-ink/50 mt-0.5">Remove sua conta permanentemente.</p>
+                <p className="text-sm font-body text-ink">{t('profile.dangerZone.deleteAccount')}</p>
+                <p className="text-xs text-ink/50 mt-0.5">{t('profile.dangerZone.deleteDescription')}</p>
               </div>
               <button
                 type="button"
                 onClick={handleOpenDeleteModal}
                 className="px-4 py-2 rounded-lg border border-terracotta text-terracotta text-sm font-body hover:bg-terracotta/10 transition-vintage"
               >
-                Excluir conta
+                {t('profile.dangerZone.deleteButton')}
               </button>
             </div>
           </div>
         </>
       )}
 
-      <Modal isOpen={deleteModalOpen} onClose={() => !deleting && setDeleteModalOpen(false)} title="Excluir conta" size="sm">
+      <Modal isOpen={deleteModalOpen} onClose={() => !deleting && setDeleteModalOpen(false)} title={t('profile.deleteModal.title')} size="sm">
         <div className="space-y-4">
           {deletionInfoLoading ? (
-            <p className="text-sm text-ink/60">Carregando informações…</p>
+            <p className="text-sm text-ink/60">{t('profile.deleteModal.loading')}</p>
           ) : (
             <>
               {deleteError && (
@@ -747,7 +826,7 @@ export default function ProfileSettingsPage() {
               {deletionInfo?.role === 'admin' && deletionInfo.otherMembers.length > 0 && (
                 <div className="space-y-3">
                   <p className="text-sm text-ink/80">
-                    Você é administrador da família. Escolha quem assumirá a administração:
+                    {t('profile.deleteModal.adminWithMembers')}
                   </p>
                   <select
                     value={selectedNewAdminId}
@@ -766,28 +845,27 @@ export default function ProfileSettingsPage() {
               {deletionInfo?.role === 'admin' && deletionInfo.otherMembers.length === 0 && (
                 <div className="bg-terracotta/8 border border-terracotta/20 rounded-lg px-3 py-2.5">
                   <p className="text-sm text-ink/80">
-                    Você é o único membro desta família. Ao excluir sua conta, a família será
-                    desativada permanentemente.
+                    {t('profile.deleteModal.adminAlone')}
                   </p>
                 </div>
               )}
 
               {deletionInfo?.role === 'member' && (
                 <p className="text-sm text-ink/80">
-                  Sua conta e seus dados pessoais serão removidos permanentemente.
+                  {t('profile.deleteModal.memberMessage')}
                 </p>
               )}
 
               <div className="space-y-1.5">
                 <label htmlFor="delete-confirm" className="block text-sm font-body text-ink">
-                  Digite <strong>EXCLUIR</strong> para confirmar
+                  {t('profile.deleteModal.confirmLabel')}
                 </label>
                 <input
                   id="delete-confirm"
                   value={deleteConfirmText}
                   onChange={(e) => setDeleteConfirmText(e.target.value)}
-                  placeholder="EXCLUIR"
-                  aria-label="Digite EXCLUIR para confirmar"
+                  placeholder={t('profile.deleteModal.confirmPlaceholder')}
+                  aria-label={t('profile.deleteModal.confirmLabel')}
                   className="w-full px-3 py-2.5 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-terracotta/30 transition-vintage"
                 />
               </div>
@@ -796,10 +874,10 @@ export default function ProfileSettingsPage() {
                 <button
                   type="button"
                   onClick={handleDeleteAccount}
-                  disabled={deleting || deleteConfirmText !== 'EXCLUIR' || !deletionInfo}
+                  disabled={deleting || deleteConfirmText !== t('profile.deleteModal.confirmWord') || !deletionInfo}
                   className="flex-1 bg-terracotta text-paper px-4 py-2 rounded-lg text-sm font-body hover:bg-terracotta/90 transition-vintage disabled:opacity-50"
                 >
-                  {deleting ? 'Excluindo...' : 'Excluir minha conta'}
+                  {deleting ? t('profile.deleteModal.deleting') : t('profile.deleteModal.deleteButton')}
                 </button>
                 <button
                   type="button"
@@ -807,7 +885,7 @@ export default function ProfileSettingsPage() {
                   disabled={deleting}
                   className="px-4 py-2 rounded-lg border border-border text-ink/70 text-sm font-body hover:bg-paper-2/30 transition-vintage disabled:opacity-50"
                 >
-                  Cancelar
+                  {t('common.cancel')}
                 </button>
               </div>
             </>

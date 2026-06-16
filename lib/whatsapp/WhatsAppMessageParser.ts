@@ -13,26 +13,13 @@ import { detectSpendingAnomalies } from '@/lib/forecast/anomaly'
 import { generateForecastNarrative } from '@/lib/forecast/narrator'
 import { checkAndAlertCategoryLimit } from '@/lib/categories/limitAlert'
 import { notifyWidgetSync } from '@/lib/notifications/widgetSync'
-
-const FEEDBACK_LINE = '\n\n_Algo deu errado? Nos conte: https://florim.app/feedback_'
+import { getWhatsAppMessages, getWhatsAppMonthName } from '@/lib/whatsapp/messages'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 
 // Checked before classifyIntent (no Groq call). Specific multi-word phrases so
 // plain financial questions like "quanto gastei" never match this.
-const USAGE_CHECK_KEYWORDS = /\b(meu(s)? limites?|meu plano|minha assinatura|meu uso|quanto (me )?falta|quantas mensagens (ainda )?(tenho|posso)|quantas consultas (ainda )?(tenho|posso))\b/i
-
-const USAGE_HINT = `Olá! 👋 Para registrar suas finanças, envie mensagens como:
-
-💸 *Despesa:* "Gastei 50 reais no mercado no pix"
-💸 *Parcelado:* "Comprei um tênis de 150 em 3x"
-💰 *Receita:* "Recebi 1500 de salário"
-⭐ *Objetivo:* "Guardei 200 para a viagem"
-📝 *Lembrete:* "Me lembre de pagar o aluguel"
-
-Você também pode combinar: "Gastei 30 na farmácia e 55 de gasolina"
-
-🔍 *Consultar:* "Quanto gastei esse mês?" ou "Quais minhas contas a pagar?"
-✏️ *Editar/Apagar:* depois de uma lista, "apaga o 2", "edita o 1 para 60" ou "muda a categoria do 3 para Lazer"
-📊 *Seu plano:* envie "meu plano" ou "meus limites" para ver seu uso do mês`
+// EN/ES phrases are included so non-pt-BR users can also check their plan.
+const USAGE_CHECK_KEYWORDS = /\b(meu(s)? limites?|meu plano|minha assinatura|my plan|my limits?|my subscription|mi plan|mis limites?|mi suscripci[oó]n|meu uso|quanto (me )?falta|quantas mensagens (ainda )?(tenho|posso)|quantas consultas (ainda )?(tenho|posso))\b/i
 
 type SaveResult =
   | { ok: true; line: string }
@@ -42,6 +29,7 @@ type WhatsAppUserRow = {
   id: string
   family_id: string
   billing_cycle_day: number | null
+  locale: AppLocale | null
 }
 
 type ProcessOptions = {
@@ -56,91 +44,76 @@ type PendingActionPayload =
   | { records: AIExtractedRecord[] }
   | { intent: IntentClassification }
 
-const MONTH_NAMES_PT = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-]
-
-const FORECAST_CONFIDENCE_NOTE: Record<string, string> = {
-  high: 'Previsão com boa confiança, baseada no seu histórico recente.',
-  medium: 'Previsão com confiança média - ainda temos poucos meses de histórico.',
-  low: 'Previsão com baixa confiança - poucos dados disponíveis ainda.',
-}
-
-function monthNamePT(yyyyMM: string): string {
-  const m = parseInt(yyyyMM.split('-')[1], 10)
-  return MONTH_NAMES_PT[m - 1] ?? yyyyMM
-}
-
-async function buildForecastReply(familyId: string): Promise<string> {
+async function buildForecastReply(familyId: string, locale: AppLocale | null): Promise<string> {
+  const messages = getWhatsAppMessages(locale)
   const [forecast, anomalies] = await Promise.all([
     computeNextMonthForecast(familyId),
     detectSpendingAnomalies(familyId),
   ])
 
   if (forecast.confidence === 'insufficient') {
-    return 'Ainda não tenho dados suficientes para estimar seus gastos do mês que vem. Continue registrando suas despesas que em breve eu consigo te ajudar com isso! 📊'
+    return messages.forecastInsufficientData
   }
 
   const narrative = await generateForecastNarrative(forecast, anomalies)
+  const f = messages.forecast
 
-  const lines = [`📊 *Previsão para ${monthNamePT(forecast.targetMonth)}*`, '']
-  lines.push(`Você deve gastar aproximadamente *${formatBRL(forecast.grandTotal)}* no total.`)
+  const lines = [f.header(getWhatsAppMonthName(locale, forecast.targetMonth)), '']
+  lines.push(f.spendingEstimate(formatBRL(forecast.grandTotal)))
 
   if (narrative) {
     lines.push('', `_${narrative}_`)
   }
 
   const breakdown = [
-    { label: 'Fixos recorrentes', value: forecast.fixedTotal },
-    { label: 'Parcelas em curso', value: forecast.installmentsTotal },
-    { label: 'Variáveis (estimado)', value: forecast.variableEstimate },
-    { label: 'Eventos sazonais', value: forecast.annualEventsTotal },
+    { label: f.fixedLabel, value: forecast.fixedTotal },
+    { label: f.installmentsLabel, value: forecast.installmentsTotal },
+    { label: f.variableLabel, value: forecast.variableEstimate },
+    { label: f.annualLabel, value: forecast.annualEventsTotal },
   ].filter(item => item.value > 0)
 
   if (breakdown.length > 0) {
-    lines.push('', '*Detalhamento:*')
+    lines.push('', f.breakdownHeader)
     breakdown.forEach(item => lines.push(`- ${item.label}: ${formatBRL(item.value)}`))
   }
 
-  const confidenceNote = FORECAST_CONFIDENCE_NOTE[forecast.confidence]
+  const confidenceNote = messages.forecastConfidence[forecast.confidence as 'high' | 'medium' | 'low']
   if (confidenceNote) lines.push('', `_${confidenceNote}_`)
 
   const unconfirmed = anomalies.filter(a => !a.alreadyConfirmed)
   if (unconfirmed.length > 0) {
     const a = unconfirmed[0]
-    lines.push(
-      '',
-      `💡 Notei que *${a.category_name}* teve um pico em ${monthNamePT(a.month)} (${formatBRL(a.amount_cents)} acima do normal). Se isso se repete todo ano, confirme pelo app para eu considerar nas próximas previsões.`
-    )
+    lines.push('', f.anomalyNote(a.category_name, getWhatsAppMonthName(locale, a.month), formatBRL(a.amount_cents)))
   }
 
   return lines.join('\n')
 }
 
-async function buildUsageStatusReply(familyId: string): Promise<string> {
+async function buildUsageStatusReply(familyId: string, locale: AppLocale | null): Promise<string> {
+  const messages = getWhatsAppMessages(locale)
+  const u = messages.usage
   const access = await hasBillingAccess({ familyId })
 
   if (access.isPaidTier) {
-    return '✅ *Plano Pro* — uso ilimitado de mensagens, consultas e áudios. Aproveite! 🚀'
+    return u.proPlan
   }
 
   const usage = await getUsageCounters(familyId)
   const limits = FREE_TIER_LIMITS
 
-  const lines = [access.hasActiveTrial ? '🎁 *Período de teste ativo*' : '📊 *Plano gratuito*', '']
-  lines.push(`💬 Mensagens no WhatsApp: ${usage.whatsappRecordings}/${limits.whatsappRecordingsPerMonth}`)
-  lines.push(`🔍 Consultas (IA): ${usage.aiQueries}/${limits.aiQueriesPerMonth}`)
-  lines.push(`🎙️ Áudios: ${usage.audioMessages}/${limits.audioMessagesPerMonth}`)
+  const lines = [access.hasActiveTrial ? u.trialPlan : u.freePlan, '']
+  lines.push(u.recordings(usage.whatsappRecordings, limits.whatsappRecordingsPerMonth))
+  lines.push(u.aiQueries(usage.aiQueries, limits.aiQueriesPerMonth))
+  lines.push(u.audioMessages(usage.audioMessages, limits.audioMessagesPerMonth))
 
   const nearLimit = usage.whatsappRecordings >= limits.whatsappRecordingsPerMonth
     || usage.aiQueries >= limits.aiQueriesPerMonth
     || usage.audioMessages >= limits.audioMessagesPerMonth
 
   if (nearLimit) {
-    lines.push('', '🎯 Você está no limite do plano gratuito. Assine o Florim Pro para uso ilimitado: florim.app/pricing')
+    lines.push('', u.nearLimit)
   } else if (!access.hasActiveTrial) {
-    lines.push('', '💡 Quer mais? Assine o Florim Pro para uso ilimitado: florim.app/pricing')
+    lines.push('', u.upgradeHint)
   }
 
   return lines.join('\n')
@@ -207,9 +180,9 @@ export async function updateWhatsAppMessageLog(
 
 export async function findWhatsAppUser(fromPhone: string): Promise<WhatsAppUserRow | null> {
   const candidates = buildPhoneCandidates(fromPhone)
-  const { data } = await supabaseAdmin
-    .from('users')
-    .select('id,family_id,billing_cycle_day')
+  const { data } = await (supabaseAdmin
+    .from('users') as any)
+    .select('id,family_id,billing_cycle_day,locale')
     .in('phone_number', candidates)
     .limit(1)
     .maybeSingle()
@@ -239,22 +212,21 @@ function buildPendingSummary(actionType: 'record' | 'edit' | 'delete', payload: 
   return `Editar o item ${intent.item_index ?? '?'} para ${formatBRL(Math.round((intent.edit_amount ?? 0) * 100))}`
 }
 
-async function sendAudioConfirmationTemplate(fromPhone: string, summaryText: string): Promise<void> {
+async function sendAudioConfirmationTemplate(fromPhone: string, summaryText: string, locale: AppLocale | null): Promise<void> {
   const templateName = process.env.WHATSAPP_AUDIO_CONFIRM_TEMPLATE_NAME
+  const messages = getWhatsAppMessages(locale)
 
   if (!templateName) {
-    await whatsAppService.sendTextMessage(
-      fromPhone,
-      `Confirmando o que você disse:\n\n${summaryText}\n\nResponda "Sim, criar" para confirmar ou envie outro áudio/texto para corrigir.`
-    )
+    await whatsAppService.sendTextMessage(fromPhone, messages.button.audioConfirmFallback(summaryText))
     return
   }
 
+  const langCode = locale === 'en' ? 'en_US' : locale === 'es' ? 'es_ES' : 'pt_BR'
   await whatsAppService.sendTemplateMessage(
     fromPhone,
     templateName,
     [summaryText],
-    'pt_BR',
+    langCode,
     [
       { index: '0', payload: 'audio_confirm_yes' },
       { index: '1', payload: 'audio_confirm_no' },
@@ -280,10 +252,11 @@ export async function processWhatsAppMessage(
   const userRow = await findWhatsAppUser(fromPhone)
 
   if (!userRow) {
-    await whatsAppService.sendTextMessage(fromPhone, 'Número não cadastrado no Florim. Acesse o app para vincular seu WhatsApp.')
+    await whatsAppService.sendTextMessage(fromPhone, getWhatsAppMessages(null).notRegistered)
     return
   }
 
+  const messages = getWhatsAppMessages(userRow.locale)
   const { family_id: familyId } = userRow
   if (messageId) {
     await updateWhatsAppMessageLog(messageId, {
@@ -298,10 +271,10 @@ export async function processWhatsAppMessage(
 
   if (USAGE_CHECK_KEYWORDS.test(text)) {
     try {
-      const reply = await buildUsageStatusReply(familyId)
+      const reply = await buildUsageStatusReply(familyId, userRow.locale)
       await whatsAppService.sendTextMessage(fromPhone, reply)
     } catch {
-      await whatsAppService.sendTextMessage(fromPhone, 'Não consegui buscar seu uso agora. Tente novamente em instantes. 🔄')
+      await whatsAppService.sendTextMessage(fromPhone, messages.errors.usageFetchError)
     }
     return
   }
@@ -325,11 +298,12 @@ export async function processWhatsAppMessage(
         transcript: options.transcript ?? text,
         actionType: intent.type,
         payload: { intent },
+        locale: userRow.locale,
       })
       return
     }
 
-    const reply = await handleMutation(fromPhone, familyId, intent)
+    const reply = await handleMutation(fromPhone, familyId, intent, userRow.locale)
     await whatsAppService.sendTextMessage(fromPhone, reply)
     return
   }
@@ -339,18 +313,15 @@ export async function processWhatsAppMessage(
     if (access.isFreeTier) {
       const usage = await checkAndIncrementAIQuery(familyId)
       if (!usage.allowed) {
-        await whatsAppService.sendTextMessage(
-          fromPhone,
-          'Você usou todas as 7 consultas gratuitas deste mês. 🎯\n\nAssine o Florim Pro para consultas ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.'
-        )
+        await whatsAppService.sendTextMessage(fromPhone, messages.errors.queryLimitReached)
         return
       }
     }
     try {
-      const reply = await buildForecastReply(familyId)
-      await whatsAppService.sendTextMessage(fromPhone, reply + FEEDBACK_LINE)
+      const reply = await buildForecastReply(familyId, userRow.locale)
+      await whatsAppService.sendTextMessage(fromPhone, reply + messages.feedbackLine)
     } catch {
-      await whatsAppService.sendTextMessage(fromPhone, 'Não consegui calcular sua previsão agora. Tente novamente em instantes. 🔄')
+      await whatsAppService.sendTextMessage(fromPhone, messages.forecastError)
     }
     return
   }
@@ -360,21 +331,18 @@ export async function processWhatsAppMessage(
     if (access.isFreeTier) {
       const usage = await checkAndIncrementAIQuery(familyId)
       if (!usage.allowed) {
-        await whatsAppService.sendTextMessage(
-          fromPhone,
-          'Você usou todas as 7 consultas gratuitas deste mês. 🎯\n\nAssine o Florim Pro para consultas ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.'
-        )
+        await whatsAppService.sendTextMessage(fromPhone, messages.errors.queryLimitReached)
         return
       }
     }
     try {
-      const reply = await whatsAppQueryHandler.handle(text, intent, familyId, todayISO, fromPhone, billingCycleDay)
+      const reply = await whatsAppQueryHandler.handle(text, intent, familyId, todayISO, fromPhone, billingCycleDay, userRow.locale)
       const transcriptNote = options.messageType === 'audio'
-        ? `Transcrevi seu áudio como: "${text}"\n\nSe eu entendi errado, tente enviar de novo.\n\n`
+        ? messages.errors.audioTranscriptNote(text)
         : ''
-      await whatsAppService.sendTextMessage(fromPhone, transcriptNote + reply + FEEDBACK_LINE)
+      await whatsAppService.sendTextMessage(fromPhone, transcriptNote + reply + messages.feedbackLine)
     } catch {
-      await whatsAppService.sendTextMessage(fromPhone, 'Não consegui buscar seus dados agora. Tente novamente em instantes. 🔄')
+      await whatsAppService.sendTextMessage(fromPhone, messages.errors.queryFetchError)
     }
     return
   }
@@ -394,33 +362,31 @@ export async function processWhatsAppMessage(
     const isRateLimit = err?.message?.includes('rate limit')
     await whatsAppService.sendTextMessage(
       fromPhone,
-      isRateLimit
-        ? 'O Florim está sobrecarregado no momento. Tente novamente em instantes. ⏳'
-        : 'Erro ao processar sua mensagem. Tente novamente. 🔄'
+      isRateLimit ? messages.errors.extractionRateLimit : messages.errors.extractionError
     )
     return
   }
 
-  const QUERY_KEYWORDS = /\b(quanto|qual|quantas|quantos|me mostra|resumo|total|meus gastos|minhas receitas)\b/i
+  const QUERY_KEYWORDS = /\b(quanto|qual|quantas|quantos|me mostra|resumo|total|meus gastos|minhas receitas|how much|what is|show me|my expenses|my income|cuánto|qué|mis gastos|mis ingresos)\b/i
   if (!records.length && QUERY_KEYWORDS.test(text)) {
     const fallbackIntent: IntentClassification = {
       type: 'query', data_needed: ['expenses', 'incomes'],
       time_range: 'current_month', focus: null, status_filter: null,
     }
     try {
-      const reply = await whatsAppQueryHandler.handle(text, fallbackIntent, familyId, todayISO, fromPhone, billingCycleDay)
+      const reply = await whatsAppQueryHandler.handle(text, fallbackIntent, familyId, todayISO, fromPhone, billingCycleDay, userRow.locale)
       const transcriptNote = options.messageType === 'audio'
-        ? `Transcrevi seu áudio como: "${text}"\n\nSe eu entendi errado, tente enviar de novo.\n\n`
+        ? messages.errors.audioTranscriptNote(text)
         : ''
-      await whatsAppService.sendTextMessage(fromPhone, transcriptNote + reply + FEEDBACK_LINE)
+      await whatsAppService.sendTextMessage(fromPhone, transcriptNote + reply + messages.feedbackLine)
     } catch {
-      await whatsAppService.sendTextMessage(fromPhone, USAGE_HINT)
+      await whatsAppService.sendTextMessage(fromPhone, messages.usageHint)
     }
     return
   }
 
   if (!records.length) {
-    await whatsAppService.sendTextMessage(fromPhone, USAGE_HINT)
+    await whatsAppService.sendTextMessage(fromPhone, messages.usageHint)
     return
   }
 
@@ -433,6 +399,7 @@ export async function processWhatsAppMessage(
       transcript: options.transcript ?? text,
       actionType: 'record',
       payload: { records },
+      locale: userRow.locale,
     })
     return
   }
@@ -442,10 +409,7 @@ export async function processWhatsAppMessage(
   if (recordAccess.isFreeTier) {
     const usage = await checkAndIncrementWhatsAppRecording(familyId)
     if (!usage.allowed) {
-      await whatsAppService.sendTextMessage(
-        fromPhone,
-        'Você usou todas as 25 mensagens gratuitas deste mês. 🎯\n\nAssine o Florim Pro para mensagens ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.'
-      )
+      await whatsAppService.sendTextMessage(fromPhone, messages.errors.recordingLimitReached)
       return
     }
   }
@@ -453,7 +417,7 @@ export async function processWhatsAppMessage(
   const results: SaveResult[] = []
 
   for (const record of records) {
-    const result = await saveRecord(record, familyId, categoryList, labelMap, todayISO)
+    const result = await saveRecord(record, familyId, categoryList, labelMap, todayISO, userRow.locale)
     results.push(result)
   }
 
@@ -463,14 +427,14 @@ export async function processWhatsAppMessage(
   const parts: string[] = []
 
   if (succeeded.length) {
-    parts.push(`✅ Criados:\n${succeeded.map((r) => r.line).join('\n')}`)
+    parts.push(`${messages.save.created}\n${succeeded.map((r) => r.line).join('\n')}`)
   }
 
   if (failed.length) {
-    parts.push(`⚠️ Não foi possível criar:\n${failed.map((r) => r.line).join('\n')}`)
+    parts.push(`${messages.save.failed}\n${failed.map((r) => r.line).join('\n')}`)
   }
 
-  await whatsAppService.sendTextMessage(fromPhone, parts.join('\n\n') + FEEDBACK_LINE)
+  await whatsAppService.sendTextMessage(fromPhone, parts.join('\n\n') + messages.feedbackLine)
 }
 
 async function saveRecordsAndReply(
@@ -478,6 +442,7 @@ async function saveRecordsAndReply(
   familyId: string,
   records: AIExtractedRecord[],
   todayISO: string,
+  locale: AppLocale | null,
   prefetchedCategories?: CategoryRecord[]
 ): Promise<void> {
   let categoryList: CategoryRecord[]
@@ -494,23 +459,24 @@ async function saveRecordsAndReply(
   const results: SaveResult[] = []
 
   for (const record of records) {
-    const result = await saveRecord(record, familyId, categoryList, labelMap, todayISO)
+    const result = await saveRecord(record, familyId, categoryList, labelMap, todayISO, locale)
     results.push(result)
   }
 
   const succeeded = results.filter((r) => r.ok)
   const failed = results.filter((r) => !r.ok)
+  const saveMessages = getWhatsAppMessages(locale)
   const parts: string[] = []
 
   if (succeeded.length) {
-    parts.push(`✅ Criados:\n${succeeded.map((r) => r.line).join('\n')}`)
+    parts.push(`${saveMessages.save.created}\n${succeeded.map((r) => r.line).join('\n')}`)
   }
 
   if (failed.length) {
-    parts.push(`⚠️ Não foi possível criar:\n${failed.map((r) => r.line).join('\n')}`)
+    parts.push(`${saveMessages.save.failed}\n${failed.map((r) => r.line).join('\n')}`)
   }
 
-  await whatsAppService.sendTextMessage(fromPhone, parts.join('\n\n') + FEEDBACK_LINE)
+  await whatsAppService.sendTextMessage(fromPhone, parts.join('\n\n') + saveMessages.feedbackLine)
 }
 
 async function createPendingWhatsAppAction({
@@ -521,6 +487,7 @@ async function createPendingWhatsAppAction({
   transcript,
   actionType,
   payload,
+  locale,
 }: {
   familyId: string
   userId: string
@@ -529,6 +496,7 @@ async function createPendingWhatsAppAction({
   transcript: string
   actionType: 'record' | 'edit' | 'delete'
   payload: PendingActionPayload
+  locale: AppLocale | null
 }): Promise<void> {
   const summaryText = buildPendingSummary(actionType, payload)
   const { error } = await supabaseAdmin
@@ -547,11 +515,11 @@ async function createPendingWhatsAppAction({
 
   if (error) {
     console.error('[WA] pending action insert error:', error.message)
-    await whatsAppService.sendTextMessage(fromPhone, 'Não consegui preparar a confirmação do áudio. Tente novamente. 🔄')
+    await whatsAppService.sendTextMessage(fromPhone, getWhatsAppMessages(locale).button.pendingActionError)
     return
   }
 
-  await sendAudioConfirmationTemplate(fromPhone, summaryText)
+  await sendAudioConfirmationTemplate(fromPhone, summaryText, locale)
 }
 
 export async function processWhatsAppButtonReply(
@@ -565,15 +533,16 @@ export async function processWhatsAppButtonReply(
   }
 
   if (payload !== 'audio_confirm_yes' && payload !== 'audio_confirm_no') {
-    await whatsAppService.sendTextMessage(fromPhone, 'Não reconheci essa resposta. Envie uma mensagem de texto ou áudio para continuar.')
+    await whatsAppService.sendTextMessage(fromPhone, getWhatsAppMessages(null).button.unknownReply)
     return
   }
 
   const userRow = await findWhatsAppUser(fromPhone)
   if (!userRow) {
-    await whatsAppService.sendTextMessage(fromPhone, 'Número não cadastrado no Florim. Acesse o app para vincular seu WhatsApp.')
+    await whatsAppService.sendTextMessage(fromPhone, getWhatsAppMessages(null).notRegistered)
     return
   }
+  const buttonMessages = getWhatsAppMessages(userRow.locale)
 
   const { data: pending } = await supabaseAdmin
     .from('pending_whatsapp_actions')
@@ -586,7 +555,7 @@ export async function processWhatsAppButtonReply(
     .maybeSingle()
 
   if (!pending) {
-    await whatsAppService.sendTextMessage(fromPhone, 'Não encontrei uma confirmação pendente. Envie um novo áudio ou mensagem de texto.')
+    await whatsAppService.sendTextMessage(fromPhone, buttonMessages.button.noConfirmationPending)
     return
   }
 
@@ -595,10 +564,7 @@ export async function processWhatsAppButtonReply(
       .from('pending_whatsapp_actions')
       .update({ status: 'expired' })
       .eq('id', pending.id)
-    await whatsAppService.sendTextMessage(
-      fromPhone,
-      'Essa confirmação expirou. Envie o áudio ou mensagem novamente para eu processar com segurança.'
-    )
+    await whatsAppService.sendTextMessage(fromPhone, buttonMessages.button.confirmationExpired)
     return
   }
 
@@ -624,10 +590,7 @@ export async function processWhatsAppButtonReply(
       }, null, 2),
     })
 
-    await whatsAppService.sendTextMessage(
-      fromPhone,
-      'Tudo bem, estarei aguardando seu novo áudio ou mensagem de texto.'
-    )
+    await whatsAppService.sendTextMessage(fromPhone, buttonMessages.button.rejected)
     return
   }
 
@@ -640,7 +603,7 @@ export async function processWhatsAppButtonReply(
     .maybeSingle()
 
   if (!claimed?.id) {
-    await whatsAppService.sendTextMessage(fromPhone, 'Essa confirmação já foi processada. Envie um novo áudio ou mensagem se precisar registrar outra coisa.')
+    await whatsAppService.sendTextMessage(fromPhone, buttonMessages.button.alreadyProcessed)
     return
   }
 
@@ -652,10 +615,7 @@ export async function processWhatsAppButtonReply(
         .from('pending_whatsapp_actions')
         .update({ status: 'rejected', rejected_at: new Date().toISOString() })
         .eq('id', pending.id)
-      await whatsAppService.sendTextMessage(
-        fromPhone,
-        'Você usou todas as 25 mensagens gratuitas deste mês. 🎯\n\nAssine o Florim Pro para mensagens ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.'
-      )
+      await whatsAppService.sendTextMessage(fromPhone, buttonMessages.errors.recordingLimitReached)
       return
     }
   }
@@ -666,10 +626,10 @@ export async function processWhatsAppButtonReply(
       .from('categories')
       .select('id,name,kind,parent_id,is_system,icon')
       .eq('family_id', pending.family_id)
-    await saveRecordsAndReply(fromPhone, pending.family_id, records, new Date().toISOString().slice(0, 10), (cats ?? []) as CategoryRecord[])
+    await saveRecordsAndReply(fromPhone, pending.family_id, records, new Date().toISOString().slice(0, 10), userRow.locale, (cats ?? []) as CategoryRecord[])
   } else {
     const intent = (pending.payload as any).intent as IntentClassification
-    const reply = await handleMutation(fromPhone, pending.family_id, intent)
+    const reply = await handleMutation(fromPhone, pending.family_id, intent, userRow.locale)
     await whatsAppService.sendTextMessage(fromPhone, reply)
   }
 }
@@ -682,8 +642,10 @@ async function saveRecord(
   familyId: string,
   categoryList: CategoryRecord[],
   labelMap: Map<string, string>,
-  todayISO: string
+  todayISO: string,
+  locale: AppLocale | null = null
 ): Promise<SaveResult> {
+  const s = getWhatsAppMessages(locale).save
 
   // ── Reminder ────────────────────────────────────────────────────────────────
   if (record.type === 'reminder') {
@@ -697,9 +659,9 @@ async function saveRecord(
         note: 'Criado via WhatsApp',
       })
     const dueDateStr = record.date === todayISO
-      ? 'hoje'
+      ? s.reminderToday
       : record.date.split('-').reverse().join('/')
-    const line = `📝 ${record.description} _(lembrete para ${dueDateStr})_`
+    const line = s.reminderLine(record.description, dueDateStr)
     if (error) {
       console.error('[WA] reminder insert error:', error.message)
       return { ok: false, line }
@@ -710,7 +672,7 @@ async function saveRecord(
   // ── Amount validation (expense, income, savings_contribution) ───────────────
   const amount_cents = Math.round((record.amount ?? 0) * 100)
   if (!Number.isFinite(amount_cents) || amount_cents <= 0 || amount_cents > MAX_AMOUNT_CENTS) {
-    return { ok: false, line: `❌ Valor inválido: ${record.description}` }
+    return { ok: false, line: s.invalidAmount(record.description) }
   }
 
   // ── Category resolution (expense, income) ───────────────────────────────────
@@ -762,7 +724,7 @@ async function saveRecord(
 
       const { error } = await supabaseAdmin.from('expenses').insert(rows)
       const catStr = resolvedLabel ? ` (${resolvedLabel})` : ''
-      const line = `💸 ${formatBRL(amount_cents)} - ${record.description}${catStr} _(${formatBRL(perInstallment)} × ${installmentCount} - 1ª parcela paga)_`
+      const line = `💸 ${formatBRL(amount_cents)} - ${record.description}${catStr} ${s.expenseInstallment(formatBRL(perInstallment), installmentCount)}`
       if (error) {
         console.error('[WA] installment insert error:', error.message)
         return { ok: false, line }
@@ -797,7 +759,7 @@ async function saveRecord(
       .select('id')
       .single()
 
-    const statusLabel = status === 'paid' ? '_(pago)_' : '_(pendente)_'
+    const statusLabel = status === 'paid' ? s.expensePaid : s.expensePending
     const catStr = resolvedLabel ? ` (${resolvedLabel})` : ''
     const line = `💸 ${formatBRL(amount_cents)} - ${record.description}${catStr} ${statusLabel}`
     if (error || !data?.id) {
@@ -835,7 +797,7 @@ async function saveRecord(
       .single()
 
     const catStr = resolvedLabel ? ` (${resolvedLabel})` : ''
-    const line = `💰 ${formatBRL(amount_cents)} - ${record.description}${catStr} _(${status === 'received' ? 'recebido' : 'a receber'})_`
+    const line = `💰 ${formatBRL(amount_cents)} - ${record.description}${catStr} ${status === 'received' ? s.incomeReceived : s.incomePending}`
     if (error || !data?.id) {
       console.error('[WA] income insert error:', error?.message)
       return { ok: false, line }
@@ -846,7 +808,7 @@ async function saveRecord(
 
   // ── Savings contribution ─────────────────────────────────────────────────────
   if (record.type !== 'savings_contribution') {
-    return { ok: false, line: `❌ Tipo desconhecido: ${record.description}` }
+    return { ok: false, line: s.unknownType(record.description) }
   }
 
   const savingName = record.saving_name ?? record.description
@@ -869,7 +831,7 @@ async function saveRecord(
   const saving = exactMatches?.[0] ?? partialMatches?.[0] ?? null
 
   if (!saving) {
-    return { ok: false, line: `⭐ ${formatBRL(amount_cents)} - Objetivo "${savingName}" não encontrado no Florim` }
+    return { ok: false, line: s.goalNotFound(savingName) }
   }
 
   const { data, error } = await supabaseAdmin
@@ -930,8 +892,10 @@ function normalizePaymentMethodText(text: string): typeof PAYMENT_METHOD_VALUES[
 async function handleMutation(
   fromPhone: string,
   familyId: string,
-  intent: IntentClassification
+  intent: IntentClassification,
+  locale: AppLocale | null = null
 ): Promise<string> {
+  const m = getWhatsAppMessages(locale).mutation
   const { data: ctx } = await supabaseAdmin
     .from('whatsapp_context')
     .select('context_items, family_id')
@@ -940,19 +904,19 @@ async function handleMutation(
     .maybeSingle()
 
   if (!ctx || ctx.family_id !== familyId) {
-    return 'Não encontrei uma lista recente. Primeiro me peça uma lista para poder editar ou apagar itens.'
+    return m.noRecentList
   }
 
   const contextItems = ctx.context_items as ContextItem[]
   const targetItem = contextItems.find(item => item.idx === intent.item_index)
 
   if (!targetItem) {
-    return `Item ${intent.item_index} não encontrado na última lista.`
+    return m.itemNotFound(intent.item_index ?? 0)
   }
 
   const table = RECORD_TYPE_TO_TABLE[targetItem.record_type]
   if (!table) {
-    return `Não foi possível ${intent.type === 'delete' ? 'apagar' : 'editar'} esse tipo de registro.`
+    return intent.type === 'delete' ? m.cannotDelete : m.cannotEdit
   }
 
   const db = supabaseAdmin as any
@@ -966,27 +930,27 @@ async function handleMutation(
 
     if (error) {
       console.error('[WA] delete error:', error.message)
-      return 'Não foi possível apagar o item. Tente novamente.'
+      return m.deleteError
     }
 
     const amountStr = targetItem.amount_cents > 0 ? ` - ${formatBRL(targetItem.amount_cents)}` : ''
-    return `✅ Removido: ${targetItem.description}${amountStr}`
+    return m.deleteSuccess(targetItem.description, amountStr)
   }
 
   // edit
   const setFields = [intent.edit_amount, intent.edit_category, intent.edit_payment_method].filter(v => v != null).length
 
   if (setFields === 0) {
-    return `Não entendi o que editar no item ${intent.item_index}. Tente: "edita o ${intent.item_index} para 60", "muda a categoria do ${intent.item_index} para Lazer" ou "o ${intent.item_index} foi no pix".`
+    return m.editNoField(intent.item_index ?? 0)
   }
   if (setFields > 1) {
-    return `Por agora só consigo editar uma coisa por vez. Envie um pedido para o valor, outro para a categoria, ou outro para a forma de pagamento do item ${intent.item_index}.`
+    return m.editMultipleFields(intent.item_index ?? 0)
   }
 
   if (intent.edit_amount != null) {
     const newAmountCents = Math.round(intent.edit_amount * 100)
     if (!Number.isFinite(newAmountCents) || newAmountCents <= 0) {
-      return `Valor inválido. Tente: "edita o ${intent.item_index} para 60"`
+      return m.editAmountInvalid(intent.item_index ?? 0)
     }
 
     const { error } = await db
@@ -997,15 +961,15 @@ async function handleMutation(
 
     if (error) {
       console.error('[WA] edit error:', error.message)
-      return 'Não foi possível editar o item. Tente novamente.'
+      return m.editAmountError
     }
 
-    return `✅ Atualizado: ${targetItem.description} - ${formatBRL(newAmountCents)}`
+    return m.editAmountSuccess(targetItem.description, formatBRL(newAmountCents))
   }
 
   if (intent.edit_category != null) {
     if (table !== 'expenses' && table !== 'incomes') {
-      return `Não é possível editar a categoria desse tipo de registro.`
+      return m.editCategoryNotAllowed
     }
     const kind: 'expense' | 'income' = table === 'expenses' ? 'expense' : 'income'
 
@@ -1023,7 +987,7 @@ async function handleMutation(
       findCategoryIdByLabel(categoryList, labelMap, intent.edit_category)
 
     if (!categoryId) {
-      return `Não encontrei a categoria "${intent.edit_category}". Verifique o nome e tente de novo.`
+      return m.editCategoryNotFound(intent.edit_category)
     }
     const categoryName = labelMap.get(categoryId) ?? intent.edit_category
 
@@ -1035,18 +999,18 @@ async function handleMutation(
 
     if (error) {
       console.error('[WA] edit category error:', error.message)
-      return 'Não foi possível editar a categoria. Tente novamente.'
+      return m.editCategoryError
     }
-    return `✅ Categoria atualizada: ${targetItem.description} → ${categoryName}`
+    return m.editCategorySuccess(targetItem.description, categoryName)
   }
 
   // edit_payment_method
   if (table !== 'expenses') {
-    return `Receitas não têm forma de pagamento registrada — apenas despesas. Não há nada para editar aqui.`
+    return m.editPaymentNotExpense
   }
   const normalized = normalizePaymentMethodText(intent.edit_payment_method!)
   if (!normalized) {
-    return `Não reconheci a forma de pagamento "${intent.edit_payment_method}". Tente: pix, débito, crédito, dinheiro, vale alimentação, vale refeição, cheque ou transferência.`
+    return m.editPaymentInvalid(intent.edit_payment_method!)
   }
 
   const { error } = await db
@@ -1057,10 +1021,10 @@ async function handleMutation(
 
   if (error) {
     console.error('[WA] edit payment_method error:', error.message)
-    return 'Não foi possível editar a forma de pagamento. Tente novamente.'
+    return m.editPaymentError
   }
 
-  return `✅ Forma de pagamento atualizada: ${targetItem.description} → ${normalized}`
+  return m.editPaymentSuccess(targetItem.description, normalized)
 }
 
 function findCategoryIdByLabel(

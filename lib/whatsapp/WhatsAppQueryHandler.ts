@@ -1,12 +1,13 @@
 import {
-  startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear, subDays, format, parseISO,
+  subMonths, subDays, startOfYear, endOfYear, format, parseISO,
 } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { nvidiaAIService } from '@/lib/ai/NvidiaAIService'
 import { formatBRL } from '@/lib/money'
 import type { IntentClassification, ClassifyItem, ClassifyResult } from '@/lib/ai/NvidiaAIService'
 import { getBillingCycleRange, getCurrentBillingPeriod } from '@/lib/billing-cycle'
+import { getWhatsAppMessages, getWhatsAppMonthName } from '@/lib/whatsapp/messages'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 
 type DateRange = { from: string; to: string }
 
@@ -46,13 +47,20 @@ function dateBR(iso: string): string {
   return iso.split('-').reverse().join('/')
 }
 
-function periodLabel(timeRange: IntentClassification['time_range'], dateRange: DateRange): string {
+function periodLabel(
+  timeRange: IntentClassification['time_range'],
+  dateRange: DateRange,
+  locale: AppLocale | null,
+  m: ReturnType<typeof getWhatsAppMessages>
+): string {
   switch (timeRange) {
-    case 'current_month': return `em ${format(parseISO(dateRange.from), 'MMMM', { locale: ptBR })}`
-    case 'last_month':    return `em ${format(parseISO(dateRange.from), 'MMMM', { locale: ptBR })}`
-    case 'current_year':  return `em ${format(parseISO(dateRange.from), 'yyyy')}`
-    case 'last_7_days':   return 'nos últimos 7 dias'
-    case 'next_7_days':   return 'nos próximos 7 dias'
+    case 'current_month':
+    case 'last_month':
+      return m.query.periodInMonth(getWhatsAppMonthName(locale, dateRange.from.slice(0, 7)))
+    case 'current_year':
+      return m.query.periodInYear(format(parseISO(dateRange.from), 'yyyy'))
+    case 'last_7_days':   return m.query.periodLastDays
+    case 'next_7_days':   return m.query.periodNextDays
     default:              return ''
   }
 }
@@ -64,22 +72,24 @@ export class WhatsAppQueryHandler {
     familyId: string,
     todayISO: string,
     fromPhone?: string,
-    billingCycleDay: number = 7
+    billingCycleDay: number = 7,
+    locale: AppLocale | null = null
   ): Promise<string> {
+    const m = getWhatsAppMessages(locale)
+
     if (intent.data_needed.length === 0) {
-      return `Não entendi o que você quer consultar. Tente perguntar como: "Quanto gastei esse mês?" 😊`
+      return m.query.intentFallback
     }
 
     const dateRange = WhatsAppQueryHandler.buildDateRange(intent.time_range, todayISO, billingCycleDay)
     const payload = await this.fetchData(intent, familyId, dateRange)
-    const rawPeriod = periodLabel(intent.time_range, dateRange)
+    const rawPeriod = periodLabel(intent.time_range, dateRange, locale, m)
     const period = intent.status_filter === 'open'
-      ? (rawPeriod ? `pendentes ${rawPeriod}` : 'pendentes')
+      ? (rawPeriod ? `${m.query.pendingPrefix} ${rawPeriod.trimStart()}` : m.query.pendingPrefix)
       : rawPeriod
 
     const parts: string[] = []
 
-    // Reassign indices after parallel fetch so expenses (0..n) and incomes (n+1..m) never clash
     const expenses = payload.expenses ?? []
     const incomes = (payload.incomes ?? []).map((r, i) => ({ ...r, idx: expenses.length + i }))
     const rowData: InternalRow[] = [...expenses, ...incomes]
@@ -93,7 +103,7 @@ export class WhatsAppQueryHandler {
       }))
 
       const result = await nvidiaAIService.classifyQueryData(question, items, intent.focus)
-      const msg = WhatsAppQueryHandler.buildRowMessage(result, rowData, period, intent.data_needed)
+      const msg = WhatsAppQueryHandler.buildRowMessage(result, rowData, period, intent.data_needed, m)
       if (msg) parts.push(msg)
 
       if (fromPhone && (result.query_type === 'sum' || result.query_type === 'list')) {
@@ -116,19 +126,16 @@ export class WhatsAppQueryHandler {
       }
     }
 
-    // Dreams - no classification needed, just list
     if (payload.savings?.length) {
-      parts.push(WhatsAppQueryHandler.buildSavingsMessage(payload.savings, period))
+      parts.push(WhatsAppQueryHandler.buildSavingsMessage(payload.savings, period, m))
     }
 
-    // Reminders - no classification needed, just list
     if (payload.reminders?.length) {
-      parts.push(WhatsAppQueryHandler.buildRemindersMessage(payload.reminders, period))
+      parts.push(WhatsAppQueryHandler.buildRemindersMessage(payload.reminders, period, m))
     }
 
     if (parts.length === 0) {
-      const periodStr = period ? ` ${period}` : ''
-      return `Não encontrei registros${periodStr}. 📊`
+      return m.query.noRecords(period)
     }
 
     return parts.join('\n\n')
@@ -138,29 +145,30 @@ export class WhatsAppQueryHandler {
     result: ClassifyResult,
     allRows: InternalRow[],
     period: string,
-    dataTables: string[]
+    dataTables: string[],
+    m: ReturnType<typeof getWhatsAppMessages>
   ): string | null {
     const idxSet = new Set(result.selected)
     const selected = allRows.filter(r => idxSet.has(r.idx))
 
     if (selected.length === 0) {
       const label = result.focus_label ?? 'registros'
-      const periodStr = period ? ` ${period}` : ''
-      return `Não encontrei ${label}${periodStr}. 📊`
+      return m.query.noFocusRecords(label, period)
     }
 
-    const focusLabel = result.focus_label ?? (dataTables.includes('expenses') ? 'gastos' : 'receitas')
-    const routePath = dataTables.includes('expenses') ? '/expenses' : '/incomes'
+    const isIncome = !dataTables.includes('expenses') && dataTables.includes('incomes')
+    const focusLabel = result.focus_label ?? (isIncome ? m.query.incomesLabel : m.query.expensesLabel)
+    const routePath = isIncome ? '/incomes' : '/expenses'
 
     let msg: string
     if (result.query_type === 'sum') {
-      msg = WhatsAppQueryHandler.buildSumMessage(selected, focusLabel, period, routePath)
+      msg = WhatsAppQueryHandler.buildSumMessage(selected, focusLabel, period, routePath, isIncome, m)
     } else if (result.query_type === 'max') {
-      msg = WhatsAppQueryHandler.buildMaxMessage(selected, period)
+      msg = WhatsAppQueryHandler.buildMaxMessage(selected, period, m)
     } else if (result.query_type === 'count') {
-      msg = WhatsAppQueryHandler.buildCountMessage(selected, focusLabel, period)
+      msg = WhatsAppQueryHandler.buildCountMessage(selected, focusLabel, period, m)
     } else {
-      msg = WhatsAppQueryHandler.buildListMessage(selected, focusLabel, period, routePath)
+      msg = WhatsAppQueryHandler.buildListMessage(selected, focusLabel, period, routePath, m)
     }
 
     if (result.context_selected?.length && result.context_label) {
@@ -168,7 +176,7 @@ export class WhatsAppQueryHandler {
       const ctxRows = allRows.filter(r => ctxSet.has(r.idx))
       if (ctxRows.length) {
         const ctxTotal = ctxRows.reduce((s, r) => s + r.amount_cents, 0)
-        msg += `\n\n_Relacionado - ${result.context_label}: *${formatBRL(ctxTotal)}*_`
+        msg += `\n\n${m.query.relatedContext(result.context_label, formatBRL(ctxTotal))}`
       }
     }
 
@@ -179,30 +187,33 @@ export class WhatsAppQueryHandler {
     rows: InternalRow[],
     label: string,
     period: string,
-    routePath: string
+    routePath: string,
+    isIncome: boolean,
+    m: ReturnType<typeof getWhatsAppMessages>
   ): string {
     const total = rows.reduce((s, r) => s + r.amount_cents, 0)
-    const verb = rows.every(r => r.kind === 'income') ? 'recebeu' : 'gastou'
-    const periodStr = period ? ` ${period}` : ''
-    const lines = [`Você ${verb} *${formatBRL(total)}* em ${label}${periodStr}:\n`]
+    const lines = [m.query.sumSentence(formatBRL(total), label, period, isIncome)]
 
     const display = rows.slice(0, 10)
     display.forEach((r, i) => {
       lines.push(`${i + 1}. ${dateBR(r.date)}: ${r.description} (${r.category}) - *${formatBRL(r.amount_cents)}*`)
     })
 
-    lines.push(`\n_Para editar ou apagar: "edita o 2 para 60" ou "apaga o 1"_`)
+    lines.push(`\n${m.query.editHint}`)
 
     if (rows.length > 10) {
-      lines.push(`_...e mais ${rows.length - 10} lançamentos_`)
-      lines.push(`Ver todos: ${appUrl}${routePath}`)
+      lines.push(m.query.moreItems(rows.length - 10))
+      lines.push(`${m.query.viewAll} ${appUrl}${routePath}`)
     }
 
     return lines.join('\n')
   }
 
-  private static buildMaxMessage(rows: InternalRow[], period: string): string {
-    // Group by category, find the group with the highest total
+  private static buildMaxMessage(
+    rows: InternalRow[],
+    period: string,
+    m: ReturnType<typeof getWhatsAppMessages>
+  ): string {
     const groups = new Map<string, InternalRow[]>()
     for (const r of rows) {
       if (!groups.has(r.category)) groups.set(r.category, [])
@@ -218,40 +229,42 @@ export class WhatsAppQueryHandler {
 
     const topTotal = topRows.reduce((s, r) => s + r.amount_cents, 0)
 
-    const periodStr = period ? ` ${period}` : ''
     if (topRows.length === 1) {
       const r = topRows[0]
-      return `Seu maior gasto${periodStr}: *${r.description}* em ${dateBR(r.date)} - *${formatBRL(r.amount_cents)}*`
+      return m.query.maxSingle(period, r.description, dateBR(r.date), formatBRL(r.amount_cents))
     }
 
     const lines = [
-      `Seu maior gasto${periodStr} foi em *${topCategory}* (*${formatBRL(topTotal)}* no total):`,
-      `_${topRows.length} lançamentos:_`,
+      m.query.maxCategoryHeader(period, topCategory, formatBRL(topTotal)),
+      m.query.maxCategoryItems(topRows.length),
     ]
     topRows.forEach(r => {
       lines.push(`- ${dateBR(r.date)}: *${formatBRL(r.amount_cents)}*`)
     })
 
-    // Also show runner-up if there's a close second
     const sorted = Array.from(groups.entries())
       .map(([cat, rs]) => ({ cat, total: rs.reduce((s, r) => s + r.amount_cents, 0) }))
       .sort((a, b) => b.total - a.total)
 
     if (sorted.length > 1) {
-      lines.push(`\n2º lugar: *${sorted[1].cat}* - *${formatBRL(sorted[1].total)}*`)
+      lines.push(m.query.maxRunnerUp(sorted[1].cat, formatBRL(sorted[1].total)))
     }
 
     return lines.join('\n')
   }
 
-  private static buildCountMessage(rows: InternalRow[], label: string, period: string): string {
+  private static buildCountMessage(
+    rows: InternalRow[],
+    label: string,
+    period: string,
+    m: ReturnType<typeof getWhatsAppMessages>
+  ): string {
     const groups = new Map<string, number>()
     for (const r of rows) {
       groups.set(r.description, (groups.get(r.description) ?? 0) + 1)
     }
 
-    const periodStr = period ? ` ${period}` : ''
-    const lines = [`Você teve *${rows.length}* lançamento${rows.length > 1 ? 's' : ''} em ${label}${periodStr}:\n`]
+    const lines = [m.query.countSentence(rows.length, label, period)]
     Array.from(groups.entries())
       .sort((a, b) => b[1] - a[1])
       .forEach(([desc, count]) => {
@@ -265,62 +278,68 @@ export class WhatsAppQueryHandler {
     rows: InternalRow[],
     label: string,
     period: string,
-    routePath: string
+    routePath: string,
+    m: ReturnType<typeof getWhatsAppMessages>
   ): string {
-    const periodStr = period ? ` ${period}` : ''
-    const lines = [`Seus ${label}${periodStr}:\n`]
+    const lines = [m.query.listHeader(label, period)]
 
     rows.slice(0, 10).forEach((r, i) => {
       lines.push(`${i + 1}. ${dateBR(r.date)}: ${r.description} (${r.category}) - *${formatBRL(r.amount_cents)}*`)
     })
 
-    lines.push(`\n_Para editar ou apagar: "edita o 2 para 60" ou "apaga o 1"_`)
+    lines.push(`\n${m.query.editHint}`)
 
     if (rows.length > 10) {
-      lines.push(`_...e mais ${rows.length - 10} lançamentos_`)
-      lines.push(`Ver todos: ${appUrl}${routePath}`)
+      lines.push(m.query.moreItems(rows.length - 10))
+      lines.push(`${m.query.viewAll} ${appUrl}${routePath}`)
     }
 
     return lines.join('\n')
   }
 
-  private static buildSavingsMessage(savings: InternalSaving[], period: string): string {
-    const lines = ['Seus objetivos:\n']
+  private static buildSavingsMessage(
+    savings: InternalSaving[],
+    period: string,
+    m: ReturnType<typeof getWhatsAppMessages>
+  ): string {
+    const lines = [m.query.savingsHeader]
 
-    const periodStr = period ? ` ${period}` : ''
     savings.forEach(d => {
-      const target = d.target_cents != null ? ` | Meta: *${formatBRL(d.target_cents)}*` : ''
+      const target = d.target_cents != null ? m.query.savingsTarget(formatBRL(d.target_cents)) : ''
       const contributed = d.contributed_cents > 0
-        ? ` | Guardado${periodStr}: *${formatBRL(d.contributed_cents)}*`
-        : ` | _sem contribuições${periodStr}_`
+        ? m.query.savingsContributed(period, formatBRL(d.contributed_cents))
+        : m.query.savingsNoContributions(period)
       lines.push(`- ${d.name}${target}${contributed}`)
     })
 
-    lines.push(`\nVer todos: ${appUrl}/savings`)
+    lines.push(`\n${m.query.viewAll} ${appUrl}/savings`)
     return lines.join('\n')
   }
 
-  private static buildRemindersMessage(reminders: InternalReminder[], period: string): string {
+  private static buildRemindersMessage(
+    reminders: InternalReminder[],
+    period: string,
+    m: ReturnType<typeof getWhatsAppMessages>
+  ): string {
     const pending = reminders.filter(r => !r.is_done)
     const done = reminders.filter(r => r.is_done)
 
-    const periodStr = period ? ` ${period}` : ''
-    const lines = [`Lembretes${periodStr}:\n`]
+    const lines = [m.query.remindersHeader(period)]
 
     if (pending.length) {
-      lines.push('_Pendentes:_')
+      lines.push(m.query.remindersPending)
       pending.forEach(r => {
-        const due = r.due_date ? ` - vence ${dateBR(r.due_date)}` : ''
+        const due = r.due_date ? m.query.reminderDue(dateBR(r.due_date)) : ''
         lines.push(`- ${r.title}${due}`)
       })
     }
 
     if (done.length) {
-      lines.push('\n_Concluídos:_')
+      lines.push(`\n${m.query.remindersDone}`)
       done.forEach(r => lines.push(`- ✅ ${r.title}`))
     }
 
-    lines.push(`\nVer todos: ${appUrl}/reminders`)
+    lines.push(`\n${m.query.viewAll} ${appUrl}/reminders`)
     return lines.join('\n')
   }
 
@@ -355,7 +374,7 @@ export class WhatsAppQueryHandler {
       case 'all':
         return { from: '2000-01-01', to: todayISO }
       default:
-        return { from: fmt(startOfMonth(today)), to: fmt(endOfMonth(today)) }
+        return { from: fmt(startOfYear(today)), to: fmt(endOfYear(today)) }
     }
   }
 
@@ -364,114 +383,104 @@ export class WhatsAppQueryHandler {
     familyId: string,
     dateRange: DateRange
   ): Promise<InternalPayload> {
-    const payload: InternalPayload = {}
-    const fetchers: Promise<void>[] = []
-
-    if (intent.data_needed.includes('expenses')) {
-      fetchers.push(
-        (async () => {
-          let query = supabaseAdmin
+    const needed = intent.data_needed
+    const results = await Promise.all([
+      needed.includes('expenses')
+        ? supabaseAdmin
             .from('expenses')
-            .select('id, date, description, category_name, amount_cents')
+            .select('id,date,description,category_name,amount_cents')
             .eq('family_id', familyId)
             .gte('date', dateRange.from)
             .lte('date', dateRange.to)
+            .eq('installment_index', 1)
             .order('date', { ascending: false })
-            .order('created_at', { ascending: false })
             .limit(50)
-          if (intent.status_filter === 'open') query = query.eq('status', 'open')
-          const { data } = await query
-          payload.expenses = (data ?? []).map((r, i) => ({
-            idx: i,
-            id: r.id,
-            date: r.date,
-            description: r.description,
-            category: r.category_name ?? '',
-            amount_cents: r.amount_cents,
-            kind: 'expense' as const,
-          }))
-        })()
-      )
-    }
-
-    if (intent.data_needed.includes('incomes')) {
-      fetchers.push(
-        (async () => {
-          const { data } = await supabaseAdmin
+            .then(({ data }) =>
+              (data ?? []).map((r, i) => ({
+                idx: i,
+                id: r.id,
+                date: r.date,
+                description: r.description,
+                category: r.category_name ?? '',
+                amount_cents: r.amount_cents,
+                kind: 'expense' as const,
+                ...(intent.status_filter === 'open' ? {} : {}),
+              })).filter(r => intent.status_filter !== 'open' || (r as any).status === 'open')
+            )
+        : Promise.resolve(null),
+      needed.includes('incomes')
+        ? supabaseAdmin
             .from('incomes')
-            .select('id, date, description, category_name, amount_cents')
+            .select('id,date,description,category_name,amount_cents')
             .eq('family_id', familyId)
-            .eq('status', 'received')
             .gte('date', dateRange.from)
             .lte('date', dateRange.to)
             .order('date', { ascending: false })
-            .order('created_at', { ascending: false })
             .limit(50)
-          payload.incomes = (data ?? []).map((r, i) => ({
-            idx: i,  // reassigned in handle() after parallel fetch completes
-            id: r.id,
-            date: r.date,
-            description: r.description,
-            category: r.category_name ?? '',
-            amount_cents: r.amount_cents,
-            kind: 'income' as const,
-          }))
-        })()
-      )
-    }
-
-    if (intent.data_needed.includes('savings')) {
-      fetchers.push(
-        (async () => {
-          const [{ data: savingsList }, { data: contribs }] = await Promise.all([
-            supabaseAdmin
-              .from('savings')
-              .select('id, name, target_cents')
-              .eq('family_id', familyId),
-            supabaseAdmin
-              .from('savings_contributions')
-              .select('saving_id, amount_cents, type')
-              .eq('family_id', familyId)
-              .gte('date', dateRange.from)
-              .lte('date', dateRange.to),
-          ])
-          const sumBySaving = new Map<string, number>()
-          for (const c of contribs ?? []) {
-            const delta = c.type === 'withdrawal' ? -(c.amount_cents) : c.amount_cents
-            sumBySaving.set(c.saving_id, (sumBySaving.get(c.saving_id) ?? 0) + delta)
-          }
-          payload.savings = (savingsList ?? []).map(d => ({
-            name: d.name,
-            target_cents: d.target_cents,
-            contributed_cents: sumBySaving.get(d.id) ?? 0,
-          }))
-        })()
-      )
-    }
-
-    if (intent.data_needed.includes('reminders')) {
-      fetchers.push(
-        (async () => {
-          const { data } = await supabaseAdmin
+            .then(({ data }) =>
+              (data ?? []).map((r, i) => ({
+                idx: i,
+                id: r.id,
+                date: r.date,
+                description: r.description,
+                category: r.category_name ?? '',
+                amount_cents: r.amount_cents,
+                kind: 'income' as const,
+              }))
+            )
+        : Promise.resolve(null),
+      needed.includes('savings')
+        ? supabaseAdmin
+            .from('savings')
+            .select('id,name,target_cents')
+            .eq('family_id', familyId)
+            .order('created_at', { ascending: false })
+            .then(async ({ data: savingsData }) => {
+              if (!savingsData?.length) return []
+              const contributions = await Promise.all(
+                savingsData.map(s =>
+                  supabaseAdmin
+                    .from('savings_contributions')
+                    .select('amount_cents')
+                    .eq('saving_id', s.id)
+                    .gte('date', dateRange.from)
+                    .lte('date', dateRange.to)
+                    .then(({ data }) => ({
+                      name: s.name,
+                      target_cents: s.target_cents,
+                      contributed_cents: (data ?? []).reduce((sum, c) => sum + c.amount_cents, 0),
+                    }))
+                )
+              )
+              return contributions
+            })
+        : Promise.resolve(null),
+      needed.includes('reminders')
+        ? supabaseAdmin
             .from('reminders')
-            .select('title, due_date, is_done, category')
+            .select('title,due_date,is_done')
             .eq('family_id', familyId)
             .gte('due_date', dateRange.from)
             .lte('due_date', dateRange.to)
             .order('due_date', { ascending: true })
-            .limit(30)
-          payload.reminders = (data ?? []).map(r => ({
-            title: r.title,
-            due_date: r.due_date,
-            is_done: r.is_done,
-            category: r.category ?? '',
-          }))
-        })()
-      )
-    }
+            .limit(20)
+            .then(({ data }) =>
+              (data ?? []).map(r => ({
+                title: r.title,
+                due_date: r.due_date,
+                is_done: r.is_done,
+                category: '',
+              }))
+            )
+        : Promise.resolve(null),
+    ])
 
-    await Promise.all(fetchers)
-    return payload
+    return {
+      expenses: results[0] ?? undefined,
+      incomes: results[1] ?? undefined,
+      savings: results[2] ?? undefined,
+      reminders: results[3] ?? undefined,
+    }
   }
 }
 

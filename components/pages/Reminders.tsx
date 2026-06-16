@@ -12,6 +12,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import { BellRing, Check, Pencil, Trash2 } from 'lucide-react'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import { formatDate, isDueDateToday, isDueDateOverdue } from '@/lib/dates'
+import { useTranslations } from 'next-intl'
 
 interface Reminder {
   id: string
@@ -111,6 +112,7 @@ type ReminderFilter = 'pending' | 'done' | 'overdue' | null
 
 export default function Reminders() {
   const { familyId } = useAuth()
+  const t = useTranslations()
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -266,8 +268,8 @@ export default function Reminders() {
     <>
       <div className="flex flex-col h-full md:min-h-screen">
         <Topbar
-          title="Lembretes"
-          subtitle="Pequenas notas para a casa fluir."
+          title={t('reminders.title')}
+          subtitle={t('reminders.topbarSubtitle')}
           accent="#3E5F4B"
           variant="textured"
           showBackButton
@@ -278,7 +280,7 @@ export default function Reminders() {
                 onClick={() => setIsModalOpen(true)}
                 className="min-w-[160px] px-5 py-2 bg-sidebar text-white rounded-md hover:bg-olive/90 transition-vintage text-sm font-semibold"
               >
-                + Novo lembrete
+                + {t('reminders.addReminder')}
               </button>
             </div>
           }
@@ -287,13 +289,13 @@ export default function Reminders() {
         {/* Scrollable cards area - mobile only internal scroll */}
         <div className="flex-1 min-h-0 overflow-y-auto md:overflow-visible px-[18px] pt-3 pb-4 md:px-6 md:pt-0">
           {loading ? (
-            <div className="py-12 text-center text-ink/60">Carregando…</div>
+            <div className="py-12 text-center text-ink/60">{t('reminders.loading')}</div>
           ) : reminders.length === 0 ? (
             <div className="rounded-[12px] border border-border bg-offWhite px-6 py-10 shadow-soft">
               <EmptyState
                 icon={<BellRing className="w-16 h-16" />}
-                message="Sem lembretes por agora."
-                submessage="Que o mês siga tranquilo."
+                message={t('reminders.emptyState')}
+                submessage={t('reminders.emptyStateSubmessage')}
               />
             </div>
           ) : (
@@ -301,10 +303,10 @@ export default function Reminders() {
               <div className="flex flex-wrap items-center gap-2">
                 {(
                   [
-                    { key: null,       label: 'Todos',      count: reminders.length },
-                    { key: 'pending',  label: 'Pendentes',  count: pendingReminders.length },
-                    { key: 'done',     label: 'Concluídos', count: completedReminders.length },
-                    { key: 'overdue',  label: 'Atrasados',  count: overdueReminders.length },
+                    { key: null,       label: 'Todos',               count: reminders.length },
+                    { key: 'pending',  label: t('reminders.upcoming'), count: pendingReminders.length },
+                    { key: 'done',     label: 'Concluídos',           count: completedReminders.length },
+                    { key: 'overdue',  label: t('reminders.overdue'),  count: overdueReminders.length },
                   ] as { key: ReminderFilter; label: string; count: number }[]
                 ).map((pill) => {
                   const isActive = statusFilter === pill.key
@@ -409,7 +411,7 @@ export default function Reminders() {
             onClick={() => setIsModalOpen(true)}
             className="w-full bg-coffee text-paper rounded-[12px] py-[13px] text-sm font-semibold transition-vintage hover:bg-coffee/90"
           >
-            + Novo lembrete
+            + {t('reminders.addReminder')}
           </button>
           <div className="h-[40px] flex items-center justify-center">
             <p className="text-center text-[13px] text-gold italic">
@@ -431,14 +433,14 @@ export default function Reminders() {
       <RightDrawer
         isOpen={isModalOpen}
         onClose={closeReminderModal}
-        subtitle="Pequenas notas para a casa fluir."
+        subtitle={t('reminders.topbarSubtitle')}
         accent="#3E5F4B"
-        title={editingReminder ? 'Editar lembrete' : 'Novo lembrete'}
+        title={editingReminder ? t('reminders.editReminder') : t('reminders.addReminder')}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="reminder-title" className="block text-sm font-body text-ink mb-2">
-              Título <span className="text-terracotta">*</span>
+              {t('reminders.description')} <span className="text-terracotta">*</span>
             </label>
             <input
               id="reminder-title"
@@ -448,12 +450,12 @@ export default function Reminders() {
               aria-label="Título do lembrete"
               onChange={(event) => setFormData({ ...formData, title: event.target.value })}
               className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-              placeholder="Ex: Conferir conta de água"
+              placeholder={t('reminders.descriptionPlaceholder')}
             />
           </div>
 
           <div>
-            <label htmlFor="reminder-date" className="block text-sm font-body text-ink mb-2">Data</label>
+            <label htmlFor="reminder-date" className="block text-sm font-body text-ink mb-2">{t('reminders.date')}</label>
             <input
               id="reminder-date"
               type="date"
@@ -465,7 +467,7 @@ export default function Reminders() {
           </div>
 
           <Select
-            label="Categoria"
+            label={t('reminders.categoryLabel')}
             value={formData.category}
             onChange={(value) => setFormData({ ...formData, category: value })}
             options={[
@@ -483,13 +485,13 @@ export default function Reminders() {
               onClick={() => setIsModalOpen(false)}
               className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage"
             >
-              Cancelar
+              {t('reminders.cancelButton')}
             </button>
             <button
               type="submit"
               className="flex-1 px-4 py-3 bg-sidebar text-paper rounded-lg hover:bg-olive/90 transition-vintage"
             >
-              Salvar
+              {t('reminders.saveButton')}
             </button>
           </div>
         </form>
@@ -499,9 +501,9 @@ export default function Reminders() {
         isOpen={!!deleteConfirmId}
         onClose={() => setDeleteConfirmId(null)}
         onConfirm={confirmDelete}
-        title="Excluir lembrete"
-        message="Este lembrete será removido permanentemente."
-        confirmLabel="Excluir"
+        title={t('reminders.deleteReminder')}
+        message={t('reminders.confirmDeleteMessage')}
+        confirmLabel={t('reminders.deleteButton')}
         loading={deleting}
       />
     </>

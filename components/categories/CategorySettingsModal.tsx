@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Bell, BellOff, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
@@ -70,6 +71,7 @@ export default function CategorySettingsModal({
   scope = 'categories',
   kind,
 }: CategorySettingsModalProps) {
+  const t = useTranslations()
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [items, setItems] = useState<NodeItem[]>([])
@@ -310,7 +312,7 @@ export default function CategorySettingsModal({
 
     setSaving(false)
     if (errorMessage) {
-      alert('Não foi possível salvar. Verifique se o nome já existe.')
+      alert(t('categoryModal.errorSave'))
       return
     }
     resetComposer()
@@ -338,7 +340,7 @@ export default function CategorySettingsModal({
 
   const handleDelete = async (item: NodeItem) => {
     if (!familyId) return
-    if (!confirm(`Excluir ${isSavingsScope ? 'o' : 'a'} ${entityLabel} "${item.name}"?`)) return
+    if (!confirm(t('categoryModal.confirmDelete'))) return
 
 	    if (scope === 'savings') {
 	      const childIds: string[] = []
@@ -350,10 +352,10 @@ export default function CategorySettingsModal({
 	      const idsToDelete = [item.id, ...childIds]
       await supabase.from('savings_contributions').delete().eq('family_id', familyId).in('saving_id', idsToDelete)
       const { error } = await supabase.from('savings').delete().eq('family_id', familyId).in('id', idsToDelete)
-      if (error) { alert('Não foi possível excluir. Tente novamente.'); return }
+      if (error) { alert(t('categoryModal.errorDelete')); return }
     } else {
       const { error } = await supabase.from('categories').delete().eq('id', item.id).eq('family_id', familyId).eq('kind', kind!)
-      if (error) { alert('Não foi possível excluir. Tente novamente.'); return }
+      if (error) { alert(t('categoryModal.errorDelete')); return }
     }
 
     if (editingId === item.id) resetComposer()
@@ -391,7 +393,7 @@ export default function CategorySettingsModal({
       </div>
       <div className="flex gap-2">
         <button type="button" onClick={onCancel} className="px-3 py-1.5 rounded-lg border border-border text-sm text-ink/70">
-          Cancelar
+          {t('categoryModal.cancelButton')}
         </button>
         <button
           type="button"
@@ -399,7 +401,7 @@ export default function CategorySettingsModal({
           disabled={saving}
           className="px-3 py-1.5 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60"
         >
-          {saving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}
+          {saving ? t('categoryModal.savingButton') : t('categoryModal.saveButton')}
         </button>
       </div>
     </div>
@@ -426,7 +428,7 @@ export default function CategorySettingsModal({
           <td colSpan={4} className="px-3 py-3">
             <p className="text-xs text-ink/50 mb-2">Editando · {item.name}</p>
             <ComposerForm
-              placeholder={depth === 0 ? 'Nome da categoria' : 'Nome da subcategoria'}
+              placeholder={depth === 0 ? t('categoryModal.namePlaceholder') : t('categoryModal.subNamePlaceholder')}
               showIconPicker={depth === 0}
               onCancel={resetComposer}
             />
@@ -567,7 +569,7 @@ export default function CategorySettingsModal({
         {isExpanded && !isEditingLimit && composerMode === 'child' && !editingId && draftParentId === item.id && (
           <tr className="bg-paper/80">
             <td colSpan={4} className="px-3 py-2 pl-10">
-              <ComposerForm placeholder="Nome da subcategoria" onCancel={resetComposer} />
+              <ComposerForm placeholder={t('categoryModal.subNamePlaceholder')} onCancel={resetComposer} />
             </td>
           </tr>
         )}
@@ -585,7 +587,7 @@ export default function CategorySettingsModal({
 
       <div className="rounded-lg border border-border bg-paper min-h-[60vh] flex flex-col">
         {loading ? (
-          <p className="text-sm text-ink/60 p-4">Carregando…</p>
+          <p className="text-sm text-ink/60 p-4">{t('categoryModal.loading')}</p>
         ) : tree.length === 0 ? (
           <div className="space-y-3 p-4">
             <p className="text-sm text-ink/60">Nenhum{isSavingsScope ? '' : 'a'} {entityLabel} cadastrad{isSavingsScope ? 'o' : 'a'}.</p>
@@ -628,7 +630,7 @@ export default function CategorySettingsModal({
                   {isMainComposer && !editingId && (
                     <tr className="bg-offWhite">
                       <td colSpan={4} className="px-3 py-3">
-                        <ComposerForm placeholder="Nome da categoria principal" showIconPicker onCancel={resetComposer} />
+                        <ComposerForm placeholder={t('categoryModal.mainNamePlaceholder')} showIconPicker onCancel={resetComposer} />
                       </td>
                     </tr>
                   )}
@@ -770,8 +772,8 @@ export default function CategorySettingsModal({
                               <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label={`Nome d${isSavingsScope ? 'o' : 'a'} ${entityLabel}`} className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${entityLabel}`} />
                             </div>
                             <div className="flex gap-2">
-                              <button type="button" onClick={resetComposer} className="px-3 py-1.5 rounded-lg border border-border text-sm text-ink/70">Cancelar</button>
-                              <button type="button" onClick={saveComposer} disabled={saving} className="px-3 py-1.5 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60">{saving ? 'Salvando...' : 'Salvar'}</button>
+                              <button type="button" onClick={resetComposer} className="px-3 py-1.5 rounded-lg border border-border text-sm text-ink/70">{t('categoryModal.cancelButton')}</button>
+                              <button type="button" onClick={saveComposer} disabled={saving} className="px-3 py-1.5 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60">{saving ? t('categoryModal.savingButton') : t('categoryModal.saveButton')}</button>
                             </div>
                           </div>
                         ) : (
@@ -813,8 +815,8 @@ export default function CategorySettingsModal({
                         <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label={`Nome d${isSavingsScope ? 'o' : 'a'} ${mainEntityLabel}`} className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${mainEntityLabel}`} />
                       </div>
                       <div className="flex gap-2">
-                        <button type="button" onClick={resetComposer} className="px-3 py-2 rounded-lg border border-border text-sm text-ink/70">Cancelar</button>
-                        <button type="button" onClick={saveComposer} disabled={saving} className="px-3 py-2 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60">{saving ? 'Salvando...' : 'Criar'}</button>
+                        <button type="button" onClick={resetComposer} className="px-3 py-2 rounded-lg border border-border text-sm text-ink/70">{t('categoryModal.cancelButton')}</button>
+                        <button type="button" onClick={saveComposer} disabled={saving} className="px-3 py-2 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60">{saving ? t('categoryModal.savingButton') : t('categoryModal.saveButton')}</button>
                       </div>
                     </div>
                   ) : null}
@@ -852,8 +854,8 @@ export default function CategorySettingsModal({
                             <div className="px-4 py-3 space-y-2">
                               <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label={`Nome d${isSavingsScope ? 'o' : 'a'} ${childEntityLabel}`} className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${childEntityLabel}`} />
                               <div className="flex gap-2">
-                                <button type="button" onClick={resetComposer} className="px-3 py-1.5 rounded-lg border border-border text-sm text-ink/70">Cancelar</button>
-                                <button type="button" onClick={saveComposer} disabled={saving} className="px-3 py-1.5 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60">{saving ? 'Salvando...' : 'Salvar'}</button>
+                                <button type="button" onClick={resetComposer} className="px-3 py-1.5 rounded-lg border border-border text-sm text-ink/70">{t('categoryModal.cancelButton')}</button>
+                                <button type="button" onClick={saveComposer} disabled={saving} className="px-3 py-1.5 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60">{saving ? t('categoryModal.savingButton') : t('categoryModal.saveButton')}</button>
                               </div>
                             </div>
                           ) : (
@@ -891,8 +893,8 @@ export default function CategorySettingsModal({
                     <div className="space-y-2">
                       <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label={`Nov${isSavingsScope ? 'o' : 'a'} ${childEntityLabel}`} className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${childEntityLabel}`} />
                       <div className="flex gap-2">
-                        <button type="button" onClick={resetComposer} className="px-3 py-2 rounded-lg border border-border text-sm text-ink/70">Cancelar</button>
-                        <button type="button" onClick={saveComposer} disabled={saving} className="px-3 py-2 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60">{saving ? 'Salvando...' : 'Criar'}</button>
+                        <button type="button" onClick={resetComposer} className="px-3 py-2 rounded-lg border border-border text-sm text-ink/70">{t('categoryModal.cancelButton')}</button>
+                        <button type="button" onClick={saveComposer} disabled={saving} className="px-3 py-2 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60">{saving ? t('categoryModal.savingButton') : t('categoryModal.saveButton')}</button>
                       </div>
                     </div>
                   ) : null}

@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
+import { NextIntlClientProvider } from 'next-intl'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getProfileByUserId } from '@/lib/billing/auth'
 import { hasBillingAccess } from '@/lib/billing/access'
 import { PlanProvider, type PlanTier } from '@/lib/billing/plan-context'
 import { FamilyPickerOverlay } from '@/components/FamilyPickerOverlay'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -27,10 +29,19 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   const tier: PlanTier = access.isPaidTier ? 'paid' : access.hasActiveTrial ? 'trial' : 'free'
 
+  const locale = await getUserLocale()
+  const messages = (await import(`@/messages/${locale}.json`)).default
+
   return (
-    <PlanProvider tier={tier} trialExpiresAt={access.trialExpiresAt ?? null}>
-      <FamilyPickerOverlay />
-      {children}
-    </PlanProvider>
+    <NextIntlClientProvider
+      locale={locale}
+      messages={messages}
+      getMessageFallback={({ key }) => key}
+    >
+      <PlanProvider tier={tier} trialExpiresAt={access.trialExpiresAt ?? null}>
+        <FamilyPickerOverlay />
+        {children}
+      </PlanProvider>
+    </NextIntlClientProvider>
   )
 }

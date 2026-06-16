@@ -1,7 +1,9 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
+import { META_TEMPLATE_LANGUAGE } from '@/lib/whatsapp/localeMapping'
 import { sendInsightsEmail } from '@/lib/mailer'
 import { posthogLogs } from '@/lib/posthog-logs'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 
 export async function dispatchInsights(
   familyId: string,
@@ -13,9 +15,9 @@ export async function dispatchInsights(
   if (insights.length === 0) return
 
   // Fetch family members with their notification preferences
-  const { data: members } = await supabaseAdmin
+  const { data: members } = await (supabaseAdmin as any)
     .from('users')
-    .select('id, name, email, phone_number, insights_enabled, insight_channels')
+    .select('id, name, email, phone_number, insights_enabled, insight_channels, locale')
     .eq('family_id', familyId)
 
   if (!members?.length) return
@@ -48,6 +50,8 @@ export async function dispatchInsights(
       let result: { messageId: string | null } | null = null
       let messageKind = 'none'
 
+      const memberLocale = (member.locale as AppLocale | null) ?? null
+      const langCode = META_TEMPLATE_LANGUAGE[memberLocale ?? 'pt-BR'] ?? 'pt_BR'
       try {
         if (type === 'limit_alert') {
           // Use a dedicated text-only template (no image header = no 131053 errors,
@@ -55,7 +59,7 @@ export async function dispatchInsights(
           // Set WHATSAPP_LIMIT_ALERT_TEMPLATE_NAME in env after approval.
           const limitTemplateName = process.env.WHATSAPP_LIMIT_ALERT_TEMPLATE_NAME
           if (limitTemplateName) {
-            result = await whatsAppService.sendTemplateMessage(member.phone_number, limitTemplateName, [content])
+            result = await whatsAppService.sendTemplateMessage(member.phone_number, limitTemplateName, [content], langCode)
             messageKind = 'limit-template'
           } else {
             // No template yet — try plain text (works within 24h window)
@@ -65,7 +69,7 @@ export async function dispatchInsights(
         } else {
           // Proactive / on-demand insights always use the template when configured
           result = templateName
-            ? await whatsAppService.sendTemplateMessage(member.phone_number, templateName, [period, content], 'pt_BR', [], headerImageUrl, headerImageId)
+            ? await whatsAppService.sendTemplateMessage(member.phone_number, templateName, [period, content], langCode, [], headerImageUrl, headerImageId)
             : await whatsAppService.sendTextMessage(member.phone_number, header + content)
           messageKind = templateName ? 'template' : 'text'
         }

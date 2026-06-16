@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import { Bell, BellOff, ChartColumnBig, ChevronDown, CreditCard, FileDown, FileText, MoreVertical, PiggyBank, SlidersHorizontal, TrendingUp, Wallet } from 'lucide-react'
@@ -106,6 +107,7 @@ const buildColorizedSlices = (rows: Array<{ label: string; value: number }>): Ca
 }
 
 export default function Comparatives() {
+  const t = useTranslations()
   const { familyId } = useAuth()
   const { tier } = usePlan()
   const isFreeTier = tier === 'free'
@@ -593,8 +595,8 @@ export default function Comparatives() {
   return (
       <div className="flex flex-col h-full md:min-h-screen">
       <Topbar
-        title="Comparativos"
-        subtitle="Padrões com calma, decisões com clareza."
+        title={t('comparatives.title')}
+        subtitle={t('comparatives.topbarSubtitle')}
         accent="#C2A45D"
         variant="textured"
       />
@@ -714,13 +716,13 @@ export default function Comparatives() {
 
           <div className="flex-1 min-w-0 px-[18px] pt-3 pb-4 md:px-0 md:pt-0 md:pb-0">
             {loading ? (
-              <div className="text-center py-12 text-ink/60">Carregando…</div>
+              <div className="text-center py-12 text-ink/60">{t('comparatives.loading')}</div>
             ) : (
               <div className="space-y-6">
               {/* KPI cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <AnalyticsKpiCard
-                  label="Recebido"
+                  label={t('comparatives.kpiReceived')}
                   value={formatBRL(monthlyTotals.income)}
                   sub={incDelta ? `${incDelta.positive ? '↑' : '↓'} ${Math.abs(incDelta.pct)}% vs ${prevMonthLabelComp}` : undefined}
                   subPositive={incDelta?.positive}
@@ -729,7 +731,7 @@ export default function Comparatives() {
                   icon={TrendingUp}
                 />
                 <AnalyticsKpiCard
-                  label="Pago"
+                  label={t('comparatives.kpiPaid')}
                   value={formatBRL(monthlyTotals.paid)}
                   sub={paidDeltaComp ? `${paidDeltaComp.positive ? '↑' : '↓'} ${Math.abs(paidDeltaComp.pct)}% vs ${prevMonthLabelComp}` : undefined}
                   subPositive={paidDeltaComp?.positive}
@@ -738,7 +740,7 @@ export default function Comparatives() {
                   icon={CreditCard}
                 />
                 <AnalyticsKpiCard
-                  label="Poupado"
+                  label={t('comparatives.kpiSaved')}
                   value={formatBRL(monthlyTotals.saved)}
                   sub={savedDelta ? `${savedDelta.positive ? '↑' : '↓'} ${Math.abs(savedDelta.pct)}% vs ${prevMonthLabelComp}` : undefined}
                   subPositive={savedDelta?.positive}
@@ -747,7 +749,7 @@ export default function Comparatives() {
                   icon={PiggyBank}
                 />
                 <AnalyticsKpiCard
-                  label="Saldo"
+                  label={t('comparatives.balance')}
                   value={formatBRL(monthlyTotals.balance)}
                   iconTheme={balanceIsNeg ? 'red' : 'orange'}
                   icon={Wallet}
@@ -858,8 +860,8 @@ export default function Comparatives() {
                   <ExpandableDonut
                     slices={expenseDonutSlices}
                     total={monthlyTotals.paid}
-                    title="Despesas por categoria"
-                    modalTitle="Despesas por categoria"
+                    title={t('comparatives.expensesByCategory')}
+                    modalTitle={t('comparatives.expensesByCategory')}
                     items={barDetails.paid.map((row, i) => ({
                       id: String(i),
                       description: row.name,
@@ -893,7 +895,7 @@ export default function Comparatives() {
                 {trendSeries.length > 0 ? (
                   <LineChart series={trendSeries} labels={trendData.map(d => d.label)} height={150} />
                 ) : (
-                  <div className="h-[130px] flex items-center justify-center text-sm text-ink/40">Carregando…</div>
+                  <div className="h-[130px] flex items-center justify-center text-sm text-ink/40">{t('comparatives.loading')}</div>
                 )}
               </VintageCard>
 
@@ -1000,13 +1002,13 @@ export default function Comparatives() {
       <PdfPreviewModal
         isOpen={isPdfModalOpen}
         onClose={closePdfModal}
-        title="Preview do PDF"
+        title={t('common.pdfPreviewTitle')}
         summary={exportSubtitle}
         pdfUrl={pdfUrl}
         isGenerating={pdfGenerating}
         onDownload={downloadPreviewPdf}
-        downloadLabel="Imprimir ou salvar"
-        previewLabel="Preview do PDF"
+        downloadLabel={t('common.pdfDownloadLabel')}
+        previewLabel={t('common.pdfPreviewTitle')}
       />
 
       <FilterSheet
@@ -1020,20 +1022,20 @@ export default function Comparatives() {
         }}
       />
 
-      <Modal isOpen={showPaywallModal} onClose={() => setShowPaywallModal(false)} title="Limite atingido">
+      <Modal isOpen={showPaywallModal} onClose={() => setShowPaywallModal(false)} title={t('comparatives.paywallTitle')}>
         <div className="space-y-4">
           <p className="text-ink/80 text-sm">
-            Você atingiu o limite de 3 exportações/importações gratuitas este mês.
+            {t('comparatives.paywallBody')}
           </p>
           <p className="text-ink/60 text-sm">
-            Assine o Florim Pro para exportações ilimitadas e outros recursos avançados.
+            {t('comparatives.paywallPro')}
           </p>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={() => setShowPaywallModal(false)} className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage text-sm">
-              Fechar
+              {t('common.close')}
             </button>
             <Link href="/settings/billing" className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg text-sm font-semibold text-center hover:bg-coffee/90 transition-vintage">
-              Ver planos
+              {t('comparatives.paywallCta')}
             </Link>
           </div>
         </div>

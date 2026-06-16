@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ChevronRight, User, Info, Bell, Settings, LogOut } from 'lucide-react'
 import { useAuth } from '@/components/AuthProvider'
 import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
+import { useTranslations } from 'next-intl'
 
 interface ProfileSheetProps {
   open: boolean
@@ -13,16 +14,17 @@ interface ProfileSheetProps {
   familyName?: string
 }
 
-const menuItems = [
-  { icon: User, label: 'Meu perfil', subtitle: 'Dados pessoais e familia', href: '/settings/profile' },
-  { icon: Info, label: 'Sobre o Florim', subtitle: 'A história e o propósito', href: '/sobre' },
-  { icon: Bell, label: 'Lembretes', subtitle: 'Lembretes da casa', href: '/reminders' },
-  { icon: Settings, label: 'Configurações', subtitle: 'Preferências da conta', href: '/settings' },
-]
-
 export default function ProfileSheet({ open, onClose, userName = '', familyName = '' }: ProfileSheetProps) {
   const router = useRouter()
   const { signOut } = useAuth()
+  const t = useTranslations()
+
+  const menuItems = [
+    { icon: User, label: t('profileSheet.myProfile'), subtitle: t('profileSheet.myProfileDesc'), href: '/settings/profile' },
+    { icon: Info, label: t('profileSheet.about'), subtitle: t('profileSheet.aboutDesc'), href: '/sobre' },
+    { icon: Bell, label: t('profileSheet.reminders'), subtitle: t('profileSheet.remindersDesc'), href: '/reminders' },
+    { icon: Settings, label: t('profileSheet.settings'), subtitle: t('profileSheet.settingsDesc'), href: '/settings' },
+  ]
   const [mounted, setMounted] = useState(false)
   const [animated, setAnimated] = useState(false)
 
@@ -94,9 +96,9 @@ export default function ProfileSheet({ open, onClose, userName = '', familyName 
             </span>
           </div>
           <div className="min-w-0">
-            <p className="text-base font-semibold text-ink truncate">{userName || 'Usuário'}</p>
+            <p className="text-base font-semibold text-ink truncate">{userName || t('profileSheet.userFallback')}</p>
             <p className="text-sm text-ink/50 truncate">
-              Família {familyName || '-'}
+              {t('profileSheet.family', { name: familyName || '-' })}
             </p>
           </div>
         </div>
@@ -136,8 +138,8 @@ export default function ProfileSheet({ open, onClose, userName = '', familyName 
             <LogOut className="w-5 h-5 text-terracotta shrink-0" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-terracotta">Sair</p>
-            <p className="text-xs text-terracotta/60">Encerrar sessão</p>
+            <p className="text-sm font-medium text-terracotta">{t('profileSheet.signOut')}</p>
+            <p className="text-xs text-terracotta/60">{t('profileSheet.signOutDesc')}</p>
           </div>
         </button>
       </div>

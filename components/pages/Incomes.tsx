@@ -57,6 +57,7 @@ import { buildBrandedPdfBlob, downloadBlob, downloadCsv, openHtmlAsPdf } from '@
 import { usePlan } from '@/lib/billing/plan-context'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
+import { useTranslations } from 'next-intl'
 
 type IncomeStatus = 'received' | 'pending'
 
@@ -82,6 +83,7 @@ function isDateInBillingPeriod(date: string, month: number, year: number, cycleD
 }
 
 export default function Incomes() {
+  const t = useTranslations()
   const { familyId, user } = useAuth()
   const { tier } = usePlan()
   const isFreeTier = tier === 'free'
@@ -331,7 +333,7 @@ export default function Incomes() {
     return fallbackName
   }
 
-  const getIncomeStatusLabel = (status: IncomeStatus) => (status === 'received' ? 'Recebido' : 'A receber')
+  const getIncomeStatusLabel = (status: IncomeStatus) => (status === 'received' ? t('incomes.statusReceived') : t('incomes.statusPending'))
 
   const handleToggleReceived = async (income: Income) => {
     if (updatingIds.includes(income.id)) return
@@ -771,8 +773,8 @@ export default function Incomes() {
     <>
       <div className="flex flex-col h-full md:min-h-screen">
         <Topbar
-          title="Contas a Receber"
-          subtitle="Cada renda é uma colheita do que se planta."
+          title={t('incomes.title')}
+          subtitle={t('incomes.topbarSubtitle')}
           accent="#3E8E5C"
           variant="textured"
         />
@@ -823,7 +825,7 @@ export default function Incomes() {
                 className="flex-1 flex items-center justify-center gap-1.5 h-[38px] px-3 rounded-[10px] border border-border bg-bg text-petrol text-sm font-medium"
               >
                 <Tag className="w-4 h-4" />
-                <span>Categorias</span>
+                <span>{t('incomes.manageCategories')}</span>
               </button>
               <button
                 type="button"
@@ -897,7 +899,7 @@ export default function Incomes() {
                     <FileDown className="w-4 h-4 text-ink/60" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-ink">Exportar CSV</p>
+                    <p className="text-sm font-medium text-ink">{t('incomes.exportCsv')}</p>
                     <p className="text-xs text-ink/45">Planilha com os dados</p>
                   </div>
                 </button>
@@ -911,7 +913,7 @@ export default function Incomes() {
                     <FileText className="w-4 h-4 text-ink/60" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-ink">Exportar PDF</p>
+                    <p className="text-sm font-medium text-ink">{t('incomes.exportPdf')}</p>
                     <p className="text-xs text-ink/45">Relatório para imprimir</p>
                   </div>
                 </button>
@@ -935,17 +937,17 @@ export default function Incomes() {
           </button>
           <div className="flex items-center h-[38px] bg-white border border-border rounded-[10px] px-3 gap-2 flex-1 max-w-[380px]">
             <Search className="w-4 h-4 text-petrol shrink-0" />
-            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Buscar por nome, categoria ou valor..." aria-label="Buscar por nome ou categoria" className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none" />
+            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder={t('incomes.search')} aria-label="Buscar por nome ou categoria" className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none" />
           </div>
           <div className="flex-1" />
           <button type="button" onClick={() => setIsCategorySettingsOpen(true)} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage">
-            <Tag className="w-4 h-4" /> Categorias
+            <Tag className="w-4 h-4" /> {t('incomes.manageCategories')}
           </button>
           <button type="button" onClick={handleExportPdf} disabled={!filteredIncomes.length || exportingFormat !== null} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage disabled:opacity-40">
-            <Upload className="w-4 h-4" /> Exportar
+            <Upload className="w-4 h-4" /> {t('incomes.exportPdf')}
           </button>
           <button type="button" onClick={() => openModal()} className="flex items-center gap-1.5 h-[38px] px-4 rounded-[10px] text-white text-[13px] font-semibold transition-vintage" style={{ background: '#3E8E5C' }}>
-            <Plus className="w-4 h-4" /> Nova receita
+            <Plus className="w-4 h-4" /> {t('incomes.addIncome')}
           </button>
 
           {/* Kept for compat but hidden */}
@@ -1000,7 +1002,7 @@ export default function Incomes() {
                             <FileDown className="w-4 h-4 text-ink/60" />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-ink">Exportar CSV</p>
+                            <p className="text-sm font-medium text-ink">{t('incomes.exportCsv')}</p>
                             <p className="text-xs text-ink/45">Planilha com os dados</p>
                           </div>
                         </button>
@@ -1014,7 +1016,7 @@ export default function Incomes() {
                             <FileText className="w-4 h-4 text-ink/60" />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-ink">Exportar PDF</p>
+                            <p className="text-sm font-medium text-ink">{t('incomes.exportPdf')}</p>
                             <p className="text-xs text-ink/45">Relatório para imprimir</p>
                           </div>
                         </button>
@@ -1038,7 +1040,7 @@ export default function Incomes() {
               <div className="min-w-[160px] max-w-[260px]">
                 <Select
                   variant="filter"
-                  label="Categoria"
+                  label={t('incomes.category')}
                   value={selectedCategoryId}
                   onChange={setSelectedCategoryId}
                   options={[{ value: '', label: 'Todas' }, ...categoryOptions]}
@@ -1047,10 +1049,10 @@ export default function Incomes() {
               <div className="min-w-[140px]">
                 <Select
                   variant="filter"
-                  label="Status"
+                  label={t('incomes.status')}
                   value={selectedStatus}
                   onChange={(v) => setSelectedStatus(v as '' | IncomeStatus)}
-                  options={[{ value: '', label: 'Todos' }, { value: 'received', label: 'Recebido' }, { value: 'pending', label: 'A receber' }]}
+                  options={[{ value: '', label: 'Todos' }, { value: 'received', label: t('incomes.statusReceived') }, { value: 'pending', label: t('incomes.statusPending') }]}
                 />
               </div>
               {activeFiltersCount > 0 && (
@@ -1079,7 +1081,7 @@ export default function Incomes() {
               />
               <Select
                 variant="filter"
-                label="Categoria"
+                label={t('incomes.category')}
                 value={selectedCategoryId}
                 onChange={setSelectedCategoryId}
                 options={[
@@ -1089,13 +1091,13 @@ export default function Incomes() {
               />
               <Select
                 variant="filter"
-                label="Status"
+                label={t('incomes.status')}
                 value={selectedStatus}
                 onChange={(v) => setSelectedStatus((v as IncomeStatus) || '')}
                 options={[
                   { value: '', label: 'Todos' },
-                  { value: 'received', label: 'Recebido' },
-                  { value: 'pending', label: 'A receber' },
+                  { value: 'received', label: t('incomes.statusReceived') },
+                  { value: 'pending', label: t('incomes.statusPending') },
                 ]}
               />
               </FilterSidebar>
@@ -1108,7 +1110,7 @@ export default function Incomes() {
                   {/* KPI row */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <AnalyticsKpiCard
-                      label="Total Recebido"
+                      label={t('incomes.kpiTotal')}
                       value={formatBRL(total)}
                       sub={totalDeltaPctInc != null ? `${totalDeltaPctInc >= 0 ? '↑' : '↓'} ${Math.abs(totalDeltaPctInc)}% vs ${prevMonthLabelInc}` : undefined}
                       subPositive={totalDeltaPctInc != null && totalDeltaPctInc > 0}
@@ -1117,21 +1119,21 @@ export default function Incomes() {
                       icon={TrendingUp}
                     />
                     <AnalyticsKpiCard
-                      label="Recebimentos"
+                      label={t('incomes.kpiCount')}
                       value={String(filteredIncomes.length)}
                       sub={`${filteredIncomes.length === 1 ? 'registro' : 'registros'} em ${monthLabelInc}`}
                       iconTheme="blue"
                       icon={List}
                     />
                     <AnalyticsKpiCard
-                      label="Média Diária"
+                      label={t('incomes.trend')}
                       value={formatBRL(dailyAverageInc)}
                       sub={selectedMonth !== ALL_MONTHS_VALUE ? `em ${monthLabelInc}` : undefined}
                       iconTheme="purple"
                       icon={Calendar}
                     />
                     <AnalyticsKpiCard
-                      label="Pendente"
+                      label={t('incomes.kpiPending')}
                       value={formatBRL(pending)}
                       sub={pending > 0 ? `${filteredIncomes.filter(i => i.status === 'pending').length} pendente(s)` : 'Tudo recebido'}
                       iconTheme="orange"
@@ -1149,21 +1151,21 @@ export default function Incomes() {
                       {trendSeries.length > 0 ? (
                         <LineChart series={trendSeries} labels={trendData.map(d => d.label)} height={160} />
                       ) : (
-                        <div className="h-[140px] flex items-center justify-center text-sm text-ink/40">Carregando…</div>
+                        <div className="h-[140px] flex items-center justify-center text-sm text-ink/40">{t('common.loading')}</div>
                       )}
                     </div>
                     {categoryDonutSlices.length > 0 ? (
                       <ExpandableDonut
                         slices={categoryDonutSlices}
                         total={total}
-                        title="Receitas por categoria"
-                        modalTitle="Receitas por categoria"
+                        title={t('incomes.byCategory')}
+                        modalTitle={t('incomes.byCategory')}
                         items={filteredIncomes.map(i => ({
                           id: i.id,
                           description: i.description,
                           amount_cents: i.amount_cents,
                           date: i.date,
-                          status: i.status === 'received' ? 'Recebido' : 'A receber',
+                          status: i.status === 'received' ? t('incomes.statusReceived') : t('incomes.statusPending'),
                           payment_method: null,
                           category_name: i.category_name,
                           category_id: i.category_id,
@@ -1185,12 +1187,12 @@ export default function Incomes() {
               )}
 
               {loading ? (
-                <div className="text-center py-12 text-ink/60">Carregando…</div>
+                <div className="text-center py-12 text-ink/60">{t('common.loading')}</div>
             ) : filteredIncomes.length === 0 ? (
               <EmptyState
                 icon={<DollarSign className="w-16 h-16" />}
-                message="Ainda não há receitas registradas."
-                submessage="Use o botão + para adicionar uma receita."
+                message={t('incomes.emptyState')}
+                submessage={t('incomes.emptyStateFiltered')}
               />
             ) : (
               <div className="space-y-5">
@@ -1251,7 +1253,7 @@ export default function Incomes() {
                                     onDelete={() => handleDelete(income.id)}
                                     onAttach={(file) => handleAttachIncome(income, file)}
                                     onToggleStatus={() => handleToggleReceived(income)}
-                                    toggleStatusLabel={isReceived ? 'Marcar como A receber' : 'Marcar como Recebido'}
+                                    toggleStatusLabel={isReceived ? t('incomes.markAsPending') : t('incomes.markAsReceived')}
                                     disabled={isUpdating}
                                   />
                                 </div>
@@ -1259,9 +1261,9 @@ export default function Incomes() {
                                 {/* Row 2: status badge + date */}
                                 <div className="flex items-center justify-between">
                                   {isReceived ? (
-                                    <span className="rounded-full bg-olive/15 px-2.5 py-0.5 text-[11px] font-semibold text-olive">Recebido</span>
+                                    <span className="rounded-full bg-olive/15 px-2.5 py-0.5 text-[11px] font-semibold text-olive">{t('incomes.statusReceived')}</span>
                                   ) : (
-                                    <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600">A receber</span>
+                                    <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600">{t('incomes.statusPending')}</span>
                                   )}
                                   <div className="flex items-center gap-1 text-ink/50 text-[11px]">
                                     <Calendar className="w-3.5 h-3.5" />
@@ -1324,7 +1326,7 @@ export default function Incomes() {
                                     </span>
                                     {isReceived && (
                                       <span className="rounded-full bg-olive/15 px-2.5 py-0.5 text-[11px] font-semibold text-olive">
-                                        Recebido
+                                        {t('incomes.statusReceived')}
                                       </span>
                                     )}
                                   </div>
@@ -1346,7 +1348,7 @@ export default function Incomes() {
                                       onDelete={() => handleDelete(income.id)}
                                       onAttach={(file) => handleAttachIncome(income, file)}
                                       onToggleStatus={() => handleToggleReceived(income)}
-                                      toggleStatusLabel={isReceived ? 'Marcar como A receber' : 'Marcar como Recebido'}
+                                      toggleStatusLabel={isReceived ? t('incomes.markAsPending') : t('incomes.markAsReceived')}
                                       disabled={isUpdating}
                                     />
                                   </div>
@@ -1387,27 +1389,27 @@ export default function Incomes() {
       <PdfPreviewModal
         isOpen={isPdfModalOpen}
         onClose={closePdfModal}
-        title="Preview do PDF"
+        title={t('common.pdfPreviewTitle')}
         summary={exportSubtitle}
         pdfUrl={pdfUrl}
         isGenerating={pdfGenerating}
         error={pdfError}
         onDownload={downloadPreviewPdf}
-        downloadLabel="Imprimir ou salvar"
-        previewLabel="Preview do PDF"
+        downloadLabel={t('common.pdfDownloadLabel')}
+        previewLabel={t('common.pdfPreviewTitle')}
       />
 
       <RightDrawer
         isOpen={isModalOpen}
         onClose={closeModal}
-        title={editingIncome ? 'Editar Receita' : 'Nova Receita'}
-        subtitle="Cada renda é uma colheita do que se planta."
+        title={editingIncome ? t('incomes.editIncome') : t('incomes.addIncome')}
+        subtitle={t('incomes.subtitle')}
         accent="#3E8E5C"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="income-description" className="block font-body text-ink mb-2 font-serif">
-              Descrição <span className="text-terracotta">*</span>
+              {t('incomes.description')} <span className="text-terracotta">*</span>
             </label>
             <input
               id="income-description"
@@ -1416,7 +1418,7 @@ export default function Incomes() {
               value={formData.description}
               onChange={(e) => { const v = e.target.value; setFormData(prev => ({ ...prev, description: v })) }}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-              placeholder="Ex: Salário"
+              placeholder={t('incomes.descriptionPlaceholder')}
               aria-label="Descrição da receita"
             />
             {suggestedCategoryId && !formData.categoryId && categoryLabelMap.get(suggestedCategoryId) && (
@@ -1433,7 +1435,7 @@ export default function Incomes() {
           </div>
 
           <Select
-            label="Categoria"
+            label={t('incomes.category')}
             value={formData.categoryId}
             onChange={(v) => setFormData({ ...formData, categoryId: v })}
             options={categoryOptions}
@@ -1443,7 +1445,7 @@ export default function Incomes() {
 
           <div>
             <label htmlFor="income-amount" className="block font-serif font-body text-ink mb-2">
-              Valor <span className="text-terracotta">*</span>
+              {t('incomes.amount')} <span className="text-terracotta">*</span>
             </label>
             <CurrencyInput
               id="income-amount"
@@ -1456,7 +1458,7 @@ export default function Incomes() {
 
           <div>
             <label htmlFor="income-date" className="block font-serif font-body text-ink mb-2">
-              Data <span className="text-terracotta">*</span>
+              {t('incomes.date')} <span className="text-terracotta">*</span>
             </label>
             <input
               id="income-date"
@@ -1470,12 +1472,12 @@ export default function Incomes() {
           </div>
 
           <Select
-            label="Status"
+            label={t('incomes.status')}
             value={formData.status}
             onChange={(v) => setFormData({ ...formData, status: (v as IncomeStatus) || 'received' })}
             options={[
-              { value: 'received', label: 'Recebido' },
-              { value: 'pending', label: 'A receber' },
+              { value: 'received', label: t('incomes.statusReceived') },
+              { value: 'pending', label: t('incomes.statusPending') },
             ]}
             variant="modal"
             required
@@ -1483,7 +1485,7 @@ export default function Incomes() {
 
           <div>
             <label htmlFor="income-notes" className="block font-serif font-body text-ink mb-2">
-              Observação
+              {t('incomes.notes')}
             </label>
             <textarea
               id="income-notes"
@@ -1491,7 +1493,7 @@ export default function Incomes() {
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 resize-none"
               rows={3}
-              placeholder="Notas adicionais..."
+              placeholder={t('incomes.notesPlaceholder')}
               aria-label="Observação"
             />
           </div>
@@ -1510,7 +1512,7 @@ export default function Incomes() {
               {formData.isRecurring && (
                 <div className="space-y-3 pl-7">
                   <Select
-                    label="Recorrência"
+                    label={t('incomes.recurrence')}
                     value={formData.recurrenceFrequency}
                     onChange={(v) => setFormData({ ...formData, recurrenceFrequency: v })}
                     options={RECURRENCE_OPTIONS}
@@ -1561,13 +1563,13 @@ export default function Incomes() {
               onClick={closeModal}
               className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage"
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg hover:bg-coffee/90 transition-vintage"
             >
-              Salvar
+              {t('common.save')}
             </button>
           </div>
         </form>
@@ -1577,9 +1579,9 @@ export default function Incomes() {
         isOpen={!!deleteConfirmId}
         onClose={() => setDeleteConfirmId(null)}
         onConfirm={confirmDelete}
-        title="Excluir receita"
-        message="Esta receita será removida permanentemente."
-        confirmLabel="Excluir"
+        title={t('incomes.deleteIncome')}
+        message={t('incomes.confirmDelete')}
+        confirmLabel={t('incomes.deleteButton')}
         confirmAccent="#3E8E5C"
         loading={deleting}
       />
@@ -1587,7 +1589,7 @@ export default function Incomes() {
       <Modal
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
-        title="Detalhes da receita"
+        title={t('incomes.detailsTitle')}
       >
         {detailIncome && (() => {
           const { attachmentUrl, cleanNotes } = parseLegacyAttachment(detailIncome.notes)
@@ -1595,12 +1597,12 @@ export default function Incomes() {
           return (
             <div className="space-y-3 text-sm text-ink/70">
               <div>
-                <p className="text-xs uppercase tracking-wide text-ink/50">Descrição</p>
+                <p className="text-xs uppercase tracking-wide text-ink/50">{t('incomes.description')}</p>
                 <p className="text-base text-ink">{detailIncome.description}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-ink/50">Categoria</p>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">{t('incomes.category')}</p>
                   <CategoryPathStack
                     label={getCategoryLabel(detailIncome.category_id, detailIncome.category_name)}
                     icon={detailIncome.category_id ? categoryIconMap.get(detailIncome.category_id) : null}
@@ -1608,24 +1610,24 @@ export default function Incomes() {
                   />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-ink/50">Data</p>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">{t('incomes.date')}</p>
                   <p>{formatDate(detailIncome.date)}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-ink/50">Status</p>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">{t('incomes.status')}</p>
                   <p>{getIncomeStatusLabel(detailIncome.status)}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-ink/50">Valor</p>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">{t('incomes.amount')}</p>
                   <p className="font-numbers">{formatBRL(detailIncome.amount_cents)}</p>
                 </div>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-ink/50">Observação</p>
+                <p className="text-xs uppercase tracking-wide text-ink/50">{t('incomes.notes')}</p>
                 <p>{cleanNotes || '-'}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-ink/50">Arquivo</p>
+                <p className="text-xs uppercase tracking-wide text-ink/50">{t('incomes.attachment')}</p>
                 {hasAttachment ? (
                   <button
                     type="button"
@@ -1680,8 +1682,8 @@ export default function Incomes() {
         showStatus
         statusOptions={[
           { value: '', label: 'Todos' },
-          { value: 'received', label: 'Recebido' },
-          { value: 'pending', label: 'A receber' },
+          { value: 'received', label: t('incomes.statusReceived') },
+          { value: 'pending', label: t('incomes.statusPending') },
         ]}
         onApply={(m, y, status) => {
           setSelectedMonth(m)

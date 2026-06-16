@@ -17,6 +17,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/components/AuthProvider'
 
 interface SSOButtonsProps {
@@ -37,6 +38,7 @@ export function SSODivider() {
 }
 
 export function SSOButtons({ onError, disabled = false }: SSOButtonsProps) {
+  const t = useTranslations()
   const { signInWithGoogle, signInWithApple } = useAuth()
   const [googleLoading, setGoogleLoading] = useState(false)
   const [appleLoading, setAppleLoading] = useState(false)
@@ -129,7 +131,7 @@ export function SSOButtons({ onError, disabled = false }: SSOButtonsProps) {
         disabled={isDisabled}
         className="flex items-center justify-center gap-2.5 w-full py-3.5 px-4 bg-offWhite border border-border rounded-full text-[15px] font-body font-medium text-ink hover:bg-border/40 transition-vintage disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {googleLoading ? <LoadingSpinner /> : <><GoogleIcon /> Continuar com Google</>}
+        {googleLoading ? <LoadingSpinner /> : <><GoogleIcon /> {t('ssoButtons.continueWithGoogle')}</>}
       </button>
 
       {/* Apple */}
@@ -139,7 +141,7 @@ export function SSOButtons({ onError, disabled = false }: SSOButtonsProps) {
         disabled={isDisabled}
         className="flex items-center justify-center gap-2.5 w-full py-3.5 px-4 bg-zinc-950 text-white rounded-full text-[15px] font-body font-medium hover:opacity-90 transition-vintage disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {appleLoading ? <LoadingSpinner color="white" /> : <><AppleIcon /> Continuar com Apple</>}
+        {appleLoading ? <LoadingSpinner color="white" /> : <><AppleIcon /> {t('ssoButtons.continueWithApple')}</>}
       </button>
     </div>
   )

@@ -8,6 +8,7 @@ import Topbar from '@/components/layout/Topbar'
 import { Camera } from 'lucide-react'
 import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
 import { validateImageFile } from '@/lib/security/images'
+import { useTranslations } from 'next-intl'
 
 function cleanString(value: unknown) {
   return typeof value === 'string' && value.trim() ? value.trim() : ''
@@ -26,6 +27,7 @@ function getAuthDisplayName(user: NonNullable<ReturnType<typeof useAuth>['user']
 
 export default function Profile() {
   const { user, familyId } = useAuth()
+  const t = useTranslations()
   const [profileName, setProfileName] = useState('')
   const [profileEmail, setProfileEmail] = useState('')
   const [familyName, setFamilyName] = useState('')
@@ -51,7 +53,7 @@ export default function Profile() {
       })
       const userRow = response.ok ? await response.json() : null
 
-      if (!response.ok) setError('Erro ao carregar dados.')
+      if (!response.ok) setError(t('profile.errorLoad'))
 
       if (userRow) {
         setProfileName(cleanString(userRow.name) || getAuthDisplayName(user))
@@ -106,7 +108,7 @@ export default function Profile() {
       try {
         image = await validateImageFile(avatarFile, 2 * 1024 * 1024)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Foto inválida.')
+        setError(err instanceof Error ? err.message : t('profile.errorAvatar'))
         setSaving(false)
         return
       }
@@ -121,7 +123,7 @@ export default function Profile() {
         const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(filePath)
         nextAvatarUrl = publicUrlData.publicUrl
       } else {
-        setError('Erro ao enviar foto.')
+        setError(t('profile.errorAvatarUpload'))
         setSaving(false)
         return
       }
@@ -133,7 +135,7 @@ export default function Profile() {
       .eq('id', user.id)
 
     if (updateError) {
-      setError('Erro ao salvar perfil.')
+      setError(t('profile.errorSave'))
     } else {
       setAvatarUrl(nextAvatarUrl)
       setAvatarFile(null)
@@ -145,8 +147,8 @@ export default function Profile() {
   return (
     <>
       <Topbar
-        title="Meu Perfil"
-        subtitle="Dados pessoais e familia"
+        title={t('profileSheet.myProfile')}
+        subtitle={t('profileSheet.myProfileDesc')}
         showBackButton
         variant="textured"
       />
@@ -159,7 +161,7 @@ export default function Profile() {
         )}
 
         {loading ? (
-          <div className="text-center py-12 text-ink/60">Carregando…</div>
+          <div className="text-center py-12 text-ink/60">{t('common.loading')}</div>
         ) : (
           <form onSubmit={handleSave} className="space-y-6">
             {/* Avatar */}
@@ -199,19 +201,19 @@ export default function Profile() {
             <div className="space-y-4">
               <div>
                 <label htmlFor="profile-page-name" className="block text-[11px] font-bold tracking-[0.14em] uppercase text-ink/45 mb-2">
-                  Nome Completo
+                  {t('profile.form.fullName')}
                 </label>
                 <input
                   id="profile-page-name"
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
                   className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-coffee/25 transition-vintage text-ink"
-                  placeholder="Seu nome"
+                  placeholder={t('profile.form.namePlaceholder')}
                 />
               </div>
               <div>
                 <label htmlFor="profile-page-email" className="block text-[11px] font-bold tracking-[0.14em] uppercase text-ink/45 mb-2">
-                  E-mail
+                  {t('profile.form.email')}
                 </label>
                 <input
                   id="profile-page-email"
@@ -223,7 +225,7 @@ export default function Profile() {
               </div>
               <div>
                 <label htmlFor="profile-page-family" className="block text-[11px] font-bold tracking-[0.14em] uppercase text-ink/45 mb-2">
-                  Família
+                  {t('sidebar.family')}
                 </label>
                 <input
                   id="profile-page-family"
@@ -240,7 +242,7 @@ export default function Profile() {
               disabled={saving}
               className="w-full py-4 bg-sidebar text-paper rounded-[14px] font-semibold text-base hover:bg-sidebar/90 transition-vintage disabled:opacity-60 shadow-soft"
             >
-              {saving ? 'Salvando...' : 'Editar perfil'}
+              {saving ? t('common.saving') : t('profile.saveChanges')}
             </button>
           </form>
         )}

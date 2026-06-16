@@ -7,18 +7,21 @@ import { SSOButtons, SSODivider } from '@/components/SSOButtons'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
-
-const HANDOFF_ERROR_MESSAGES: Record<string, string> = {
-  'link-invalido': 'O link de acesso é inválido. Solicite um novo link ao acessar o app.',
-  'link-ja-usado': 'Este link já foi utilizado. Abra o app e tente novamente.',
-  'link-expirado': 'O link expirou (válido por 5 minutos). Abra o app e tente novamente.',
-  'convite-invalido': 'Nenhum link de acesso encontrado.',
-}
+import { useTranslations } from 'next-intl'
 
 export default function LoginPage() {
   const { signIn, user, authStatus } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const t = useTranslations('login')
+
+  const HANDOFF_ERROR_MESSAGES: Record<string, string> = {
+    'link-invalido': t('errors.linkInvalid'),
+    'link-ja-usado': t('errors.linkUsed'),
+    'link-expirado': t('errors.linkExpired'),
+    'convite-invalido': t('errors.noLink'),
+  }
+
   const handoffError = searchParams.get('error')
   const handoffMessage = handoffError ? HANDOFF_ERROR_MESSAGES[handoffError] : null
   const [email, setEmail] = useState('')
@@ -46,7 +49,7 @@ export default function LoginPage() {
       await signIn(email, password)
     } catch (err: any) {
       submittedRef.current = false
-      setError(err.message || 'Erro ao fazer login')
+      setError(err.message || t('errors.loginFailed'))
     } finally {
       setLoading(false)
     }
@@ -66,13 +69,13 @@ export default function LoginPage() {
         {/* Quote - fixed padding, not flex-1 */}
         <div className="px-10 pt-5 pb-7 text-center shrink-0">
           <p className="font-serif italic text-[20px] text-gold text-center leading-[1.55]">
-            &ldquo;Organizar o dinheiro é cuidar do tempo que ainda vamos viver.&rdquo;
+            {t('quote')}
           </p>
         </div>
 
         {/* Form card - flex-1 so it fills all remaining space */}
         <div className="flex-1 bg-paper rounded-t-[28px] px-7 pt-8 pb-10">
-          <h2 className="font-serif text-[24px] text-coffee mb-5">Entre na sua conta</h2>
+          <h2 className="font-serif text-[24px] text-coffee mb-5">{t('heading')}</h2>
           {handoffMessage && (
             <div className="bg-amber-50 border border-amber-300 text-amber-800 px-4 py-3 rounded-lg text-sm mb-4">
               {handoffMessage}
@@ -88,7 +91,7 @@ export default function LoginPage() {
           <SSODivider />
           <form onSubmit={handleSubmit} className="flex flex-col gap-[14px]">
             <div>
-              <label htmlFor="login-email-mobile" className="block text-[15px] font-body text-ink mb-2">E-mail</label>
+              <label htmlFor="login-email-mobile" className="block text-[15px] font-body text-ink mb-2">{t('emailLabel')}</label>
               <input
                 id="login-email-mobile"
                 type="email"
@@ -96,12 +99,12 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="w-full px-4 py-3.5 bg-offWhite text-ink/80 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage text-[15px]"
-                placeholder="seu@email.com"
-                aria-label="E-mail"
+                placeholder={t('emailPlaceholder')}
+                aria-label={t('emailLabel')}
               />
             </div>
             <div>
-              <label htmlFor="login-password-mobile" className="block text-[15px] font-body text-ink mb-2">Senha</label>
+              <label htmlFor="login-password-mobile" className="block text-[15px] font-body text-ink mb-2">{t('passwordLabel')}</label>
               <div className="relative">
                 <input
                   id="login-password-mobile"
@@ -111,7 +114,7 @@ export default function LoginPage() {
                   required
                   className="w-full px-4 py-3.5 pr-12 bg-offWhite text-ink/80 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage text-[15px]"
                   placeholder="••••••••"
-                  aria-label="Senha"
+                  aria-label={t('passwordLabel')}
                 />
                 <button
                   type="button"
@@ -125,7 +128,7 @@ export default function LoginPage() {
             </div>
             <div className="text-right">
               <button type="button" className="text-[14px] text-gold hover:opacity-80 transition-vintage">
-                Esqueci minha senha
+                {t('forgotPassword')}
               </button>
             </div>
             <button
@@ -133,13 +136,13 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full bg-sidebar text-paper py-[15px] rounded-full font-bold text-[16px] hover:opacity-90 transition-vintage disabled:opacity-50"
             >
-              {loading ? 'Entrando...' : 'Acessar'}
+              {loading ? t('submitting') : t('submit')}
             </button>
           </form>
           <div className="mt-5 text-center text-[15px] text-ink/55">
-            Não tem conta?{' '}
+            {t('noAccount')}{' '}
             <Link href="/signup" className="text-gold font-semibold hover:opacity-80 transition-vintage">
-              Criar agora
+              {t('createAccount')}
             </Link>
           </div>
         </div>
@@ -158,12 +161,12 @@ export default function LoginPage() {
         <div className="w-full max-w-6xl flex flex-col gap-10 md:flex-row md:items-center md:justify-between">
           <div className="text-center md:text-left">
             <p className="text-2xl font-serif italic text-gold leading-relaxed max-w-sm mx-auto md:mx-0">
-              Organizar o dinheiro é cuidar do tempo que ainda vamos viver.
+              {t('quote')}
             </p>
           </div>
 
           <div className="bg-paper backdrop-blur-sm rounded-[28px] border border-border/70 shadow-vintage p-12 w-full md:max-w-xl md:-translate-y-6">
-            <h2 className="text-2xl font-serif text-coffee mb-6">Entre na sua conta</h2>
+            <h2 className="text-2xl font-serif text-coffee mb-6">{t('heading')}</h2>
 
             {handoffMessage && (
               <div className="bg-amber-50 border border-amber-300 text-amber-800 px-4 py-3 rounded-lg text-sm mb-4">
@@ -184,7 +187,7 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="email-desktop" className="block text-sm font-body text-ink mb-2">
-                  E-mail
+                  {t('emailLabel')}
                 </label>
                 <input
                   id="email-desktop"
@@ -193,13 +196,13 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="w-full px-4 py-3 bg-white/70 text-ink/80 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
-                  placeholder="seu@email.com"
+                  placeholder={t('emailPlaceholder')}
                 />
               </div>
 
               <div>
                 <label htmlFor="password-desktop" className="block text-sm font-body text-ink mb-2">
-                  Senha
+                  {t('passwordLabel')}
                 </label>
                 <div className="relative">
                   <input
@@ -227,7 +230,7 @@ export default function LoginPage() {
                   type="button"
                   className="text-sm text-gold hover:opacity-80 transition-vintage"
                 >
-                  Esqueci minha senha
+                  {t('forgotPassword')}
                 </button>
               </div>
 
@@ -236,14 +239,14 @@ export default function LoginPage() {
                 disabled={loading}
                 className="w-full bg-sidebar/90 text-paper py-3 rounded-full font-semibold hover:opacity-90 transition-vintage disabled:opacity-50"
               >
-                {loading ? 'Entrando...' : 'Acessar'}
+                {loading ? t('submitting') : t('submit')}
               </button>
             </form>
 
             <div className="mt-6 text-center text-sm text-ink/60">
-              Ainda não tem uma conta?{' '}
+              {t('noAccountDesktop')}{' '}
               <Link href="/signup" className="text-gold hover:opacity-80 transition-vintage">
-                Criar agora
+                {t('createAccount')}
               </Link>
             </div>
           </div>

@@ -7,10 +7,12 @@ import { SSOButtons, SSODivider } from '@/components/SSOButtons'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 export default function SignUpPage() {
   const { signUp, user, authStatus } = useAuth()
   const router = useRouter()
+  const t = useTranslations('signup')
 
   const [name, setName] = useState('')
   const [familyName, setFamilyName] = useState('')
@@ -38,22 +40,22 @@ export default function SignUpPage() {
     setError('')
 
     if (!cleanName || !cleanFamilyName || !cleanEmail) {
-      setError('Preencha todos os campos obrigatórios')
+      setError(t('errors.requiredFields'))
       return
     }
 
     if (!agreed) {
-      setError('Você precisa concordar com os termos para continuar')
+      setError(t('errors.termsRequired'))
       return
     }
 
     if (!passwordsMatch) {
-      setError('As senhas não coincidem')
+      setError(t('errors.passwordMismatch'))
       return
     }
 
     if (password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres')
+      setError(t('errors.passwordTooShort'))
       return
     }
 
@@ -64,7 +66,7 @@ export default function SignUpPage() {
       await signUp(cleanEmail, password, cleanName, cleanFamilyName)
     } catch (err: any) {
       submittedRef.current = false
-      setError(err.message || 'Erro ao criar conta')
+      setError(err.message || t('errors.createFailed'))
     } finally {
       setLoading(false)
     }
@@ -83,10 +85,10 @@ export default function SignUpPage() {
           className="w-[52px] h-[52px] md:w-20 md:h-20 object-contain mx-auto mb-3"
         />
         <h1 className="font-serif text-[26px] md:text-4xl text-coffee mb-2">
-          Criar Família
+          {t('heading')}
         </h1>
         <p className="text-ink/60 italic font-body text-[13px] md:text-base">
-          Uma casa tranquila nasce de pequenas escolhas repetidas.
+          {t('subtitle')}
         </p>
       </div>
 
@@ -105,7 +107,7 @@ export default function SignUpPage() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
               <label htmlFor="name" className="block text-sm font-body text-ink mb-2">
-                Seu nome
+                {t('nameLabel')}
               </label>
               <input
                 id="name"
@@ -114,13 +116,13 @@ export default function SignUpPage() {
                 onChange={(e) => setName(e.target.value)}
                 required
                 className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
-                placeholder="João Silva"
+                placeholder={t('namePlaceholder')}
               />
             </div>
 
             <div>
               <label htmlFor="familyName" className="block text-sm font-body text-ink mb-2">
-                Nome da família
+                {t('familyNameLabel')}
               </label>
               <input
                 id="familyName"
@@ -129,13 +131,13 @@ export default function SignUpPage() {
                 onChange={(e) => setFamilyName(e.target.value)}
                 required
                 className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
-                placeholder="Ex: Silva, Santos, Araujo"
+                placeholder={t('familyNamePlaceholder')}
               />
             </div>
 
             <div>
               <label htmlFor="email" className="block text-sm font-body text-ink mb-2">
-                E-mail
+                {t('emailLabel')}
               </label>
               <input
                 id="email"
@@ -150,7 +152,7 @@ export default function SignUpPage() {
 
             <div>
               <label htmlFor="password" className="block text-sm font-body text-ink mb-2">
-                Senha
+                {t('passwordLabel')}
               </label>
               <div className="relative">
                 <input
@@ -176,7 +178,7 @@ export default function SignUpPage() {
 
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-body text-ink mb-2">
-                Confirmar senha
+                {t('confirmPasswordLabel')}
               </label>
               <div className="relative">
                 <input
@@ -209,13 +211,13 @@ export default function SignUpPage() {
                 required
               />
               <span className="text-[12px] md:text-sm font-body text-ink/70 leading-relaxed">
-                Li e concordo com os{' '}
+                {t('agreePrefix')}{' '}
                 <Link href="/terms" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
-                  Termos de Uso
+                  {t('termsLink')}
                 </Link>{' '}
-                e a{' '}
+                {t('agreeMiddle')}{' '}
                 <Link href="/privacy" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
-                  Política de Privacidade
+                  {t('privacyLink')}
                 </Link>
               </span>
             </label>
@@ -225,7 +227,7 @@ export default function SignUpPage() {
               disabled={loading}
               className="w-full bg-coffee text-paper py-[14px] rounded-[10px] font-body font-bold text-[15px] hover:bg-coffee/90 transition-vintage disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? 'Criando...' : 'Criar família'}
+              {loading ? t('submitting') : t('submit')}
             </button>
           </form>
 
@@ -234,7 +236,7 @@ export default function SignUpPage() {
               href="/login"
               className="text-petrol hover:text-petrol/80 transition-vintage text-[13px] md:text-sm font-body"
             >
-              Já tem uma conta? Entrar
+              {t('haveAccount')}
             </Link>
           </div>
         </div>

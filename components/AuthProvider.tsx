@@ -7,6 +7,7 @@ import { getSidebarCollapsedStorageKey, LOCAL_STORAGE_KEYS } from '@/lib/storage
 import { useRouter } from 'next/navigation'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
+import { useTranslations } from 'next-intl'
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'error'
 
@@ -29,7 +30,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-async function syncServerSession(session: Pick<Session, 'access_token' | 'refresh_token'>) {
+async function syncServerSession(session: Pick<Session, 'access_token' | 'refresh_token'>, errorMsg?: string) {
   const response = await fetch('/api/auth/sync-session', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -41,11 +42,12 @@ async function syncServerSession(session: Pick<Session, 'access_token' | 'refres
 
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}))
-    throw new Error(payload?.error || 'Não foi possível sincronizar a sessão.')
+    throw new Error(payload?.error || errorMsg || 'Não foi possível sincronizar a sessão.')
   }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const t = useTranslations()
   const [user, setUser] = useState<User | null>(null)
   const [familyId, setFamilyId] = useState<string | null>(null)
   const [authStatus, setAuthStatus] = useState<AuthStatus>('loading')
@@ -112,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(session.user)
 
     try {
-      await syncServerSession(session)
+      await syncServerSession(session, t('auth.syncError'))
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.warn('[AuthProvider] server session sync failed', error)
@@ -208,9 +210,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: sessionData } = await supabase.auth.getSession()
         session = sessionData.session
       }
-      if (!session) throw new Error('Não foi possível autenticar o usuário.')
+      if (!session) throw new Error(t('auth.authError'))
 
-      await syncServerSession(session)
+      await syncServerSession(session, t('auth.syncError'))
       setUser(session.user)
       setAuthStatus('authenticated')
       router.replace('/inicio')
@@ -237,13 +239,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: sessionData } = await supabase.auth.getSession()
         session = sessionData.session
       }
-      if (!session) throw new Error('Não foi possível autenticar o usuário.')
+      if (!session) throw new Error(t('auth.authError'))
 
       await supabase.auth.setSession({
         access_token: session.access_token,
         refresh_token: session.refresh_token,
       })
-      await syncServerSession(session)
+      await syncServerSession(session, t('auth.syncError'))
 
       const response = await fetch('/api/families/create', {
         method: 'POST',
@@ -256,12 +258,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}))
-        throw new Error(payload?.error || 'Erro ao criar família.')
+        throw new Error(payload?.error || t('auth.createFamilyError'))
       }
 
       const payload = await response.json()
       const createdFamilyId = payload.familyId as string | undefined
-      if (!createdFamilyId) throw new Error('Resposta inválida ao criar família.')
+      if (!createdFamilyId) throw new Error(t('auth.invalidFamilyResponse'))
 
       setFamilyId(createdFamilyId)
       setUser(session.user)
@@ -283,7 +285,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token: idToken,
       })
       if (error) throw error
-      if (!data.session) throw new Error('Não foi possível autenticar com Google.')
+      if (!data.session) throw new Error(t('auth.googleAuthError'))
 
       await syncServerSession(data.session)
       setUser(data.session.user)
@@ -327,8 +329,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (signInError) throw signInError
         session = signInData.session
       }
-      if (!session) throw new Error('Não foi possível autenticar o usuário.')
-      await syncServerSession(session)
+      if (!session) throw new Error(t('auth.authError'))
+      await syncServerSession(session, t('auth.syncError'))
 
       const response = await fetch('/api/invites/accept', {
         method: 'POST',
@@ -341,7 +343,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}))
-        throw new Error(payload?.error || 'Erro ao aceitar convite.')
+        throw new Error(payload?.error || t('auth.acceptInviteError'))
       }
 
       const payload = await response.json()
@@ -359,7 +361,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const switchFamily = async (newFamilyId: string) => {
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.access_token) throw new Error('Sessão inválida.')
+    if (!session?.access_token) throw new Error(t('auth.invalidSession'))
 
     const res = await fetch('/api/admin/switch-family', {
       method: 'POST',
@@ -368,7 +370,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
     if (!res.ok) {
       const payload = await res.json().catch(() => ({}))
-      throw new Error(payload?.error || 'Falha ao trocar família.')
+      throw new Error(payload?.error || t('auth.switchFamilyError'))
     }
     setFamilyId(newFamilyId)
   }

@@ -6,6 +6,8 @@ CREATE TABLE public.categories (
                                    family_id uuid NOT NULL,
                                    kind text NOT NULL,
                                    name text NOT NULL,
+                                   name_en text,
+                                   name_es text,
                                    icon text,
                                    parent_id uuid,
                                    is_system boolean NOT NULL DEFAULT false,
@@ -68,7 +70,9 @@ CREATE TABLE public.families (
                                  name text NOT NULL,
                                  created_at timestamp with time zone NOT NULL DEFAULT now(),
                                  trial_expires_at timestamp with time zone,
-                                 CONSTRAINT families_pkey PRIMARY KEY (id)
+                                 currency text NOT NULL DEFAULT 'BRL'::text,
+                                 CONSTRAINT families_pkey PRIMARY KEY (id),
+                                 CONSTRAINT families_currency_check CHECK ((currency = ANY (ARRAY['BRL'::text, 'USD'::text, 'EUR'::text])))
 );
 CREATE TABLE public.incomes (
                                 id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -124,7 +128,9 @@ CREATE TABLE public.users (
                               avatar_url text,
                               password_hash text NOT NULL,
                               role text NOT NULL DEFAULT 'admin'::text,
+                              locale text NOT NULL DEFAULT 'pt-BR'::text,
                               created_at timestamp with time zone NOT NULL DEFAULT now(),
                               CONSTRAINT users_pkey PRIMARY KEY (id),
-                              CONSTRAINT users_family_id_fkey FOREIGN KEY (family_id) REFERENCES public.families(id)
+                              CONSTRAINT users_family_id_fkey FOREIGN KEY (family_id) REFERENCES public.families(id),
+                              CONSTRAINT users_locale_check CHECK ((locale = ANY (ARRAY['pt-BR'::text, 'en'::text, 'es'::text])))
 );

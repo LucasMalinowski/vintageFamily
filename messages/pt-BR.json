@@ -1,0 +1,956 @@
+{
+  "common": {
+    "save": "Salvar",
+    "saving": "Salvando...",
+    "loading": "Carregando…",
+    "cancel": "Cancelar",
+    "close": "Fechar",
+    "connectionError": "Erro de conexão.",
+    "sessionExpired": "Sessão expirada. Faça login novamente.",
+    "pdfPreviewTitle": "Preview do PDF",
+    "pdfDownloadLabel": "Imprimir ou salvar",
+    "limitReached": "Limite atingido"
+  },
+  "language": {
+    "title": "Idioma e moeda",
+    "subtitle": "Escolha o idioma do app e a moeda usada nos valores.",
+    "languageLabel": "Idioma",
+    "currencyLabel": "Moeda",
+    "names": {
+      "pt-BR": "Português (Brasil)",
+      "en": "English",
+      "es": "Español"
+    },
+    "currencies": {
+      "BRL": "Real brasileiro (R$)",
+      "USD": "Dólar americano ($)",
+      "EUR": "Euro (€)"
+    }
+  },
+  "profile": {
+    "saveChanges": "Salvar alterações",
+    "yourName": "Seu nome",
+    "changePicture": "Trocar foto",
+    "whatsapp": {
+      "title": "WhatsApp",
+      "subtitle": "Vincule seu número para registrar despesas e receitas pelo WhatsApp.",
+      "sendCode": "Enviar código",
+      "sending": "Enviando...",
+      "verifying": "Verificando...",
+      "verify": "Verificar",
+      "changeNumber": "Trocar número",
+      "remove": "Remover",
+      "searchPlaceholder": "Buscar país, código ou sigla",
+      "noResults": "Nenhum resultado.",
+      "codeSent": "Código enviado! Verifique seu WhatsApp.",
+      "codeFor": "Código enviado para",
+      "verifiedSuccess": "Número verificado com sucesso!",
+      "errorSend": "Erro ao enviar código.",
+      "errorInvalidCode": "Código inválido.",
+      "errorRemove": "Erro ao remover telefone."
+    },
+    "form": {
+      "fullName": "Nome completo",
+      "email": "E-mail",
+      "namePlaceholder": "Seu nome completo"
+    },
+    "billingCycle": {
+      "title": "Dia do ciclo financeiro",
+      "subtitle": "Informe o dia do mês em que você recebe seu salário. O filtro de \"mês\" vai usar esse dia como início do período.",
+      "example": "Ex.: se você recebe no dia 21, o \"mês de maio\" vai de 21 de abril até 20 de maio.",
+      "dayOption": "Dia {{day}}",
+      "save": "Salvar",
+      "saving": "Salvando..."
+    },
+    "dangerZone": {
+      "title": "Zona de perigo",
+      "subtitle": "Ações irreversíveis. Proceda com cuidado.",
+      "deleteAccount": "Excluir minha conta",
+      "deleteDescription": "Remove sua conta permanentemente.",
+      "deleteButton": "Excluir conta"
+    },
+    "deleteModal": {
+      "title": "Excluir conta",
+      "loading": "Carregando informações…",
+      "adminWithMembers": "Você é administrador da família. Escolha quem assumirá a administração:",
+      "adminAlone": "Você é o único membro desta família. Ao excluir sua conta, a família será desativada permanentemente.",
+      "memberMessage": "Sua conta e seus dados pessoais serão removidos permanentemente.",
+      "confirmLabel": "Digite EXCLUIR para confirmar",
+      "confirmPlaceholder": "EXCLUIR",
+      "confirmWord": "EXCLUIR",
+      "deleting": "Excluindo...",
+      "deleteButton": "Excluir minha conta",
+      "errorSession": "Sessão expirada. Faça login novamente.",
+      "errorLoad": "Erro ao carregar informações.",
+      "errorDelete": "Erro ao excluir conta."
+    },
+    "errorLoad": "Erro ao carregar configurações.",
+    "errorAvatar": "Avatar inválido.",
+    "errorAvatarUpload": "Erro ao enviar avatar.",
+    "errorSave": "Erro ao salvar perfil."
+  },
+  "settings": {
+    "layout": {
+      "title": "Configurações",
+      "subtitle": "Gerencie sua conta e família.",
+      "nav": {
+        "profile": "Perfil",
+        "family": "Família",
+        "billing": "Assinatura",
+        "insights": "Insights",
+        "superAdmin": "Superadministrador",
+        "feedbacks": "Feedbacks"
+      }
+    },
+    "family": {
+      "title": "Família",
+      "subtitle": "Gerencie o nome da família e os convites enviados.",
+      "familyName": "Nome da família",
+      "familyNamePlaceholder": "Família",
+      "familyNameLabel": "Nome da família",
+      "saveFamily": "Salvar família",
+      "savingFamily": "Salvando...",
+      "members": {
+        "title": "Membros",
+        "subtitle": "Veja quem faz parte da família e ajuste permissões.",
+        "empty": "Nenhum membro encontrado.",
+        "you": "Você",
+        "roleAdmin": "Administrador",
+        "roleMember": "Membro",
+        "confirmRemove": "Remover este membro da família?",
+        "errorUpdate": "Erro ao atualizar o papel do membro.",
+        "errorRemove": "Erro ao remover o membro.",
+        "errorSession": "Você precisa estar logado para remover."
+      },
+      "invites": {
+        "title": "Convites",
+        "subtitle": "Envie um convite por email para trazer novos membros.",
+        "emailPlaceholder": "email@exemplo.com",
+        "emailLabel": "E-mail para convite",
+        "send": "Enviar convite",
+        "success": "Convite enviado com sucesso.",
+        "colEmail": "Email",
+        "colStatus": "Status",
+        "colExpires": "Expiração",
+        "colActions": "Ações",
+        "statusAccepted": "Aceito",
+        "statusPending": "Pendente",
+        "cancel": "Cancelar",
+        "errorSend": "Erro ao enviar convite.",
+        "errorCancel": "Erro ao cancelar convite.",
+        "errorSession": "Você precisa estar logado para convidar.",
+        "errorSessionCancel": "Você precisa estar logado para cancelar."
+      },
+      "loading": "Carregando…",
+      "errorLoad": "Erro ao carregar dados da família.",
+      "errorSave": "Erro ao salvar família."
+    },
+    "insights": {
+      "title": "Preferências de Insights",
+      "subtitle": "Configure como e quando receber análises inteligentes das suas finanças.",
+      "proactive": {
+        "title": "Insights proativos",
+        "desc": "Receber análises automáticas periodicamente",
+        "enableLabel": "Ativar insights automáticos",
+        "disableLabel": "Desativar insights automáticos",
+        "disabledNote": "Você não receberá insights automáticos. Você ainda pode pedir insights sob demanda."
+      },
+      "frequency": {
+        "title": "Frequência",
+        "availableDesc": "Com que frequência você quer receber",
+        "lockedDesc": "Disponível no plano Pro",
+        "weekly": "Semanal",
+        "biweekly": "Quinzenal",
+        "monthly": "Mensal",
+        "noteWeekly": "Insights a cada semana.",
+        "noteBiweekly": "Insights a cada 2 semanas.",
+        "noteMonthly": "Insights uma vez por mês.",
+        "noteFreeTier": "Plano gratuito: 1 análise automática por mês, com previsão para o mês seguinte."
+      },
+      "channels": {
+        "title": "Canais de entrega",
+        "whatsappLabel": "WhatsApp",
+        "whatsappDesc": "Enviar no WhatsApp vinculado",
+        "emailLabel": "E-mail",
+        "emailDesc": "Enviar no e-mail da conta"
+      },
+      "save": "Salvar preferências",
+      "saving": "Salvando...",
+      "saved": "Salvo!",
+      "loading": "Carregando…",
+      "upsell": {
+        "title": "Recurso Pro",
+        "body": "A configuração de frequência de insights é exclusiva do teste gratuito e do plano Florim Pro. Com ele você escolhe receber análises semanal, quinzenal ou mensalmente.",
+        "freeNote": "No plano gratuito, você recebe 1 análise automática por mês, com previsão para o mês seguinte.",
+        "cta": "Ver planos - a partir de R$19,90/mês",
+        "freeCta": "Continuar no plano gratuito"
+      }
+    }
+  },
+  "sidebar": {
+    "family": "Família",
+    "loading": "Carregando...",
+    "loadError": "Falha ao carregar",
+    "noName": "Sem nome",
+    "collapse": "Recolher menu",
+    "collapseLabel": "Recolher menu lateral",
+    "expandLabel": "Expandir menu lateral",
+    "expand": "Expandir menu",
+    "signOut": "Sair",
+    "nav": {
+      "home": "Início",
+      "expenses": "Contas a Pagar",
+      "incomes": "Contas a Receber",
+      "savings": "Objetivos",
+      "comparatives": "Comparativos",
+      "reminders": "Lembretes",
+      "insights": "Insights",
+      "about": "Sobre"
+    },
+    "dailyPhrases": [
+      "Cuidar do dinheiro da casa é cuidar do tempo juntos.",
+      "Cada pequena economia vira calma no coração da família.",
+      "Planejar as contas é abrir espaço para os abraços.",
+      "Nossa mesa fica mais leve quando o orçamento é claro.",
+      "Guardar um pouco hoje é proteger o amanhã de quem amamos.",
+      "Conversar sobre gastos é um ato de cuidado.",
+      "A tranquilidade financeira começa com união.",
+      "Quando a casa se organiza, o amor respira melhor.",
+      "O dinheiro bem cuidado vira tempo de qualidade.",
+      "Sonhos de família cabem quando caminhamos juntos.",
+      "Equilíbrio nas contas, harmonia no lar.",
+      "O orçamento é o mapa da nossa paz.",
+      "Cada escolha consciente fortalece nossa casa.",
+      "A segurança da família nasce de pequenos combinados.",
+      "Organizar o mês é guardar carinho para os dias difíceis.",
+      "O cuidado financeiro é uma forma de dizer \"estou aqui\".",
+      "Dividir responsabilidades é multiplicar confiança.",
+      "Combinados claros evitam preocupações desnecessárias.",
+      "O futuro da família se constrói com gentileza e atenção.",
+      "Objetivo é o amanhã ganhando forma.",
+      "Uma casa bem cuidada começa na conversa.",
+      "Priorizar juntos é proteger o que importa.",
+      "Economizar sem culpa é escolher o que traz paz.",
+      "Planejar é permitir que os sonhos encontrem lugar.",
+      "A leveza do lar vem da transparência.",
+      "Dinheiro alinhado, coração tranquilo.",
+      "Cuidar das contas é cuidar das pessoas.",
+      "Todo mês organizado deixa espaço para o afeto.",
+      "O amor também mora nos detalhes do orçamento.",
+      "Juntos, o que parecia pesado fica possível."
+    ]
+  },
+  "topbar": {
+    "trialDaysLeft": "{{count}} dias de teste restantes",
+    "ariaForecast": "Previsão do próximo mês",
+    "ariaReminders": "Abrir lembretes",
+    "ariaProfile": "Abrir perfil",
+    "ariaSettings": "Abrir configurações",
+    "ariaBack": "Voltar",
+    "ariaToggleFilters": "Alternar filtros",
+    "filters": "Filtros",
+    "dropdown": {
+      "profile": "Perfil",
+      "family": "Família",
+      "billing": "Assinatura"
+    }
+  },
+  "nav": {
+    "home": "Início",
+    "expenses": "Despesas",
+    "incomes": "Receitas",
+    "savings": "Objetivos",
+    "comparatives": "Comparativos"
+  },
+  "profileSheet": {
+    "userFallback": "Usuário",
+    "family": "Família {{name}}",
+    "myProfile": "Meu perfil",
+    "myProfileDesc": "Dados pessoais e familia",
+    "about": "Sobre o Florim",
+    "aboutDesc": "A história e o propósito",
+    "reminders": "Lembretes",
+    "remindersDesc": "Lembretes da casa",
+    "settings": "Configurações",
+    "settingsDesc": "Preferências da conta",
+    "signOut": "Sair",
+    "signOutDesc": "Encerrar sessão"
+  },
+  "forecastSheet": {
+    "badge": "Florim · Inteligência",
+    "title": "Previsão do próximo mês",
+    "closeLabel": "Fechar",
+    "footer": "Previsão baseada nos seus histórico de gastos e padrões recorrentes.\nAtualizada automaticamente a cada mês."
+  },
+  "filterSheet": {
+    "title": "Filtros",
+    "closeLabel": "Fechar filtros",
+    "month": "Mês",
+    "year": "Ano",
+    "status": "Status",
+    "method": "Método",
+    "allMonths": "Todos os meses",
+    "allYears": "Todos os anos",
+    "monthHint": "Escolha um mês ou veja todos os meses de um ano.",
+    "clear": "Limpar",
+    "apply": "Aplicar"
+  },
+  "auth": {
+    "syncError": "Não foi possível sincronizar a sessão.",
+    "authError": "Não foi possível autenticar o usuário.",
+    "invalidSession": "Sessão inválida.",
+    "switchFamilyError": "Falha ao trocar família.",
+    "googleAuthError": "Não foi possível autenticar com Google.",
+    "createFamilyError": "Erro ao criar família.",
+    "invalidFamilyResponse": "Resposta inválida ao criar família.",
+    "acceptInviteError": "Erro ao aceitar convite."
+  },
+  "familyPicker": {
+    "title": "Entrar como família",
+    "subtitle": "Escolha qual família deseja acessar.",
+    "loading": "Carregando famílias…",
+    "empty": "Nenhuma família encontrada.",
+    "current": "atual",
+    "entering": "Entrando...",
+    "enter": "Entrar →",
+    "useCurrentFamily": "Usar família atual",
+    "invalidSession": "Sessão inválida.",
+    "loadError": "Falha ao carregar famílias.",
+    "switchError": "Erro ao trocar família."
+  },
+  "expenses": {
+    "title": "Contas a Pagar",
+    "subtitle": "Gerencie suas despesas e contas a pagar.",
+    "motivationalSubtitle": "Compromissos honrados constroem segurança.",
+    "detailsTitle": "Detalhes da despesa",
+    "addExpense": "Nova despesa",
+    "editExpense": "Editar despesa",
+    "deleteExpense": "Excluir despesa",
+    "emptyState": "Nenhuma despesa encontrada.",
+    "emptyStateFiltered": "Nenhuma despesa com os filtros selecionados.",
+    "loading": "Carregando…",
+    "description": "Descrição",
+    "descriptionPlaceholder": "Ex: Conta de luz",
+    "amount": "Valor",
+    "date": "Data",
+    "category": "Categoria",
+    "status": "Status",
+    "method": "Método",
+    "notes": "Observações",
+    "attachment": "Anexo",
+    "installments": "Parcelas",
+    "statusPaid": "Pago",
+    "statusOpen": "Em aberto",
+    "markAsPaid": "Marcar como pago",
+    "markAsOpen": "Marcar como em aberto",
+    "confirmDelete": "Excluir esta despesa?",
+    "donutTitle": "Por categoria",
+    "moreCategories": "+ {{count}} outras categorias",
+    "editButton": "Editar",
+    "deleteButton": "Excluir",
+    "saveButton": "Salvar",
+    "savingButton": "Salvando...",
+    "cancelButton": "Cancelar",
+    "importBank": "Importar extrato",
+    "addCategory": "Nova categoria",
+    "manageCategories": "Categorias",
+    "exportCsv": "Exportar CSV",
+    "exportPdf": "Exportar PDF",
+    "viewAttachment": "Ver anexo",
+    "uploadAttachment": "Anexar comprovante",
+    "noCategory": "Sem categoria",
+    "recurring": "Recorrente",
+    "recurringNote": "Marque para criar despesas recorrentes automaticamente.",
+    "installmentsNote": "Divida em parcelas iguais.",
+    "total": "Total",
+    "paid": "Pago",
+    "open": "Em aberto",
+    "summary": "Resumo",
+    "filters": "Filtros",
+    "search": "Buscar despesa…",
+    "periodLabel": "Período",
+    "kpiTotal": "Total do período",
+    "kpiPaid": "Pago",
+    "kpiOpen": "Em aberto",
+    "kpiCount": "Despesas",
+    "limitAlert": "Limite de despesas atingido",
+    "recurrence": "Recorrência"
+  },
+  "incomes": {
+    "title": "Contas a Receber",
+    "subtitle": "Gerencie suas receitas e contas a receber.",
+    "detailsTitle": "Detalhes da receita",
+    "addIncome": "Nova receita",
+    "editIncome": "Editar receita",
+    "deleteIncome": "Excluir receita",
+    "emptyState": "Nenhuma receita encontrada.",
+    "emptyStateFiltered": "Nenhuma receita com os filtros selecionados.",
+    "loading": "Carregando…",
+    "description": "Descrição",
+    "descriptionPlaceholder": "Ex: Salário",
+    "amount": "Valor",
+    "date": "Data",
+    "category": "Categoria",
+    "status": "Status",
+    "notes": "Observações",
+    "notesPlaceholder": "Notas adicionais...",
+    "attachment": "Anexo",
+    "recurrence": "Recorrência",
+    "statusReceived": "Recebido",
+    "statusPending": "Pendente",
+    "markAsReceived": "Marcar como recebido",
+    "markAsPending": "Marcar como pendente",
+    "confirmDelete": "Excluir esta receita?",
+    "editButton": "Editar",
+    "deleteButton": "Excluir",
+    "saveButton": "Salvar",
+    "savingButton": "Salvando...",
+    "cancelButton": "Cancelar",
+    "addCategory": "Nova categoria",
+    "manageCategories": "Categorias",
+    "exportCsv": "Exportar CSV",
+    "exportPdf": "Exportar PDF",
+    "viewAttachment": "Ver anexo",
+    "noCategory": "Sem categoria",
+    "total": "Total",
+    "received": "Recebido",
+    "pending": "Pendente",
+    "summary": "Resumo",
+    "filters": "Filtros",
+    "search": "Buscar receita…",
+    "kpiTotal": "Total do período",
+    "kpiReceived": "Recebido",
+    "kpiPending": "A receber",
+    "kpiCount": "Receitas",
+    "trend": "Tendência mensal",
+    "topbarSubtitle": "Cada renda é uma colheita do que se planta.",
+    "byCategory": "Receitas por categoria"
+  },
+  "savings": {
+    "title": "Objetivos",
+    "subtitle": "Acompanhe suas metas de economia.",
+    "topbarSubtitle": "Transforme planos em conquistas acompanháveis.",
+    "addGoal": "Novo objetivo",
+    "editGoal": "Editar objetivo",
+    "deleteGoal": "Excluir objetivo",
+    "emptyState": "Nenhum objetivo encontrado.",
+    "loading": "Carregando…",
+    "name": "Nome",
+    "targetAmount": "Meta",
+    "currentAmount": "Acumulado",
+    "deadline": "Prazo",
+    "notes": "Observações",
+    "notesPlaceholder": "Notas adicionais...",
+    "contribute": "Contribuir",
+    "contributionAmount": "Valor da contribuição",
+    "confirmDelete": "Excluir este objetivo?",
+    "saveButton": "Salvar",
+    "savingButton": "Salvando...",
+    "cancelButton": "Cancelar",
+    "completed": "Concluído",
+    "progress": "{{percent}}% da meta",
+    "remaining": "Faltam {{amount}}",
+    "deadlineLabel": "Prazo: {{date}}",
+    "noDeadline": "Sem prazo definido",
+    "goalLabel": "Objetivo",
+    "kpiBalance": "Saldo atual",
+    "kpiGlobalTarget": "Meta global",
+    "kpiGoalsCount": "Objetivos",
+    "kpiGoalsActive": "objetivos ativos",
+    "kpiDeposits": "Aportes no mês",
+    "kpiWithdrawals": "Resgates no mês",
+    "editTargetTooltip": "Editar meta",
+    "depositTitle": "Guardar no Objetivo",
+    "depositSubtitle": "Cada aporte deixa o plano mais perto.",
+    "depositMenuLabel": "Guardar no objetivo",
+    "depositMenuDesc": "Registrar depósito",
+    "withdrawalTitle": "Resgatar do Objetivo",
+    "withdrawalSubtitle": "Use o que foi planejado quando chegar a hora.",
+    "withdrawalMenuLabel": "Resgatar do objetivo",
+    "withdrawalMenuDesc": "Registrar retirada",
+    "withdrawalReasonPlaceholder": "Motivo do resgate...",
+    "manageGoalsDesc": "Gerenciar objetivos",
+    "exportCsv": "Exportar CSV",
+    "exportCsvDesc": "Planilha com os dados",
+    "exportPdf": "Exportar PDF",
+    "exportPdfDesc": "Relatório para imprimir",
+    "exportButton": "Exportar",
+    "searchPlaceholder": "Buscar por nome ou objetivo...",
+    "transactionsSubtitle": "Movimentações deste objetivo.",
+    "noTransactions": "Nenhuma movimentação registrada.",
+    "editSubtitle": "Ajuste o nome ou a meta do objetivo.",
+    "noTarget": "Sem meta",
+    "noTargetPlaceholder": "Sem meta definida"
+  },
+  "comparatives": {
+    "title": "Comparativos",
+    "subtitle": "Compare seus gastos e receitas ao longo do tempo.",
+    "topbarSubtitle": "Padrões com calma, decisões com clareza.",
+    "loading": "Carregando…",
+    "emptyState": "Sem dados para o período selecionado.",
+    "expenses": "Despesas",
+    "incomes": "Receitas",
+    "balance": "Saldo",
+    "period": "Período",
+    "byCategory": "Por categoria",
+    "monthly": "Mensal",
+    "yearly": "Anual",
+    "kpiReceived": "Recebido",
+    "kpiPaid": "Pago",
+    "kpiSaved": "Poupado",
+    "expensesByCategory": "Despesas por categoria",
+    "paywallTitle": "Limite atingido",
+    "paywallBody": "Você atingiu o limite de 3 exportações/importações gratuitas este mês.",
+    "paywallPro": "Assine o Florim Pro para exportações ilimitadas e outros recursos avançados.",
+    "paywallCta": "Ver planos"
+  },
+  "insights": {
+    "title": "Insights",
+    "subtitle": "Análises inteligentes das suas finanças.",
+    "loading": "Carregando…",
+    "emptyState": "Nenhum insight disponível.",
+    "generateInsight": "Gerar insight",
+    "generating": "Gerando…",
+    "lastGenerated": "Gerado em {{date}}",
+    "emptyStateSubmessage": "Faça uma pergunta acima ou aguarde o próximo envio automático.",
+    "questionPlaceholder": "Ex: Como posso economizar...",
+    "channel": {
+      "whatsapp": "WhatsApp",
+      "email": "E-mail"
+    }
+  },
+  "reminders": {
+    "title": "Lembretes",
+    "subtitle": "Acompanhe seus lembretes e compromissos.",
+    "addReminder": "Novo lembrete",
+    "editReminder": "Editar lembrete",
+    "deleteReminder": "Excluir lembrete",
+    "emptyState": "Nenhum lembrete encontrado.",
+    "loading": "Carregando…",
+    "description": "Descrição",
+    "descriptionPlaceholder": "Ex: Conferir conta de água",
+    "date": "Data",
+    "dateAria": "Data de vencimento do lembrete",
+    "amount": "Valor (opcional)",
+    "notes": "Observações",
+    "confirmDelete": "Excluir este lembrete?",
+    "saveButton": "Salvar",
+    "savingButton": "Salvando...",
+    "cancelButton": "Cancelar",
+    "editButton": "Editar",
+    "deleteButton": "Excluir",
+    "overdue": "Vencido",
+    "upcoming": "Próximo",
+    "today": "Hoje",
+    "topbarSubtitle": "Pequenas notas para a casa fluir.",
+    "emptyStateSubmessage": "Que o mês siga tranquilo.",
+    "categoryLabel": "Categoria",
+    "confirmDeleteMessage": "Este lembrete será removido permanentemente."
+  },
+  "billing": {
+    "title": "Assinatura",
+    "subtitle": "Gerencie seu plano e pagamentos.",
+    "currentPlan": "Plano atual",
+    "freePlan": "Gratuito",
+    "proPlan": "Pro",
+    "trialBanner": "{{days}} dias de teste grátis restantes",
+    "trialExpired": "Seu teste gratuito expirou",
+    "subscribe": "Assinar",
+    "subscribing": "Assinando…",
+    "managePlan": "Gerenciar plano",
+    "cancelPlan": "Cancelar assinatura",
+    "billingCycle": "Ciclo de cobrança",
+    "monthly": "Mensal",
+    "annual": "Anual",
+    "priceMonthly": "R$19,90/mês",
+    "priceAnnual": "R$179,90/ano",
+    "upgradeTitle": "Faça upgrade para o Pro",
+    "upgradeDesc": "Acesso completo a todas as funcionalidades.",
+    "features": {
+      "unlimitedExpenses": "Despesas ilimitadas",
+      "unlimitedIncomes": "Receitas ilimitadas",
+      "insights": "Insights inteligentes",
+      "export": "Exportar relatórios",
+      "family": "Membros da família ilimitados"
+    },
+    "loading": "Carregando…",
+    "errorLoad": "Erro ao carregar informações de assinatura.",
+    "successSubscribe": "Assinatura realizada com sucesso!",
+    "errorSubscribe": "Erro ao processar assinatura.",
+    "paymentTitle": "Pagamento",
+    "cardNumber": "Número do cartão",
+    "expiryDate": "Validade",
+    "cvv": "CVV",
+    "payButton": "Pagar",
+    "paying": "Processando…"
+  },
+  "forecastCard": {
+    "title": "Previsão do próximo mês",
+    "loading": "Calculando previsão…",
+    "noData": "Dados insuficientes para gerar previsão.",
+    "estimatedExpenses": "Despesas estimadas",
+    "estimatedIncomes": "Receitas estimadas",
+    "estimatedBalance": "Saldo estimado",
+    "basedOn": "Baseado nos últimos {{months}} meses"
+  },
+  "bankStatement": {
+    "title": "Importar extrato bancário",
+    "subtitle": "Importe seu extrato para registrar despesas automaticamente.",
+    "upload": "Selecionar arquivo",
+    "uploading": "Enviando…",
+    "processing": "Processando…",
+    "success": "Extrato importado com sucesso!",
+    "error": "Erro ao importar extrato.",
+    "preview": "Pré-visualização",
+    "import": "Importar",
+    "importing": "Importando…",
+    "cancel": "Cancelar",
+    "columnDate": "Data",
+    "columnDescription": "Descrição",
+    "columnAmount": "Valor",
+    "columnCategory": "Categoria",
+    "selectAll": "Selecionar todos",
+    "deselectAll": "Desmarcar todos",
+    "selected": "{{count}} selecionados",
+    "noItems": "Nenhum item encontrado.",
+    "dragDrop": "Arraste e solte o arquivo aqui ou clique para selecionar"
+  },
+  "categoryModal": {
+    "addTitle": "Nova categoria",
+    "editTitle": "Editar categoria",
+    "name": "Nome",
+    "namePlaceholder": "Nome da categoria",
+    "subNamePlaceholder": "Nome da subcategoria",
+    "mainNamePlaceholder": "Nome da categoria principal",
+    "icon": "Ícone",
+    "color": "Cor",
+    "type": "Tipo",
+    "typeExpense": "Despesa",
+    "typeIncome": "Receita",
+    "typeSavings": "Objetivo",
+    "parent": "Categoria pai",
+    "noParent": "Sem categoria pai",
+    "limit": "Limite mensal",
+    "limitPlaceholder": "Valor limite",
+    "saveButton": "Salvar",
+    "savingButton": "Salvando...",
+    "cancelButton": "Cancelar",
+    "deleteButton": "Excluir",
+    "deletingButton": "Excluindo...",
+    "confirmDelete": "Excluir esta categoria?",
+    "errorSave": "Erro ao salvar categoria.",
+    "errorDelete": "Erro ao excluir categoria.",
+    "loading": "Carregando…"
+  },
+  "donutModal": {
+    "title": "Detalhes por categoria",
+    "close": "Fechar",
+    "total": "Total",
+    "percent": "{{value}}%",
+    "items": "{{count}} itens"
+  },
+  "iconPicker": {
+    "title": "Escolher ícone",
+    "search": "Buscar ícone…",
+    "noResults": "Nenhum ícone encontrado.",
+    "select": "Selecionar"
+  },
+  "actionMenu": {
+    "edit": "Editar",
+    "delete": "Excluir",
+    "view": "Ver",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar"
+  },
+  "cookie": {
+    "message": "Usamos cookies para melhorar sua experiência. Ao continuar, você concorda com nossa",
+    "policy": "Política de Privacidade",
+    "accept": "Aceitar",
+    "decline": "Recusar",
+    "preferences": "Preferências de cookies"
+  },
+  "ssoButtons": {
+    "continueWithGoogle": "Continuar com Google",
+    "continueWithApple": "Continuar com Apple"
+  },
+  "mobileAppBanner": {
+    "title": "Baixe o app Florim",
+    "subtitle": "Tenha o melhor da experiência no seu celular.",
+    "download": "Baixar",
+    "dismiss": "Agora não"
+  },
+  "pdfPreview": {
+    "title": "Pré-visualização do PDF",
+    "close": "Fechar",
+    "download": "Baixar PDF",
+    "print": "Imprimir"
+  },
+  "publicFooter": {
+    "rights": "Todos os direitos reservados.",
+    "privacy": "Privacidade",
+    "terms": "Termos",
+    "contact": "Contato"
+  },
+  "publicNav": {
+    "login": "Entrar",
+    "signup": "Criar conta",
+    "plans": "Planos",
+    "features": "Funcionalidades"
+  },
+  "login": {
+    "heading": "Entre na sua conta",
+    "quote": "Organizar o dinheiro é cuidar do tempo que ainda vamos viver.",
+    "emailLabel": "E-mail",
+    "emailPlaceholder": "seu@email.com",
+    "passwordLabel": "Senha",
+    "forgotPassword": "Esqueci minha senha",
+    "submit": "Acessar",
+    "submitting": "Entrando...",
+    "noAccount": "Não tem conta?",
+    "noAccountDesktop": "Ainda não tem uma conta?",
+    "createAccount": "Criar agora",
+    "errors": {
+      "linkInvalid": "O link de acesso é inválido. Solicite um novo link ao acessar o app.",
+      "linkUsed": "Este link já foi utilizado. Abra o app e tente novamente.",
+      "linkExpired": "O link expirou (válido por 5 minutos). Abra o app e tente novamente.",
+      "noLink": "Nenhum link de acesso encontrado.",
+      "loginFailed": "Erro ao fazer login"
+    }
+  },
+  "signup": {
+    "heading": "Criar Família",
+    "subtitle": "Uma casa tranquila nasce de pequenas escolhas repetidas.",
+    "nameLabel": "Seu nome",
+    "namePlaceholder": "João Silva",
+    "familyNameLabel": "Nome da família",
+    "familyNamePlaceholder": "Ex: Silva, Santos, Araujo",
+    "emailLabel": "E-mail",
+    "passwordLabel": "Senha",
+    "confirmPasswordLabel": "Confirmar senha",
+    "agreePrefix": "Li e concordo com os",
+    "termsLink": "Termos de Uso",
+    "agreeMiddle": "e a",
+    "privacyLink": "Política de Privacidade",
+    "submit": "Criar família",
+    "submitting": "Criando...",
+    "haveAccount": "Já tem uma conta? Entrar",
+    "errors": {
+      "requiredFields": "Preencha todos os campos obrigatórios",
+      "termsRequired": "Você precisa concordar com os termos para continuar",
+      "passwordMismatch": "As senhas não coincidem",
+      "passwordTooShort": "A senha deve ter pelo menos 6 caracteres",
+      "createFailed": "Erro ao criar conta"
+    }
+  },
+  "dashboard": {
+    "subtitle": "Espaço financeiro familiar — calma e clareza.",
+    "clearCompleted": "Limpar concluídos"
+  },
+  "landing": {
+    "hero": {
+      "label": "Sistema financeiro familiar",
+      "title": "Cuide das finanças da família, juntos.",
+      "subtitle": "O Florim organiza contas, receitas, objetivos, lembretes e insights com IA com dados compartilhados em tempo real. Comece grátis e evolua quando fizer sentido.",
+      "subtitleMobile": "Despesas, sonhos, combinados e insights num só lugar. Plano gratuito, sem cartão.",
+      "ctaPrimary": "Criar conta grátis",
+      "ctaSecondary": "Ver planos",
+      "check1": "Plano gratuito disponível",
+      "check2": "Cancele quando quiser",
+      "check3": "Para toda a família",
+      "videoAlt": "Vídeo de apresentação do Florim",
+      "videoAltDesktop": "Demonstração do Florim em uso"
+    },
+    "problems": {
+      "title": "Todo mês a mesma história.",
+      "subtitle": "Três problemas que toda família conhece e que o Florim resolve.",
+      "items": [
+        {
+          "headline": "O dinheiro vai embora. Ninguém sabe para onde.",
+          "body": "Sem uma visão compartilhada, cada membro da família enxerga metade, e as decisões acontecem no escuro."
+        },
+        {
+          "headline": "Os sonhos ficam sempre para o próximo mês.",
+          "body": "Viagem, reforma, escola: sem uma meta visível e em comum, o dinheiro sempre vai para outro lugar antes de chegar lá."
+        },
+        {
+          "headline": "Planilha ninguém atualiza duas vezes.",
+          "body": "Elas não se adaptam a parcelas, pedem atualização constante e são esquecidas depois do primeiro mês."
+        }
+      ]
+    },
+    "whatsapp": {
+      "badge": "WhatsApp · com inteligência artificial",
+      "title": "Registre tudo pelo WhatsApp. Em linguagem natural.",
+      "body": "Sem precisar abrir o app. É só mandar uma mensagem como você falaria com alguém. O Florim entende e lança despesas, receitas, parcelas, objetivos e lembretes, sugere categorias e responde perguntas sobre os números da família.",
+      "footnote": "Também dá para consultar saldos, editar e apagar registros. No gratuito há limites mensais; no Pro, a rotina fica livre para usar sem travar.",
+      "examples": [
+        {
+          "msg": "Gastei 50 no mercado no pix",
+          "result": "Despesa registrada automaticamente"
+        },
+        {
+          "msg": "Comprei um tênis de 150 em 3x",
+          "result": "3 parcelas criadas no sistema"
+        },
+        {
+          "msg": "Recebi 1500 de salário",
+          "result": "Receita lançada na família"
+        },
+        {
+          "msg": "Guardei 200 para a viagem",
+          "result": "Objetivo atualizado"
+        },
+        {
+          "msg": "Quanto gastei esse mês?",
+          "result": "Resumo enviado em segundos"
+        }
+      ],
+      "mockup": {
+        "msg1User": "Gastei 50 no mercado no pix",
+        "msg1Bot": "✅ Criados:\n💸 R$ 50,00 - mercado\n   (Alimentação) · pago",
+        "msg2User": "Comprei tênis de 150 em 3x",
+        "msg2Bot": "✅ Criados:\n💸 R$ 150,00 - tênis\n   (R$ 50,00 × 3 - 1ª paga)",
+        "msg3User": "Quanto gastei esse mês?",
+        "msg3Bot": "📊 Maio:\n💸 Despesas: R$ 200,00\n💰 Receitas: R$ 4.200,00\n📍 Saldo: +R$ 4.000,00"
+      }
+    },
+    "features": {
+      "title": "Tudo em um só lugar.",
+      "subtitle": "Ferramentas conectadas para registrar, entender e antecipar a rotina financeira da casa.",
+      "items": [
+        {
+          "title": "Despesas",
+          "copy": "Despesas com parcelamento automático, controle de status e histórico claro."
+        },
+        {
+          "title": "Receitas",
+          "copy": "Salários, rendas extras e entradas previstas, visíveis para toda a família."
+        },
+        {
+          "title": "Objetivos & Sonhos",
+          "copy": "Metas com nome e valor: viagem, escola, reforma. Os sonhos ficam à vista."
+        },
+        {
+          "title": "Comparativos",
+          "copy": "Gráficos de barras e pizza com histórico mensal e anual para entender padrões."
+        },
+        {
+          "title": "Insights com IA",
+          "copy": "Pergunte sobre seus gastos e receba análises úteis, além de insights automáticos."
+        },
+        {
+          "title": "Sugestão de Categorias",
+          "copy": "A IA sugere categorias para despesas e receitas conforme seu histórico."
+        },
+        {
+          "title": "Registros Recorrentes",
+          "copy": "O Florim detecta contas que se repetem e cria pendências para confirmação."
+        },
+        {
+          "title": "Lembretes",
+          "copy": "Alertas por categoria e vencimento. Nenhuma conta passa em branco."
+        },
+        {
+          "title": "Família Compartilhada",
+          "copy": "Convide cônjuge, filhos ou pais. Uma assinatura, dados em tempo real para todos."
+        },
+        {
+          "title": "Importação de Extratos",
+          "copy": "Importe extratos em CSV e OFX direto do banco. Menos digitação, mais agilidade."
+        },
+        {
+          "title": "WhatsApp Inteligente",
+          "copy": "Registre, consulte, edite e apague lançamentos por mensagem, em linguagem natural."
+        }
+      ]
+    },
+    "howItWorks": {
+      "title": "Simples de começar.",
+      "subtitle": "Três passos. Cinco minutos. O plano gratuito já deixa a família em movimento.",
+      "steps": [
+        {
+          "number": "01",
+          "title": "Cadastre sua família",
+          "body": "Crie uma conta, dê um nome para a família e convide quem quiser, cônjuge, filhos, pais."
+        },
+        {
+          "number": "02",
+          "title": "Registre receitas e despesas",
+          "body": "Lance contas, parcelas e objetivos no app, ou mande uma mensagem no WhatsApp."
+        },
+        {
+          "number": "03",
+          "title": "Acompanhe juntos",
+          "body": "Gráficos, comparativos mensais e saldo da família em tempo real, de qualquer dispositivo."
+        }
+      ],
+      "cta": "Começar grátis",
+      "ctaFootnote": "Plano gratuito disponível. Sem cartão de crédito."
+    },
+    "pricing": {
+      "title": "Planos",
+      "subtitle": "Menos do que um jantar fora. Mais do que uma planilha.",
+      "featured": "Mais escolhido",
+      "ctaButton": "Criar conta grátis",
+      "seeAll": "Ver comparação completa e perguntas frequentes →",
+      "plans": [
+        {
+          "name": "Plano Gratuito",
+          "tag": "Para organizar a casa sem compromisso.",
+          "price": "0",
+          "per": "/ mês",
+          "savingsBadge": null,
+          "bullets": [
+            "Despesas e Receitas",
+            "Objetivos e sonhos",
+            "25 registros por WhatsApp/mês",
+            "7 consultas com IA/mês",
+            "3 insights sob demanda/mês",
+            "3 importações ou exportações/mês"
+          ]
+        },
+        {
+          "name": "Florim Pro",
+          "tag": "Para famílias que querem automação sem limite.",
+          "price": "19,90",
+          "per": "/ mês",
+          "savingsBadge": "Também disponível no anual",
+          "bullets": [
+            "Tudo do gratuito",
+            "WhatsApp e IA sem limite prático",
+            "Importação e exportação ilimitadas",
+            "Histórico comparativo completo",
+            "Insights e recorrências inteligentes",
+            "Família compartilhada"
+          ]
+        },
+        {
+          "name": "Pro Anual",
+          "tag": "O mesmo Pro, com economia.",
+          "price": "189,00",
+          "per": "/ ano",
+          "savingsBadge": "R$ 15,75/mês · mais de 2 meses grátis",
+          "bullets": [
+            "Tudo do Florim Pro",
+            "Economia de R$ 49,80 no ano",
+            "Preço fixo durante o contrato",
+            "Prioridade em novas funcionalidades"
+          ]
+        }
+      ]
+    },
+    "origin": {
+      "label": "Nossa história",
+      "title": "Feito por uma família, para famílias.",
+      "body1": "O Florim nasceu dentro de casa. Lucas, engenheiro de software, e Nathalia, designer de interiores, perceberam que nenhuma ferramenta existente tratava as finanças como o que elas são: uma conversa entre pessoas que constroem algo juntas.",
+      "body2": "O nome vem do fiorino d'oro, a moeda dourada das famílias florentinas do século XIII. Valor sólido, baseado em confiança. Essa é a nossa referência.",
+      "quote": "O Florim trata dinheiro como escolha, projeto e relação humana.",
+      "founders": "Lucas & Nathalia Malinowski, fundadores"
+    },
+    "finalCta": {
+      "title": "Comece hoje. A família agradece.",
+      "subtitle": "Plano gratuito disponível. Sem cartão de crédito. Cancele quando quiser.",
+      "button": "Criar conta grátis"
+    }
+  }
+}

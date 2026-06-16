@@ -9,6 +9,7 @@ import { useAuth } from '@/components/AuthProvider'
 import { Flag, Lightbulb, MessageCircleQuestion, Share2, Sparkles, TrendingDown } from 'lucide-react'
 import { usePlan } from '@/lib/billing/plan-context'
 import { supabase } from '@/lib/supabase'
+import { useTranslations } from 'next-intl'
 
 type InsightRow = {
   id: string
@@ -56,6 +57,7 @@ async function shareInsight(content: string) {
 export default function InsightsPage() {
   const { familyId, user } = useAuth()
   const { tier } = usePlan()
+  const t = useTranslations()
   const hasFullInsightAccess = tier === 'paid' || tier === 'trial'
 
   const [insights, setInsights] = useState<InsightRow[]>([])
@@ -154,8 +156,8 @@ export default function InsightsPage() {
   return (
     <div className="flex flex-col min-h-screen bg-paper">
       <Topbar
-        title="Insights"
-        subtitle="O Florim ouvindo seus números, com calma."
+        title={t('insights.title')}
+        subtitle={t('insights.subtitle')}
         accent="#3F6E7A"
         showBackButton
       />
@@ -189,7 +191,7 @@ export default function InsightsPage() {
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
                   rows={3}
-                  placeholder="Ex: Como posso economizar em alimentação? Qual meu maior gasto esse mês?"
+                  placeholder={t('insights.questionPlaceholder')}
                   aria-label="Pergunta para análise financeira"
                   className="w-full px-4 py-3 bg-paper border border-border rounded-[10px] text-[14px] text-ink placeholder:text-ink/40 focus:outline-none focus:ring-2 focus:ring-petrol/20 resize-none transition-vintage"
                   disabled={asking || (!hasFullInsightAccess && onDemandRemaining === 0)}
@@ -202,7 +204,7 @@ export default function InsightsPage() {
                     className="flex items-center gap-2 px-5 py-2.5 bg-coffee text-paper rounded-[10px] text-[14px] font-semibold hover:bg-coffee/90 transition-vintage disabled:opacity-50"
                   >
                     <Sparkles className="w-4 h-4" />
-                    {asking ? 'Analisando...' : 'Gerar insight'}
+                    {asking ? t('insights.generating') : t('insights.generateInsight')}
                   </button>
                   <p className="text-[12px] text-ink/45 italic">
                     Sua pergunta é processada nos seus dados, privada por padrão.
@@ -235,12 +237,12 @@ export default function InsightsPage() {
 
             {/* Insight cards */}
             {loading ? (
-              <div className="py-12 text-center text-ink/50 text-[13px]">Carregando…</div>
+              <div className="py-12 text-center text-ink/50 text-[13px]">{t('insights.loading')}</div>
             ) : insights.length === 0 ? (
               <EmptyState
                 icon={<Lightbulb className="w-10 h-10 text-gold" />}
-                message="Nenhum insight ainda"
-                submessage="Faça uma pergunta acima ou aguarde o próximo envio automático."
+                message={t('insights.emptyState')}
+                submessage={t('insights.emptyStateSubmessage')}
               />
             ) : (
               <div className="space-y-4">
@@ -335,7 +337,7 @@ export default function InsightsPage() {
           {/* ── Right sidebar — desktop only ── */}
           <div className="hidden md:flex flex-col gap-4 mt-0">
             <AnalyticsKpiCard
-              label="Insights este mês"
+              label={t('insights.title')}
               value={String(insights.length)}
               sub={`${proactiveCount} automáticos · ${onDemandUsed} perguntas`}
               iconTheme="purple"
@@ -350,8 +352,8 @@ export default function InsightsPage() {
               </div>
               <div className="space-y-0">
                 {[
-                  { label: 'E-mail', ch: 'email', desc: 'Receber insights por e-mail' },
-                  { label: 'WhatsApp', ch: 'whatsapp', desc: 'Receber insights no WhatsApp' },
+                  { label: t('insights.channel.email'), ch: 'email', desc: t('settings.insights.channels.emailDesc') },
+                  { label: t('insights.channel.whatsapp'), ch: 'whatsapp', desc: t('settings.insights.channels.whatsappDesc') },
                 ].map((p) => (
                   <div
                     key={p.ch}

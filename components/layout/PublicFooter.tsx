@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server'
 import Image from 'next/image'
 import Link from 'next/link'
 import CookiePreferencesLink from './CookiePreferencesLink'
@@ -36,39 +37,40 @@ const styles: Record<
   },
 }
 
-const columns = [
-  {
-    title: 'Produto',
-    items: [
-      { label: 'Funcionalidades', href: '/#features' },
-      { label: 'Planos', href: '/plans' },
-      { label: 'Sobre nós', href: '/about' },
-    ],
-  },
-  {
-    title: 'Suporte',
-    items: [
-      { label: 'Central de ajuda', href: '/support' },
-      { label: 'Contato', href: 'mailto:contato@florim.app' },
-      { label: 'Privacidade', href: 'mailto:privacidade@florim.app' },
-    ],
-  },
-  {
-    title: 'Legal',
-    items: [
-      { label: 'Termos de Uso', href: '/terms' },
-      { label: 'Privacidade', href: '/privacy' },
-      { label: 'Cookies', href: '/cookies' },
-    ],
-  },
-]
-
 interface PublicFooterProps {
   color?: PublicFooterColor
 }
 
-export default function PublicFooter({ color = 'sidebar' }: PublicFooterProps) {
+export default async function PublicFooter({ color = 'sidebar' }: PublicFooterProps) {
+  const t = await getTranslations()
   const theme = styles[color]
+
+  const columns = [
+    {
+      title: 'Produto',
+      items: [
+        { label: 'Funcionalidades', href: '/#features' },
+        { label: 'Planos', href: '/plans' },
+        { label: 'Sobre nós', href: '/about' },
+      ],
+    },
+    {
+      title: 'Suporte',
+      items: [
+        { label: 'Central de ajuda', href: '/support' },
+        { label: t('publicFooter.contact'), href: 'mailto:contato@florim.app' },
+        { label: t('publicFooter.privacy'), href: 'mailto:privacidade@florim.app' },
+      ],
+    },
+    {
+      title: 'Legal',
+      items: [
+        { label: t('publicFooter.terms'), href: '/terms' },
+        { label: t('publicFooter.privacy'), href: '/privacy' },
+        { label: 'Cookies', href: '/cookies' },
+      ],
+    },
+  ]
 
   return (
     <footer className={`w-full ${theme.wrapper}`}>
@@ -82,8 +84,8 @@ export default function PublicFooter({ color = 'sidebar' }: PublicFooterProps) {
         <div className="flex flex-wrap justify-center gap-5">
           <Link href="/about" className={`text-[13px] transition-vintage ${theme.link}`}>Sobre</Link>
           <Link href="/plans" className={`text-[13px] transition-vintage ${theme.link}`}>Planos</Link>
-          <Link href="/privacy" className={`text-[13px] transition-vintage ${theme.link}`}>Privacidade</Link>
-          <Link href="/terms" className={`text-[13px] transition-vintage ${theme.link}`}>Termos</Link>
+          <Link href="/privacy" className={`text-[13px] transition-vintage ${theme.link}`}>{t('publicFooter.privacy')}</Link>
+          <Link href="/terms" className={`text-[13px] transition-vintage ${theme.link}`}>{t('publicFooter.terms')}</Link>
           <Link href="/cookies" className={`text-[13px] transition-vintage ${theme.link}`}>Cookies</Link>
         </div>
         <p suppressHydrationWarning className={`text-[12px] ${theme.bottom}`}>© {new Date().getFullYear()} Florim</p>
@@ -136,7 +138,7 @@ export default function PublicFooter({ color = 'sidebar' }: PublicFooterProps) {
           style={{ marginTop: 40, paddingTop: 20 }}
         >
           <span>LUCAS BRAZAU MALINOWSKI DESENVOLVIMENTO DE SOFTWARE LTDA · CNPJ 58.804.959/0001-60</span>
-          <span suppressHydrationWarning>© {new Date().getFullYear()} Florim</span>
+          <span suppressHydrationWarning>© {new Date().getFullYear()} Florim · {t('publicFooter.rights')}</span>
         </div>
       </div>
     </footer>

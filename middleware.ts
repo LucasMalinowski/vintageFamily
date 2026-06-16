@@ -85,6 +85,24 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     )
   }
 
+  // Detect locale from Accept-Language header for first-time visitors
+  const localeCookie = request.cookies.get('NEXT_LOCALE')?.value
+  const VALID_LOCALES = ['pt-BR', 'en', 'es']
+  if (!localeCookie || !VALID_LOCALES.includes(localeCookie)) {
+    const acceptLang = request.headers.get('accept-language') ?? ''
+    let detectedLocale = 'pt-BR'
+    if (/\ben\b/i.test(acceptLang) && !/pt/i.test(acceptLang.split(',')[0])) {
+      detectedLocale = 'en'
+    } else if (/\bes\b/i.test(acceptLang) && !/pt/i.test(acceptLang.split(',')[0])) {
+      detectedLocale = 'es'
+    }
+    supabaseResponse.cookies.set('NEXT_LOCALE', detectedLocale, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: 'lax',
+    })
+  }
+
   return supabaseResponse
 }
 

@@ -3,17 +3,19 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, BanknoteArrowUp, BanknoteArrowDown, PiggyBank, ChartColumnBig } from 'lucide-react'
-
-const tabs = [
-  { icon: Home, label: 'Início', href: '/inicio' },
-  { icon: BanknoteArrowUp, label: 'Despesas', href: '/expenses' },
-  { icon: BanknoteArrowDown, label: 'Receitas', href: '/incomes' },
-  { icon: PiggyBank, label: 'Objetivos', href: '/savings' },
-  { icon: ChartColumnBig, label: 'Comparativos', href: '/comparatives' },
-]
+import { useTranslations } from 'next-intl'
 
 export default function BottomNav() {
   const pathname = usePathname()
+  const t = useTranslations()
+
+  const tabs = [
+    { icon: Home, label: t('nav.home'), href: '/inicio' },
+    { icon: BanknoteArrowUp, label: t('nav.expenses'), href: '/expenses' },
+    { icon: BanknoteArrowDown, label: t('nav.incomes'), href: '/incomes' },
+    { icon: PiggyBank, label: t('nav.savings'), href: '/savings' },
+    { icon: ChartColumnBig, label: t('nav.comparatives'), href: '/comparatives' },
+  ]
 
   return (
     <nav

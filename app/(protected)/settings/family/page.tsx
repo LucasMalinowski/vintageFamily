@@ -7,6 +7,7 @@ import { useAuth } from '@/components/AuthProvider'
 import { formatDate } from '@/lib/dates'
 import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
 import { X } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 type InviteRow = {
   id: string
@@ -26,6 +27,7 @@ type MemberRow = {
 
 export default function FamilySettingsPage() {
   const { familyId, user } = useAuth()
+  const t = useTranslations()
   const [familyName, setFamilyName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [invites, setInvites] = useState<InviteRow[]>([])
@@ -62,7 +64,7 @@ export default function FamilySettingsPage() {
       ])
 
       if (familyError || inviteError || memberError) {
-        setError('Erro ao carregar dados da família.')
+        setError(t('settings.family.errorLoad'))
       }
 
       if (familyRow) {
@@ -94,7 +96,7 @@ export default function FamilySettingsPage() {
     const { error: updateError } = await supabase.rpc('rename_my_family', { p_name: normalizedFamilyName })
 
     if (updateError) {
-      setError('Erro ao salvar família.')
+      setError(t('settings.family.errorSave'))
     } else {
       setFamilyName(normalizedFamilyName)
       if (normalizedFamilyName) {
@@ -114,7 +116,7 @@ export default function FamilySettingsPage() {
 
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !sessionData.session) {
-      setError('Você precisa estar logado para convidar.')
+      setError(t('settings.family.invites.errorSession'))
       return
     }
 
@@ -129,12 +131,12 @@ export default function FamilySettingsPage() {
 
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}))
-      setError(payload?.error || 'Erro ao enviar convite.')
+      setError(payload?.error || t('settings.family.invites.errorSend'))
       return
     }
 
     setInviteEmail('')
-    setInviteStatus('Convite enviado com sucesso.')
+    setInviteStatus(t('settings.family.invites.success'))
 
     if (familyId) {
       const { data: inviteRows } = await supabase
@@ -157,7 +159,7 @@ export default function FamilySettingsPage() {
     })
 
     if (updateError) {
-      setError('Erro ao atualizar o papel do membro.')
+      setError(t('settings.family.members.errorUpdate'))
     } else {
       setMembers((prev) => prev.map((member) => (member.id === memberId ? { ...member, role } : member)))
     }
@@ -166,13 +168,13 @@ export default function FamilySettingsPage() {
   }
 
   const handleDeleteMember = async (memberId: string) => {
-    if (!confirm('Remover este membro da família?')) return
+    if (!confirm(t('settings.family.members.confirmRemove'))) return
     setSavingMemberId(memberId)
     setError(null)
 
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !sessionData.session) {
-      setError('Você precisa estar logado para remover.')
+      setError(t('settings.family.members.errorSession'))
       setSavingMemberId(null)
       return
     }
@@ -188,7 +190,7 @@ export default function FamilySettingsPage() {
 
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}))
-      setError(payload?.error || 'Erro ao remover o membro.')
+      setError(payload?.error || t('settings.family.members.errorRemove'))
     } else {
       setMembers((prev) => prev.filter((member) => member.id !== memberId))
     }
@@ -202,7 +204,7 @@ export default function FamilySettingsPage() {
 
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !sessionData.session) {
-      setError('Você precisa estar logado para cancelar.')
+      setError(t('settings.family.invites.errorSessionCancel'))
       setSavingInviteId(null)
       return
     }
@@ -218,7 +220,7 @@ export default function FamilySettingsPage() {
 
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}))
-      setError(payload?.error || 'Erro ao cancelar convite.')
+      setError(payload?.error || t('settings.family.invites.errorCancel'))
     } else {
       setInvites((prev) => prev.filter((invite) => invite.id !== inviteId))
     }
@@ -229,9 +231,9 @@ export default function FamilySettingsPage() {
   return (
     <div className="space-y-6">
       <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
-        <h1 className="text-2xl font-serif text-coffee mb-2">Família</h1>
+        <h1 className="text-2xl font-serif text-coffee mb-2">{t('settings.family.title')}</h1>
         <p className="text-sm text-ink/60 font-body">
-          Gerencie o nome da família e os convites enviados.
+          {t('settings.family.subtitle')}
         </p>
       </div>
 
@@ -243,20 +245,20 @@ export default function FamilySettingsPage() {
 
       {loading ? (
         <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
-          <p className="text-sm text-ink/60 font-body">Carregando…</p>
+          <p className="text-sm text-ink/60 font-body">{t('settings.family.loading')}</p>
         </div>
       ) : (
         <>
           <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
             <form onSubmit={handleSaveFamily} className="space-y-4">
-              <h2 className="text-lg font-serif text-coffee">Nome da família</h2>
+              <h2 className="text-lg font-serif text-coffee">{t('settings.family.familyName')}</h2>
               <div>
                 <input
                   value={familyName}
                   onChange={(event) => setFamilyName(event.target.value)}
                   className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
-                  placeholder="Família"
-                  aria-label="Nome da família"
+                  placeholder={t('settings.family.familyNamePlaceholder')}
+                  aria-label={t('settings.family.familyNameLabel')}
                 />
               </div>
               <button
@@ -264,20 +266,20 @@ export default function FamilySettingsPage() {
                 disabled={savingFamily}
                 className="bg-coffee text-paper px-4 py-2 rounded-lg font-body hover:bg-coffee/90 transition-vintage disabled:opacity-50"
               >
-                {savingFamily ? 'Salvando...' : 'Salvar família'}
+                {savingFamily ? t('settings.family.savingFamily') : t('settings.family.saveFamily')}
               </button>
             </form>
           </div>
 
           <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6 space-y-4">
             <div>
-              <h2 className="text-lg font-serif text-coffee">Membros</h2>
+              <h2 className="text-lg font-serif text-coffee">{t('settings.family.members.title')}</h2>
               <p className="text-sm text-ink/60 font-body">
-                Veja quem faz parte da família e ajuste permissões.
+                {t('settings.family.members.subtitle')}
               </p>
             </div>
             {members.length === 0 ? (
-              <p className="text-sm text-ink/60 font-body">Nenhum membro encontrado.</p>
+              <p className="text-sm text-ink/60 font-body">{t('settings.family.members.empty')}</p>
             ) : (
               <div className="space-y-3">
                 {members.map((member) => {
@@ -302,7 +304,7 @@ export default function FamilySettingsPage() {
                             <p className="text-sm font-body text-ink">{member.name}</p>
                             {isCurrentUser && (
                               <span className="text-[11px] uppercase tracking-wide text-ink/50 border border-border px-2 py-0.5 rounded-full">
-                                Você
+                                {t('settings.family.members.you')}
                               </span>
                             )}
                           </div>
@@ -316,8 +318,8 @@ export default function FamilySettingsPage() {
                           disabled={savingMemberId === member.id}
                           className="px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50 disabled:opacity-60"
                         >
-                          <option value="admin">Administrador</option>
-                          <option value="member">Membro</option>
+                          <option value="admin">{t('settings.family.members.roleAdmin')}</option>
+                          <option value="member">{t('settings.family.members.roleMember')}</option>
                         </select>
                         <button
                           type="button"
@@ -339,9 +341,9 @@ export default function FamilySettingsPage() {
 
           <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6 space-y-4">
             <div>
-              <h2 className="text-lg font-serif text-coffee">Convites</h2>
+              <h2 className="text-lg font-serif text-coffee">{t('settings.family.invites.title')}</h2>
               <p className="text-sm text-ink/60 font-body">
-                Envie um convite por email para trazer novos membros.
+                {t('settings.family.invites.subtitle')}
               </p>
             </div>
             <form onSubmit={handleInvite} className="flex flex-col md:flex-row gap-3">
@@ -350,15 +352,15 @@ export default function FamilySettingsPage() {
                 value={inviteEmail}
                 onChange={(event) => setInviteEmail(event.target.value)}
                 required
-                aria-label="E-mail para convite"
+                aria-label={t('settings.family.invites.emailLabel')}
                 className="flex-1 px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
-                placeholder="email@exemplo.com"
+                placeholder={t('settings.family.invites.emailPlaceholder')}
               />
               <button
                 type="submit"
                 className="bg-petrol text-paper px-4 py-3 rounded-lg font-body hover:bg-petrol/90 transition-vintage"
               >
-                Enviar convite
+                {t('settings.family.invites.send')}
               </button>
             </form>
             {inviteStatus && (
@@ -369,10 +371,10 @@ export default function FamilySettingsPage() {
             {invites.length > 0 && (
               <div className="border border-border rounded-lg overflow-hidden">
                 <div className="hidden sm:grid sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-4 bg-paper px-4 py-2 text-xs uppercase tracking-wide text-ink/60 font-body">
-                  <span>Email</span>
-                  <span>Status</span>
-                  <span>Expiração</span>
-                  <span>Ações</span>
+                  <span>{t('settings.family.invites.colEmail')}</span>
+                  <span>{t('settings.family.invites.colStatus')}</span>
+                  <span>{t('settings.family.invites.colExpires')}</span>
+                  <span>{t('settings.family.invites.colActions')}</span>
                 </div>
                 {invites.map((invite) => (
                   <div
@@ -380,23 +382,23 @@ export default function FamilySettingsPage() {
                     className="grid grid-cols-1 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 sm:gap-4 px-4 py-3 text-sm font-body border-t border-border items-center"
                   >
                     <div className="flex flex-col gap-1">
-                      <span className="text-[11px] uppercase tracking-wide text-ink/50 sm:hidden">Email</span>
+                      <span className="text-[11px] uppercase tracking-wide text-ink/50 sm:hidden">{t('settings.family.invites.colEmail')}</span>
                       <span className="text-ink break-all">{invite.email}</span>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <span className="text-[11px] uppercase tracking-wide text-ink/50 sm:hidden">Status</span>
+                      <span className="text-[11px] uppercase tracking-wide text-ink/50 sm:hidden">{t('settings.family.invites.colStatus')}</span>
                       <span className="text-ink/70">
-                        {invite.accepted ? 'Aceito' : 'Pendente'}
+                        {invite.accepted ? t('settings.family.invites.statusAccepted') : t('settings.family.invites.statusPending')}
                       </span>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <span className="text-[11px] uppercase tracking-wide text-ink/50 sm:hidden">Expiração</span>
+                      <span className="text-[11px] uppercase tracking-wide text-ink/50 sm:hidden">{t('settings.family.invites.colExpires')}</span>
                       <span className="text-ink/70">
                         {formatDate(invite.expires_at)}
                       </span>
                     </div>
                     <div className="flex flex-col gap-2 sm:items-start">
-                      <span className="text-[11px] uppercase tracking-wide text-ink/50 sm:hidden">Ações</span>
+                      <span className="text-[11px] uppercase tracking-wide text-ink/50 sm:hidden">{t('settings.family.invites.colActions')}</span>
                       {!invite.accepted && (
                         <button
                           type="button"
@@ -404,7 +406,7 @@ export default function FamilySettingsPage() {
                           disabled={savingInviteId === invite.id}
                           className="text-sm text-terracotta hover:text-terracotta/80 disabled:opacity-50"
                         >
-                          Cancelar
+                          {t('settings.family.invites.cancel')}
                         </button>
                       )}
                     </div>

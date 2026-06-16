@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
+import { useTranslations } from 'next-intl'
 import { getAuthBearerToken } from '@/lib/billing/client'
 
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
@@ -17,6 +18,7 @@ function CheckoutForm({
   onSuccess: () => void
   onCancel: () => void
 }) {
+  const t = useTranslations()
   const stripe = useStripe()
   const elements = useElements()
   const [submitting, setSubmitting] = useState(false)
@@ -77,14 +79,14 @@ function CheckoutForm({
           onClick={onCancel}
           className="rounded-full border border-border px-4 py-3 text-sm font-medium text-ink/70 transition-vintage hover:bg-paper"
         >
-          Fechar
+          {t('common.close')}
         </button>
         <button
           type="submit"
           disabled={!stripe || submitting}
           className="rounded-full bg-sidebar px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
         >
-          {submitting ? 'Processando...' : 'Confirmar assinatura'}
+          {submitting ? t('billing.paying') : t('billing.subscribe')}
         </button>
       </div>
     </form>
@@ -100,6 +102,7 @@ export default function PlanCheckout({
   onSuccess: () => void
   onCancel: () => void
 }) {
+  const t = useTranslations()
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -112,7 +115,7 @@ export default function PlanCheckout({
 
       const token = await getAuthBearerToken()
       if (!token) {
-        setError('Sessão inválida. Faça login novamente.')
+        setError(t('common.sessionExpired'))
         setLoading(false)
         return
       }
@@ -128,7 +131,7 @@ export default function PlanCheckout({
 
       const payload = await response.json().catch(() => null)
       if (!response.ok) {
-        setError(payload?.error || 'Não foi possível iniciar a assinatura.')
+        setError(payload?.error || t('billing.errorSubscribe'))
         setLoading(false)
         return
       }
@@ -141,7 +144,7 @@ export default function PlanCheckout({
   }, [planCode])
 
   if (loading) {
-    return <p className="text-sm text-ink/60">Inicializando checkout…</p>
+    return <p className="text-sm text-ink/60">{t('billing.loading')}</p>
   }
 
   if (!stripePromise) {
@@ -149,7 +152,7 @@ export default function PlanCheckout({
   }
 
   if (error || !clientSecret) {
-    return <p className="text-sm text-red-700">{error || 'Erro no checkout.'}</p>
+    return <p className="text-sm text-red-700">{error || t('billing.errorSubscribe')}</p>
   }
 
   return (

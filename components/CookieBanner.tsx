@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { grantAnalyticsConsent, revokeAnalyticsConsent } from '@/lib/posthog'
 
 export function openCookiePreferences() {
@@ -11,6 +12,7 @@ export function openCookiePreferences() {
 }
 
 export default function CookieBanner() {
+  const t = useTranslations()
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -64,9 +66,9 @@ export default function CookieBanner() {
         {!showManage ? (
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <p className="text-sm text-ink/75 font-body flex-1 leading-relaxed">
-              Usamos cookies essenciais para o funcionamento do serviço e cookies analíticos para melhorar sua experiência.{' '}
+              {t('cookie.message')}{' '}
               <Link href="/cookies" className="text-coffee underline underline-offset-2 hover:text-coffee/80 transition-vintage">
-                Saiba mais
+                {t('cookie.policy')}
               </Link>
             </p>
             <div className="flex gap-2 shrink-0 flex-wrap">
@@ -75,7 +77,7 @@ export default function CookieBanner() {
                 onClick={reject}
                 className="px-4 py-2 text-sm font-body text-ink/70 border border-border rounded-full hover:bg-paper transition-vintage"
               >
-                Rejeitar
+                {t('cookie.decline')}
               </button>
               <button
                 type="button"
@@ -89,7 +91,7 @@ export default function CookieBanner() {
                 onClick={accept}
                 className="px-4 py-2 text-sm font-body bg-coffee text-paper rounded-full hover:bg-coffee/90 transition-vintage"
               >
-                Aceitar todos
+                {t('cookie.accept')}
               </button>
             </div>
           </div>

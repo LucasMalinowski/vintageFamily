@@ -1,0 +1,956 @@
+{
+  "common": {
+    "save": "Save",
+    "saving": "Saving...",
+    "loading": "Loading…",
+    "cancel": "Cancel",
+    "close": "Close",
+    "connectionError": "Connection error.",
+    "sessionExpired": "Session expired. Please log in again.",
+    "pdfPreviewTitle": "PDF Preview",
+    "pdfDownloadLabel": "Print or save",
+    "limitReached": "Limit reached"
+  },
+  "language": {
+    "title": "Language & currency",
+    "subtitle": "Choose the app language and the currency used for amounts.",
+    "languageLabel": "Language",
+    "currencyLabel": "Currency",
+    "names": {
+      "pt-BR": "Português (Brasil)",
+      "en": "English",
+      "es": "Español"
+    },
+    "currencies": {
+      "BRL": "Brazilian Real (R$)",
+      "USD": "US Dollar ($)",
+      "EUR": "Euro (€)"
+    }
+  },
+  "profile": {
+    "saveChanges": "Save changes",
+    "yourName": "Your name",
+    "changePicture": "Change photo",
+    "whatsapp": {
+      "title": "WhatsApp",
+      "subtitle": "Link your number to record expenses and income via WhatsApp.",
+      "sendCode": "Send code",
+      "sending": "Sending...",
+      "verifying": "Verifying...",
+      "verify": "Verify",
+      "changeNumber": "Change number",
+      "remove": "Remove",
+      "searchPlaceholder": "Search country, code or abbreviation",
+      "noResults": "No results.",
+      "codeSent": "Code sent! Check your WhatsApp.",
+      "codeFor": "Code sent to",
+      "verifiedSuccess": "Number verified successfully!",
+      "errorSend": "Error sending code.",
+      "errorInvalidCode": "Invalid code.",
+      "errorRemove": "Error removing phone number."
+    },
+    "form": {
+      "fullName": "Full name",
+      "email": "Email",
+      "namePlaceholder": "Your full name"
+    },
+    "billingCycle": {
+      "title": "Financial cycle day",
+      "subtitle": "Enter the day of the month you receive your salary. The \"month\" filter will use this day as the start of the period.",
+      "example": "E.g.: if you receive on the 21st, \"May\" runs from April 21 to May 20.",
+      "dayOption": "Day {{day}}",
+      "save": "Save",
+      "saving": "Saving..."
+    },
+    "dangerZone": {
+      "title": "Danger zone",
+      "subtitle": "Irreversible actions. Proceed with care.",
+      "deleteAccount": "Delete my account",
+      "deleteDescription": "Permanently removes your account.",
+      "deleteButton": "Delete account"
+    },
+    "deleteModal": {
+      "title": "Delete account",
+      "loading": "Loading information…",
+      "adminWithMembers": "You are the family administrator. Choose who will take over:",
+      "adminAlone": "You are the only member of this family. Deleting your account will permanently deactivate the family.",
+      "memberMessage": "Your account and personal data will be permanently removed.",
+      "confirmLabel": "Type DELETE to confirm",
+      "confirmPlaceholder": "DELETE",
+      "confirmWord": "DELETE",
+      "deleting": "Deleting...",
+      "deleteButton": "Delete my account",
+      "errorSession": "Session expired. Please log in again.",
+      "errorLoad": "Error loading information.",
+      "errorDelete": "Error deleting account."
+    },
+    "errorLoad": "Error loading settings.",
+    "errorAvatar": "Invalid avatar.",
+    "errorAvatarUpload": "Error uploading avatar.",
+    "errorSave": "Error saving profile."
+  },
+  "settings": {
+    "layout": {
+      "title": "Settings",
+      "subtitle": "Manage your account and family.",
+      "nav": {
+        "profile": "Profile",
+        "family": "Family",
+        "billing": "Subscription",
+        "insights": "Insights",
+        "superAdmin": "Super Administrator",
+        "feedbacks": "Feedbacks"
+      }
+    },
+    "family": {
+      "title": "Family",
+      "subtitle": "Manage your family name and sent invitations.",
+      "familyName": "Family name",
+      "familyNamePlaceholder": "Family",
+      "familyNameLabel": "Family name",
+      "saveFamily": "Save family",
+      "savingFamily": "Saving...",
+      "members": {
+        "title": "Members",
+        "subtitle": "See who is in the family and adjust permissions.",
+        "empty": "No members found.",
+        "you": "You",
+        "roleAdmin": "Administrator",
+        "roleMember": "Member",
+        "confirmRemove": "Remove this member from the family?",
+        "errorUpdate": "Error updating member role.",
+        "errorRemove": "Error removing member.",
+        "errorSession": "You must be logged in to remove."
+      },
+      "invites": {
+        "title": "Invitations",
+        "subtitle": "Send an email invitation to bring new members.",
+        "emailPlaceholder": "email@example.com",
+        "emailLabel": "Invitation email",
+        "send": "Send invitation",
+        "success": "Invitation sent successfully.",
+        "colEmail": "Email",
+        "colStatus": "Status",
+        "colExpires": "Expires",
+        "colActions": "Actions",
+        "statusAccepted": "Accepted",
+        "statusPending": "Pending",
+        "cancel": "Cancel",
+        "errorSend": "Error sending invitation.",
+        "errorCancel": "Error cancelling invitation.",
+        "errorSession": "You must be logged in to invite.",
+        "errorSessionCancel": "You must be logged in to cancel."
+      },
+      "loading": "Loading…",
+      "errorLoad": "Error loading family data.",
+      "errorSave": "Error saving family."
+    },
+    "insights": {
+      "title": "Insights Preferences",
+      "subtitle": "Configure how and when to receive intelligent analysis of your finances.",
+      "proactive": {
+        "title": "Proactive insights",
+        "desc": "Receive automatic analyses periodically",
+        "enableLabel": "Enable automatic insights",
+        "disableLabel": "Disable automatic insights",
+        "disabledNote": "You will not receive automatic insights. You can still request insights on demand."
+      },
+      "frequency": {
+        "title": "Frequency",
+        "availableDesc": "How often do you want to receive",
+        "lockedDesc": "Available on Pro plan",
+        "weekly": "Weekly",
+        "biweekly": "Biweekly",
+        "monthly": "Monthly",
+        "noteWeekly": "Insights every week.",
+        "noteBiweekly": "Insights every 2 weeks.",
+        "noteMonthly": "Insights once a month.",
+        "noteFreeTier": "Free plan: 1 automatic analysis per month, with forecast for the next month."
+      },
+      "channels": {
+        "title": "Delivery channels",
+        "whatsappLabel": "WhatsApp",
+        "whatsappDesc": "Send to linked WhatsApp",
+        "emailLabel": "Email",
+        "emailDesc": "Send to account email"
+      },
+      "save": "Save preferences",
+      "saving": "Saving...",
+      "saved": "Saved!",
+      "loading": "Loading…",
+      "upsell": {
+        "title": "Pro Feature",
+        "body": "Insight frequency configuration is exclusive to the free trial and Florim Pro plan. With it you choose to receive analyses weekly, biweekly or monthly.",
+        "freeNote": "On the free plan, you receive 1 automatic analysis per month, with forecast for the next month.",
+        "cta": "See plans - from R$19.90/month",
+        "freeCta": "Continue on free plan"
+      }
+    }
+  },
+  "sidebar": {
+    "family": "Family",
+    "loading": "Loading...",
+    "loadError": "Failed to load",
+    "noName": "No name",
+    "collapse": "Collapse menu",
+    "collapseLabel": "Collapse sidebar",
+    "expandLabel": "Expand sidebar",
+    "expand": "Expand menu",
+    "signOut": "Sign out",
+    "nav": {
+      "home": "Home",
+      "expenses": "Bills Payable",
+      "incomes": "Bills Receivable",
+      "savings": "Goals",
+      "comparatives": "Comparatives",
+      "reminders": "Reminders",
+      "insights": "Insights",
+      "about": "About"
+    },
+    "dailyPhrases": [
+      "Taking care of the household money is taking care of time together.",
+      "Every small saving becomes calm in the family's heart.",
+      "Planning bills opens space for hugs.",
+      "Our table feels lighter when the budget is clear.",
+      "Saving a little today is protecting the tomorrow of those we love.",
+      "Talking about spending is an act of care.",
+      "Financial peace begins with unity.",
+      "When the home gets organized, love breathes better.",
+      "Well-managed money becomes quality time.",
+      "Family dreams fit when we walk together.",
+      "Balance in the accounts, harmony at home.",
+      "The budget is the map of our peace.",
+      "Every conscious choice strengthens our home.",
+      "The family's security is born from small agreements.",
+      "Organizing the month is saving affection for difficult days.",
+      "Financial care is a way of saying \"I'm here\".",
+      "Sharing responsibilities multiplies trust.",
+      "Clear agreements prevent unnecessary worries.",
+      "The family's future is built with kindness and attention.",
+      "A goal is tomorrow taking shape.",
+      "A well-cared home starts with conversation.",
+      "Prioritizing together is protecting what matters.",
+      "Saving without guilt is choosing what brings peace.",
+      "Planning is allowing dreams to find a place.",
+      "The lightness of home comes from transparency.",
+      "Aligned money, peaceful heart.",
+      "Taking care of bills is taking care of people.",
+      "Every organized month leaves space for affection.",
+      "Love also lives in the details of the budget.",
+      "Together, what seemed heavy becomes possible."
+    ]
+  },
+  "topbar": {
+    "trialDaysLeft": "{{count}} trial days remaining",
+    "ariaForecast": "Next month forecast",
+    "ariaReminders": "Open reminders",
+    "ariaProfile": "Open profile",
+    "ariaSettings": "Open settings",
+    "ariaBack": "Go back",
+    "ariaToggleFilters": "Toggle filters",
+    "filters": "Filters",
+    "dropdown": {
+      "profile": "Profile",
+      "family": "Family",
+      "billing": "Subscription"
+    }
+  },
+  "nav": {
+    "home": "Home",
+    "expenses": "Expenses",
+    "incomes": "Income",
+    "savings": "Goals",
+    "comparatives": "Comparatives"
+  },
+  "profileSheet": {
+    "userFallback": "User",
+    "family": "Family {{name}}",
+    "myProfile": "My profile",
+    "myProfileDesc": "Personal data and family",
+    "about": "About Florim",
+    "aboutDesc": "The story and purpose",
+    "reminders": "Reminders",
+    "remindersDesc": "Home reminders",
+    "settings": "Settings",
+    "settingsDesc": "Account preferences",
+    "signOut": "Sign out",
+    "signOutDesc": "End session"
+  },
+  "forecastSheet": {
+    "badge": "Florim · Intelligence",
+    "title": "Next month forecast",
+    "closeLabel": "Close",
+    "footer": "Forecast based on your spending history and recurring patterns.\nUpdated automatically each month."
+  },
+  "filterSheet": {
+    "title": "Filters",
+    "closeLabel": "Close filters",
+    "month": "Month",
+    "year": "Year",
+    "status": "Status",
+    "method": "Method",
+    "allMonths": "All months",
+    "allYears": "All years",
+    "monthHint": "Choose a month or view all months of a year.",
+    "clear": "Clear",
+    "apply": "Apply"
+  },
+  "auth": {
+    "syncError": "Could not synchronize session.",
+    "authError": "Could not authenticate user.",
+    "invalidSession": "Invalid session.",
+    "switchFamilyError": "Failed to switch family.",
+    "googleAuthError": "Could not authenticate with Google.",
+    "createFamilyError": "Error creating family.",
+    "invalidFamilyResponse": "Invalid response when creating family.",
+    "acceptInviteError": "Error accepting invitation."
+  },
+  "familyPicker": {
+    "title": "Enter as family",
+    "subtitle": "Choose which family you want to access.",
+    "loading": "Loading families…",
+    "empty": "No families found.",
+    "current": "current",
+    "entering": "Entering...",
+    "enter": "Enter →",
+    "useCurrentFamily": "Use current family",
+    "invalidSession": "Invalid session.",
+    "loadError": "Failed to load families.",
+    "switchError": "Error switching family."
+  },
+  "expenses": {
+    "title": "Bills Payable",
+    "subtitle": "Manage your expenses and bills payable.",
+    "motivationalSubtitle": "Honoring commitments builds security.",
+    "detailsTitle": "Expense details",
+    "addExpense": "New expense",
+    "editExpense": "Edit expense",
+    "deleteExpense": "Delete expense",
+    "emptyState": "No expenses found.",
+    "emptyStateFiltered": "No expenses with selected filters.",
+    "loading": "Loading…",
+    "description": "Description",
+    "descriptionPlaceholder": "E.g.: Electric bill",
+    "amount": "Amount",
+    "date": "Date",
+    "category": "Category",
+    "status": "Status",
+    "method": "Method",
+    "notes": "Notes",
+    "attachment": "Attachment",
+    "installments": "Installments",
+    "statusPaid": "Paid",
+    "statusOpen": "Open",
+    "markAsPaid": "Mark as paid",
+    "markAsOpen": "Mark as open",
+    "confirmDelete": "Delete this expense?",
+    "donutTitle": "By category",
+    "moreCategories": "+ {{count}} other categories",
+    "editButton": "Edit",
+    "deleteButton": "Delete",
+    "saveButton": "Save",
+    "savingButton": "Saving...",
+    "cancelButton": "Cancel",
+    "importBank": "Import statement",
+    "addCategory": "New category",
+    "manageCategories": "Categories",
+    "exportCsv": "Export CSV",
+    "exportPdf": "Export PDF",
+    "viewAttachment": "View attachment",
+    "uploadAttachment": "Attach receipt",
+    "noCategory": "No category",
+    "recurring": "Recurring",
+    "recurringNote": "Check to automatically create recurring expenses.",
+    "installmentsNote": "Split into equal installments.",
+    "total": "Total",
+    "paid": "Paid",
+    "open": "Open",
+    "summary": "Summary",
+    "filters": "Filters",
+    "search": "Search expense…",
+    "periodLabel": "Period",
+    "kpiTotal": "Period total",
+    "kpiPaid": "Paid",
+    "kpiOpen": "Open",
+    "kpiCount": "Expenses",
+    "limitAlert": "Expense limit reached",
+    "recurrence": "Recurrence"
+  },
+  "incomes": {
+    "title": "Bills Receivable",
+    "subtitle": "Manage your income and bills receivable.",
+    "detailsTitle": "Income details",
+    "addIncome": "New income",
+    "editIncome": "Edit income",
+    "deleteIncome": "Delete income",
+    "emptyState": "No income found.",
+    "emptyStateFiltered": "No income with selected filters.",
+    "loading": "Loading…",
+    "description": "Description",
+    "descriptionPlaceholder": "E.g.: Salary",
+    "amount": "Amount",
+    "date": "Date",
+    "category": "Category",
+    "status": "Status",
+    "notes": "Notes",
+    "notesPlaceholder": "Additional notes...",
+    "attachment": "Attachment",
+    "recurrence": "Recurrence",
+    "statusReceived": "Received",
+    "statusPending": "Pending",
+    "markAsReceived": "Mark as received",
+    "markAsPending": "Mark as pending",
+    "confirmDelete": "Delete this income?",
+    "editButton": "Edit",
+    "deleteButton": "Delete",
+    "saveButton": "Save",
+    "savingButton": "Saving...",
+    "cancelButton": "Cancel",
+    "addCategory": "New category",
+    "manageCategories": "Categories",
+    "exportCsv": "Export CSV",
+    "exportPdf": "Export PDF",
+    "viewAttachment": "View attachment",
+    "noCategory": "No category",
+    "total": "Total",
+    "received": "Received",
+    "pending": "Pending",
+    "summary": "Summary",
+    "filters": "Filters",
+    "search": "Search income…",
+    "kpiTotal": "Period total",
+    "kpiReceived": "Received",
+    "kpiPending": "Pending",
+    "kpiCount": "Income",
+    "trend": "Monthly trend",
+    "topbarSubtitle": "Every income is a harvest of what you plant.",
+    "byCategory": "Income by category"
+  },
+  "savings": {
+    "title": "Goals",
+    "subtitle": "Track your savings goals.",
+    "topbarSubtitle": "Turn plans into trackable achievements.",
+    "addGoal": "New goal",
+    "editGoal": "Edit goal",
+    "deleteGoal": "Delete goal",
+    "emptyState": "No goals found.",
+    "loading": "Loading…",
+    "name": "Name",
+    "targetAmount": "Target",
+    "currentAmount": "Saved",
+    "deadline": "Deadline",
+    "notes": "Notes",
+    "notesPlaceholder": "Additional notes...",
+    "contribute": "Contribute",
+    "contributionAmount": "Contribution amount",
+    "confirmDelete": "Delete this goal?",
+    "saveButton": "Save",
+    "savingButton": "Saving...",
+    "cancelButton": "Cancel",
+    "completed": "Completed",
+    "progress": "{{percent}}% of goal",
+    "remaining": "{{amount}} remaining",
+    "deadlineLabel": "Deadline: {{date}}",
+    "noDeadline": "No deadline set",
+    "goalLabel": "Goal",
+    "kpiBalance": "Current balance",
+    "kpiGlobalTarget": "Global target",
+    "kpiGoalsCount": "Goals",
+    "kpiGoalsActive": "active goals",
+    "kpiDeposits": "Deposits this month",
+    "kpiWithdrawals": "Withdrawals this month",
+    "editTargetTooltip": "Edit target",
+    "depositTitle": "Save to Goal",
+    "depositSubtitle": "Each deposit brings the plan closer.",
+    "depositMenuLabel": "Save to goal",
+    "depositMenuDesc": "Record deposit",
+    "withdrawalTitle": "Withdraw from Goal",
+    "withdrawalSubtitle": "Use what was planned when the time comes.",
+    "withdrawalMenuLabel": "Withdraw from goal",
+    "withdrawalMenuDesc": "Record withdrawal",
+    "withdrawalReasonPlaceholder": "Reason for withdrawal...",
+    "manageGoalsDesc": "Manage goals",
+    "exportCsv": "Export CSV",
+    "exportCsvDesc": "Spreadsheet with data",
+    "exportPdf": "Export PDF",
+    "exportPdfDesc": "Report to print",
+    "exportButton": "Export",
+    "searchPlaceholder": "Search by name or goal...",
+    "transactionsSubtitle": "Transactions for this goal.",
+    "noTransactions": "No transactions recorded.",
+    "editSubtitle": "Adjust the name or target of the goal.",
+    "noTarget": "No target",
+    "noTargetPlaceholder": "No target defined"
+  },
+  "comparatives": {
+    "title": "Comparatives",
+    "subtitle": "Compare your spending and income over time.",
+    "topbarSubtitle": "Patterns with calm, decisions with clarity.",
+    "loading": "Loading…",
+    "emptyState": "No data for the selected period.",
+    "expenses": "Expenses",
+    "incomes": "Income",
+    "balance": "Balance",
+    "period": "Period",
+    "byCategory": "By category",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "kpiReceived": "Received",
+    "kpiPaid": "Paid",
+    "kpiSaved": "Saved",
+    "expensesByCategory": "Expenses by category",
+    "paywallTitle": "Limit reached",
+    "paywallBody": "You have reached the limit of 3 free exports/imports this month.",
+    "paywallPro": "Subscribe to Florim Pro for unlimited exports and other advanced features.",
+    "paywallCta": "View plans"
+  },
+  "insights": {
+    "title": "Insights",
+    "subtitle": "Intelligent analysis of your finances.",
+    "loading": "Loading…",
+    "emptyState": "No insights available.",
+    "generateInsight": "Generate insight",
+    "generating": "Generating…",
+    "lastGenerated": "Generated on {{date}}",
+    "emptyStateSubmessage": "Ask a question above or wait for the next automatic send.",
+    "questionPlaceholder": "E.g.: How can I save more...",
+    "channel": {
+      "whatsapp": "WhatsApp",
+      "email": "Email"
+    }
+  },
+  "reminders": {
+    "title": "Reminders",
+    "subtitle": "Track your reminders and commitments.",
+    "addReminder": "New reminder",
+    "editReminder": "Edit reminder",
+    "deleteReminder": "Delete reminder",
+    "emptyState": "No reminders found.",
+    "loading": "Loading…",
+    "description": "Description",
+    "descriptionPlaceholder": "E.g.: Check water bill",
+    "date": "Date",
+    "dateAria": "Reminder due date",
+    "amount": "Amount (optional)",
+    "notes": "Notes",
+    "confirmDelete": "Delete this reminder?",
+    "saveButton": "Save",
+    "savingButton": "Saving...",
+    "cancelButton": "Cancel",
+    "editButton": "Edit",
+    "deleteButton": "Delete",
+    "overdue": "Overdue",
+    "upcoming": "Upcoming",
+    "today": "Today",
+    "topbarSubtitle": "Small notes to keep the home running smoothly.",
+    "emptyStateSubmessage": "May the month go smoothly.",
+    "categoryLabel": "Category",
+    "confirmDeleteMessage": "This reminder will be permanently removed."
+  },
+  "billing": {
+    "title": "Subscription",
+    "subtitle": "Manage your plan and payments.",
+    "currentPlan": "Current plan",
+    "freePlan": "Free",
+    "proPlan": "Pro",
+    "trialBanner": "{{days}} free trial days remaining",
+    "trialExpired": "Your free trial has expired",
+    "subscribe": "Subscribe",
+    "subscribing": "Subscribing…",
+    "managePlan": "Manage plan",
+    "cancelPlan": "Cancel subscription",
+    "billingCycle": "Billing cycle",
+    "monthly": "Monthly",
+    "annual": "Annual",
+    "priceMonthly": "R$19.90/month",
+    "priceAnnual": "R$179.90/year",
+    "upgradeTitle": "Upgrade to Pro",
+    "upgradeDesc": "Full access to all features.",
+    "features": {
+      "unlimitedExpenses": "Unlimited expenses",
+      "unlimitedIncomes": "Unlimited income",
+      "insights": "Smart insights",
+      "export": "Export reports",
+      "family": "Unlimited family members"
+    },
+    "loading": "Loading…",
+    "errorLoad": "Error loading subscription information.",
+    "successSubscribe": "Subscription completed successfully!",
+    "errorSubscribe": "Error processing subscription.",
+    "paymentTitle": "Payment",
+    "cardNumber": "Card number",
+    "expiryDate": "Expiry date",
+    "cvv": "CVV",
+    "payButton": "Pay",
+    "paying": "Processing…"
+  },
+  "forecastCard": {
+    "title": "Next month forecast",
+    "loading": "Calculating forecast…",
+    "noData": "Insufficient data to generate forecast.",
+    "estimatedExpenses": "Estimated expenses",
+    "estimatedIncomes": "Estimated income",
+    "estimatedBalance": "Estimated balance",
+    "basedOn": "Based on the last {{months}} months"
+  },
+  "bankStatement": {
+    "title": "Import bank statement",
+    "subtitle": "Import your statement to automatically record expenses.",
+    "upload": "Select file",
+    "uploading": "Uploading…",
+    "processing": "Processing…",
+    "success": "Statement imported successfully!",
+    "error": "Error importing statement.",
+    "preview": "Preview",
+    "import": "Import",
+    "importing": "Importing…",
+    "cancel": "Cancel",
+    "columnDate": "Date",
+    "columnDescription": "Description",
+    "columnAmount": "Amount",
+    "columnCategory": "Category",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "selected": "{{count}} selected",
+    "noItems": "No items found.",
+    "dragDrop": "Drag and drop the file here or click to select"
+  },
+  "categoryModal": {
+    "addTitle": "New category",
+    "editTitle": "Edit category",
+    "name": "Name",
+    "namePlaceholder": "Category name",
+    "subNamePlaceholder": "Subcategory name",
+    "mainNamePlaceholder": "Main category name",
+    "icon": "Icon",
+    "color": "Color",
+    "type": "Type",
+    "typeExpense": "Expense",
+    "typeIncome": "Income",
+    "typeSavings": "Goal",
+    "parent": "Parent category",
+    "noParent": "No parent category",
+    "limit": "Monthly limit",
+    "limitPlaceholder": "Limit amount",
+    "saveButton": "Save",
+    "savingButton": "Saving...",
+    "cancelButton": "Cancel",
+    "deleteButton": "Delete",
+    "deletingButton": "Deleting...",
+    "confirmDelete": "Delete this category?",
+    "errorSave": "Error saving category.",
+    "errorDelete": "Error deleting category.",
+    "loading": "Loading…"
+  },
+  "donutModal": {
+    "title": "Details by category",
+    "close": "Close",
+    "total": "Total",
+    "percent": "{{value}}%",
+    "items": "{{count}} items"
+  },
+  "iconPicker": {
+    "title": "Choose icon",
+    "search": "Search icon…",
+    "noResults": "No icons found.",
+    "select": "Select"
+  },
+  "actionMenu": {
+    "edit": "Edit",
+    "delete": "Delete",
+    "view": "View",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
+  "cookie": {
+    "message": "We use cookies to improve your experience. By continuing, you agree to our",
+    "policy": "Privacy Policy",
+    "accept": "Accept",
+    "decline": "Decline",
+    "preferences": "Cookie preferences"
+  },
+  "ssoButtons": {
+    "continueWithGoogle": "Continue with Google",
+    "continueWithApple": "Continue with Apple"
+  },
+  "mobileAppBanner": {
+    "title": "Download the Florim app",
+    "subtitle": "Get the best experience on your phone.",
+    "download": "Download",
+    "dismiss": "Not now"
+  },
+  "pdfPreview": {
+    "title": "PDF Preview",
+    "close": "Close",
+    "download": "Download PDF",
+    "print": "Print"
+  },
+  "publicFooter": {
+    "rights": "All rights reserved.",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "contact": "Contact"
+  },
+  "publicNav": {
+    "login": "Login",
+    "signup": "Sign up",
+    "plans": "Plans",
+    "features": "Features"
+  },
+  "login": {
+    "heading": "Sign in to your account",
+    "quote": "Organizing money is caring for the time we still have to live.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@email.com",
+    "passwordLabel": "Password",
+    "forgotPassword": "Forgot password",
+    "submit": "Sign in",
+    "submitting": "Signing in...",
+    "noAccount": "Don't have an account?",
+    "noAccountDesktop": "Don't have an account yet?",
+    "createAccount": "Create one",
+    "errors": {
+      "linkInvalid": "The access link is invalid. Request a new one from the app.",
+      "linkUsed": "This link has already been used. Open the app and try again.",
+      "linkExpired": "The link expired (valid for 5 minutes). Open the app and try again.",
+      "noLink": "No access link found.",
+      "loginFailed": "Error signing in"
+    }
+  },
+  "signup": {
+    "heading": "Create Your Family",
+    "subtitle": "A calm home is built from small repeated choices.",
+    "nameLabel": "Your name",
+    "namePlaceholder": "John Smith",
+    "familyNameLabel": "Family name",
+    "familyNamePlaceholder": "E.g.: Smith, Johnson, Brown",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "confirmPasswordLabel": "Confirm password",
+    "agreePrefix": "I have read and agree to the",
+    "termsLink": "Terms of Use",
+    "agreeMiddle": "and the",
+    "privacyLink": "Privacy Policy",
+    "submit": "Create family",
+    "submitting": "Creating...",
+    "haveAccount": "Already have an account? Sign in",
+    "errors": {
+      "requiredFields": "Please fill in all required fields",
+      "termsRequired": "You need to agree to the terms to continue",
+      "passwordMismatch": "Passwords do not match",
+      "passwordTooShort": "Password must be at least 6 characters",
+      "createFailed": "Error creating account"
+    }
+  },
+  "dashboard": {
+    "subtitle": "Family financial space — calm and clarity.",
+    "clearCompleted": "Clear completed"
+  },
+  "landing": {
+    "hero": {
+      "label": "Family financial system",
+      "title": "Take care of your family finances, together.",
+      "subtitle": "Florim organizes bills, income, goals, reminders and AI insights with real-time shared data. Start free and upgrade when it makes sense.",
+      "subtitleMobile": "Bills, goals, agreements and insights in one place. Free plan, no card required.",
+      "ctaPrimary": "Create free account",
+      "ctaSecondary": "See plans",
+      "check1": "Free plan available",
+      "check2": "Cancel anytime",
+      "check3": "For the whole family",
+      "videoAlt": "Florim introduction video",
+      "videoAltDesktop": "Florim demonstration in use"
+    },
+    "problems": {
+      "title": "The same story every month.",
+      "subtitle": "Three problems every family knows — and Florim solves.",
+      "items": [
+        {
+          "headline": "Money disappears. No one knows where.",
+          "body": "Without a shared view, each family member sees only half the picture, and decisions are made in the dark."
+        },
+        {
+          "headline": "Dreams keep getting pushed to next month.",
+          "body": "Trips, renovations, school: without a visible shared goal, money always goes somewhere else first."
+        },
+        {
+          "headline": "Spreadsheets no one updates twice.",
+          "body": "They don't handle installments, need constant updating, and are forgotten after the first month."
+        }
+      ]
+    },
+    "whatsapp": {
+      "badge": "WhatsApp · with artificial intelligence",
+      "title": "Record everything on WhatsApp. In plain language.",
+      "body": "No need to open the app. Just send a message like you'd tell a friend. Florim understands and logs expenses, income, installments, goals and reminders, suggests categories and answers questions about your family's finances.",
+      "footnote": "You can also check balances, edit and delete records. The free plan has monthly limits; with Pro, the routine flows without restrictions.",
+      "examples": [
+        {
+          "msg": "Spent 50 at the supermarket",
+          "result": "Expense recorded automatically"
+        },
+        {
+          "msg": "Bought sneakers for 150 in 3 installments",
+          "result": "3 installments created in the system"
+        },
+        {
+          "msg": "Received 1500 salary",
+          "result": "Income logged for the family"
+        },
+        {
+          "msg": "Saved 200 for the trip",
+          "result": "Goal updated"
+        },
+        {
+          "msg": "How much did I spend this month?",
+          "result": "Summary sent in seconds"
+        }
+      ],
+      "mockup": {
+        "msg1User": "Spent 50 at the supermarket",
+        "msg1Bot": "✅ Created:\n💸 R$ 50.00 - supermarket\n   (Food) · paid",
+        "msg2User": "Bought sneakers for 150 in 3x",
+        "msg2Bot": "✅ Created:\n💸 R$ 150.00 - sneakers\n   (R$ 50.00 × 3 - 1st paid)",
+        "msg3User": "How much did I spend this month?",
+        "msg3Bot": "📊 May:\n💸 Expenses: R$ 200.00\n💰 Income: R$ 4,200.00\n📍 Balance: +R$ 4,000.00"
+      }
+    },
+    "features": {
+      "title": "All in one place.",
+      "subtitle": "Connected tools to record, understand and anticipate the family's financial routine.",
+      "items": [
+        {
+          "title": "Expenses",
+          "copy": "Expenses with automatic installments, status control and clear history."
+        },
+        {
+          "title": "Income",
+          "copy": "Salaries, extra income and expected entries, visible to the whole family."
+        },
+        {
+          "title": "Goals & Dreams",
+          "copy": "Goals with name and value: trip, school, renovation. Dreams stay in sight."
+        },
+        {
+          "title": "Comparisons",
+          "copy": "Bar and pie charts with monthly and yearly history to understand patterns."
+        },
+        {
+          "title": "AI Insights",
+          "copy": "Ask about your spending and get useful analysis, plus automatic insights."
+        },
+        {
+          "title": "Category Suggestions",
+          "copy": "AI suggests categories for expenses and income based on your history."
+        },
+        {
+          "title": "Recurring Records",
+          "copy": "Florim detects recurring bills and creates pending items for confirmation."
+        },
+        {
+          "title": "Reminders",
+          "copy": "Alerts by category and due date. No bill goes unnoticed."
+        },
+        {
+          "title": "Shared Family",
+          "copy": "Invite spouse, kids or parents. One subscription, real-time data for everyone."
+        },
+        {
+          "title": "Statement Import",
+          "copy": "Import CSV and OFX statements directly from your bank. Less typing, more speed."
+        },
+        {
+          "title": "Smart WhatsApp",
+          "copy": "Record, check, edit and delete entries by message, in plain language."
+        }
+      ]
+    },
+    "howItWorks": {
+      "title": "Simple to start.",
+      "subtitle": "Three steps. Five minutes. The free plan gets the family moving.",
+      "steps": [
+        {
+          "number": "01",
+          "title": "Register your family",
+          "body": "Create an account, name your family and invite anyone you want — spouse, kids, parents."
+        },
+        {
+          "number": "02",
+          "title": "Record income and expenses",
+          "body": "Log bills, installments and goals in the app, or send a message on WhatsApp."
+        },
+        {
+          "number": "03",
+          "title": "Follow along together",
+          "body": "Charts, monthly comparisons and the family balance in real time, from any device."
+        }
+      ],
+      "cta": "Start free",
+      "ctaFootnote": "Free plan available. No credit card required."
+    },
+    "pricing": {
+      "title": "Plans",
+      "subtitle": "Less than a dinner out. More than a spreadsheet.",
+      "featured": "Most popular",
+      "ctaButton": "Create free account",
+      "seeAll": "See full comparison and FAQ →",
+      "plans": [
+        {
+          "name": "Free Plan",
+          "tag": "To organize your home without commitment.",
+          "price": "0",
+          "per": "/ month",
+          "savingsBadge": null,
+          "bullets": [
+            "Expenses and Income",
+            "Goals and dreams",
+            "25 WhatsApp records/month",
+            "7 AI queries/month",
+            "3 on-demand insights/month",
+            "3 imports or exports/month"
+          ]
+        },
+        {
+          "name": "Florim Pro",
+          "tag": "For families who want unlimited automation.",
+          "price": "19.90",
+          "per": "/ month",
+          "savingsBadge": "Also available annually",
+          "bullets": [
+            "Everything in free",
+            "WhatsApp and AI with no practical limits",
+            "Unlimited import and export",
+            "Full comparative history",
+            "Smart insights and recurrences",
+            "Shared family"
+          ]
+        },
+        {
+          "name": "Pro Annual",
+          "tag": "The same Pro, with savings.",
+          "price": "189.00",
+          "per": "/ year",
+          "savingsBadge": "R$ 15.75/month · more than 2 months free",
+          "bullets": [
+            "Everything in Florim Pro",
+            "Save R$ 49.80 per year",
+            "Fixed price during contract",
+            "Priority on new features"
+          ]
+        }
+      ]
+    },
+    "origin": {
+      "label": "Our story",
+      "title": "Built by a family, for families.",
+      "body1": "Florim was born at home. Lucas, a software engineer, and Nathalia, an interior designer, realized that no existing tool treated finances as what they truly are: a conversation between people building something together.",
+      "body2": "The name comes from the fiorino d'oro, the golden coin of Florentine families in the 13th century. Solid value, based on trust. That's our reference.",
+      "quote": "Florim treats money as choice, project and human relationship.",
+      "founders": "Lucas & Nathalia Malinowski, founders"
+    },
+    "finalCta": {
+      "title": "Start today. Your family will thank you.",
+      "subtitle": "Free plan available. No credit card. Cancel anytime.",
+      "button": "Create free account"
+    }
+  }
+}

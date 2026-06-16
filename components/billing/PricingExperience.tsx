@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import PlanCheckout from '@/components/billing/PlanCheckout'
 import PublicNavbar from '@/components/layout/PublicNavbar'
 import { getAuthBearerToken } from '@/lib/billing/client'
@@ -107,6 +108,7 @@ export default function PricingExperience({
   showIntro: boolean
   requireAuth: boolean
 }) {
+  const t = useTranslations()
   const router = useRouter()
   const [step, setStep] = useState<'intro' | 'plans'>(showIntro ? 'intro' : 'plans')
   const [plans, setPlans] = useState<PlanSetting[]>([])
@@ -162,7 +164,7 @@ export default function PricingExperience({
       const eligibilityPayload = await eligibilityResponse.json().catch(() => null)
 
       if (!eligibilityResponse.ok) {
-        setMessage(eligibilityPayload?.error || 'Não foi possível carregar os planos.')
+        setMessage(eligibilityPayload?.error || t('billing.errorLoad'))
         return
       }
 
@@ -179,7 +181,7 @@ export default function PricingExperience({
       const billingPayload = await billingResponse.json().catch(() => null)
 
       if (!billingResponse.ok) {
-        setMessage(billingPayload?.error || 'Nao foi possivel verificar o acesso.')
+        setMessage(billingPayload?.error || t('billing.errorLoad'))
         return
       }
 
@@ -201,7 +203,7 @@ export default function PricingExperience({
 
       if (!token) {
         if (!cancelled) {
-          setActivationMessage('Sessão inválida. Faça login novamente.')
+          setActivationMessage(t('common.sessionExpired'))
           setWaitingForActivation(false)
         }
         return
@@ -225,7 +227,7 @@ export default function PricingExperience({
         }
 
         if (!response.ok) {
-          setActivationMessage(payload?.error || 'Falha ao confirmar a assinatura.')
+          setActivationMessage(payload?.error || t('billing.errorSubscribe'))
           setWaitingForActivation(false)
           return
         }
@@ -309,7 +311,7 @@ export default function PricingExperience({
                       }}
                       className="mt-5 w-full rounded-full bg-gold px-4 py-3 text-sm font-semibold text-sidebar disabled:opacity-60"
                     >
-                      {isAuthenticated ? 'Assinar' : 'Entrar para assinar'}
+                      {isAuthenticated ? t('billing.subscribe') : t('publicNav.login')}
                     </button>
                   </div>
                 </div>
@@ -348,13 +350,13 @@ export default function PricingExperience({
                 href="/login"
                 className="rounded-full bg-coffee px-5 py-3 text-sm font-semibold text-paper transition-vintage hover:opacity-90"
               >
-                Entrar
+                {t('publicNav.login')}
               </Link>
               <Link
                 href="/signup"
                 className="rounded-full border border-coffee px-5 py-3 text-sm font-semibold text-coffee transition-vintage hover:bg-coffee hover:text-paper"
               >
-                Criar conta
+                {t('publicNav.signup')}
               </Link>
             </div>
           ) : null}
@@ -376,9 +378,9 @@ export default function PricingExperience({
           {selectedPlan ? (
             <div className="mt-12 rounded-vintage border border-border bg-bg p-6">
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-serif text-coffee">Checkout integrado</h3>
+                <h3 className="text-lg font-serif text-coffee">{t('billing.paymentTitle')}</h3>
                 <button type="button" className="text-sm text-ink/70" onClick={() => setSelectedPlan(null)}>
-                  Fechar
+                  {t('common.close')}
                 </button>
               </div>
 
@@ -398,7 +400,7 @@ export default function PricingExperience({
             <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/35 px-4 py-6 backdrop-blur-sm">
               <div className="w-full max-w-md rounded-[24px] border border-border bg-bg px-8 py-10 text-center shadow-vintage">
                 <div className="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-4 border-sidebar/20 border-t-sidebar" />
-                <h3 className="text-2xl font-serif text-coffee">Ativando assinatura</h3>
+                <h3 className="text-2xl font-serif text-coffee">{t('billing.subscribing')}</h3>
                 <p className="mt-3 text-sm text-ink/65">{activationMessage}</p>
               </div>
             </div>
@@ -465,7 +467,7 @@ export default function PricingExperience({
                 onClick={() => setStep('plans')}
                 className="rounded-full border border-gold px-6 py-3 text-sm font-semibold text-gold transition-vintage hover:bg-gold hover:text-sidebar"
               >
-                Ver planos
+                {t('publicNav.plans')}
               </button>
             </div>
           </section>

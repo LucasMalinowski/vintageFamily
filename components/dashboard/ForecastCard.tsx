@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronUp, TrendingUp } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { supabase } from '@/lib/supabase'
 import { formatBRL } from '@/lib/money'
 
@@ -43,6 +44,7 @@ function monthName(yyyyMM: string): string {
 }
 
 export default function ForecastCard() {
+  const t = useTranslations()
   const [forecast, setForecast] = useState<ForecastResult | null>(null)
   const [anomalies, setAnomalies] = useState<AnomalyFlag[]>([])
   const [narrative, setNarrative] = useState('')
@@ -131,7 +133,7 @@ export default function ForecastCard() {
           <div className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-coffee" />
             <span className="text-[11px] font-semibold tracking-[0.15em] uppercase text-ink/50">
-              Previsão · {monthName(forecast.targetMonth)}
+              {t('forecastCard.title')} · {monthName(forecast.targetMonth)}
             </span>
           </div>
           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badge.className}`}>

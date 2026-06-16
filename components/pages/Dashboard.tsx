@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { BarChart3, Bell, Calendar, Check, Plus, PiggyBank, Receipt, Sparkles, Trash2, TrendingUp, Lightbulb } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '../AuthProvider'
@@ -200,6 +201,7 @@ function DesktopHeroCard({
 }
 
 export default function Dashboard() {
+  const t = useTranslations()
   const { displayed, cursor } = useTypewriter()
 
   // ── Vista Calma ────────────────────────────────────────────────
@@ -499,8 +501,8 @@ export default function Dashboard() {
   return (
     <>
       <Topbar
-        title="Início"
-        subtitle="Espaço financeiro familiar — calma e clareza."
+        title={t('sidebar.nav.home')}
+        subtitle={t('dashboard.subtitle')}
         accent="#3E5F4B"
         variant="textured"
         actions={
@@ -780,7 +782,7 @@ export default function Dashboard() {
                     type="button"
                     onClick={() => setIsReminderModalOpen(true)}
                     className="w-9 h-9 rounded-full bg-petrol text-white flex items-center justify-center hover:opacity-90 transition-vintage shrink-0"
-                    aria-label="Novo lembrete"
+                    aria-label={t('reminders.addReminder')}
                   >
                     <Plus className="w-4 h-4" />
                   </button>
@@ -814,13 +816,13 @@ export default function Dashboard() {
                       onClick={clearCompleted}
                       disabled={completedReminders.length === 0}
                       className="flex items-center justify-center w-8 h-8 rounded-full border border-border bg-offWhite text-ink/50 hover:text-terracotta hover:border-terracotta/40 transition-vintage disabled:cursor-not-allowed disabled:opacity-40"
-                      aria-label="Limpar concluídos"
+                      aria-label={t('dashboard.clearCompleted')}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                     <div className="pointer-events-none absolute bottom-full right-0 mb-2 hidden group-hover:block">
                       <span className="whitespace-nowrap rounded-md bg-ink/80 px-2 py-1 text-[11px] text-paper shadow-sm">
-                        Limpar concluídos
+                        {t('dashboard.clearCompleted')}
                       </span>
                     </div>
                   </div>
@@ -944,7 +946,7 @@ export default function Dashboard() {
       <Modal
         isOpen={isReminderModalOpen}
         onClose={() => setIsReminderModalOpen(false)}
-        title="Novo lembrete"
+        title={t('reminders.addReminder')}
       >
         <form onSubmit={handleCreateReminder} className="space-y-4">
           <div>
@@ -958,8 +960,8 @@ export default function Dashboard() {
               value={reminderForm.title}
               onChange={(event) => setReminderForm({ ...reminderForm, title: event.target.value })}
               className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-              placeholder="Ex: Conferir conta de água"
-              aria-label="Título do lembrete"
+              placeholder={t('reminders.descriptionPlaceholder')}
+              aria-label={t('reminders.description')}
             />
           </div>
 
@@ -970,7 +972,7 @@ export default function Dashboard() {
               type="date"
               value={reminderForm.due_date}
               onChange={(event) => setReminderForm({ ...reminderForm, due_date: event.target.value })}
-              aria-label="Data de vencimento do lembrete"
+              aria-label={t('reminders.dateAria')}
               className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
@@ -994,13 +996,13 @@ export default function Dashboard() {
               onClick={() => setIsReminderModalOpen(false)}
               className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage"
             >
-              Cancelar
+              {t('reminders.cancelButton')}
             </button>
             <button
               type="submit"
               className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg hover:bg-coffee/90 transition-vintage"
             >
-              Salvar
+              {t('reminders.saveButton')}
             </button>
           </div>
         </form>

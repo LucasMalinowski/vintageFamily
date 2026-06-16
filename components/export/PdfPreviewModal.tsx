@@ -1,6 +1,7 @@
 'use client'
 
 import Modal from '@/components/ui/Modal'
+import { useTranslations } from 'next-intl'
 
 interface PdfPreviewModalProps {
   isOpen: boolean
@@ -30,11 +31,14 @@ export default function PdfPreviewModal({
   includeSignatures = false,
   onToggleSignatures,
   onDownload,
-  downloadLabel = 'Imprimir / Salvar PDF',
-  previewLabel = 'Preview do PDF',
+  downloadLabel,
+  previewLabel,
 }: PdfPreviewModalProps) {
+  const t = useTranslations()
+  const resolvedDownloadLabel = downloadLabel ?? t('pdfPreview.download')
+  const resolvedPreviewLabel = previewLabel ?? t('pdfPreview.title')
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={title || t('pdfPreview.title')} size="xl">
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-ink/60">{summary}</p>
@@ -62,7 +66,7 @@ export default function PdfPreviewModal({
         <div className="rounded-lg border border-border bg-paper overflow-hidden">
           {pdfUrl ? (
 	            <iframe
-	              title={previewLabel}
+	              title={resolvedPreviewLabel}
 	              src={pdfUrl}
 	              sandbox="allow-downloads"
 	              className="h-[70vh] w-full"
@@ -73,7 +77,7 @@ export default function PdfPreviewModal({
             </div>
           ) : (
             <div className="flex h-[70vh] items-center justify-center text-sm text-ink/60">
-              {isGenerating ? 'Gerando pré-visualização do PDF...' : 'Clique em "Gerar PDF" para gerar a pré-visualização.'}
+              {isGenerating ? t('bankStatement.processing') : 'Clique em "Gerar PDF" para gerar a pré-visualização.'}
             </div>
           )}
         </div>
@@ -84,7 +88,7 @@ export default function PdfPreviewModal({
             onClick={onClose}
             className="rounded-full border border-border bg-bg px-4 py-3 text-sm font-medium text-ink/70 transition-vintage hover:bg-offWhite"
           >
-            Fechar
+            {t('pdfPreview.close')}
           </button>
           <button
             type="button"
@@ -92,7 +96,7 @@ export default function PdfPreviewModal({
             disabled={!pdfUrl || isGenerating}
             className="rounded-full border border-sidebar bg-bg px-5 py-3 text-sm font-semibold text-coffee disabled:opacity-60"
           >
-            {downloadLabel}
+            {resolvedDownloadLabel}
           </button>
         </div>
       </div>

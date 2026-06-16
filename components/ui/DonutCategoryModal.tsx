@@ -3,6 +3,7 @@
 import { Fragment, useState } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { X, Calendar, MousePointer2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { formatBRL } from '@/lib/money'
 import { formatDate } from '@/lib/dates'
 import type { DonutSlice } from '@/components/ui/DonutChart'
@@ -42,6 +43,7 @@ function DonutSvg({
   selectedLabel: string | null
   onSelect: (label: string) => void
 }) {
+  const t = useTranslations()
   const r = 64
   const cx = 80
   const cy = 80
@@ -96,7 +98,7 @@ function DonutSvg({
         </>
       ) : (
         <>
-          <text x={cx} y={cy - 8} textAnchor="middle" fontSize="10" fill="#2F3B33" fillOpacity=".5" fontFamily="Inter,sans-serif">Total</text>
+          <text x={cx} y={cy - 8} textAnchor="middle" fontSize="10" fill="#2F3B33" fillOpacity=".5" fontFamily="Inter,sans-serif">{t('donutModal.total')}</text>
           <text x={cx} y={cy + 8} textAnchor="middle" fontSize="14" fill="#2F3B33" fontWeight="700" fontFamily="Inter,sans-serif">{center}</text>
         </>
       )}
@@ -113,6 +115,7 @@ export default function DonutCategoryModal({
   getCategoryLabel = (_id, name) => name,
   getCatRailColor = () => '#3E5F4B',
 }: DonutCategoryModalProps) {
+  const t = useTranslations()
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
   const centerText = formatBRL(total).replace('R$ ', '')
@@ -147,8 +150,8 @@ export default function DonutCategoryModal({
             >
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-5 border-b border-border shrink-0">
-                <Dialog.Title className="font-serif text-[20px] text-coffee">Despesas por categoria</Dialog.Title>
-                <button type="button" onClick={onClose} className="text-ink/40 hover:text-ink transition-vintage">
+                <Dialog.Title className="font-serif text-[20px] text-coffee">{t('donutModal.title')}</Dialog.Title>
+                <button type="button" onClick={onClose} aria-label={t('donutModal.close')} className="text-ink/40 hover:text-ink transition-vintage">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -205,7 +208,7 @@ export default function DonutCategoryModal({
                             {formatBRL(selectedSlice.value)}
                           </p>
                           <p className="text-[12px] text-ink/50 mt-0.5">
-                            {selectedSlice.pct}% do total · {filteredExpenses.length} lançamento{filteredExpenses.length !== 1 ? 's' : ''}
+                            {t('donutModal.percent', { value: selectedSlice.pct })} · {t('donutModal.items', { count: filteredExpenses.length })}
                           </p>
                         </div>
                       </div>

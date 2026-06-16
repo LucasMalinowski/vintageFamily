@@ -57,6 +57,7 @@ import PdfPreviewModal from '@/components/export/PdfPreviewModal'
 import { usePlan } from '@/lib/billing/plan-context'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
+import { useTranslations } from 'next-intl'
 
 type PaymentMethod = 'PIX' | 'Credito' | 'Debito' | 'ValeAlimentacao' | 'Dinheiro' | 'Cheque' | 'Transferência'
 
@@ -69,6 +70,7 @@ interface DonutExpensePanelProps {
 }
 
 function DonutExpensePanel({ slices, total, expenses, getCategoryLabel, getCatRailColor }: DonutExpensePanelProps) {
+  const t = useTranslations()
   const [modalOpen, setModalOpen] = useState(false)
   const centerText = formatBRL(total).replace('R$ ', '').replace('R$ ', '')
 
@@ -80,7 +82,7 @@ function DonutExpensePanel({ slices, total, expenses, getCategoryLabel, getCatRa
           onClick={() => setModalOpen(true)}
         >
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-serif text-[16px] text-coffee">Por categoria</h3>
+            <h3 className="font-serif text-[16px] text-coffee">{t('expenses.donutTitle')}</h3>
             <Maximize2 className="w-3.5 h-3.5 text-ink/35" />
           </div>
           <DonutChart slices={slices} center={centerText} showLegend={false} />
@@ -94,7 +96,7 @@ function DonutExpensePanel({ slices, total, expenses, getCategoryLabel, getCatRa
               </div>
             ))}
             {slices.length > 4 && (
-              <p className="text-[11px] text-ink/40 pt-0.5">+ {slices.length - 4} outras categorias</p>
+              <p className="text-[11px] text-ink/40 pt-0.5">+ {t('expenses.moreCategories', { count: slices.length - 4 })}</p>
             )}
           </div>
         </div>
@@ -183,6 +185,7 @@ function isDateInBillingPeriod(date: string, month: number, year: number, cycleD
 }
 
 export default function Expenses() {
+  const t = useTranslations()
   const { familyId, user } = useAuth()
   const { tier } = usePlan()
   const isFreeTier = tier === 'free'
@@ -916,14 +919,14 @@ export default function Expenses() {
     ...(selectedCategoryId
       ? [{
           key: 'category',
-          label: getCategoryLabel(selectedCategoryId, 'Categoria'),
+          label: getCategoryLabel(selectedCategoryId, t('expenses.category')),
           onRemove: () => setSelectedCategoryId(''),
         }]
       : []),
     ...(selectedStatus
       ? [{
           key: 'status',
-          label: selectedStatus === 'paid' ? 'Pago' : 'Em aberto',
+          label: selectedStatus === 'paid' ? t('expenses.statusPaid') : t('expenses.statusOpen'),
           onRemove: () => setSelectedStatus(''),
         }]
       : []),
@@ -1100,8 +1103,8 @@ export default function Expenses() {
   return (
     <div className="flex flex-col h-full md:min-h-screen">
       <Topbar
-        title="Contas a Pagar"
-        subtitle="Compromissos honrados constroem segurança."
+        title={t('expenses.title')}
+        subtitle={t('expenses.motivationalSubtitle')}
         accent="#B05C3A"
         variant="textured"
       />
@@ -1129,7 +1132,7 @@ export default function Expenses() {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Buscar..."
+                  placeholder={t('expenses.search')}
                   autoFocus
                   aria-label="Buscar despesas"
                   className="h-[38px] w-full rounded-[10px] border border-border bg-bg pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-petrol/30"
@@ -1199,7 +1202,7 @@ export default function Expenses() {
                   <Download className="w-4 h-4 text-ink/60" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-ink">Importar extrato</p>
+                  <p className="text-sm font-medium text-ink">{t('expenses.importBank')}</p>
                   <p className="text-xs text-ink/45">OFX, CSV de banco</p>
                 </div>
               </button>
@@ -1226,7 +1229,7 @@ export default function Expenses() {
                   <FileDown className="w-4 h-4 text-ink/60" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-ink">Exportar CSV</p>
+                  <p className="text-sm font-medium text-ink">{t('expenses.exportCsv')}</p>
                   <p className="text-xs text-ink/45">Planilha com os dados</p>
                 </div>
               </button>
@@ -1240,7 +1243,7 @@ export default function Expenses() {
                   <FileText className="w-4 h-4 text-ink/60" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-ink">Exportar PDF</p>
+                  <p className="text-sm font-medium text-ink">{t('expenses.exportPdf')}</p>
                   <p className="text-xs text-ink/45">Relatório para imprimir</p>
                 </div>
               </button>
@@ -1267,7 +1270,7 @@ export default function Expenses() {
           <input
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Buscar por nome, categoria ou valor..."
+            placeholder={t('expenses.search')}
             aria-label="Buscar por nome ou categoria"
             className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none"
           />
@@ -1277,13 +1280,13 @@ export default function Expenses() {
           <Tag className="w-4 h-4" /> Categorias
         </button>
         <button type="button" onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage">
-          <Download className="w-4 h-4" /> Importar
+          <Download className="w-4 h-4" /> {t('expenses.importBank')}
         </button>
         <button type="button" onClick={handleExportPdf} disabled={!sortedExpenses.length || exportingFormat !== null} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage disabled:opacity-40">
-          <Upload className="w-4 h-4" /> Exportar
+          <Upload className="w-4 h-4" /> {t('expenses.exportPdf')}
         </button>
         <button type="button" onClick={() => openModal()} className="flex items-center gap-1.5 h-[38px] px-4 rounded-[10px] text-white text-[13px] font-semibold transition-vintage" style={{ background: '#B05C3A' }}>
-          <Plus className="w-4 h-4" /> Nova despesa
+          <Plus className="w-4 h-4" /> {t('expenses.addExpense')}
         </button>
       </div>
 
@@ -1299,7 +1302,7 @@ export default function Expenses() {
               <div className="min-w-[160px] max-w-[260px]">
                 <Select
                   variant="filter"
-                  label="Categoria"
+                  label={t('expenses.category')}
                   value={selectedCategoryId}
                   onChange={setSelectedCategoryId}
                   options={[{ value: '', label: 'Todas' }, ...categoryOptions]}
@@ -1308,16 +1311,16 @@ export default function Expenses() {
               <div className="min-w-[160px]">
                 <Select
                   variant="filter"
-                  label="Status"
+                  label={t('expenses.status')}
                   value={selectedStatus}
                   onChange={setSelectedStatus}
-                  options={[{ value: '', label: 'Todos' }, { value: 'paid', label: 'Pago' }, { value: 'open', label: 'Em aberto' }]}
+                  options={[{ value: '', label: 'Todos' }, { value: 'paid', label: t('expenses.statusPaid') }, { value: 'open', label: t('expenses.statusOpen') }]}
                 />
               </div>
               <div className="min-w-[160px]">
                 <Select
                   variant="filter"
-                  label="Método"
+                  label={t('expenses.method')}
                   value={selectedPaymentMethod}
                   onChange={setSelectedPaymentMethod}
                   options={[{ value: '', label: 'Todos' }, { value: 'PIX', label: 'PIX' }, { value: 'Credito', label: 'Crédito' }, { value: 'Debito', label: 'Débito' }, { value: 'ValeAlimentacao', label: 'Vale Alimentação' }, { value: 'Dinheiro', label: 'Dinheiro' }, { value: 'Cheque', label: 'Cheque' }, { value: 'Transferência', label: 'Transferência' }]}
@@ -1355,7 +1358,7 @@ export default function Expenses() {
             {!loading && filteredExpenses.length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                 <AnalyticsKpiCard
-                  label="Total de Despesas"
+                  label={t('expenses.kpiTotal')}
                   value={formatBRL(total)}
                   sub={totalDeltaPct != null ? `${totalDeltaPct >= 0 ? '↑' : '↓'} ${Math.abs(totalDeltaPct)}% vs ${prevMonthLabel}` : undefined}
                   subNegative={totalDeltaPct != null && totalDeltaPct > 0}
@@ -1363,7 +1366,7 @@ export default function Expenses() {
                   icon={Receipt}
                 />
                 <AnalyticsKpiCard
-                  label="Pagas"
+                  label={t('expenses.kpiPaid')}
                   value={formatBRL(paid)}
                   sub={total > 0 ? `${Math.round((paid / total) * 100)}% do total` : undefined}
                   subPositive
@@ -1371,7 +1374,7 @@ export default function Expenses() {
                   icon={CheckCircle2}
                 />
                 <AnalyticsKpiCard
-                  label="Em aberto"
+                  label={t('expenses.kpiOpen')}
                   value={formatBRL(open)}
                   sub={total > 0 ? `${Math.round((open / total) * 100)}% do total` : undefined}
                   iconTheme="orange"
@@ -1388,7 +1391,7 @@ export default function Expenses() {
             )}
 
             {loading ? (
-              <div className="text-center py-12 text-ink/60">Carregando…</div>
+              <div className="text-center py-12 text-ink/60">{t('common.loading')}</div>
             ) : filteredExpenses.length === 0 ? (
               <EmptyState
                 icon={<Receipt className="w-16 h-16" />}
@@ -1511,7 +1514,7 @@ export default function Expenses() {
                                     onDelete={() => handleDelete(expense.id)}
                                     onAttach={(file) => handleAttachExpense(expense, file)}
                                     onToggleStatus={() => handleTogglePaid(expense)}
-                                    toggleStatusLabel={isPaid ? 'Marcar como Em aberto' : 'Marcar como Pago'}
+                                    toggleStatusLabel={isPaid ? t('expenses.markAsOpen') : t('expenses.markAsPaid')}
                                     disabled={isUpdating}
                                   />
                                 </div>
@@ -1519,11 +1522,11 @@ export default function Expenses() {
                                 {/* Row 2: status badge + date */}
                                 <div className="flex items-center justify-between">
                                   {isPaid ? (
-                                    <span className="rounded-full bg-olive/15 px-2.5 py-0.5 text-[11px] font-semibold text-olive">Pago</span>
+                                    <span className="rounded-full bg-olive/15 px-2.5 py-0.5 text-[11px] font-semibold text-olive">{t('expenses.statusPaid')}</span>
                                   ) : isPending ? (
                                     <span className="rounded-full bg-petrol/10 border border-petrol/30 px-2.5 py-0.5 text-[11px] font-semibold text-petrol">Aguardando confirmação</span>
                                   ) : (
-                                    <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600">Em aberto</span>
+                                    <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600">{t('expenses.statusOpen')}</span>
                                   )}
                                   <div className="flex items-center gap-1 text-ink/50 text-[11px]">
                                     <Calendar className="w-3.5 h-3.5" />
@@ -1648,7 +1651,7 @@ export default function Expenses() {
                                     onDelete={() => handleDelete(expense.id)}
                                     onAttach={(file) => handleAttachExpense(expense, file)}
                                     onToggleStatus={() => handleTogglePaid(expense)}
-                                    toggleStatusLabel={isPaid ? 'Marcar como Em aberto' : 'Marcar como Pago'}
+                                    toggleStatusLabel={isPaid ? t('expenses.markAsOpen') : t('expenses.markAsPaid')}
                                     disabled={isUpdating}
                                   />
                                 </div>
@@ -1684,11 +1687,11 @@ export default function Expenses() {
       <div className="md:hidden shrink-0 px-[18px] pt-3 pb-2 border-t border-border bg-offWhite">
         <div className="flex flex-row gap-3">
           <div className="flex-1 rounded-[16px] px-4 py-4 bg-petrol text-white text-center shadow-soft">
-            <div className="text-xs uppercase tracking-wide text-white/80 mb-1">Em aberto</div>
+            <div className="text-xs uppercase tracking-wide text-white/80 mb-1">{t('expenses.kpiOpen')}</div>
             <div className="font-numbers text-xl font-medium">{formatBRL(open)}</div>
           </div>
           <div className="flex-1 rounded-[16px] px-4 py-4 bg-olive text-white text-center shadow-soft">
-            <div className="text-xs uppercase tracking-wide text-white/80 mb-1">Pago</div>
+            <div className="text-xs uppercase tracking-wide text-white/80 mb-1">{t('expenses.kpiPaid')}</div>
             <div className="font-numbers text-xl font-medium">{formatBRL(paid)}</div>
           </div>
         </div>
@@ -1729,14 +1732,14 @@ export default function Expenses() {
       <RightDrawer
         isOpen={isModalOpen}
         onClose={closeModal}
-        title={editingExpense ? 'Editar Despesa' : 'Nova Despesa'}
-        subtitle="Compromissos honrados constroem segurança."
+        title={editingExpense ? t('expenses.editExpense') : t('expenses.addExpense')}
+        subtitle={t('expenses.motivationalSubtitle')}
         accent="#B05C3A"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="expense-description" className="block font-body text-ink mb-2">
-              Descrição <span className="text-terracotta">*</span>
+              {t('expenses.description')} <span className="text-terracotta">*</span>
             </label>
             <input
               id="expense-description"
@@ -1746,7 +1749,7 @@ export default function Expenses() {
               onChange={(e) => { const v = e.target.value; setFormData(prev => ({ ...prev, description: v })) }}
               aria-label="Descrição da despesa"
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-              placeholder="Ex: Conta de luz"
+              placeholder={t('expenses.descriptionPlaceholder')}
             />
             {suggestedCategoryId && !formData.categoryId && categoryLabelMap.get(suggestedCategoryId) && (
               <button
@@ -1763,7 +1766,7 @@ export default function Expenses() {
 
           <div>
             <label htmlFor="expense-amount" className="block font-body text-ink mb-2">
-              Valor <span className="text-terracotta">*</span>
+              {t('expenses.amount')} <span className="text-terracotta">*</span>
             </label>
             <CurrencyInput
               id="expense-amount"
@@ -1776,7 +1779,7 @@ export default function Expenses() {
 
           <div>
             <label htmlFor="expense-date" className="block font-body text-ink mb-2">
-              Data <span className="text-terracotta">*</span>
+              {t('expenses.date')} <span className="text-terracotta">*</span>
             </label>
             <input
               id="expense-date"
@@ -1790,7 +1793,7 @@ export default function Expenses() {
           </div>
 
           <Select
-            label="Categoria"
+            label={t('expenses.category')}
             value={formData.categoryId}
             onChange={(v) => setFormData({ ...formData, categoryId: v })}
             options={categoryOptions}
@@ -1828,7 +1831,7 @@ export default function Expenses() {
           })()}
 
           <div>
-            <span className="block font-body text-ink mb-2">Método</span>
+            <span className="block font-body text-ink mb-2">{t('expenses.method')}</span>
             <div className="flex flex-wrap gap-2">
               {(['PIX', 'Credito', 'Debito', 'ValeAlimentacao', 'Dinheiro', 'Cheque', 'Transferência'] as PaymentMethod[]).map((method) => (
                 <button
@@ -1849,7 +1852,7 @@ export default function Expenses() {
 
           {formData.paymentMethod === 'Credito' ? (
             <Select
-              label="Parcelas"
+              label={t('expenses.installments')}
               value={String(formData.installments)}
               onChange={(value) => setFormData({ ...formData, installments: parseInt(value, 10) || 1 })}
               options={Array.from({ length: 12 }, (_, index) => {
@@ -1896,7 +1899,7 @@ export default function Expenses() {
                 onChange={(e) => setFormData({ ...formData, status: e.target.checked ? 'paid' : 'open' })}
                 className="w-5 h-5 rounded border-border"
               />
-              <span className="text-sm font-body text-ink">Marcar como pago</span>
+              <span className="text-sm font-body text-ink">{t('expenses.markAsPaid')}</span>
             </label>
           </div>
 
@@ -1909,12 +1912,12 @@ export default function Expenses() {
                   onChange={(e) => setFormData({ ...formData, isRecurring: e.target.checked })}
                   className="w-5 h-5 rounded border-border"
                 />
-                <span className="text-sm font-body text-ink">Despesa recorrente</span>
+                <span className="text-sm font-body text-ink">{t('expenses.recurring')}</span>
               </label>
               {formData.isRecurring && (
                 <div className="space-y-3 pl-7">
                   <Select
-                    label="Recorrência"
+                    label={t('expenses.recurrence')}
                     value={formData.recurrenceFrequency}
                     onChange={(v) => setFormData({ ...formData, recurrenceFrequency: v })}
                     options={RECURRENCE_OPTIONS}
@@ -1965,13 +1968,13 @@ export default function Expenses() {
               onClick={closeModal}
               className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage"
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               className="flex-1 px-4 py-3 bg-sidebar text-paper rounded-lg hover:bg-sidebar/90 transition-vintage"
             >
-              Salvar
+              {t('common.save')}
             </button>
           </div>
         </form>
@@ -1981,16 +1984,16 @@ export default function Expenses() {
         isOpen={!!deleteConfirmId}
         onClose={() => setDeleteConfirmId(null)}
         onConfirm={confirmDelete}
-        title="Excluir despesa"
+        title={t('expenses.confirmDelete')}
         message="Esta despesa será removida permanentemente. Esta ação não pode ser desfeita."
-        confirmLabel="Excluir"
+        confirmLabel={t('expenses.deleteButton')}
         loading={deleting}
       />
 
       <Modal
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
-        title="Detalhes da despesa"
+        title={t('expenses.detailsTitle')}
       >
         {detailExpense && (() => {
           const { attachmentUrl, cleanNotes } = parseLegacyAttachment(detailExpense.notes)
@@ -1998,12 +2001,12 @@ export default function Expenses() {
           return (
             <div className="space-y-3 text-sm text-ink/70">
               <div>
-                <p className="text-xs uppercase tracking-wide text-ink/50">Descrição</p>
+                <p className="text-xs uppercase tracking-wide text-ink/50">{t('expenses.description')}</p>
                 <p className="text-base text-ink">{detailExpense.description}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-ink/50">Categoria</p>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">{t('expenses.category')}</p>
                   <CategoryPathStack
                     label={getCategoryLabel(detailExpense.category_id, detailExpense.category_name)}
                     icon={detailExpense.category_id ? categoryIconMap.get(detailExpense.category_id) : null}
@@ -2011,20 +2014,20 @@ export default function Expenses() {
                   />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-ink/50">Data</p>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">{t('expenses.date')}</p>
                   <p>{formatDate(detailExpense.date)}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-ink/50">Status</p>
-                  <p>{detailExpense.status === 'paid' ? 'Pago' : detailExpense.status === 'pending_confirmation' ? 'Aguardando confirmação' : 'Em aberto'}</p>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">{t('expenses.status')}</p>
+                  <p>{detailExpense.status === 'paid' ? t('expenses.statusPaid') : detailExpense.status === 'pending_confirmation' ? 'Aguardando confirmação' : t('expenses.statusOpen')}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-ink/50">Método</p>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">{t('expenses.method')}</p>
                   <p>{formatPaymentLabel(detailExpense.payment_method, detailExpense.installments)}</p>
                 </div>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-ink/50">Observação</p>
+                <p className="text-xs uppercase tracking-wide text-ink/50">{t('expenses.notes')}</p>
                 <p>{cleanNotes || '-'}</p>
               </div>
               <div>

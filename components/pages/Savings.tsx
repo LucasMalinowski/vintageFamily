@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { format } from 'date-fns'
 import Topbar from '@/components/layout/Topbar'
 import AnalyticsKpiCard from '@/components/ui/AnalyticsKpiCard'
@@ -110,6 +111,7 @@ const emptyTxForm = () => ({
 })
 
 export default function Savings() {
+  const t = useTranslations()
   const { familyId, user } = useAuth()
   const [savings, setSavings] = useState<Saving[]>([])
   const [contributions, setContributions] = useState<Contribution[]>([])
@@ -532,8 +534,8 @@ export default function Savings() {
     <>
       <div className="flex flex-col h-full md:min-h-screen">
         <Topbar
-          title="Objetivos"
-          subtitle="Transforme planos em conquistas acompanháveis."
+          title={t('savings.title')}
+          subtitle={t('savings.topbarSubtitle')}
           accent="#3F6E7A"
           variant="textured"
         />
@@ -618,8 +620,8 @@ export default function Savings() {
                     <TrendingUp className="w-4 h-4 text-ink/60" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-ink">Guardar no objetivo</p>
-                    <p className="text-xs text-ink/45">Registrar depósito</p>
+                    <p className="text-sm font-medium text-ink">{t('savings.depositMenuLabel')}</p>
+                    <p className="text-xs text-ink/45">{t('savings.depositMenuDesc')}</p>
                   </div>
                 </button>
                 <button
@@ -631,8 +633,8 @@ export default function Savings() {
                     <TrendingDown className="w-4 h-4 text-ink/60" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-ink">Resgatar do objetivo</p>
-                    <p className="text-xs text-ink/45">Registrar retirada</p>
+                    <p className="text-sm font-medium text-ink">{t('savings.withdrawalMenuLabel')}</p>
+                    <p className="text-xs text-ink/45">{t('savings.withdrawalMenuDesc')}</p>
                   </div>
                 </button>
                 <button
@@ -644,8 +646,8 @@ export default function Savings() {
                     <Tag className="w-4 h-4 text-ink/60" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-ink">Objetivos</p>
-                    <p className="text-xs text-ink/45">Gerenciar objetivos</p>
+                    <p className="text-sm font-medium text-ink">{t('savings.title')}</p>
+                    <p className="text-xs text-ink/45">{t('savings.manageGoalsDesc')}</p>
                   </div>
                 </button>
                 <button
@@ -658,8 +660,8 @@ export default function Savings() {
                     <FileDown className="w-4 h-4 text-ink/60" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-ink">Exportar CSV</p>
-                    <p className="text-xs text-ink/45">Planilha com os dados</p>
+                    <p className="text-sm font-medium text-ink">{t('savings.exportCsv')}</p>
+                    <p className="text-xs text-ink/45">{t('savings.exportCsvDesc')}</p>
                   </div>
                 </button>
                 <button
@@ -672,8 +674,8 @@ export default function Savings() {
                     <FileText className="w-4 h-4 text-ink/60" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-ink">Exportar PDF</p>
-                    <p className="text-xs text-ink/45">Relatório para imprimir</p>
+                    <p className="text-sm font-medium text-ink">{t('savings.exportPdf')}</p>
+                    <p className="text-xs text-ink/45">{t('savings.exportPdfDesc')}</p>
                   </div>
                 </button>
               </div>
@@ -696,17 +698,17 @@ export default function Savings() {
           </button>
           <div className="flex items-center h-[38px] bg-white border border-border rounded-[10px] px-3 gap-2 flex-1 max-w-[380px]">
             <Search className="w-4 h-4 text-petrol shrink-0" />
-            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Buscar por nome ou objetivo..." aria-label="Buscar por nome ou objetivo" className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none" />
+            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder={t('savings.searchPlaceholder')} aria-label={t('savings.searchPlaceholder')} className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none" />
           </div>
           <div className="flex-1" />
           <button type="button" onClick={() => setIsSavingSettingsOpen(true)} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage">
-            <Tag className="w-4 h-4" /> Objetivos
+            <Tag className="w-4 h-4" /> {t('savings.title')}
           </button>
           <button type="button" onClick={handleExportPdf} disabled={!visibleSavings.length || exportingFormat !== null} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage disabled:opacity-40">
-            <Upload className="w-4 h-4" /> Exportar
+            <Upload className="w-4 h-4" /> {t('savings.exportButton')}
           </button>
           <button type="button" onClick={() => setIsSavingSettingsOpen(true)} className="flex items-center gap-1.5 h-[38px] px-4 rounded-[10px] text-white text-[13px] font-semibold transition-vintage" style={{ background: '#3F6E7A' }}>
-            <Plus className="w-4 h-4" /> Novo objetivo
+            <Plus className="w-4 h-4" /> {t('savings.addGoal')}
           </button>
         </div>
 
@@ -722,7 +724,7 @@ export default function Savings() {
               <div className="min-w-[160px] max-w-[260px]">
                 <Select
                   variant="filter"
-                  label="Objetivo"
+                  label={t('savings.goalLabel')}
                   value={selectedSavingId}
                   onChange={setSelectedSavingId}
                   options={[{ value: '', label: 'Todos' }, ...savingOptions]}
@@ -754,7 +756,7 @@ export default function Savings() {
                 />
                 <Select
                   variant="filter"
-                  label="Objetivo"
+                  label={t('savings.goalLabel')}
                   value={selectedSavingId}
                   onChange={setSelectedSavingId}
                   options={[{ value: '', label: 'Todos' }, ...savingOptions]}
@@ -769,14 +771,14 @@ export default function Savings() {
                   {/* Row 1: current state */}
                   <div className="grid grid-cols-2 gap-3">
                     <AnalyticsKpiCard
-                      label="Saldo atual"
+                      label={t('savings.kpiBalance')}
                       value={formatBRL(totalBalance)}
                       iconTheme="teal"
                       icon={PiggyBank}
                     />
                     {globalProgressPct != null ? (
                       <AnalyticsKpiCard
-                        label="Meta global"
+                        label={t('savings.kpiGlobalTarget')}
                         value={`${Math.min(globalProgressPct, 100)}%`}
                         sub={`de ${formatBRL(globalTarget)}`}
                         iconTheme="orange"
@@ -784,9 +786,9 @@ export default function Savings() {
                       />
                     ) : (
                       <AnalyticsKpiCard
-                        label="Objetivos"
+                        label={t('savings.kpiGoalsCount')}
                         value={String(savings.filter(s => !s.parent_id).length)}
-                        sub="objetivos ativos"
+                        sub={t('savings.kpiGoalsActive')}
                         iconTheme="blue"
                         icon={Folder}
                       />
@@ -796,14 +798,14 @@ export default function Savings() {
                   {/* Row 2: period activity */}
                   <div className="grid grid-cols-2 gap-3">
                     <AnalyticsKpiCard
-                      label="Aportes no mês"
+                      label={t('savings.kpiDeposits')}
                       value={formatBRL(periodDeposits)}
                       iconTheme="green"
                       icon={TrendingUp}
                       small
                     />
                     <AnalyticsKpiCard
-                      label="Resgates no mês"
+                      label={t('savings.kpiWithdrawals')}
                       value={formatBRL(periodWithdrawals)}
                       iconTheme="red"
                       icon={TrendingDown}
@@ -871,7 +873,7 @@ export default function Savings() {
                             <div className="flex-1 min-w-0">
                               <p className="font-serif text-[17px] text-coffee font-medium leading-tight">{savingNode.name}</p>
                               <p className="text-[11.5px] text-ink/50 mt-1">
-                                {savingNode.target_cents ? `Meta ${formatBRL(savingNode.target_cents)}` : 'Sem meta'}
+                                {savingNode.target_cents ? `${t('savings.targetAmount')} ${formatBRL(savingNode.target_cents)}` : t('savings.noTarget')}
                                 {lastDep > 0 ? ` · última + ${formatBRL(lastDep)}` : ''}
                               </p>
                             </div>
@@ -950,14 +952,14 @@ export default function Savings() {
                                   <p className="text-[10px] text-ink/40 tabular-nums">de {formatBRL(saving.target_cents)}</p>
                                 </>
                               ) : (
-                                <p className="text-xs text-ink/30">Sem meta</p>
+                                <p className="text-xs text-ink/30">{t('savings.noTarget')}</p>
                               )}
                             </div>
                             <button
                               type="button"
                               onClick={() => openEdit(saving)}
                               className="w-8 h-8 flex items-center justify-center rounded-lg text-ink/35 hover:text-petrol hover:bg-petrol/10 transition-vintage"
-                              title="Editar meta"
+                              title={t('savings.editTargetTooltip')}
                             >
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
@@ -1001,20 +1003,20 @@ export default function Savings() {
       <PdfPreviewModal
         isOpen={isPdfModalOpen}
         onClose={closePdfModal}
-        title="Preview do PDF"
+        title={t('common.pdfPreviewTitle')}
         summary={exportSubtitle}
         pdfUrl={pdfUrl}
         isGenerating={pdfGenerating}
         onDownload={downloadPreviewPdf}
-        downloadLabel="Imprimir ou salvar"
-        previewLabel="Preview do PDF"
+        downloadLabel={t('common.pdfDownloadLabel')}
+        previewLabel={t('common.pdfPreviewTitle')}
       />
 
       {/* Guardar drawer */}
-      <RightDrawer isOpen={isDepositOpen} onClose={() => { setIsDepositOpen(false); setDepositForm(emptyTxForm()) }} title="Guardar no Objetivo" subtitle="Cada aporte deixa o plano mais perto." accent="#3F6E7A">
+      <RightDrawer isOpen={isDepositOpen} onClose={() => { setIsDepositOpen(false); setDepositForm(emptyTxForm()) }} title={t('savings.depositTitle')} subtitle={t('savings.depositSubtitle')} accent="#3F6E7A">
         <form onSubmit={handleDepositSubmit} className="space-y-4">
           <Select
-            label="Objetivo"
+            label={t('savings.goalLabel')}
             value={depositForm.savingId}
             onChange={(value) => setDepositForm({ ...depositForm, savingId: value })}
             options={savingOptions}
@@ -1023,7 +1025,7 @@ export default function Savings() {
           />
           <div>
             <label htmlFor="deposit-amount" className="block font-serif font-body text-ink mb-2">
-              Valor (R$) <span className="text-terracotta">*</span>
+              {t('savings.contributionAmount')} <span className="text-terracotta">*</span>
             </label>
             <CurrencyInput
               id="deposit-amount"
@@ -1048,33 +1050,33 @@ export default function Savings() {
             />
           </div>
           <div>
-            <label htmlFor="deposit-notes" className="block font-serif font-body text-ink mb-2">Observação</label>
+            <label htmlFor="deposit-notes" className="block font-serif font-body text-ink mb-2">{t('savings.notes')}</label>
             <textarea
               id="deposit-notes"
               value={depositForm.notes}
               onChange={(e) => setDepositForm({ ...depositForm, notes: e.target.value })}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 resize-none"
               rows={3}
-              placeholder="Notas adicionais..."
+              placeholder={t('savings.notesPlaceholder')}
               aria-label="Observação do depósito"
             />
           </div>
           <div className="flex gap-3 pt-4">
             <button type="button" onClick={() => { setIsDepositOpen(false); setDepositForm(emptyTxForm()) }} className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage">
-              Cancelar
+              {t('savings.cancelButton')}
             </button>
             <button type="submit" className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg hover:bg-coffee/90 transition-vintage">
-              Guardar
+              {t('savings.contribute')}
             </button>
           </div>
         </form>
       </RightDrawer>
 
       {/* Resgatar drawer */}
-      <RightDrawer isOpen={isWithdrawalOpen} onClose={() => { setIsWithdrawalOpen(false); setWithdrawalForm(emptyTxForm()) }} title="Resgatar do Objetivo" subtitle="Use o que foi planejado quando chegar a hora." accent="#3F6E7A">
+      <RightDrawer isOpen={isWithdrawalOpen} onClose={() => { setIsWithdrawalOpen(false); setWithdrawalForm(emptyTxForm()) }} title={t('savings.withdrawalTitle')} subtitle={t('savings.withdrawalSubtitle')} accent="#3F6E7A">
         <form onSubmit={handleWithdrawalSubmit} className="space-y-4">
           <Select
-            label="Objetivo"
+            label={t('savings.goalLabel')}
             value={withdrawalForm.savingId}
             onChange={(value) => setWithdrawalForm({ ...withdrawalForm, savingId: value })}
             options={savingOptions}
@@ -1108,23 +1110,23 @@ export default function Savings() {
             />
           </div>
           <div>
-            <label htmlFor="withdrawal-notes" className="block font-serif font-body text-ink mb-2">Observação</label>
+            <label htmlFor="withdrawal-notes" className="block font-serif font-body text-ink mb-2">{t('savings.notes')}</label>
             <textarea
               id="withdrawal-notes"
               value={withdrawalForm.notes}
               onChange={(e) => setWithdrawalForm({ ...withdrawalForm, notes: e.target.value })}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 resize-none"
               rows={3}
-              placeholder="Motivo do resgate..."
-              aria-label="Motivo do resgate"
+              placeholder={t('savings.withdrawalReasonPlaceholder')}
+              aria-label={t('savings.withdrawalReasonPlaceholder')}
             />
           </div>
           <div className="flex gap-3 pt-4">
             <button type="button" onClick={() => { setIsWithdrawalOpen(false); setWithdrawalForm(emptyTxForm()) }} className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage">
-              Cancelar
+              {t('savings.cancelButton')}
             </button>
             <button type="submit" className="flex-1 px-4 py-3 bg-terracotta text-paper rounded-lg hover:bg-terracotta/90 transition-vintage">
-              Resgatar
+              {t('savings.contribute')}
             </button>
           </div>
         </form>
@@ -1135,13 +1137,13 @@ export default function Savings() {
         isOpen={!!detailsSaving}
         onClose={() => { setDetailsSaving(null); setDetailsContributions([]) }}
         title={detailsSaving ? getSavingLabel(detailsSaving.id) : ''}
-        subtitle="Movimentações deste objetivo."
+        subtitle={t('savings.transactionsSubtitle')}
         accent="#3F6E7A"
       >
         {detailsLoading ? (
-          <div className="text-center py-8 text-ink/60">Carregando…</div>
+          <div className="text-center py-8 text-ink/60">{t('common.loading')}</div>
         ) : detailsContributions.length === 0 ? (
-          <div className="text-center py-8 text-ink/50 text-sm">Nenhuma movimentação registrada.</div>
+          <div className="text-center py-8 text-ink/50 text-sm">{t('savings.noTransactions')}</div>
         ) : (
           <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
             {detailsContributions.map((c) => (
@@ -1173,14 +1175,14 @@ export default function Savings() {
       <RightDrawer
         isOpen={!!editingSaving}
         onClose={() => setEditingSaving(null)}
-        title="Editar Objetivo"
-        subtitle="Ajuste o nome ou a meta do objetivo."
+        title={t('savings.editGoal')}
+        subtitle={t('savings.editSubtitle')}
         accent="#3F6E7A"
       >
         <form onSubmit={handleEditSavingSubmit} className="space-y-4">
           <div>
             <label htmlFor="saving-name" className="block font-serif font-body text-ink mb-2">
-              Nome <span className="text-terracotta">*</span>
+              {t('savings.name')} <span className="text-terracotta">*</span>
             </label>
             <input
               id="saving-name"
@@ -1193,21 +1195,21 @@ export default function Savings() {
             />
           </div>
           <div>
-            <label htmlFor="saving-target" className="block font-serif font-body text-ink mb-2">Meta (R$)</label>
+            <label htmlFor="saving-target" className="block font-serif font-body text-ink mb-2">{t('savings.targetAmount')} (R$)</label>
             <CurrencyInput
               id="saving-target"
               value={editForm.target}
               onChange={(v) => setEditForm({ ...editForm, target: v })}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-              placeholder="Sem meta definida"
+              placeholder={t('savings.noTargetPlaceholder')}
             />
           </div>
           <div className="flex gap-3 pt-4">
             <button type="button" onClick={() => setEditingSaving(null)} className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage">
-              Cancelar
+              {t('savings.cancelButton')}
             </button>
             <button type="submit" className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg hover:bg-coffee/90 transition-vintage">
-              Salvar
+              {t('savings.saveButton')}
             </button>
           </div>
         </form>

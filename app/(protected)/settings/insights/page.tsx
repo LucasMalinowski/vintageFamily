@@ -7,10 +7,12 @@ import { usePlan } from '@/lib/billing/plan-context'
 import Modal from '@/components/ui/Modal'
 import Link from 'next/link'
 import { Lock } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 export default function InsightsSettingsPage() {
   const { user } = useAuth()
   const { tier } = usePlan()
+  const t = useTranslations()
   const hasFullInsightAccess = tier === 'paid' || tier === 'trial'
 
   const [insightsEnabled, setInsightsEnabled] = useState(true)
@@ -64,14 +66,14 @@ export default function InsightsSettingsPage() {
     setTimeout(() => setSaved(false), 2000)
   }
 
-  if (loading) return <div className="py-12 text-center text-ink/50 text-sm">Carregando…</div>
+  if (loading) return <div className="py-12 text-center text-ink/50 text-sm">{t('settings.insights.loading')}</div>
 
   return (
     <div className="space-y-6 max-w-lg">
       <div>
-        <h2 className="text-lg font-serif text-ink">Preferências de Insights</h2>
+        <h2 className="text-lg font-serif text-ink">{t('settings.insights.title')}</h2>
         <p className="text-sm text-ink/60 mt-1">
-          Configure como e quando receber análises inteligentes das suas finanças.
+          {t('settings.insights.subtitle')}
         </p>
       </div>
 
@@ -79,13 +81,13 @@ export default function InsightsSettingsPage() {
       <div className="bg-bg border border-border rounded-vintage p-5 space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-ink">Insights proativos</p>
-            <p className="text-xs text-ink/50 mt-0.5">Receber análises automáticas periodicamente</p>
+            <p className="text-sm font-medium text-ink">{t('settings.insights.proactive.title')}</p>
+            <p className="text-xs text-ink/50 mt-0.5">{t('settings.insights.proactive.desc')}</p>
           </div>
           <button
             type="button"
             onClick={() => setInsightsEnabled((v) => !v)}
-            aria-label={insightsEnabled ? 'Desativar insights automáticos' : 'Ativar insights automáticos'}
+            aria-label={insightsEnabled ? t('settings.insights.proactive.disableLabel') : t('settings.insights.proactive.enableLabel')}
             aria-pressed={insightsEnabled}
             className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
               insightsEnabled ? 'bg-coffee' : 'bg-border'
@@ -101,7 +103,7 @@ export default function InsightsSettingsPage() {
 
         {!insightsEnabled && (
           <p className="text-xs text-ink/40 bg-paper rounded p-2">
-            Você não receberá insights automáticos. Você ainda pode pedir insights sob demanda.
+            {t('settings.insights.proactive.disabledNote')}
           </p>
         )}
       </div>
@@ -111,16 +113,16 @@ export default function InsightsSettingsPage() {
         <div className="flex items-start justify-between gap-2">
           <div>
             <div className="flex items-center gap-1.5">
-              <p className="text-sm font-medium text-ink">Frequência</p>
+              <p className="text-sm font-medium text-ink">{t('settings.insights.frequency.title')}</p>
               {!hasFullInsightAccess && <Lock className="w-3.5 h-3.5 text-gold" />}
             </div>
             <p className="text-xs text-ink/50 mt-0.5">
-              {hasFullInsightAccess ? 'Com que frequência você quer receber' : 'Disponível no plano Pro'}
+              {hasFullInsightAccess ? t('settings.insights.frequency.availableDesc') : t('settings.insights.frequency.lockedDesc')}
             </p>
           </div>
           <select
             value={intervalDays}
-            aria-label="Frequência de insights"
+            aria-label={t('settings.insights.frequency.title')}
             onChange={(e) => {
               if (!hasFullInsightAccess) { setUpsellOpen(true); return }
               setIntervalDays(Number(e.target.value))
@@ -133,29 +135,29 @@ export default function InsightsSettingsPage() {
             }`}
             disabled={!hasFullInsightAccess}
           >
-            <option value={7}>Semanal</option>
-            <option value={14}>Quinzenal</option>
-            <option value={30}>Mensal</option>
+            <option value={7}>{t('settings.insights.frequency.weekly')}</option>
+            <option value={14}>{t('settings.insights.frequency.biweekly')}</option>
+            <option value={30}>{t('settings.insights.frequency.monthly')}</option>
           </select>
         </div>
         <p className="text-xs text-ink/30">
           {hasFullInsightAccess
             ? intervalDays === 7
-              ? 'Insights a cada semana.'
+              ? t('settings.insights.frequency.noteWeekly')
               : intervalDays === 14
-                ? 'Insights a cada 2 semanas.'
-                : 'Insights uma vez por mês.'
-            : 'Plano gratuito: 1 análise automática por mês, com previsão para o mês seguinte.'}
+                ? t('settings.insights.frequency.noteBiweekly')
+                : t('settings.insights.frequency.noteMonthly')
+            : t('settings.insights.frequency.noteFreeTier')}
         </p>
       </div>
 
       {/* Channels */}
       <div className="bg-bg border border-border rounded-vintage p-5 space-y-3">
-        <p className="text-sm font-medium text-ink">Canais de entrega</p>
+        <p className="text-sm font-medium text-ink">{t('settings.insights.channels.title')}</p>
         <div className="space-y-2">
           {[
-            { value: 'whatsapp', label: 'WhatsApp', desc: 'Enviar no WhatsApp vinculado' },
-            { value: 'email', label: 'E-mail', desc: 'Enviar no e-mail da conta' },
+            { value: 'whatsapp', label: t('settings.insights.channels.whatsappLabel'), desc: t('settings.insights.channels.whatsappDesc') },
+            { value: 'email', label: t('settings.insights.channels.emailLabel'), desc: t('settings.insights.channels.emailDesc') },
           ].map(({ value, label, desc }) => (
             <label key={value} className="flex items-center gap-3 cursor-pointer">
               <input
@@ -179,30 +181,30 @@ export default function InsightsSettingsPage() {
         disabled={saving}
         className="bg-coffee text-paper px-5 py-2.5 rounded-lg font-body hover:bg-coffee/90 transition-vintage disabled:opacity-50 text-sm"
       >
-        {saved ? 'Salvo!' : saving ? 'Salvando...' : 'Salvar preferências'}
+        {saved ? t('settings.insights.saved') : saving ? t('settings.insights.saving') : t('settings.insights.save')}
       </button>
 
       {/* Upsell modal */}
-      <Modal isOpen={upsellOpen} onClose={() => setUpsellOpen(false)} title="Recurso Pro">
+      <Modal isOpen={upsellOpen} onClose={() => setUpsellOpen(false)} title={t('settings.insights.upsell.title')}>
         <div className="space-y-4">
           <p className="text-sm text-ink/70">
-            A configuração de frequência de insights é exclusiva do teste gratuito e do plano <strong>Florim Pro</strong>. Com ele você escolhe receber análises semanal, quinzenal ou mensalmente.
+            {t('settings.insights.upsell.body')}
           </p>
           <p className="text-sm text-ink/70">
-            No plano gratuito, você recebe 1 análise automática por mês, com previsão para o mês seguinte.
+            {t('settings.insights.upsell.freeNote')}
           </p>
           <Link
             href="/settings/billing"
             className="block w-full text-center py-3 bg-coffee text-paper rounded-lg text-sm font-semibold hover:bg-coffee/90 transition-vintage"
           >
-            Ver planos - a partir de R$19,90/mês
+            {t('settings.insights.upsell.cta')}
           </Link>
           <button
             type="button"
             onClick={() => setUpsellOpen(false)}
             className="block w-full text-center py-2 text-sm text-ink/50 hover:text-ink transition-vintage"
           >
-            Continuar no plano gratuito
+            {t('settings.insights.upsell.freeCta')}
           </button>
         </div>
       </Modal>

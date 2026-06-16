@@ -11,52 +11,9 @@ import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { getSidebarCollapsedStorageKey, LOCAL_STORAGE_KEYS } from '@/lib/storage'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 /* eslint-disable react-hooks/set-state-in-effect */
-
-const menuItems = [
-  { icon: Home, label: 'Início', href: '/inicio' },
-  { icon: BanknoteArrowUp, label: 'Contas a Pagar', href: '/expenses' },
-  { icon: BanknoteArrowDown, label: 'Contas a Receber', href: '/incomes' },
-  { icon: PiggyBank, label: 'Objetivos', href: '/savings' },
-  { icon: ChartColumnBig, label: 'Comparativos', href: '/comparatives' },
-  { icon: Bell, label: 'Lembretes', href: '/reminders' },
-  { icon: Lightbulb, label: 'Insights', href: '/insights' },
-  { icon: Info, label: 'Sobre', href: '/sobre' },
-]
-
-const dailyPhrases = [
-  'Cuidar do dinheiro da casa é cuidar do tempo juntos.',
-  'Cada pequena economia vira calma no coração da família.',
-  'Planejar as contas é abrir espaço para os abraços.',
-  'Nossa mesa fica mais leve quando o orçamento é claro.',
-  'Guardar um pouco hoje é proteger o amanhã de quem amamos.',
-  'Conversar sobre gastos é um ato de cuidado.',
-  'A tranquilidade financeira começa com união.',
-  'Quando a casa se organiza, o amor respira melhor.',
-  'O dinheiro bem cuidado vira tempo de qualidade.',
-  'Sonhos de família cabem quando caminhamos juntos.',
-  'Equilíbrio nas contas, harmonia no lar.',
-  'O orçamento é o mapa da nossa paz.',
-  'Cada escolha consciente fortalece nossa casa.',
-  'A segurança da família nasce de pequenos combinados.',
-  'Organizar o mês é guardar carinho para os dias difíceis.',
-  'O cuidado financeiro é uma forma de dizer "estou aqui".',
-  'Dividir responsabilidades é multiplicar confiança.',
-  'Combinados claros evitam preocupações desnecessárias.',
-  'O futuro da família se constrói com gentileza e atenção.',
-  'Objetivo é o amanhã ganhando forma.',
-  'Uma casa bem cuidada começa na conversa.',
-  'Priorizar juntos é proteger o que importa.',
-  'Economizar sem culpa é escolher o que traz paz.',
-  'Planejar é permitir que os sonhos encontrem lugar.',
-  'A leveza do lar vem da transparência.',
-  'Dinheiro alinhado, coração tranquilo.',
-  'Cuidar das contas é cuidar das pessoas.',
-  'Todo mês organizado deixa espaço para o afeto.',
-  'O amor também mora nos detalhes do orçamento.',
-  'Juntos, o que parecia pesado fica possível.',
-]
 
 const getDayOfYear = (date: Date) => {
   const start = new Date(date.getFullYear(), 0, 0)
@@ -67,6 +24,7 @@ const getDayOfYear = (date: Date) => {
 export default function Sidebar() {
   const pathname = usePathname()
   const { signOut, familyId, user } = useAuth()
+  const t = useTranslations()
   const [isOpen, setIsOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [hasLoadedCollapsedState, setHasLoadedCollapsedState] = useState(false)
@@ -74,10 +32,23 @@ export default function Sidebar() {
   const [familyNameLoading, setFamilyNameLoading] = useState(false)
   const [familyNameError, setFamilyNameError] = useState(false)
   const sidebarCollapsed = user?.id ? isCollapsed : false
+
+  const menuItems = [
+    { icon: Home, label: t('sidebar.nav.home'), href: '/inicio' },
+    { icon: BanknoteArrowUp, label: t('sidebar.nav.expenses'), href: '/expenses' },
+    { icon: BanknoteArrowDown, label: t('sidebar.nav.incomes'), href: '/incomes' },
+    { icon: PiggyBank, label: t('sidebar.nav.savings'), href: '/savings' },
+    { icon: ChartColumnBig, label: t('sidebar.nav.comparatives'), href: '/comparatives' },
+    { icon: Bell, label: t('sidebar.nav.reminders'), href: '/reminders' },
+    { icon: Lightbulb, label: t('sidebar.nav.insights'), href: '/insights' },
+    { icon: Info, label: t('sidebar.nav.about'), href: '/sobre' },
+  ]
+
   const dailyPhrase = useMemo(() => {
-    const dayIndex = getDayOfYear(new Date()) % dailyPhrases.length
-    return dailyPhrases[dayIndex]
-  }, [])
+    const phrases = t.raw('sidebar.dailyPhrases') as string[]
+    const dayIndex = getDayOfYear(new Date()) % phrases.length
+    return phrases[dayIndex]
+  }, [t])
 
   useEffect(() => {
     const loadFamilyName = async () => {
@@ -203,9 +174,9 @@ export default function Sidebar() {
           <Image src="/logo.png" alt="Logo Florim" width={56} height={56} className={`${sidebarCollapsed ? 'w-12 h-12' : 'w-14 h-14'} object-contain`} />
           {!sidebarCollapsed && (
             <div>
-              <h2 className="text-white font-serif text-lg">Família</h2>
+              <h2 className="text-white font-serif text-lg">{t('sidebar.family')}</h2>
               <p className="text-white/70 text-sm">
-                {familyNameError ? 'Falha ao carregar' : familyNameLoading ? 'Carregando...' : familyName || 'Sem nome'}
+                {familyNameError ? t('sidebar.loadError') : familyNameLoading ? t('sidebar.loading') : familyName || t('sidebar.noName')}
               </p>
             </div>
           )}
@@ -265,11 +236,11 @@ export default function Sidebar() {
             hidden md:flex items-center rounded-lg transition-vintage text-white/80 hover:bg-white/10 hover:text-white mb-2
             ${sidebarCollapsed ? 'justify-center w-full px-2 py-3' : 'gap-3 px-4 py-3 w-full'}
           `}
-          title={sidebarCollapsed ? 'Expandir menu' : undefined}
-          aria-label={sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+          title={sidebarCollapsed ? t('sidebar.expand') : undefined}
+          aria-label={sidebarCollapsed ? t('sidebar.expandLabel') : t('sidebar.collapseLabel')}
         >
           {sidebarCollapsed ? <ArrowRightToLine className="w-5 h-5" /> : <ArrowLeftToLine className="w-5 h-5" />}
-          {!sidebarCollapsed && <span className="font-body text-sm">Recolher menu</span>}
+          {!sidebarCollapsed && <span className="font-body text-sm">{t('sidebar.collapse')}</span>}
         </button>
         <button
           type="button"
@@ -277,17 +248,17 @@ export default function Sidebar() {
             signOut()
             setIsOpen(false)
           }}
-          title={sidebarCollapsed ? 'Sair' : undefined}
+          title={sidebarCollapsed ? t('sidebar.signOut') : undefined}
           className={`
             group flex items-center w-full text-white/80 hover:bg-white/10 hover:text-white rounded-lg transition-vintage
             ${sidebarCollapsed ? 'justify-center px-2 py-3' : 'gap-3 px-4 py-3'}
           `}
         >
           <LogOut className="w-5 h-5" />
-          {!sidebarCollapsed && <span className="font-body text-sm">Sair</span>}
+          {!sidebarCollapsed && <span className="font-body text-sm">{t('sidebar.signOut')}</span>}
           {sidebarCollapsed && (
             <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-md bg-paper px-2 py-1 text-xs text-ink shadow-vintage opacity-0 group-hover:opacity-100 transition-vintage z-50">
-              Sair
+              {t('sidebar.signOut')}
             </span>
           )}
         </button>

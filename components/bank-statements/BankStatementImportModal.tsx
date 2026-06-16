@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Download, ExternalLink, FileUp, Landmark, Loader2, X } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import { useAuth } from '@/components/AuthProvider'
@@ -120,6 +121,7 @@ const buildInitialReviewItems = (items: ImportPreviewItem[]): ReviewedImportItem
     }))
 
 export default function BankStatementImportModal({ isOpen, onClose, onImported }: Props) {
+  const t = useTranslations()
   const { familyId } = useAuth()
   const [selectedBank, setSelectedBank] = useState<BankId>('itau')
   const [file, setFile] = useState<File | null>(null)
@@ -366,10 +368,10 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
               <table className="min-w-full text-left text-sm">
                 <thead className="sticky top-0 bg-bg text-ink/65">
                 <tr>
-                  <th className="px-3 py-2">Data</th>
-                  <th className="px-3 py-2">Descrição</th>
+                  <th className="px-3 py-2">{t('bankStatement.columnDate')}</th>
+                  <th className="px-3 py-2">{t('bankStatement.columnDescription')}</th>
                   <th className="px-3 py-2">Tipo</th>
-                  <th className="px-3 py-2">Valor</th>
+                  <th className="px-3 py-2">{t('bankStatement.columnAmount')}</th>
                   <th className="px-3 py-2">Confiança</th>
                 </tr>
                 </thead>
@@ -422,7 +424,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                       className="inline-flex items-center gap-2 rounded-md bg-petrol px-4 py-2 text-sm font-semibold text-white disabled:opacity-70"
                   >
                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
-                    Confirmar importação
+                    {loading ? t('bankStatement.importing') : t('bankStatement.import')}
                   </button>
                 </div>
               </div>
@@ -457,11 +459,11 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                 <thead className="sticky top-0 bg-bg text-ink/65">
                 <tr>
                   <th className="px-3 py-2">Ignorar</th>
-                  <th className="px-3 py-2">Data</th>
-                  <th className="px-3 py-2">Descrição</th>
+                  <th className="px-3 py-2">{t('bankStatement.columnDate')}</th>
+                  <th className="px-3 py-2">{t('bankStatement.columnDescription')}</th>
                   <th className="px-3 py-2">Tipo</th>
-                  <th className="px-3 py-2">Categoria</th>
-                  <th className="px-3 py-2">Valor</th>
+                  <th className="px-3 py-2">{t('bankStatement.columnCategory')}</th>
+                  <th className="px-3 py-2">{t('bankStatement.columnAmount')}</th>
                   <th className="px-3 py-2">Sinais</th>
                 </tr>
                 </thead>
@@ -555,7 +557,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
   }
 
   return (
-      <Modal isOpen={isOpen} onClose={resetAndClose} title="Importar extrato bancário" size="xl">
+      <Modal isOpen={isOpen} onClose={resetAndClose} title={t('bankStatement.title')} size="xl">
         <div className="flex flex-col gap-4 lg:grid lg:h-[72vh] lg:overflow-hidden lg:grid-cols-[220px,minmax(0,1fr)]">
           {/* Desktop only: bank list sidebar */}
           <section className="hidden rounded-2xl border border-border bg-bg p-4 lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden">
@@ -761,10 +763,8 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
                   {file
-                      ? 'Analisar arquivo'
-                      : tutorial.preferredImportFormat === 'ofx'
-                          ? 'Selecionar extrato OFX'
-                          : 'Selecionar extrato CSV'}
+                      ? (loading ? t('bankStatement.processing') : t('bankStatement.preview'))
+                      : t('bankStatement.upload')}
                 </button>
               </div>
 
@@ -796,9 +796,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                     <>
                       <span className="lg:hidden">Nenhum arquivo selecionado.</span>
                       <span className="hidden lg:inline">
-                        {tutorial.preferredImportFormat === 'ofx'
-                            ? 'Arraste o arquivo OFX para cá ou use o botão de seleção.'
-                            : 'Arraste o arquivo CSV para cá ou use o botão de seleção.'}
+                        {t('bankStatement.dragDrop')}
                       </span>
                     </>
                 )}

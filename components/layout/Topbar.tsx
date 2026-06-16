@@ -10,6 +10,7 @@ import { getAuthBearerToken, getBillingMe } from '@/lib/billing/client'
 import ProfileSheet from '@/components/layout/ProfileSheet'
 import ForecastSheet from '@/components/layout/ForecastSheet'
 import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
+import { useTranslations } from 'next-intl'
 
 const PAGE_ICONS: Record<string, React.ElementType> = {
   '/inicio': Home,
@@ -46,6 +47,7 @@ export default function Topbar({
   const router = useRouter()
   const pathname = usePathname()
   const { user, familyId } = useAuth()
+  const t = useTranslations()
   const PageIcon = showBackButton ? null : (PAGE_ICONS[pathname] ?? null)
   const [userName, setUserName] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
@@ -195,7 +197,7 @@ export default function Topbar({
                   type="button"
                   onClick={() => router.back()}
                   className="w-[34px] h-[34px] rounded-[9px] bg-coffee/[0.09] flex items-center justify-center text-coffee shrink-0 hover:bg-coffee/[0.15] transition-vintage"
-                  aria-label="Voltar"
+                  aria-label={t('topbar.ariaBack')}
                 >
                   <ChevronLeft className="w-[20px] h-[20px]" />
                 </button>
@@ -226,14 +228,14 @@ export default function Topbar({
               {actions && <div>{actions}</div>}
               {trialDaysLeft !== null && trialDaysLeft > 0 && (
                 <div className="hidden md:flex rounded-full border border-coffee/20 bg-paper px-3 py-1 text-xs font-semibold text-coffee">
-                  {trialDaysLeft} dias de teste restantes
+                  {t('topbar.trialDaysLeft', { count: trialDaysLeft })}
                 </div>
               )}
               <button
                 type="button"
                 onClick={() => setForecastOpen(true)}
                 className="text-coffee hover:text-coffee/80 transition-vintage"
-                aria-label="Previsão do próximo mês"
+                aria-label={t('topbar.ariaForecast')}
               >
                 <TrendingUp className="w-5 h-5" />
               </button>
@@ -241,7 +243,7 @@ export default function Topbar({
                 type="button"
                 onClick={() => router.push('/reminders')}
                 className="text-coffee hover:text-coffee/80 transition-vintage"
-                aria-label="Abrir lembretes"
+                aria-label={t('topbar.ariaReminders')}
               >
                 <Bell className="w-6 h-6" />
               </button>
@@ -251,7 +253,7 @@ export default function Topbar({
                 type="button"
                 onClick={() => setProfileSheetOpen(true)}
                 className="flex md:hidden w-8 h-8 rounded-full bg-[#B05C3A] items-center justify-center shrink-0"
-                aria-label="Abrir perfil"
+                aria-label={t('topbar.ariaProfile')}
               >
                 {avatarUrl ? (
                   <Image src={avatarUrl} alt="Avatar" width={32} height={32} className="w-full h-full rounded-full object-cover" />
@@ -267,7 +269,7 @@ export default function Topbar({
                 type="button"
                 onClick={() => router.push('/settings')}
                 className="hidden sm:inline-flex text-coffee hover:text-coffee/80 transition-vintage"
-                aria-label="Abrir configurações"
+                aria-label={t('topbar.ariaSettings')}
               >
                 <Settings className="w-6 h-6" />
               </button>
@@ -280,7 +282,7 @@ export default function Topbar({
                   type="button"
                   onClick={() => setProfileOpen(prev => !prev)}
                   className="flex items-center gap-2 border border-border rounded-full py-1 pl-1 pr-3 hover:bg-paper transition-vintage"
-                  aria-label="Abrir perfil"
+                  aria-label={t('topbar.ariaProfile')}
                 >
                   <div className="relative w-7 h-7 rounded-full flex items-center justify-center overflow-hidden shrink-0 bg-[#B05C3A]">
                     {avatarUrl ? (
@@ -307,9 +309,9 @@ export default function Topbar({
                 {profileOpen && (
                   <div className="absolute right-0 mt-2 w-44 rounded-xl border border-border bg-paper shadow-lg z-50 py-1 overflow-hidden">
                     {[
-                      { label: 'Perfil', href: '/settings/profile' },
-                      { label: 'Família', href: '/settings/family' },
-                      { label: 'Assinatura', href: '/settings/billing' },
+                      { label: t('topbar.dropdown.profile'), href: '/settings/profile' },
+                      { label: t('topbar.dropdown.family'), href: '/settings/family' },
+                      { label: t('topbar.dropdown.billing'), href: '/settings/billing' },
                     ].map(({ label, href }) => (
                       <button
                         type="button"
@@ -330,12 +332,12 @@ export default function Topbar({
         {filters && (
           <div className="mb-6 rounded-[20px] border px-4 py-2 bg-bg">
             <div className="flex items-center justify-between md:hidden mb-3">
-              <span className="text-xs uppercase tracking-wide text-ink/50">Filtros</span>
+              <span className="text-xs uppercase tracking-wide text-ink/50">{t('topbar.filters')}</span>
               <button
                 type="button"
                 onClick={() => setFiltersOpen((prev) => !prev)}
                 className="text-petrol hover:text-petrol/80 transition-vintage"
-                aria-label="Alternar filtros"
+                aria-label={t('topbar.ariaToggleFilters')}
               >
                 <ChevronDown className={`w-4 h-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
               </button>

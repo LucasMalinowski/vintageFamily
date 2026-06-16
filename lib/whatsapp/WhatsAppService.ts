@@ -1,3 +1,7 @@
+import { getWhatsAppMessages } from '@/lib/whatsapp/messages'
+import { META_TEMPLATE_LANGUAGE } from '@/lib/whatsapp/localeMapping'
+import type { AppLocale } from '@/lib/i18n/getLocale'
+
 export class WhatsAppService {
   private token: string
   private apiUrl: string
@@ -154,13 +158,9 @@ export class WhatsAppService {
     return { buffer, mimeType }
   }
 
-  async sendPrivacyNotice(to: string): Promise<void> {
+  async sendPrivacyNotice(to: string, locale?: AppLocale | null): Promise<void> {
     const appUrl = 'https://florim.app'
-    await this.sendTextMessage(
-      to,
-      `> 🔒 Em conformidade com a *LGPD*, seus dados são tratados com total segurança pelo *Florim*. Nenhuma informação é compartilhada com terceiros.\n` +
-      `> 📄 Termos e Política de Privacidade: ${appUrl}/termos-e-servicos`
-    )
+    await this.sendTextMessage(to, getWhatsAppMessages(locale).privacyNotice(appUrl))
   }
 
   /**
@@ -188,12 +188,14 @@ export class WhatsAppService {
     return data.id
   }
 
-  async sendWelcomeTips(to: string): Promise<void> {
-    await this.sendTemplateMessage(to, 'florim_welcome_tips', [])
+  async sendWelcomeTips(to: string, locale?: AppLocale | null): Promise<void> {
+    const langCode = META_TEMPLATE_LANGUAGE[locale ?? 'pt-BR'] ?? 'pt_BR'
+    await this.sendTemplateMessage(to, 'florim_welcome_tips', [], langCode)
   }
 
-  async sendAuthOtp(to: string, code: string): Promise<{ messageId: string | null }> {
+  async sendAuthOtp(to: string, code: string, locale?: AppLocale | null): Promise<{ messageId: string | null }> {
     const recipient = to.replace(/\D/g, '')
+    const langCode = META_TEMPLATE_LANGUAGE[locale ?? 'pt-BR'] ?? 'pt_BR'
 
     const response = await fetch(this.apiUrl, {
       method: 'POST',
@@ -207,7 +209,7 @@ export class WhatsAppService {
         type: 'template',
         template: {
           name: 'florim_otp',
-          language: { code: 'pt_BR' },
+          language: { code: langCode },
           components: [
             {
               type: 'body',
@@ -228,10 +230,7 @@ export class WhatsAppService {
       const errorBody = await response.json().catch(() => ({}))
       // Fall back to plain text if template fails (e.g., during dev without approved template)
       if (errorBody?.error?.code === 132001 || errorBody?.error?.code === 132000) {
-        return this.sendTextMessage(
-          to,
-          `Seu código de verificação do Florim é: *${code}*\nVálido por 10 minutos. Não compartilhe este código.`
-        )
+        return this.sendTextMessage(to, getWhatsAppMessages(locale).otpFallback(code))
       }
       throw new Error(`WhatsApp API error ${response.status}: ${JSON.stringify(errorBody)}`)
     }

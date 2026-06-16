@@ -1,16 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-
-export const metadata: Metadata = {
-  title: { absolute: 'Florim - Gestão financeira familiar' },
-  description: 'Cuide das finanças da família, juntos. Despesas, sonhos, combinados e insights com IA num só lugar. Plano gratuito, sem cartão.',
-  alternates: { canonical: '/' },
-  openGraph: {
-    title: 'Florim - Gestão financeira familiar',
-    description: 'Cuide das finanças da família, juntos. Comece grátis.',
-    url: 'https://florim.app',
-  },
-}
 import {
   BanknoteArrowDown,
   BanknoteArrowUp,
@@ -30,155 +19,31 @@ import {
 import PublicNavbar from '@/components/layout/PublicNavbar'
 import PublicFooter from '@/components/layout/PublicFooter'
 import Typewriter from '@/components/Typewriter'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 
-// ── Data ─────────────────────────────────────────────────────────────────────
+export const metadata: Metadata = {
+  title: { absolute: 'Florim - Gestão financeira familiar' },
+  description: 'Cuide das finanças da família, juntos. Despesas, sonhos, combinados e insights com IA num só lugar. Plano gratuito, sem cartão.',
+  alternates: { canonical: '/' },
+  openGraph: {
+    title: 'Florim - Gestão financeira familiar',
+    description: 'Cuide das finanças da família, juntos. Comece grátis.',
+    url: 'https://florim.app',
+  },
+}
 
-const PROBLEMS = [
-  {
-    headline: 'O dinheiro vai embora. Ninguém sabe para onde.',
-    body: 'Sem uma visão compartilhada, cada membro da família enxerga metade, e as decisões acontecem no escuro.',
-  },
-  {
-    headline: 'Os sonhos ficam sempre para o próximo mês.',
-    body: 'Viagem, reforma, escola: sem uma meta visível e em comum, o dinheiro sempre vai para outro lugar antes de chegar lá.',
-  },
-  {
-    headline: 'Planilha ninguém atualiza duas vezes.',
-    body: 'Elas não se adaptam a parcelas, pedem atualização constante e são esquecidas depois do primeiro mês.',
-  },
-]
-
-const WA_EXAMPLES = [
-  { msg: 'Gastei 50 no mercado no pix', result: 'Despesa registrada automaticamente' },
-  { msg: 'Comprei um tênis de 150 em 3x', result: '3 parcelas criadas no sistema' },
-  { msg: 'Recebi 1500 de salário', result: 'Receita lançada na família' },
-  { msg: 'Guardei 200 para a viagem', result: 'Objetivo atualizado' },
-  { msg: 'Quanto gastei esse mês?', result: 'Resumo enviado em segundos' },
-]
-
-const FEATURES = [
-  {
-    icon: BanknoteArrowDown,
-    title: 'Despesas',
-    copy: 'Despesas com parcelamento automático, controle de status e histórico claro.',
-  },
-  {
-    icon: BanknoteArrowUp,
-    title: 'Receitas',
-    copy: 'Salários, rendas extras e entradas previstas, visíveis para toda a família.',
-  },
-  {
-    icon: PiggyBank,
-    title: 'Objetivos & Sonhos',
-    copy: 'Metas com nome e valor: viagem, escola, reforma. Os sonhos ficam à vista.',
-  },
-  {
-    icon: ChartColumnBig,
-    title: 'Comparativos',
-    copy: 'Gráficos de barras e pizza com histórico mensal e anual para entender padrões.',
-  },
-  {
-    icon: Lightbulb,
-    title: 'Insights com IA',
-    copy: 'Pergunte sobre seus gastos e receba análises úteis, além de insights automáticos.',
-  },
-  {
-    icon: Tags,
-    title: 'Sugestão de Categorias',
-    copy: 'A IA sugere categorias para despesas e receitas conforme seu histórico.',
-  },
-  {
-    icon: Repeat2,
-    title: 'Registros Recorrentes',
-    copy: 'O Florim detecta contas que se repetem e cria pendências para confirmação.',
-  },
-  {
-    icon: Bell,
-    title: 'Lembretes',
-    copy: 'Alertas por categoria e vencimento. Nenhuma conta passa em branco.',
-  },
-  {
-    icon: Users,
-    title: 'Família Compartilhada',
-    copy: 'Convide cônjuge, filhos ou pais. Uma assinatura, dados em tempo real para todos.',
-  },
-  {
-    icon: FileUp,
-    title: 'Importação de Extratos',
-    copy: 'Importe extratos em CSV e OFX direto do banco. Menos digitação, mais agilidade.',
-  },
-  {
-    icon: WandSparkles,
-    title: 'WhatsApp Inteligente',
-    copy: 'Registre, consulte, edite e apague lançamentos por mensagem, em linguagem natural.',
-  },
-]
-
-const STEPS = [
-  {
-    number: '01',
-    title: 'Cadastre sua família',
-    body: 'Crie uma conta, dê um nome para a família e convide quem quiser, cônjuge, filhos, pais.',
-  },
-  {
-    number: '02',
-    title: 'Registre receitas e despesas',
-    body: 'Lance contas, parcelas e objetivos no app, ou mande uma mensagem no WhatsApp.',
-  },
-  {
-    number: '03',
-    title: 'Acompanhe juntos',
-    body: 'Gráficos, comparativos mensais e saldo da família em tempo real, de qualquer dispositivo.',
-  },
-]
-
-const PLANS = [
-  {
-    name: 'Plano Gratuito',
-    tag: 'Para organizar a casa sem compromisso.',
-    price: '0',
-    per: '/ mês',
-    featured: false,
-    savingsBadge: null,
-    bullets: [
-      'Despesas e Receitas',
-      'Objetivos e sonhos',
-      '25 registros por WhatsApp/mês',
-      '7 consultas com IA/mês',
-      '3 insights sob demanda/mês',
-      '3 importações ou exportações/mês',
-    ],
-  },
-  {
-    name: 'Florim Pro',
-    tag: 'Para famílias que querem automação sem limite.',
-    price: '19,90',
-    per: '/ mês',
-    featured: false,
-    savingsBadge: 'Também disponível no anual',
-    bullets: [
-      'Tudo do gratuito',
-      'WhatsApp e IA sem limite prático',
-      'Importação e exportação ilimitadas',
-      'Histórico comparativo completo',
-      'Insights e recorrências inteligentes',
-      'Família compartilhada',
-    ],
-  },
-  {
-    name: 'Pro Anual',
-    tag: 'O mesmo Pro, com economia.',
-    price: '189,00',
-    per: '/ ano',
-    featured: true,
-    savingsBadge: 'R$ 15,75/mês · mais de 2 meses grátis',
-    bullets: [
-      'Tudo do Florim Pro',
-      'Economia de R$ 49,80 no ano',
-      'Preço fixo durante o contrato',
-      'Prioridade em novas funcionalidades',
-    ],
-  },
+const FEATURE_ICONS = [
+  BanknoteArrowDown,
+  BanknoteArrowUp,
+  PiggyBank,
+  ChartColumnBig,
+  Lightbulb,
+  Tags,
+  Repeat2,
+  Bell,
+  Users,
+  FileUp,
+  WandSparkles,
 ]
 
 // ── WhatsApp chat mockup ──────────────────────────────────────────────────────
@@ -203,7 +68,7 @@ function WaMessage({ from, text, time }: { from: 'user' | 'bot'; text: string; t
   )
 }
 
-function WhatsAppMockup() {
+function WhatsAppMockup({ msgs }: { msgs: { msg1User: string; msg1Bot: string; msg2User: string; msg2Bot: string; msg3User: string; msg3Bot: string } }) {
   return (
     <div className="relative w-full max-w-[380px] mx-auto md:max-w-[420px] md:mx-0 md:ml-auto">
       {/* Glow */}
@@ -222,36 +87,12 @@ function WhatsAppMockup() {
         </div>
         {/* Chat area */}
         <div className="px-3 py-4 space-y-2.5 min-h-[320px]">
-          <WaMessage
-            from="user"
-            text="Gastei 50 no mercado no pix"
-            time="09:41"
-          />
-          <WaMessage
-            from="bot"
-            text={`✅ Criados:\n💸 R$ 50,00 - mercado\n   (Alimentação) · pago`}
-            time="09:41"
-          />
-          <WaMessage
-            from="user"
-            text="Comprei tênis de 150 em 3x"
-            time="09:43"
-          />
-          <WaMessage
-            from="bot"
-            text={`✅ Criados:\n💸 R$ 150,00 - tênis\n   (R$ 50,00 × 3 - 1ª paga)`}
-            time="09:43"
-          />
-          <WaMessage
-            from="user"
-            text="Quanto gastei esse mês?"
-            time="09:45"
-          />
-          <WaMessage
-            from="bot"
-            text={`📊 Maio:\n💸 Despesas: R$ 200,00\n💰 Receitas: R$ 4.200,00\n📍 Saldo: +R$ 4.000,00`}
-            time="09:45"
-          />
+          <WaMessage from="user" text={msgs.msg1User} time="09:41" />
+          <WaMessage from="bot" text={msgs.msg1Bot} time="09:41" />
+          <WaMessage from="user" text={msgs.msg2User} time="09:43" />
+          <WaMessage from="bot" text={msgs.msg2Bot} time="09:43" />
+          <WaMessage from="user" text={msgs.msg3User} time="09:45" />
+          <WaMessage from="bot" text={msgs.msg3Bot} time="09:45" />
         </div>
       </div>
     </div>
@@ -260,7 +101,21 @@ function WhatsAppMockup() {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-export default function Home() {
+export default async function Home() {
+  const locale = await getUserLocale()
+  const msgs = (await import(`@/messages/${locale}.json`)).default as any
+  const L = msgs.landing
+
+  const PROBLEMS: Array<{ headline: string; body: string }> = L.problems.items
+  const WA_EXAMPLES: Array<{ msg: string; result: string }> = L.whatsapp.examples
+  const FEATURES: Array<{ title: string; copy: string }> = L.features.items
+  const STEPS: Array<{ number: string; title: string; body: string }> = L.howItWorks.steps
+  const PLANS: Array<{ name: string; tag: string; price: string; per: string; featured: boolean; savingsBadge: string | null; bullets: string[] }> = [
+    { ...L.pricing.plans[0], featured: false },
+    { ...L.pricing.plans[1], featured: false },
+    { ...L.pricing.plans[2], featured: true },
+  ]
+
   return (
     <main className="flex flex-col">
 
@@ -274,22 +129,22 @@ export default function Home() {
             className="absolute inset-0 w-full h-full object-cover"
             autoPlay muted loop playsInline
             src="/main-video.mp4"
-            aria-label="Vídeo de apresentação do Florim"
+            aria-label={L.hero.videoAlt}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/78 via-black/35 to-transparent" />
           <div className="relative z-10">
             <h1 className="font-serif font-light text-[36px] leading-[1.05] text-paper mb-3">
-              Cuide das finanças da família, juntos.
+              {L.hero.title}
             </h1>
             <p className="text-paper/80 text-[14px] leading-relaxed mb-6">
-              Despesas, sonhos, combinados e insights num só lugar. Plano gratuito, sem cartão.
+              {L.hero.subtitleMobile}
             </p>
             <div className="flex gap-[10px]">
               <Link href="/signup" className="px-5 py-3 rounded-full bg-gold text-paper font-bold text-[14px] hover:opacity-90 transition-vintage">
-                Criar conta grátis
+                {L.hero.ctaPrimary}
               </Link>
               <Link href="/plans" className="px-5 py-3 rounded-full border-[1.5px] border-paper/60 text-paper text-[14px] hover:bg-white/10 transition-vintage">
-                Ver planos
+                {L.hero.ctaSecondary}
               </Link>
             </div>
           </div>
@@ -300,32 +155,31 @@ export default function Home() {
           <section className="bg-paper flex flex-col justify-center pt-[52px] pb-12 pl-24 pr-12 lg:pl-32 lg:pr-16">
             <div className="max-w-[560px]">
               <p className="text-[11px] tracking-[0.2em] uppercase text-gold font-semibold mb-4">
-                Sistema financeiro familiar
+                {L.hero.label}
               </p>
               <h1 className="font-serif font-light text-[54px] leading-[1.04] text-sidebar mb-5 tracking-tight">
-                Cuide das finanças<br />da família, juntos.
+                {L.hero.title}
               </h1>
               <p className="text-sidebar/70 font-light text-[17px] leading-relaxed mb-7 max-w-[440px]">
-                O Florim organiza contas, receitas, objetivos, lembretes e insights com IA
-                com dados compartilhados em tempo real. Comece grátis e evolua quando fizer sentido.
+                {L.hero.subtitle}
               </p>
               <div className="flex gap-3 mb-7">
                 <Link href="/signup" className="px-7 py-3.5 rounded-full bg-gold text-coffee font-semibold text-[15px] hover:opacity-90 transition-vintage">
-                  Criar conta grátis
+                  {L.hero.ctaPrimary}
                 </Link>
                 <Link href="/plans" className="px-7 py-3.5 rounded-full bg-sidebar text-paper font-semibold text-[15px] hover:bg-sidebar/80 transition-vintage">
-                  Ver planos
+                  {L.hero.ctaSecondary}
                 </Link>
               </div>
               <div className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-sidebar/50">
-                <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" />Plano gratuito disponível</span>
-                <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" />Cancele quando quiser</span>
-                <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" />Para toda a família</span>
+                <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" />{L.hero.check1}</span>
+                <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" />{L.hero.check2}</span>
+                <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" />{L.hero.check3}</span>
               </div>
             </div>
           </section>
           <section className="relative h-full">
-            <video className="h-full w-full object-cover" autoPlay muted loop playsInline src="/about-video.mp4" aria-label="Demonstração do Florim em uso" />
+            <video className="h-full w-full object-cover" autoPlay muted loop playsInline src="/about-video.mp4" aria-label={L.hero.videoAltDesktop} />
           </section>
         </div>
       </div>
@@ -334,10 +188,10 @@ export default function Home() {
       <section className="bg-sidebar py-12 px-5 md:py-20 md:px-12">
         <div className="max-w-5xl mx-auto">
           <h2 className="font-serif font-light text-[26px] md:text-[42px] text-paper text-center mb-3 md:mb-4">
-            Todo mês a mesma história.
+            {L.problems.title}
           </h2>
           <p className="text-center text-paper/50 text-[13px] md:text-[17px] font-light mb-8 md:mb-12">
-            Três problemas que toda família conhece e que o Florim resolve.
+            {L.problems.subtitle}
           </p>
           <div className="grid gap-4 md:grid-cols-3 md:gap-6">
             {PROBLEMS.map((p) => (
@@ -362,20 +216,17 @@ export default function Home() {
               <div className="inline-flex items-center gap-2 bg-olive/15 rounded-full px-3 py-1.5 mb-5">
                 <MessageCircle size={14} className="text-olive" />
                 <span className="text-[11px] tracking-[0.15em] uppercase text-olive font-semibold">
-                  WhatsApp · com inteligência artificial
+                  {L.whatsapp.badge}
                 </span>
               </div>
               <h2 className="font-serif font-light text-[28px] md:text-[42px] text-coffee leading-[1.08] mb-4">
-                Registre tudo pelo WhatsApp.<br className="hidden md:block" />
-                Em linguagem natural.
+                {L.whatsapp.title}
               </h2>
               <p className="text-[14px] md:text-[16px] font-light text-ink/65 leading-relaxed mb-7">
-                Sem precisar abrir o app. É só mandar uma mensagem como você falaria com alguém.
-                O Florim entende e lança despesas, receitas, parcelas, objetivos e lembretes,
-                sugere categorias e responde perguntas sobre os números da família.
+                {L.whatsapp.body}
               </p>
               <ul className="space-y-3">
-                {WA_EXAMPLES.map(({ msg, result }) => (
+                {WA_EXAMPLES.map(({ msg, result }: { msg: string; result: string }) => (
                   <li key={msg} className="flex items-start gap-3">
                     <span className="shrink-0 mt-0.5 w-1.5 h-1.5 rounded-full bg-olive mt-[7px]" />
                     <div className="min-w-0">
@@ -386,13 +237,12 @@ export default function Home() {
                 ))}
               </ul>
               <p className="mt-6 text-[12px] text-ink/40 leading-relaxed">
-                Também dá para consultar saldos, editar e apagar registros. No gratuito há limites mensais;
-                no Pro, a rotina fica livre para usar sem travar.
+                {L.whatsapp.footnote}
               </p>
             </div>
 
             {/* Phone mockup */}
-            <WhatsAppMockup />
+            <WhatsAppMockup msgs={L.whatsapp.mockup} />
           </div>
         </div>
       </section>
@@ -401,28 +251,31 @@ export default function Home() {
       <section id="features" className="bg-sidebar py-12 px-5 md:py-24 md:px-12">
         <div className="max-w-6xl mx-auto">
           <h2 className="font-serif font-light text-[26px] md:text-[44px] text-paper text-center mb-3 md:mb-4">
-            Tudo em um só lugar.
+            {L.features.title}
           </h2>
           <p className="text-center text-paper/50 text-[13px] md:text-[17px] font-light mb-8 md:mb-14">
-            Ferramentas conectadas para registrar, entender e antecipar a rotina financeira da casa.
+            {L.features.subtitle}
           </p>
           <div className="flex flex-col gap-3 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-5">
-            {FEATURES.map((f) => (
-              <div
-                key={f.title}
-                className="flex items-start gap-4 md:flex-col bg-paper border border-paper/20 rounded-[14px] md:rounded-vintage p-4 md:p-6 shadow-soft"
-              >
-                <div className="w-10 h-10 rounded-xl bg-sidebar/10 flex items-center justify-center text-coffee shrink-0 md:mb-3">
-                  <f.icon size={18} />
+            {FEATURES.map((f, i) => {
+              const Icon = FEATURE_ICONS[i] ?? BanknoteArrowDown
+              return (
+                <div
+                  key={f.title}
+                  className="flex items-start gap-4 md:flex-col bg-paper border border-paper/20 rounded-[14px] md:rounded-vintage p-4 md:p-6 shadow-soft"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-sidebar/10 flex items-center justify-center text-coffee shrink-0 md:mb-3">
+                    <Icon size={18} />
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-[15px] md:text-[18px] font-normal text-ink mb-1 md:mb-2">
+                      {f.title}
+                    </h3>
+                    <p className="text-[12px] md:text-[13px] text-ink/55 leading-relaxed">{f.copy}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-serif text-[15px] md:text-[18px] font-normal text-ink mb-1 md:mb-2">
-                    {f.title}
-                  </h3>
-                  <p className="text-[12px] md:text-[13px] text-ink/55 leading-relaxed">{f.copy}</p>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </section>
@@ -431,10 +284,10 @@ export default function Home() {
       <section className="bg-paper py-12 px-5 md:py-24 md:px-12">
         <div className="max-w-5xl mx-auto">
           <h2 className="font-serif font-light text-[26px] md:text-[44px] text-coffee text-center mb-3 md:mb-4">
-            Simples de começar.
+            {L.howItWorks.title}
           </h2>
           <p className="text-center text-ink/50 text-[13px] md:text-[17px] font-light mb-8 md:mb-14">
-            Três passos. Cinco minutos. O plano gratuito já deixa a família em movimento.
+            {L.howItWorks.subtitle}
           </p>
           <div className="grid gap-8 md:grid-cols-3 md:gap-10">
             {STEPS.map((s) => (
@@ -452,9 +305,9 @@ export default function Home() {
               href="/signup"
               className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-sidebar text-paper font-semibold text-[15px] hover:bg-sidebar/80 transition-vintage"
             >
-              Começar grátis <ArrowRight size={16} />
+              {L.howItWorks.cta} <ArrowRight size={16} />
             </Link>
-            <p className="mt-3 text-[12px] text-ink/40">Plano gratuito disponível. Sem cartão de crédito.</p>
+            <p className="mt-3 text-[12px] text-ink/40">{L.howItWorks.ctaFootnote}</p>
           </div>
         </div>
       </section>
@@ -463,10 +316,10 @@ export default function Home() {
       <section className="bg-sidebar py-12 px-5 md:py-24 md:px-12">
         <div className="max-w-5xl mx-auto">
           <h2 className="font-serif font-normal text-[26px] md:text-[44px] text-gold text-center mb-2 md:mb-3">
-            Planos
+            {L.pricing.title}
           </h2>
           <p className="text-center text-paper/50 text-[13px] md:text-[16px] font-light mb-8 md:mb-12">
-            Menos do que um jantar fora. Mais do que uma planilha.
+            {L.pricing.subtitle}
           </p>
           <div className="flex flex-col gap-3 md:grid md:grid-cols-3 md:gap-5">
             {PLANS.map((p) => (
@@ -481,7 +334,7 @@ export default function Home() {
               >
                 {p.featured && (
                   <div className="absolute -top-3 right-6 bg-gold text-sidebar text-[10px] md:text-[11px] tracking-widest uppercase px-3 py-1 rounded-full font-semibold">
-                    Mais escolhido
+                    {L.pricing.featured}
                   </div>
                 )}
                 <h3 className="font-serif text-[20px] md:text-[24px] font-normal text-gold mb-1">{p.name}</h3>
@@ -499,7 +352,7 @@ export default function Home() {
                   <span className="text-sm opacity-70">{p.per}</span>
                 </div>
                 <ul className="flex flex-col gap-1.5 text-[12px] md:text-sm mb-5" style={{ opacity: 0.85 }}>
-                  {p.bullets.map((b) => (
+                  {p.bullets.map((b: string) => (
                     <li key={b} className="flex items-center gap-2">
                       <Check size={13} className="text-gold shrink-0" />
                       <span>{b}</span>
@@ -511,14 +364,14 @@ export default function Home() {
                   className="block text-center py-3 px-4 rounded-full text-[13px] md:text-sm font-bold hover:opacity-90 transition-vintage"
                   style={{ background: p.featured ? '#3E5F4B' : '#C2A45D', color: '#F5F1EB' }}
                 >
-                  Criar conta grátis
+                  {L.pricing.ctaButton}
                 </Link>
               </div>
             ))}
           </div>
           <p className="text-center mt-6 md:mt-8">
             <Link href="/plans" className="text-gold/65 text-[13px] hover:text-gold transition-vintage underline underline-offset-2">
-              Ver comparação completa e perguntas frequentes →
+              {L.pricing.seeAll}
             </Link>
           </p>
         </div>
@@ -530,32 +383,29 @@ export default function Home() {
           <div className="md:grid md:grid-cols-[1fr,1.6fr] md:gap-16 md:items-center">
             <div className="mb-7 md:mb-0">
               <p className="text-[11px] tracking-[0.2em] uppercase text-gold font-semibold mb-4">
-                Nossa história
+                {L.origin.label}
               </p>
               <h2 className="font-serif font-light text-[26px] md:text-[36px] text-coffee leading-[1.1]">
-                Feito por uma família,<br />para famílias.
+                {L.origin.title}
               </h2>
             </div>
             <div>
               <p className="text-[14px] md:text-[16px] font-light text-ink/60 leading-relaxed mb-4">
-                O Florim nasceu dentro de casa. Lucas, engenheiro de software, e Nathalia, designer
-                de interiores, perceberam que nenhuma ferramenta existente tratava as finanças como
-                o que elas são: uma conversa entre pessoas que constroem algo juntas.
+                {L.origin.body1}
               </p>
               <p className="text-[14px] md:text-[16px] font-light text-ink/60 leading-relaxed mb-6">
-                O nome vem do <em>fiorino d&apos;oro</em>, a moeda dourada das famílias florentinas do
-                século XIII. Valor sólido, baseado em confiança. Essa é a nossa referência.
+                {L.origin.body2}
               </p>
               <p className="font-ptSerif italic text-[16px] md:text-[20px] text-gold leading-relaxed min-h-[3em]">
                 &ldquo;<Typewriter
-                  texts="O Florim trata dinheiro como escolha, projeto e relação humana."
+                  texts={L.origin.quote}
                   speedMs={45}
                   pauseMs={4000}
                   startDelay={300}
                 />&rdquo;
               </p>
               <p className="mt-3 text-[11px] tracking-widest uppercase text-ink/35">
-                Lucas &amp; Nathalia Malinowski, fundadores
+                {L.origin.founders}
               </p>
             </div>
           </div>
@@ -566,16 +416,16 @@ export default function Home() {
       <section className="bg-sidebar py-16 px-5 md:py-20 md:px-12">
         <div className="max-w-xl mx-auto text-center">
           <h2 className="font-serif font-light text-[30px] md:text-[44px] text-paper mb-4 leading-[1.1]">
-            Comece hoje.<br className="md:hidden" /> A família agradece.
+            {L.finalCta.title}
           </h2>
           <p className="text-paper/80 text-[14px] md:text-[16px] font-light leading-relaxed mb-8">
-            Plano gratuito disponível. Sem cartão de crédito. Cancele quando quiser.
+            {L.finalCta.subtitle}
           </p>
           <Link
             href="/signup"
             className="inline-flex items-center gap-2 px-10 py-4 rounded-full bg-gold text-sidebar font-bold text-[16px] hover:opacity-90 transition-vintage shadow-vintage"
           >
-            Criar conta grátis
+            {L.finalCta.button}
           </Link>
         </div>
       </section>

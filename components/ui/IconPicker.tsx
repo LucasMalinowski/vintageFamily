@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Pencil, Search, Tag, X } from 'lucide-react'
 import clsx from 'clsx'
+import { useTranslations } from 'next-intl'
 import { ICON_REGISTRY, ICON_MAP, PINNED_ICON_NAMES } from '@/lib/icon-registry'
 
 interface IconPickerProps {
@@ -15,6 +16,7 @@ const ALL_NAMES = ICON_REGISTRY.map((e) => e.name)
 const PINNED = PINNED_ICON_NAMES.filter((n) => ICON_MAP.has(n))
 
 export default function IconPicker({ value, onSelect }: IconPickerProps) {
+  const t = useTranslations()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({})
@@ -99,8 +101,8 @@ export default function IconPicker({ value, onSelect }: IconPickerProps) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar ícone..."
-            aria-label="Buscar ícone"
+            placeholder={t('iconPicker.search')}
+            aria-label={t('iconPicker.search')}
             className="flex-1 bg-transparent text-sm text-ink placeholder:text-ink/35 focus:outline-none"
             autoFocus
           />
@@ -161,7 +163,7 @@ export default function IconPicker({ value, onSelect }: IconPickerProps) {
             ? 'border-coffee/40 bg-offWhite text-sidebar hover:border-coffee/60'
             : 'border-border/70 bg-paper text-ink/40 hover:border-coffee/35'
         )}
-        aria-label="Escolher ícone"
+        aria-label={t('iconPicker.title')}
         title={value || 'Sem ícone'}
       >
         {/* eslint-disable-next-line react-hooks/static-components */}

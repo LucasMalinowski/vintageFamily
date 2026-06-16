@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { getMonthOptions, getYearOptions } from '@/lib/dates'
+import { useTranslations } from 'next-intl'
 
 interface FilterSheetProps {
   open: boolean
@@ -48,6 +49,7 @@ export default function FilterSheet({
   showMethod = false,
   statusOptions = DEFAULT_STATUS_OPTIONS,
 }: FilterSheetProps) {
+  const t = useTranslations()
   const [mounted, setMounted] = useState(false)
   const [animated, setAnimated] = useState(false)
   const [localMonth, setLocalMonth] = useState(month)
@@ -117,12 +119,12 @@ export default function FilterSheet({
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 shrink-0">
-          <span className="text-base font-semibold text-ink font-serif">Filtros</span>
+          <span className="text-base font-semibold text-ink font-serif">{t('filterSheet.title')}</span>
           <button
             type="button"
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-full bg-ink/5 text-ink/60"
-            aria-label="Fechar filtros"
+            aria-label={t('filterSheet.closeLabel')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -132,7 +134,7 @@ export default function FilterSheet({
         <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-6">
           {/* Mês */}
           <div>
-            <p className="text-xs uppercase tracking-wide text-ink/50 mb-3 font-medium">Mês</p>
+            <p className="text-xs uppercase tracking-wide text-ink/50 mb-3 font-medium">{t('filterSheet.month')}</p>
             <button
               type="button"
               onClick={() => setLocalMonth(0)}
@@ -142,7 +144,7 @@ export default function FilterSheet({
                   : 'bg-transparent text-ink border-border'
               }`}
             >
-              Todos os meses
+              {t('filterSheet.allMonths')}
             </button>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
 	              {monthButtons.map((m) => (
@@ -160,12 +162,12 @@ export default function FilterSheet({
                 </button>
               ))}
             </div>
-            <p className="text-xs text-ink/40 mt-2">Escolha um mês ou veja todos os meses de um ano.</p>
+            <p className="text-xs text-ink/40 mt-2">{t('filterSheet.monthHint')}</p>
           </div>
 
           {/* Ano */}
           <div>
-            <p className="text-xs uppercase tracking-wide text-ink/50 mb-3 font-medium">Ano</p>
+            <p className="text-xs uppercase tracking-wide text-ink/50 mb-3 font-medium">{t('filterSheet.year')}</p>
             <button
               type="button"
               onClick={() => setLocalYear(0)}
@@ -175,7 +177,7 @@ export default function FilterSheet({
                   : 'bg-transparent text-ink border-border'
               }`}
             >
-              Todos os anos
+              {t('filterSheet.allYears')}
             </button>
             <div className="flex gap-2 flex-wrap">
 	              {yearButtons.map((y) => (
@@ -198,7 +200,7 @@ export default function FilterSheet({
           {/* Status */}
           {showStatus && (
             <div>
-              <p className="text-xs uppercase tracking-wide text-ink/50 mb-3 font-medium">Status</p>
+              <p className="text-xs uppercase tracking-wide text-ink/50 mb-3 font-medium">{t('filterSheet.status')}</p>
               <div className="flex gap-2 flex-wrap">
                   {statusOptions.map((opt) => (
                     <button
@@ -221,7 +223,7 @@ export default function FilterSheet({
           {/* Método */}
           {showMethod && (
             <div>
-              <p className="text-xs uppercase tracking-wide text-ink/50 mb-3 font-medium">Método</p>
+              <p className="text-xs uppercase tracking-wide text-ink/50 mb-3 font-medium">{t('filterSheet.method')}</p>
               <div className="flex gap-2 flex-wrap">
                 {METHOD_OPTIONS.map((opt) => (
                   <button
@@ -249,14 +251,14 @@ export default function FilterSheet({
             onClick={handleClear}
             className="flex-1 border border-border rounded-[12px] py-[13px] text-sm font-medium text-ink transition-vintage hover:bg-paper"
           >
-            Limpar
+            {t('filterSheet.clear')}
           </button>
           <button
             type="button"
             onClick={handleApply}
             className="flex-[2] bg-coffee text-paper rounded-[12px] py-[13px] text-sm font-semibold transition-vintage hover:bg-coffee/90"
           >
-            Aplicar
+            {t('filterSheet.apply')}
           </button>
         </div>
       </div>

@@ -7,17 +7,12 @@ import AppLayout from '@/components/layout/AppLayout'
 import Topbar from '@/components/layout/Topbar'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
-
-const settingsItems = [
-  { label: 'Perfil', href: '/settings/profile' },
-  { label: 'Família', href: '/settings/family' },
-  { label: 'Assinatura', href: '/settings/billing' },
-  { label: 'Insights', href: '/settings/insights' },
-]
+import { useTranslations } from 'next-intl'
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const pathname = usePathname()
+  const t = useTranslations()
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
 
   useEffect(() => {
@@ -31,11 +26,18 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     loadRole()
   }, [user])
 
+  const settingsItems = [
+    { label: t('settings.layout.nav.profile'), href: '/settings/profile' },
+    { label: t('settings.layout.nav.family'), href: '/settings/family' },
+    { label: t('settings.layout.nav.billing'), href: '/settings/billing' },
+    { label: t('settings.layout.nav.insights'), href: '/settings/insights' },
+  ]
+
   const visibleItems = isSuperAdmin
     ? [
         ...settingsItems,
-        { label: 'Superadministrador', href: '/settings/admin' },
-        { label: 'Feedbacks', href: '/settings/admin/feedback' },
+        { label: t('settings.layout.nav.superAdmin'), href: '/settings/admin' },
+        { label: t('settings.layout.nav.feedbacks'), href: '/settings/admin/feedback' },
       ]
     : settingsItems
 
@@ -43,8 +45,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     <AppLayout>
       <div className="flex flex-col min-h-screen bg-paper">
         <Topbar
-          title="Configurações"
-          subtitle="Gerencie sua conta e família."
+          title={t('settings.layout.title')}
+          subtitle={t('settings.layout.subtitle')}
           showBackButton
         />
 

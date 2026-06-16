@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 
 type PublicNavbarColor = 'sidebar' | 'paper'
 
@@ -42,6 +43,7 @@ interface PublicNavbarProps {
 }
 
 export default function PublicNavbar({ color = 'sidebar', showWordmark = true }: PublicNavbarProps) {
+  const t = useTranslations()
   const theme = styles[color]
   const pathname = usePathname()
   const isAbout = pathname.startsWith('/about')
@@ -89,7 +91,7 @@ export default function PublicNavbar({ color = 'sidebar', showWordmark = true }:
             className={`${theme.link} transition-vintage ${isPlans ? theme.active : ''}`}
             aria-current={isPlans ? 'page' : undefined}
           >
-            Planos
+            {t('publicNav.plans')}
           </Link>
         </nav>
 
@@ -99,13 +101,13 @@ export default function PublicNavbar({ color = 'sidebar', showWordmark = true }:
             href="/signup"
             className={`hidden md:inline-flex px-5 py-2 rounded-full text-sm font-semibold hover:opacity-90 transition-vintage ${theme.primary}`}
           >
-            Teste grátis
+            {t('publicNav.signup')}
           </Link>
           <Link
             href="/login"
             className={`px-4 py-2 md:px-5 rounded-full border text-sm font-semibold transition-vintage ${theme.secondary}`}
           >
-            Entrar
+            {t('publicNav.login')}
           </Link>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState } from 'react'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
+import { useTranslations } from 'next-intl'
 
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null
@@ -18,6 +19,7 @@ function BillingPaymentForm({
   onSuccess: (result?: { setupIntentId?: string; paymentIntentId?: string }) => void
   onCancel: () => void
 }) {
+  const t = useTranslations()
   const stripe = useStripe()
   const elements = useElements()
   const [submitting, setSubmitting] = useState(false)
@@ -77,14 +79,14 @@ function BillingPaymentForm({
           onClick={onCancel}
           className="rounded-full border border-border px-4 py-3 text-sm font-medium text-ink/70 transition-vintage hover:bg-paper"
         >
-          Fechar
+          {t('common.close')}
         </button>
         <button
           type="submit"
           disabled={!stripe || submitting}
           className="rounded-full bg-sidebar px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
         >
-          {submitting ? 'Processando...' : submitLabel}
+          {submitting ? t('billing.paying') : submitLabel}
         </button>
       </div>
     </form>

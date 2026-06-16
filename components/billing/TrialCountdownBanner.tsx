@@ -2,11 +2,13 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { usePlan } from '@/lib/billing/plan-context'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
 
 export default function TrialCountdownBanner() {
+  const t = useTranslations()
   const { tier, trialDaysLeft } = usePlan()
   const isVisible = tier === 'trial' && trialDaysLeft !== null && trialDaysLeft <= 5
 
@@ -25,15 +27,14 @@ export default function TrialCountdownBanner() {
     <div className="w-full bg-gold/15 border-b border-gold/30 px-4 py-2.5 flex items-center justify-between gap-4">
       <p className="text-sm text-coffee font-medium">
         {isLastDay
-          ? 'Seu período de avaliação termina hoje.'
-          : `Seu período de avaliação termina em ${trialDaysLeft} ${trialDaysLeft === 1 ? 'dia' : 'dias'}.`}
-        {' '}Após isso, você continua no plano gratuito.
+          ? t('billing.trialExpired')
+          : t('billing.trialBanner', { days: trialDaysLeft })}
       </p>
       <Link
         href="/pricing"
         className="shrink-0 text-sm font-semibold text-petrol hover:underline"
       >
-        Ver planos
+        {t('publicNav.plans')}
       </Link>
     </div>
   )

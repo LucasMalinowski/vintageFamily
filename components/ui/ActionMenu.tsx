@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { MoreVertical, Eye, Pencil, Trash2, Paperclip, TrendingUp, TrendingDown, Check } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 interface ActionMenuProps {
   onEdit?: () => void
@@ -16,6 +17,7 @@ interface ActionMenuProps {
 }
 
 export default function ActionMenu({ onEdit, onDelete, onView, onAttach, onDeposit, onWithdrawal, onToggleStatus, toggleStatusLabel, disabled }: ActionMenuProps) {
+  const t = useTranslations()
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -86,7 +88,7 @@ export default function ActionMenu({ onEdit, onDelete, onView, onAttach, onDepos
             }}
             className="w-full flex items-center gap-2 px-4 py-2 text-sm text-ink/70 hover:bg-paper transition-vintage"
           >
-            <Eye className="w-4 h-4" /> Ver detalhes
+            <Eye className="w-4 h-4" /> {t('actionMenu.view')}
           </button>
           <button
             type="button"
@@ -96,7 +98,7 @@ export default function ActionMenu({ onEdit, onDelete, onView, onAttach, onDepos
             }}
             className="w-full flex items-center gap-2 px-4 py-2 text-sm text-ink/70 hover:bg-paper transition-vintage"
           >
-            <Pencil className="w-4 h-4" /> Editar
+            <Pencil className="w-4 h-4" /> {t('actionMenu.edit')}
           </button>
           <button
             type="button"
@@ -116,7 +118,7 @@ export default function ActionMenu({ onEdit, onDelete, onView, onAttach, onDepos
             }}
             className="w-full flex items-center gap-2 px-4 py-2 text-sm text-terracotta hover:bg-paper transition-vintage"
           >
-            <Trash2 className="w-4 h-4" /> Excluir
+            <Trash2 className="w-4 h-4" /> {t('actionMenu.delete')}
           </button>
         </div>
       )}
