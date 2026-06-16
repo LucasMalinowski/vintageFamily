@@ -54,9 +54,8 @@ export async function POST(request: NextRequest) {
   }
 
   // Rate limiting: enforce cooldown and hourly cap
-  const { data: userRow } = await supabaseAdmin
-    .from('users')
-    .select('phone_otp_sent_at,phone_otp_hour_count,phone_otp_hour_start')
+  const { data: userRow } = await (supabaseAdmin.from('users') as any)
+    .select('phone_otp_sent_at,phone_otp_hour_count,phone_otp_hour_start,locale')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -101,8 +100,8 @@ export async function POST(request: NextRequest) {
     })
     .eq('id', user.id)
 
-  await whatsAppService.sendAuthOtp(normalized, code)
-  whatsAppService.sendPrivacyNotice(normalized).catch(() => {})
+  await whatsAppService.sendAuthOtp(normalized, code, userRow?.locale)
+  whatsAppService.sendPrivacyNotice(normalized, userRow?.locale).catch(() => {})
 
   return NextResponse.json({ success: true })
 }

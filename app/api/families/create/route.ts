@@ -74,8 +74,8 @@ export async function POST(request: Request) {
       ...category,
     }))
 
-    const { data: createdParents, error: categoriesError } = await supabaseAdmin
-      .from('categories')
+    const { data: createdParents, error: categoriesError } = await (supabaseAdmin
+      .from('categories') as any)
       .insert(parentCategories)
       .select('id,name,kind')
 
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
     }
 
     const parentByKey = new Map(
-      (createdParents || []).map((category) => [`${category.kind}:${category.name}`, category.id])
+      (createdParents || []).map((category: { kind: string; name: string; id: string }) => [`${category.kind}:${category.name}`, category.id])
     )
 
     const childCategories = FAMILY_CATEGORY_SEEDS.flatMap((category) => {
@@ -97,13 +97,15 @@ export async function POST(request: Request) {
         family_id: family.id,
         kind: category.kind,
         name: child.name,
+        name_en: child.name_en,
+        name_es: child.name_es,
         parent_id: parentId,
         is_system: true,
       }))
     })
 
     if (childCategories.length > 0) {
-      const { error: childCategoriesError } = await supabaseAdmin.from('categories').insert(childCategories)
+      const { error: childCategoriesError } = await (supabaseAdmin.from('categories') as any).insert(childCategories)
       if (childCategoriesError) {
         return NextResponse.json({ error: 'Não foi possível criar as subcategorias padrão.' }, { status: 500 })
       }

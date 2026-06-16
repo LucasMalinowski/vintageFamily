@@ -31,9 +31,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
 
-  const { data, error } = await supabaseAdmin
-    .from('users')
-    .select('name,email,avatar_url,phone_number,phone_number_pending,billing_cycle_day')
+  const { data, error } = await (supabaseAdmin.from('users') as any)
+    .select('name,email,avatar_url,phone_number,phone_number_pending,billing_cycle_day,locale')
     .eq('id', auth.user.id)
     .maybeSingle()
 
