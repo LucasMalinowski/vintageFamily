@@ -8,6 +8,7 @@ import PlanCheckout from '@/components/billing/PlanCheckout'
 import { getAuthBearerToken } from '@/lib/billing/client'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
+import { useTranslations } from 'next-intl'
 
 type PlanSetting = {
   plan_code: 'standard_monthly' | 'standard_yearly' | 'founders_monthly' | 'founders_yearly'
@@ -15,87 +16,8 @@ type PlanSetting = {
   is_active: boolean
 }
 
-type PlanContent = {
-  name: string
-  teaser: string
-  price: string
-  period: string
-  benefitsTitle: string
-  benefits: string[]
-  quote: string
-}
-
-const PLAN_CONTENT: Record<PlanSetting['plan_code'], PlanContent> = {
-  standard_monthly: {
-    name: 'Plano Mensal',
-    teaser: 'Ideal para quem quer começar com flexibilidade.',
-    price: '19,90',
-    period: '/ mês',
-    benefitsTitle: 'Benefícios:',
-    benefits: [
-      'Controle ilimitado de Despesas e receitas',
-      'Organização de sonhos e objetivos',
-      'Visão clara de saldo mensal',
-      'Comparativos históricos completos',
-      'WhatsApp ilimitado + consultas com IA',
-      'Importação e exportação ilimitadas',
-    ],
-    quote: 'Menos do que um café por semana. Mais do que uma planilha.',
-  },
-  standard_yearly: {
-    name: 'Plano Anual',
-    teaser: 'Para famílias que desejam compromisso e continuidade.',
-    price: '189,00',
-    period: '/ ano',
-    benefitsTitle: 'Benefícios:',
-    benefits: [
-      'Equivalente a R$ 15,75/mês',
-      'Economia de R$ 49,80 no ano',
-      'Prioridade em novas funcionalidades',
-      'Atualizações contínuas',
-      'Estabilidade no valor durante o contrato',
-    ],
-    quote: 'Um pequeno investimento para cuidar do que sustenta a casa.',
-  },
-  founders_monthly: {
-    name: 'Plano Fundadores Mensal',
-    teaser: 'Exclusivo para famílias selecionadas.',
-    price: '14,90',
-    period: '/ mês',
-    benefitsTitle: 'Benefícios especiais:',
-    benefits: [
-      'Valor promocional vitalício',
-      'Acesso antecipado a novidades',
-      'Participação na evolução do sistema',
-      'Reconhecimento como usuário fundador',
-    ],
-    quote: 'Quem chega primeiro, constrói junto.',
-  },
-  founders_yearly: {
-    name: 'Plano Fundadores Anual',
-    teaser: 'Exclusivo para famílias selecionadas.',
-    price: '149,00',
-    period: '/ ano',
-    benefitsTitle: 'Benefícios especiais:',
-    benefits: [
-      'Valor promocional vitalício',
-      'Acesso antecipado a novidades',
-      'Participação na evolução do sistema',
-      'Reconhecimento como usuário fundador',
-    ],
-    quote: 'Quem chega primeiro, constrói junto.',
-  },
-}
-
-const KEY_BENEFITS = [
-  'Clareza financeira no dia a dia',
-  'Menos conflitos, mais alinhamento',
-  'Organização sem pressão',
-  'Tecnologia com sensibilidade',
-  'Feito para famílias',
-]
-
 export default function PricingPage() {
+  const t = useTranslations('pricing')
   const router = useRouter()
   const [plans, setPlans] = useState<PlanSetting[]>([])
   const [foundersEligible, setFoundersEligible] = useState(false)
@@ -103,14 +25,18 @@ export default function PricingPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [waitingForActivation, setWaitingForActivation] = useState(false)
-  const [activationMessage, setActivationMessage] = useState('Confirmando seus dados...')
+  const [activationMessage, setActivationMessage] = useState('')
+
+  useEffect(() => {
+    setActivationMessage(t('confirming'))
+  }, [t])
 
   useEffect(() => {
     const load = async () => {
       const token = await getAuthBearerToken()
 
       if (!token) {
-        setMessage('Sessão inválida. Faça login novamente.')
+        setMessage(t('errors.invalidSession'))
         setLoading(false)
         return
       }
@@ -124,7 +50,7 @@ export default function PricingPage() {
       const payload = await response.json().catch(() => null)
 
       if (!response.ok) {
-        setMessage(payload?.error || 'Não foi possível carregar os planos.')
+        setMessage(payload?.error || t('errors.loadError'))
         setLoading(false)
         return
       }
@@ -143,7 +69,7 @@ export default function PricingPage() {
     }
 
     load()
-  }, [])
+  }, [t])
 
   useEffect(() => {
     if (!waitingForActivation) return
@@ -155,7 +81,7 @@ export default function PricingPage() {
 
       if (!token) {
         if (!cancelled) {
-          setActivationMessage('Sessão inválida. Faça login novamente.')
+          setActivationMessage(t('errors.invalidSession'))
           setWaitingForActivation(false)
         }
         return
@@ -164,11 +90,11 @@ export default function PricingPage() {
       for (let attempt = 0; attempt < 20; attempt += 1) {
         if (cancelled) return
 
-	        const response = await fetch('/api/billing/checkout-status', {
-	          method: 'POST',
-	          headers: {
-	            Authorization: `Bearer ${token}`,
-	          },
+        const response = await fetch('/api/billing/checkout-status', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         })
 
         const payload = await response.json().catch(() => null)
@@ -179,7 +105,7 @@ export default function PricingPage() {
         }
 
         if (!response.ok) {
-          setActivationMessage(payload?.error || 'Falha ao confirmar a assinatura.')
+          setActivationMessage(payload?.error || t('errors.activationError'))
           setWaitingForActivation(false)
           return
         }
@@ -190,7 +116,7 @@ export default function PricingPage() {
       }
 
       if (!cancelled) {
-        setActivationMessage('Pagamento confirmado, mas a sincronização ainda está pendente. Tente novamente em alguns instantes.')
+        setActivationMessage(t('errors.activationPending'))
         setWaitingForActivation(false)
       }
     }
@@ -200,17 +126,26 @@ export default function PricingPage() {
     return () => {
       cancelled = true
     }
-  }, [router, waitingForActivation])
+  }, [router, waitingForActivation, t])
 
   const visiblePlans = useMemo(() => plans, [plans])
-  const selectedPlanContent = selectedPlan ? PLAN_CONTENT[selectedPlan] : null
+  const selectedPlanContent = selectedPlan
+    ? {
+        name: t(`plans.${selectedPlan}.name`),
+        teaser: t(`plans.${selectedPlan}.teaser`),
+        price: t(`plans.${selectedPlan}.price` as any, undefined, { fallback: '' }),
+        period: t(`plans.${selectedPlan}.period`),
+      }
+    : null
+
+  const keyBenefits = (t.raw('keyBenefits') as string[]) ?? []
 
   return (
     <AppLayout>
       <div className="min-h-screen flex flex-col">
         <Topbar
-          title="Planos"
-          subtitle="Escolha o plano que melhor acompanha o ritmo da sua família."
+          title={t('title')}
+          subtitle={t('subtitle')}
           variant="textured"
         />
 
@@ -218,13 +153,16 @@ export default function PricingPage() {
           {message ? <p className="mb-6 text-sm text-red-700">{message}</p> : null}
 
           {loading ? (
-            <div className="py-12 text-center text-ink/60">Carregando…</div>
+            <div className="py-12 text-center text-ink/60">{t('loading')}</div>
           ) : (
             <div className="space-y-8">
               <div className="grid gap-5 xl:grid-cols-3">
                 {visiblePlans.map((plan) => {
-                  const content = PLAN_CONTENT[plan.plan_code]
                   const isFounders = plan.plan_code.startsWith('founders')
+                  const planName = t(`plans.${plan.plan_code}.name`)
+                  const planTeaser = t(`plans.${plan.plan_code}.teaser`)
+                  const planPrice = (t.raw(`plans.${plan.plan_code}`) as any)?.price ?? ''
+                  const planPeriod = t(`plans.${plan.plan_code}.period`)
 
                   return (
                     <div
@@ -233,19 +171,19 @@ export default function PricingPage() {
                     >
                       <div className="flex flex-1 flex-col">
                         <div className="flex items-start justify-between gap-3">
-                          <h3 className="font-serif text-2xl text-sidebar">{content.name}</h3>
+                          <h3 className="font-serif text-2xl text-sidebar">{planName}</h3>
                           {isFounders ? (
-                            <span className="rounded-full border border-gold px-2 py-1 text-xs text-gold">Fundadores</span>
+                            <span className="rounded-full border border-gold px-2 py-1 text-xs text-gold">{t('foundersTag')}</span>
                           ) : null}
                         </div>
-                        <p className="mt-3 min-h-[44px] text-sm text-ink/55">{content.teaser}</p>
+                        <p className="mt-3 min-h-[44px] text-sm text-ink/55">{planTeaser}</p>
                         <div className="mt-6 flex items-end justify-center text-coffee/60">
                           <span>R$</span>
-                          <span className="ml-2 text-4xl font-normal leading-none text-sidebar">{content.price}</span>
-                          <span className="ml-2 text-base">{content.period}</span>
+                          <span className="ml-2 text-4xl font-normal leading-none text-sidebar">{planPrice}</span>
+                          <span className="ml-2 text-base">{planPeriod}</span>
                         </div>
                         <p className="mt-4 min-h-[28px] text-center text-sm text-ink/60">
-                          {plan.is_active ? '30 dias grátis. Cancele quando quiser.' : 'Plano indisponível no momento.'}
+                          {plan.is_active ? t('trialNote') : t('unavailable')}
                         </p>
                       </div>
                       <button
@@ -257,7 +195,7 @@ export default function PricingPage() {
                         }}
                         className="mt-6 w-full rounded-full bg-sidebar px-4 py-3 text-sm font-semibold text-white transition-vintage hover:bg-olive/90 disabled:opacity-60"
                       >
-                        Assinar
+                        {t('subscribeCta')}
                       </button>
                     </div>
                   )
@@ -266,14 +204,15 @@ export default function PricingPage() {
 
               <div className="grid gap-6 lg:grid-cols-3">
                 {visiblePlans.map((plan) => {
-                  const content = PLAN_CONTENT[plan.plan_code]
+                  const benefits = (t.raw(`plans.${plan.plan_code}.benefits`) as string[]) ?? []
+                  const benefitsTitle = t(`plans.${plan.plan_code}.benefitsTitle`)
 
                   return (
                     <div key={`${plan.plan_code}-benefits`} className="rounded-[18px] border border-border bg-bg p-5">
-                      <div className="mb-3 font-medium text-coffee">{content.benefitsTitle}</div>
+                      <div className="mb-3 font-medium text-coffee">{benefitsTitle}</div>
                       <ul className="space-y-2 text-sm text-ink/70">
-                        {content.benefits.map((benefit) => (
-                          <li key={benefit}>• {benefit}</li>
+                        {benefits.map((benefit, i) => (
+                          <li key={i}>• {benefit}</li>
                         ))}
                       </ul>
                     </div>
@@ -287,17 +226,17 @@ export default function PricingPage() {
                     key={`${plan.plan_code}-quote`}
                     className="rounded-[18px] bg-paper px-5 py-6 text-center font-serif text-lg italic text-gold/80 shadow-soft"
                   >
-                    {PLAN_CONTENT[plan.plan_code].quote}
+                    {t(`plans.${plan.plan_code}.quote`)}
                   </div>
                 ))}
               </div>
 
               <div className="rounded-[18px] border border-border bg-offWhite px-6 py-8 shadow-soft">
-                <div className="mb-6 text-center font-serif text-[34px] text-coffee">Benefícios-chave</div>
+                <div className="mb-6 text-center font-serif text-[34px] text-coffee">{t('keyBenefitsTitle')}</div>
                 <div className="flex flex-wrap justify-center gap-3">
-                  {KEY_BENEFITS.map((item) => (
+                  {keyBenefits.map((item, i) => (
                     <div
-                      key={item}
+                      key={i}
                       className="w-full rounded-full bg-paper py-2 text-center text-[15px] text-coffee sm:w-[calc(50%-0.75rem)] xl:w-[calc(33.333%-0.75rem)]"
                     >
                       ✓ {item}
@@ -316,7 +255,7 @@ export default function PricingPage() {
               <div className="border-b border-border bg-offWhite px-6 py-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.24em] text-coffee/55">Checkout</p>
+                    <p className="text-xs uppercase tracking-[0.24em] text-coffee/55">{t('checkoutLabel')}</p>
                     <h3 className="mt-1 text-2xl font-serif text-coffee">{selectedPlanContent.name}</h3>
                     <p className="mt-2 text-sm text-ink/65">{selectedPlanContent.teaser}</p>
                   </div>
@@ -325,7 +264,7 @@ export default function PricingPage() {
                     className="rounded-full border border-border px-3 py-2 text-sm text-ink/70 transition-vintage hover:bg-paper"
                     onClick={() => setSelectedPlan(null)}
                   >
-                    Fechar
+                    {t('closeButton')}
                   </button>
                 </div>
                 <div className="mt-4 inline-flex items-end rounded-full bg-paper px-4 py-2 text-coffee/70">
@@ -342,7 +281,7 @@ export default function PricingPage() {
                   onSuccess={() => {
                     posthog.capture(EVENTS.CHECKOUT_COMPLETED, { plan_code: selectedPlan })
                     setSelectedPlan(null)
-                    setActivationMessage('Confirmando seus dados...')
+                    setActivationMessage(t('confirming'))
                     setWaitingForActivation(true)
                   }}
                 />
@@ -355,7 +294,7 @@ export default function PricingPage() {
           <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/35 px-4 py-6 backdrop-blur-sm">
             <div className="w-full max-w-md rounded-[24px] border border-border bg-bg px-8 py-10 text-center shadow-vintage">
               <div className="mx-auto mb-5 h-12 w-12 rounded-full border-4 border-sidebar/20 border-t-sidebar animate-spin" />
-              <h3 className="text-2xl font-serif text-coffee">Ativando assinatura</h3>
+              <h3 className="text-2xl font-serif text-coffee">{t('activating')}</h3>
               <p className="mt-3 text-sm text-ink/65">{activationMessage}</p>
             </div>
           </div>

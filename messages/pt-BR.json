@@ -952,5 +952,242 @@
       "subtitle": "Plano gratuito disponível. Sem cartão de crédito. Cancele quando quiser.",
       "button": "Criar conta grátis"
     }
+  },
+  "invite": {
+    "title": "Aceitar convite",
+    "loading": "Carregando convite…",
+    "fallback": "Carregando…",
+    "invited": "Você foi convidado para {family}.",
+    "emailLabel": "Email",
+    "nameLabel": "Seu nome",
+    "namePlaceholder": "Nome completo",
+    "passwordLabel": "Senha",
+    "confirmPasswordLabel": "Confirmar senha",
+    "submitButton": "Aceitar convite",
+    "submittingButton": "Criando...",
+    "quote": "Aceite o convite e compartilhe o cuidado financeiro do seu lar.",
+    "agreementPrefix": "Li e concordo com os",
+    "termsLink": "Termos de Uso",
+    "agreementMiddle": "e a",
+    "privacyLink": "Política de Privacidade",
+    "errors": {
+      "invalid": "Convite inválido.",
+      "passwordMismatch": "As senhas não coincidem.",
+      "passwordTooShort": "A senha deve ter pelo menos 6 caracteres.",
+      "acceptError": "Erro ao aceitar convite."
+    }
+  },
+  "ssoComplete": {
+    "title": "Quase pronto!",
+    "subtitle": "Crie o perfil da sua família para começar.",
+    "nameLabel": "Seu nome",
+    "namePlaceholder": "João Silva",
+    "familyNameLabel": "Nome da família",
+    "familyNamePlaceholder": "Ex: Silva, Santos, Araujo",
+    "submitButton": "Criar família",
+    "submittingButton": "Criando...",
+    "agreementPrefix": "Li e concordo com os",
+    "termsLink": "Termos de Uso",
+    "agreementMiddle": "e a",
+    "privacyLink": "Política de Privacidade",
+    "errors": {
+      "nameRequired": "Informe o seu nome",
+      "familyNameRequired": "Informe o nome da família",
+      "termsRequired": "Aceite os termos para continuar",
+      "sessionNotFound": "Sessão não encontrada. Faça login novamente.",
+      "createError": "Erro ao criar família.",
+      "createFamilyError": "Erro ao criar família"
+    }
+  },
+  "feedback": {
+    "title": "Feedback",
+    "subtitle": "Encontrou um problema ou tem uma sugestão? Conta pra gente, cada feedback nos ajuda a melhorar.",
+    "typeLabel": "Tipo",
+    "locationLabel": "Onde aconteceu?",
+    "locationPlaceholder": "Selecione (opcional)",
+    "descriptionLabel": "O que aconteceu?",
+    "descriptionPlaceholder": "Descreva com detalhes o que deu errado ou a sua sugestão...",
+    "contactNote": "Dados de contato (opcionais), preencha se quiser que a gente entre em contato:",
+    "nameLabel": "Nome",
+    "namePlaceholder": "Seu nome",
+    "emailLabel": "E-mail",
+    "phoneLabel": "Telefone",
+    "phonePlaceholder": "(00) 00000-0000",
+    "submitButton": "Enviar feedback",
+    "sendingButton": "Enviando...",
+    "successTitle": "Obrigado!",
+    "successMessage": "Seu feedback foi enviado. Vamos analisar e melhorar.",
+    "sendError": "Erro ao enviar. Tente novamente.",
+    "locations": {
+      "waRecord": "WhatsApp - Criar registro",
+      "waQuery": "WhatsApp - Consultar dados",
+      "waEdit": "WhatsApp - Editar/Apagar registro",
+      "appExpenses": "App - Despesas",
+      "appIncomes": "App - Receitas",
+      "appGoals": "App - Objetivos",
+      "appReminders": "App - Lembretes",
+      "appImport": "App - Importar Extrato",
+      "appSettings": "App - Configurações",
+      "other": "Outro"
+    },
+    "types": {
+      "bug": {
+        "label": "Bug 🐛",
+        "description": "Algo quebrou ou não funcionou como esperado"
+      },
+      "suggestion": {
+        "label": "Sugestão 💡",
+        "description": "Uma ideia para melhorar o Florim"
+      },
+      "feedback": {
+        "label": "Feedback 💬",
+        "description": "Uma opinião geral sobre o produto"
+      }
+    }
+  },
+  "authHandoff": {
+    "title": "Autenticando…",
+    "subtitle": "Você será redirecionado em instantes.",
+    "errorTitle": "Link inválido ou expirado",
+    "errorSubtitle": "Abra o app e tente novamente.",
+    "loginLink": "Ir para o login"
+  },
+  "pricing": {
+    "title": "Planos",
+    "subtitle": "Escolha o plano que melhor acompanha o ritmo da sua família.",
+    "subscribeCta": "Assinar",
+    "trialNote": "30 dias grátis. Cancele quando quiser.",
+    "unavailable": "Plano indisponível no momento.",
+    "keyBenefitsTitle": "Benefícios-chave",
+    "foundersTag": "Fundadores",
+    "checkoutLabel": "Checkout",
+    "closeButton": "Fechar",
+    "loading": "Carregando…",
+    "activating": "Ativando assinatura",
+    "confirming": "Confirmando seus dados...",
+    "errors": {
+      "invalidSession": "Sessão inválida. Faça login novamente.",
+      "loadError": "Não foi possível carregar os planos.",
+      "activationPending": "Pagamento confirmado, mas a sincronização ainda está pendente. Tente novamente em alguns instantes.",
+      "activationError": "Falha ao confirmar a assinatura."
+    },
+    "plans": {
+      "standard_monthly": {
+        "name": "Plano Mensal",
+        "teaser": "Ideal para quem quer começar com flexibilidade.",
+        "period": "/ mês",
+        "benefitsTitle": "Benefícios:",
+        "benefits": [
+          "Controle ilimitado de Despesas e receitas",
+          "Organização de sonhos e objetivos",
+          "Visão clara de saldo mensal",
+          "Comparativos históricos completos",
+          "WhatsApp ilimitado + consultas com IA",
+          "Importação e exportação ilimitadas"
+        ],
+        "quote": "Menos do que um café por semana. Mais do que uma planilha.",
+        "price": "19,90"
+      },
+      "standard_yearly": {
+        "name": "Plano Anual",
+        "teaser": "Para famílias que desejam compromisso e continuidade.",
+        "period": "/ ano",
+        "benefitsTitle": "Benefícios:",
+        "benefits": [
+          "Equivalente a R$ 15,75/mês",
+          "Economia de R$ 49,80 no ano",
+          "Prioridade em novas funcionalidades",
+          "Atualizações contínuas",
+          "Estabilidade no valor durante o contrato"
+        ],
+        "quote": "Um pequeno investimento para cuidar do que sustenta a casa.",
+        "price": "189,00"
+      },
+      "founders_monthly": {
+        "name": "Plano Fundadores Mensal",
+        "teaser": "Exclusivo para famílias selecionadas.",
+        "period": "/ mês",
+        "benefitsTitle": "Benefícios especiais:",
+        "benefits": [
+          "Valor promocional vitalício",
+          "Acesso antecipado a novidades",
+          "Participação na evolução do sistema",
+          "Reconhecimento como usuário fundador"
+        ],
+        "quote": "Quem chega primeiro, constrói junto.",
+        "price": "14,90"
+      },
+      "founders_yearly": {
+        "name": "Plano Fundadores Anual",
+        "teaser": "Exclusivo para famílias selecionadas.",
+        "period": "/ ano",
+        "benefitsTitle": "Benefícios especiais:",
+        "benefits": [
+          "Valor promocional vitalício",
+          "Acesso antecipado a novidades",
+          "Participação na evolução do sistema",
+          "Reconhecimento como usuário fundador"
+        ],
+        "quote": "Quem chega primeiro, constrói junto.",
+        "price": "149,00"
+      }
+    },
+    "keyBenefits": [
+      "Clareza financeira no dia a dia",
+      "Menos conflitos, mais alinhamento",
+      "Organização sem pressão",
+      "Tecnologia com sensibilidade",
+      "Feito para famílias"
+    ]
+  },
+  "about": {
+    "title": "Sistema de controle financeiro familiar",
+    "tagline": "O Florim é um sistema de organização financeira familiar criado para trazer clareza, diálogo e tranquilidade ao cotidiano da casa.",
+    "body1a": "Ele vai além da gestão de números.",
+    "body1b": "O Florim cuida da vida real. Pois não nasceu em uma sala de reunião, mas dentro de casa.",
+    "body2a": "Aqui, entendemos que dinheiro envolve emoções, decisões e relações humanas.",
+    "body2b": "Por isso, o sistema foi desenhado para ser simples, intuítivo e acolhedor.",
+    "body3": "No Florim, a tecnologia está a serviço do cuidado e nunca do controle excessivo.",
+    "viewPlans": "Ver planos",
+    "videoLabel": "Demonstração do Florim em uso"
+  },
+  "support": {
+    "title": "Suporte",
+    "subtitle": "Estamos aqui para ajudar. Resposta em até 1 dia útil.",
+    "contactTitle": "Fale conosco",
+    "generalEmailLabel": "E-mail geral",
+    "generalEmailNote": "Dúvidas, sugestões e parcerias",
+    "privacyEmailLabel": "Privacidade & dados",
+    "privacyEmailNote": "Exportação, exclusão e LGPD",
+    "faqTitle": "Perguntas frequentes",
+    "privacyLink": "Política de Privacidade",
+    "termsLink": "Termos de Uso",
+    "cookiesLink": "Política de Cookies",
+    "faq": [
+      {
+        "q": "Como cancelo minha assinatura?",
+        "a": "No app ou site, acesse Configurações → Assinatura → Gerenciar plano. O cancelamento é imediato e você mantém acesso até o fim do período pago."
+      },
+      {
+        "q": "Posso pedir reembolso?",
+        "a": "Sim. Aceitamos pedidos de reembolso em até 7 dias após a cobrança. Entre em contato pelo e-mail abaixo informando o motivo."
+      },
+      {
+        "q": "Como adiciono um membro da família?",
+        "a": "Em Configurações → Família, toque em \"Convidar membro\" e informe o e-mail da pessoa. Ela receberá um link de convite válido por 7 dias."
+      },
+      {
+        "q": "O Florim acessa minha conta bancária?",
+        "a": "Não. O Florim é 100% manual, você registra seus lançamentos e a gente organiza. Nunca conectamos a bancos nem realizamos transações."
+      },
+      {
+        "q": "Como excluo minha conta?",
+        "a": "Acesse Configurações → Perfil → Excluir conta. Todos os seus dados são removidos permanentemente, conforme nossa Política de Privacidade."
+      },
+      {
+        "q": "Meus dados são seguros?",
+        "a": "Sim. Os dados são armazenados na Supabase (infraestrutura AWS), com criptografia em trânsito e em repouso. Consulte nossa Política de Privacidade para detalhes."
+      }
+    ]
   }
 }

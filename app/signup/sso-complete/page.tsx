@@ -17,8 +17,10 @@ import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
+import { useTranslations } from 'next-intl'
 
 export default function SSOCompletePage() {
+  const t = useTranslations('ssoComplete')
   const { user, authStatus, familyId } = useAuth()
   const router = useRouter()
 
@@ -59,15 +61,15 @@ export default function SSOCompletePage() {
     const cleanFamilyName = familyName.trim()
 
     if (!cleanName) {
-      setError('Informe o seu nome')
+      setError(t('errors.nameRequired'))
       return
     }
     if (!cleanFamilyName) {
-      setError('Informe o nome da família')
+      setError(t('errors.familyNameRequired'))
       return
     }
     if (!agreed) {
-      setError('Aceite os termos para continuar')
+      setError(t('errors.termsRequired'))
       return
     }
 
@@ -75,7 +77,7 @@ export default function SSOCompletePage() {
     try {
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData.session?.access_token
-      if (!token) throw new Error('Sessão não encontrada. Faça login novamente.')
+      if (!token) throw new Error(t('errors.sessionNotFound'))
 
       const email = user?.email ?? ''
       const response = await fetch('/api/families/create', {
@@ -89,7 +91,7 @@ export default function SSOCompletePage() {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}))
-        throw new Error(payload?.error || 'Erro ao criar família.')
+        throw new Error(payload?.error || t('errors.createError'))
       }
 
       const payload = await response.json()
@@ -101,7 +103,7 @@ export default function SSOCompletePage() {
       // AuthProvider will pick up the new familyId via its Supabase subscription.
       router.replace('/inicio')
     } catch (err: any) {
-      setError(err.message || 'Erro ao criar família')
+      setError(err.message || t('errors.createFamilyError'))
     } finally {
       setLoading(false)
     }
@@ -129,10 +131,10 @@ export default function SSOCompletePage() {
           className="w-[52px] h-[52px] md:w-20 md:h-20 object-contain mx-auto mb-3"
         />
         <h1 className="font-serif text-[26px] md:text-4xl text-coffee mb-2">
-          Quase pronto!
+          {t('title')}
         </h1>
         <p className="text-ink/60 italic font-body text-[13px] md:text-base">
-          Crie o perfil da sua família para começar.
+          {t('subtitle')}
         </p>
       </div>
 
@@ -148,7 +150,7 @@ export default function SSOCompletePage() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
               <label htmlFor="name" className="block text-sm font-body text-ink mb-2">
-                Seu nome
+                {t('nameLabel')}
               </label>
               <input
                 id="name"
@@ -157,13 +159,13 @@ export default function SSOCompletePage() {
                 onChange={(e) => setName(e.target.value)}
                 required
                 className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
-                placeholder="João Silva"
+                placeholder={t('namePlaceholder')}
               />
             </div>
 
             <div>
               <label htmlFor="familyName" className="block text-sm font-body text-ink mb-2">
-                Nome da família
+                {t('familyNameLabel')}
               </label>
               <input
                 id="familyName"
@@ -172,7 +174,7 @@ export default function SSOCompletePage() {
                 onChange={(e) => setFamilyName(e.target.value)}
                 required
                 className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
-                placeholder="Ex: Silva, Santos, Araujo"
+                placeholder={t('familyNamePlaceholder')}
               />
             </div>
 
@@ -185,13 +187,13 @@ export default function SSOCompletePage() {
                 required
               />
               <span className="text-[12px] md:text-sm font-body text-ink/70 leading-relaxed">
-                Li e concordo com os{' '}
+                {t('agreementPrefix')}{' '}
                 <Link href="/terms" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
-                  Termos de Uso
+                  {t('termsLink')}
                 </Link>{' '}
-                e a{' '}
+                {t('agreementMiddle')}{' '}
                 <Link href="/privacy" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
-                  Política de Privacidade
+                  {t('privacyLink')}
                 </Link>
               </span>
             </label>
@@ -201,7 +203,7 @@ export default function SSOCompletePage() {
               disabled={loading}
               className="w-full bg-coffee text-paper py-[14px] rounded-[10px] font-body font-bold text-[15px] hover:bg-coffee/90 transition-vintage disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? 'Criando...' : 'Criar família'}
+              {loading ? t('submittingButton') : t('submitButton')}
             </button>
           </form>
         </div>

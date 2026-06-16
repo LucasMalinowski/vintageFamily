@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { parseAuthHandoffLocation } from '@/lib/billing/auth-handoff'
+import { useTranslations } from 'next-intl'
 
 export default function AuthHandoffPage() {
+  const t = useTranslations('authHandoff')
   const router = useRouter()
   const [failed, setFailed] = useState(false)
 
@@ -46,13 +48,13 @@ export default function AuthHandoffPage() {
     return (
       <div className="min-h-screen bg-sidebar flex items-center justify-center">
         <div className="bg-paper rounded-[28px] px-8 py-10 text-center max-w-sm w-full">
-          <p className="font-serif text-[20px] text-coffee mb-2">Link inválido ou expirado</p>
-          <p className="text-sm text-ink/60 mb-6">Abra o app e tente novamente.</p>
+          <p className="font-serif text-[20px] text-coffee mb-2">{t('errorTitle')}</p>
+          <p className="text-sm text-ink/60 mb-6">{t('errorSubtitle')}</p>
           <Link
             href="/login"
             className="inline-block bg-sidebar text-paper px-6 py-3 rounded-full text-sm font-semibold hover:opacity-90 transition-vintage"
           >
-            Ir para o login
+            {t('loginLink')}
           </Link>
         </div>
       </div>
@@ -62,8 +64,8 @@ export default function AuthHandoffPage() {
   return (
     <div className="min-h-screen bg-sidebar flex items-center justify-center">
       <div className="bg-paper rounded-[28px] px-8 py-10 text-center max-w-sm w-full">
-        <p className="font-serif text-[20px] text-coffee mb-2">Autenticando…</p>
-        <p className="text-sm text-ink/60">Você será redirecionado em instantes.</p>
+        <p className="font-serif text-[20px] text-coffee mb-2">{t('title')}</p>
+        <p className="text-sm text-ink/60">{t('subtitle')}</p>
       </div>
     </div>
   )

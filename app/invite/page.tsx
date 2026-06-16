@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import Link from 'next/link'
 import { Eye, EyeOff } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 type InviteInfo = {
   email: string
@@ -13,6 +14,7 @@ type InviteInfo = {
 }
 
 function InvitePageContent() {
+  const t = useTranslations('invite')
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user, acceptInvite } = useAuth()
@@ -40,7 +42,7 @@ function InvitePageContent() {
   useEffect(() => {
     const fetchInvite = async () => {
       if (!token) {
-        setError('Convite inválido.')
+        setError(t('errors.invalid'))
         setLoading(false)
         return
       }
@@ -48,7 +50,7 @@ function InvitePageContent() {
       const response = await fetch(`/api/invites/lookup?token=${token}`)
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}))
-        setError(payload?.error || 'Convite inválido.')
+        setError(payload?.error || t('errors.invalid'))
         setLoading(false)
         return
       }
@@ -59,7 +61,7 @@ function InvitePageContent() {
     }
 
     fetchInvite()
-  }, [token])
+  }, [token, t])
 
   useEffect(() => {
     if (!token) return
@@ -75,12 +77,12 @@ function InvitePageContent() {
     if (!inviteInfo || !token) return
 
     if (password !== confirmPassword) {
-      setError('As senhas não coincidem.')
+      setError(t('errors.passwordMismatch'))
       return
     }
 
     if (password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres.')
+      setError(t('errors.passwordTooShort'))
       return
     }
 
@@ -91,14 +93,27 @@ function InvitePageContent() {
       await acceptInvite(token, inviteInfo.email, name, password)
     } catch (err: any) {
       submittedRef.current = false
-      setError(err.message || 'Erro ao aceitar convite.')
+      setError(err.message || t('errors.acceptError'))
     } finally {
       setSubmitting(false)
     }
   }
 
+  const agreementLabel = (
+    <span className="text-[12px] md:text-sm font-body text-ink/70 leading-relaxed">
+      {t('agreementPrefix')}{' '}
+      <Link href="/terms" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
+        {t('termsLink')}
+      </Link>{' '}
+      {t('agreementMiddle')}{' '}
+      <Link href="/privacy" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
+        {t('privacyLink')}
+      </Link>
+    </span>
+  )
+
   const formBody = loading ? (
-    <p className="text-sm text-ink/60 font-body">Carregando convite…</p>
+    <p className="text-sm text-ink/60 font-body">{t('loading')}</p>
   ) : (
     <form onSubmit={handleSubmit} className="flex flex-col gap-[14px]">
       {error && (
@@ -109,12 +124,12 @@ function InvitePageContent() {
 
       {inviteInfo && (
         <div className="bg-paper border border-border rounded-lg px-4 py-3 text-sm text-ink/70 font-body">
-          Você foi convidado para <strong>{inviteInfo.familyName}</strong>.
+          {t('invited', { family: inviteInfo.familyName })}
         </div>
       )}
 
       <div>
-        <label htmlFor="invite-email" className="block text-sm font-body text-ink mb-2">Email</label>
+        <label htmlFor="invite-email" className="block text-sm font-body text-ink mb-2">{t('emailLabel')}</label>
         <input
           id="invite-email"
           type="email"
@@ -126,19 +141,19 @@ function InvitePageContent() {
       </div>
 
       <div>
-        <label htmlFor="invite-name" className="block text-sm font-body text-ink mb-2">Seu nome</label>
+        <label htmlFor="invite-name" className="block text-sm font-body text-ink mb-2">{t('nameLabel')}</label>
         <input
           id="invite-name"
           value={name}
           onChange={(event) => setName(event.target.value)}
           required
           className="w-full px-4 py-3 bg-offWhite border border-border rounded-full text-ink/80 focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
-          placeholder="Nome completo"
+          placeholder={t('namePlaceholder')}
         />
       </div>
 
       <div>
-        <label htmlFor="invite-password" className="block text-sm font-body text-ink mb-2">Senha</label>
+        <label htmlFor="invite-password" className="block text-sm font-body text-ink mb-2">{t('passwordLabel')}</label>
         <div className="relative">
           <input
             id="invite-password"
@@ -162,7 +177,7 @@ function InvitePageContent() {
       </div>
 
       <div>
-        <label htmlFor="invite-confirm-password" className="block text-sm font-body text-ink mb-2">Confirmar senha</label>
+        <label htmlFor="invite-confirm-password" className="block text-sm font-body text-ink mb-2">{t('confirmPasswordLabel')}</label>
         <div className="relative">
           <input
             id="invite-confirm-password"
@@ -194,16 +209,7 @@ function InvitePageContent() {
           className="mt-1 accent-coffee"
           required
         />
-        <span className="text-[12px] md:text-sm font-body text-ink/70 leading-relaxed">
-          Li e concordo com os{' '}
-          <Link href="/terms" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
-            Termos de Uso
-          </Link>{' '}
-          e a{' '}
-          <Link href="/privacy" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
-            Política de Privacidade
-          </Link>
-        </span>
+        {agreementLabel}
       </label>
 
       <button
@@ -211,7 +217,7 @@ function InvitePageContent() {
         disabled={submitting || !agreed}
         className="w-full bg-sidebar text-paper py-[14px] rounded-full font-bold text-[15px] hover:opacity-90 transition-vintage disabled:opacity-50"
       >
-        {submitting ? 'Criando...' : 'Aceitar convite'}
+        {submitting ? t('submittingButton') : t('submitButton')}
       </button>
     </form>
   )
@@ -230,13 +236,13 @@ function InvitePageContent() {
         {/* Quote / invite context */}
         <div className="flex-1 flex items-center justify-center px-10 py-8">
           <p className="font-serif italic text-[18px] text-gold text-center leading-[1.55]">
-            &ldquo;Aceite o convite e compartilhe o cuidado financeiro do seu lar.&rdquo;
+            &ldquo;{t('quote')}&rdquo;
           </p>
         </div>
 
         {/* Form card - bottom sheet */}
         <div className="bg-paper rounded-t-[28px] px-7 pt-8 pb-10 shrink-0 overflow-y-auto max-h-[72vh]">
-          <h2 className="font-serif text-[22px] text-coffee mb-5">Aceitar convite</h2>
+          <h2 className="font-serif text-[22px] text-coffee mb-5">{t('title')}</h2>
           {formBody}
         </div>
       </div>
@@ -254,14 +260,14 @@ function InvitePageContent() {
         <div className="w-full max-w-6xl flex flex-col gap-10 md:flex-row md:items-center md:justify-between">
           <div className="text-center md:text-left">
             <p className="text-2xl md:text-2xl font-serif italic text-gold leading-relaxed max-w-sm mx-auto md:mx-0">
-              Aceite o convite e compartilhe o cuidado financeiro do seu lar.
+              {t('quote')}
             </p>
           </div>
 
           <div className="bg-paper backdrop-blur-sm rounded-[28px] border border-border/70 shadow-vintage p-12 w-full md:max-w-xl md:-translate-y-6">
-            <h2 className="text-2xl font-serif text-coffee mb-6">Aceitar convite</h2>
+            <h2 className="text-2xl font-serif text-coffee mb-6">{t('title')}</h2>
             {loading ? (
-              <p className="text-sm text-ink/60 font-body">Carregando convite…</p>
+              <p className="text-sm text-ink/60 font-body">{t('loading')}</p>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
@@ -272,12 +278,12 @@ function InvitePageContent() {
 
                 {inviteInfo && (
                   <div className="bg-paper border border-border rounded-lg px-4 py-3 text-sm text-ink/70 font-body">
-                    Você foi convidado para <strong>{inviteInfo.familyName}</strong>.
+                    {t('invited', { family: inviteInfo.familyName })}
                   </div>
                 )}
 
                 <div>
-                  <label htmlFor="invite-desktop-email" className="block text-sm font-body text-ink mb-2">Email</label>
+                  <label htmlFor="invite-desktop-email" className="block text-sm font-body text-ink mb-2">{t('emailLabel')}</label>
                   <input
                     id="invite-desktop-email"
                     type="email"
@@ -289,19 +295,19 @@ function InvitePageContent() {
                 </div>
 
                 <div>
-                  <label htmlFor="invite-desktop-name" className="block text-sm font-body text-ink mb-2">Seu nome</label>
+                  <label htmlFor="invite-desktop-name" className="block text-sm font-body text-ink mb-2">{t('nameLabel')}</label>
                   <input
                     id="invite-desktop-name"
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                     required
                     className="w-full px-4 py-3 bg-white/70 border border-border rounded-full text-ink/80 focus:outline-none focus:ring-2 focus:ring-paper-2/40 transition-vintage"
-                    placeholder="Nome completo"
+                    placeholder={t('namePlaceholder')}
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="invite-desktop-password" className="block text-sm font-body text-ink mb-2">Senha</label>
+                  <label htmlFor="invite-desktop-password" className="block text-sm font-body text-ink mb-2">{t('passwordLabel')}</label>
                   <div className="relative">
                     <input
                       id="invite-desktop-password"
@@ -325,7 +331,7 @@ function InvitePageContent() {
                 </div>
 
                 <div>
-                  <label htmlFor="invite-desktop-confirm-password" className="block text-sm font-body text-ink mb-2">Confirmar senha</label>
+                  <label htmlFor="invite-desktop-confirm-password" className="block text-sm font-body text-ink mb-2">{t('confirmPasswordLabel')}</label>
                   <div className="relative">
                     <input
                       id="invite-desktop-confirm-password"
@@ -358,13 +364,13 @@ function InvitePageContent() {
                     required
                   />
                   <span className="text-sm font-body text-ink/70 leading-relaxed">
-                    Li e concordo com os{' '}
+                    {t('agreementPrefix')}{' '}
                     <Link href="/terms" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
-                      Termos de Uso
+                      {t('termsLink')}
                     </Link>{' '}
-                    e a{' '}
+                    {t('agreementMiddle')}{' '}
                     <Link href="/privacy" className="text-coffee underline underline-offset-2 hover:text-coffee/80">
-                      Política de Privacidade
+                      {t('privacyLink')}
                     </Link>
                   </span>
                 </label>
@@ -374,7 +380,7 @@ function InvitePageContent() {
                   disabled={submitting || !agreed}
                   className="w-full bg-sidebar text-paper py-3 rounded-full font-semibold hover:opacity-90 transition-vintage disabled:opacity-50"
                 >
-                  {submitting ? 'Criando...' : 'Aceitar convite'}
+                  {submitting ? t('submittingButton') : t('submitButton')}
                 </button>
               </form>
             )}
@@ -387,7 +393,7 @@ function InvitePageContent() {
 
 export default function InvitePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center p-4">Carregando…</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center p-4">Loading…</div>}>
       <InvitePageContent />
     </Suspense>
   )

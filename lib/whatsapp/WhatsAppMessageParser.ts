@@ -283,7 +283,7 @@ export async function processWhatsAppMessage(
 
   let intent: IntentClassification
   try {
-    intent = await nvidiaAIService.classifyIntent(text, todayISO)
+    intent = await nvidiaAIService.classifyIntent(text, todayISO, userRow.locale)
   } catch {
     intent = { type: 'record', data_needed: [], time_range: 'current_month', focus: null, status_filter: null }
   }
@@ -357,7 +357,7 @@ export async function processWhatsAppMessage(
 
   let records: Awaited<ReturnType<typeof nvidiaAIService.extractFinancialRecords>>
   try {
-    records = await nvidiaAIService.extractFinancialRecords(text, labelMap, todayISO)
+    records = await nvidiaAIService.extractFinancialRecords(text, labelMap, todayISO, userRow.locale)
   } catch (err: any) {
     const isRateLimit = err?.message?.includes('rate limit')
     await whatsAppService.sendTextMessage(

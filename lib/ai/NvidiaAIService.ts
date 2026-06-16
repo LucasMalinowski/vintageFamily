@@ -133,7 +133,7 @@ Filtro "nenhum", pergunta "qual meu maior gasto?", itens: [{idx:0,...},{idx:1,..
 
 // Per-family static - only categories vary between families; date is injected into the user message
 // so Groq caches this prefix for all messages from the same family until categories change
-const EXTRACTION_SYSTEM_PROMPT = (categoriesText: string) => `Você é um assistente financeiro. Extraia registros de mensagens em português.
+const EXTRACTION_SYSTEM_PROMPT = (categoriesText: string) => `You are a financial assistant. Extract records from user messages (messages may be in Portuguese, English, or Spanish — match the language of the user's message).
 
 Categorias disponíveis (use o nome EXATO):
 ${categoriesText}
@@ -200,8 +200,14 @@ Exemplos (datas ilustrativas - use as datas reais do contexto fornecido):
 "oi tudo bem?"
 → {"records":[]}`
 
-function getDayOfWeekPT(isoDate: string): string {
-  const days = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado']
+const DAY_NAMES: Record<string, string[]> = {
+  'pt-BR': ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'],
+  en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+  es: ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'],
+}
+
+function getDayOfWeek(isoDate: string, locale?: string | null): string {
+  const days = DAY_NAMES[locale ?? 'pt-BR'] ?? DAY_NAMES['pt-BR']
   const [y, m, d] = isoDate.split('-').map(Number)
   return days[new Date(y, m - 1, d).getDay()]
 }
@@ -220,11 +226,17 @@ function nextWeekdayISO(isoDate: string, targetDay: number): string {
   return addDaysToISO(isoDate, diff)
 }
 
-function buildDateContext(todayISO: string): string {
-  const dayOfWeek = getDayOfWeekPT(todayISO)
+function buildDateContext(todayISO: string, locale?: string | null): string {
+  const dayOfWeek = getDayOfWeek(todayISO, locale)
   const nextMonday = addDaysToISO(todayISO, ((1 - new Date(...(todayISO.split('-').map(Number) as [number, number, number])).getDay() + 7) % 7) || 7)
   const nextFriday = nextWeekdayISO(todayISO, 5)
   const in7days = addDaysToISO(todayISO, 7)
+  if (locale === 'en') {
+    return `Today is ${dayOfWeek}, ${todayISO}. Next Monday: ${nextMonday}. Next Friday: ${nextFriday}. In 7 days: ${in7days}.`
+  }
+  if (locale === 'es') {
+    return `Hoy es ${dayOfWeek}, ${todayISO}. Próximo lunes: ${nextMonday}. Próximo viernes: ${nextFriday}. En 7 días: ${in7days}.`
+  }
   return `Hoje é ${dayOfWeek}, ${todayISO}. Próxima segunda: ${nextMonday}. Próxima sexta: ${nextFriday}. Daqui a 7 dias: ${in7days}.`
 }
 
@@ -235,7 +247,7 @@ export class NvidiaAIService {
     this.apiKey = process.env.GROQ_API_KEY!
   }
 
-  async classifyIntent(message: string, todayISO: string): Promise<IntentClassification> {
+  async classifyIntent(message: string, todayISO: string, locale?: string | null): Promise<IntentClassification> {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 8_000)
 
@@ -252,7 +264,7 @@ export class NvidiaAIService {
           model: 'llama-3.1-8b-instant',
           messages: [
             { role: 'system', content: ROUTER_SYSTEM_PROMPT },
-            { role: 'user', content: `${buildDateContext(todayISO)}\n\n${message}` },
+            { role: 'user', content: `${buildDateContext(todayISO, locale)}\n\n${message}` },
           ],
           temperature: 0,
           max_tokens: 150,
@@ -354,7 +366,8 @@ export class NvidiaAIService {
   async extractFinancialRecords(
     message: string,
     categoryLabels: Map<string, string>,
-    todayISO: string
+    todayISO: string,
+    locale?: string | null
   ): Promise<AIExtractedRecord[]> {
     const categoriesText = Array.from(categoryLabels.values())
       .sort()
@@ -376,7 +389,7 @@ export class NvidiaAIService {
           model: 'llama-3.1-8b-instant',
           messages: [
             { role: 'system', content: EXTRACTION_SYSTEM_PROMPT(categoriesText) },
-            { role: 'user', content: `${buildDateContext(todayISO)}\n\n${message}` },
+            { role: 'user', content: `${buildDateContext(todayISO, locale)}\n\n${message}` },
           ],
           temperature: 0.1,
           max_tokens: 1024,

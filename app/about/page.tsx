@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import PublicNavbar from '@/components/layout/PublicNavbar'
 import PublicFooter from '@/components/layout/PublicFooter'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 
 export const metadata: Metadata = {
   title: 'O Florim',
@@ -14,7 +15,11 @@ export const metadata: Metadata = {
   },
 }
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const locale = await getUserLocale()
+  const msgs = (await import(`@/messages/${locale}.json`)).default as any
+  const a = msgs.about
+
   return (
     <div className="flex flex-col">
       <div className="relative overflow-hidden bg-sidebar lg:h-screen">
@@ -25,28 +30,26 @@ export default function AboutPage() {
           <section className="bg-sidebar px-6 pt-24 pb-12 sm:px-8 lg:px-10 lg:pb-12 lg:pt-24 text-paper">
             <div className="pt-4 lg:px-24 lg:pt-14 max-w-2xl lg:max-w-none mx-auto">
               <h1 className="text-[24px] sm:text-[28px] lg:text-[34px] leading-[1.15] font-normal font-serif text-paper mb-5">
-                Sistema de controle <br className="hidden sm:block" /> financeiro familiar
+                {a.title}
               </h1>
 
               <p className="text-[#C2A45D] italic mb-5 text-[17px] lg:text-[20px] font-light font-serif leading-relaxed">
-                O Florim é um sistema de organização financeira familiar criado para trazer clareza, diálogo e
-                tranquilidade ao cotidiano da casa.
+                {a.tagline}
               </p>
 
               <div className="space-y-3 text-[#C2A45D] italic leading-relaxed text-[17px] lg:text-[20px] font-light font-serif">
                 <p>
-                  Ele vai além da gestão de números.
+                  {a.body1a}
                   <br />
-                  O Florim cuida da vida real. Pois não nasceu em uma sala de reunião, mas dentro de casa.
+                  {a.body1b}
                 </p>
                 <p>
-                  Aqui, entendemos que dinheiro envolve emoções, decisões e relações humanas.
+                  {a.body2a}
                   <br />
-                  Por isso, o sistema foi desenhado para ser simples, intuítivo e acolhedor.
+                  {a.body2b}
                 </p>
                 <p>
-                  No Florim, a tecnologia está a serviço do cuidado e
-                  nunca do controle excessivo.
+                  {a.body3}
                 </p>
               </div>
 
@@ -55,7 +58,7 @@ export default function AboutPage() {
                   href="/plans"
                   className="flex w-full md:w-auto items-center justify-center rounded-full bg-paper px-8 py-3 text-sm font-medium text-coffee shadow-soft hover:opacity-90 transition-vintage"
                 >
-                  Ver planos
+                  {a.viewPlans}
                 </Link>
               </div>
             </div>
@@ -70,7 +73,7 @@ export default function AboutPage() {
               loop
               playsInline
               src="/about-video.mp4"
-              aria-label="Demonstração do Florim em uso"
+              aria-label={a.videoLabel}
             />
           </section>
         </div>

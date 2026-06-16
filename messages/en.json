@@ -952,5 +952,242 @@
       "subtitle": "Free plan available. No credit card. Cancel anytime.",
       "button": "Create free account"
     }
+  },
+  "invite": {
+    "title": "Accept invite",
+    "loading": "Loading invite…",
+    "fallback": "Loading…",
+    "invited": "You have been invited to {family}.",
+    "emailLabel": "Email",
+    "nameLabel": "Your name",
+    "namePlaceholder": "Full name",
+    "passwordLabel": "Password",
+    "confirmPasswordLabel": "Confirm password",
+    "submitButton": "Accept invite",
+    "submittingButton": "Creating...",
+    "quote": "Accept the invite and share the financial care of your home.",
+    "agreementPrefix": "I have read and agree to the",
+    "termsLink": "Terms of Use",
+    "agreementMiddle": "and the",
+    "privacyLink": "Privacy Policy",
+    "errors": {
+      "invalid": "Invalid invite.",
+      "passwordMismatch": "Passwords do not match.",
+      "passwordTooShort": "Password must be at least 6 characters.",
+      "acceptError": "Error accepting invite."
+    }
+  },
+  "ssoComplete": {
+    "title": "Almost there!",
+    "subtitle": "Create your family profile to get started.",
+    "nameLabel": "Your name",
+    "namePlaceholder": "John Smith",
+    "familyNameLabel": "Family name",
+    "familyNamePlaceholder": "e.g. Smith, Johnson, Williams",
+    "submitButton": "Create family",
+    "submittingButton": "Creating...",
+    "agreementPrefix": "I have read and agree to the",
+    "termsLink": "Terms of Use",
+    "agreementMiddle": "and the",
+    "privacyLink": "Privacy Policy",
+    "errors": {
+      "nameRequired": "Please enter your name",
+      "familyNameRequired": "Please enter a family name",
+      "termsRequired": "Please accept the terms to continue",
+      "sessionNotFound": "Session not found. Please log in again.",
+      "createError": "Error creating family.",
+      "createFamilyError": "Error creating family"
+    }
+  },
+  "feedback": {
+    "title": "Feedback",
+    "subtitle": "Found a problem or have a suggestion? Tell us, every feedback helps us improve.",
+    "typeLabel": "Type",
+    "locationLabel": "Where did it happen?",
+    "locationPlaceholder": "Select (optional)",
+    "descriptionLabel": "What happened?",
+    "descriptionPlaceholder": "Describe in detail what went wrong or your suggestion...",
+    "contactNote": "Contact info (optional), fill in if you'd like us to reach out:",
+    "nameLabel": "Name",
+    "namePlaceholder": "Your name",
+    "emailLabel": "Email",
+    "phoneLabel": "Phone",
+    "phonePlaceholder": "+1 (000) 000-0000",
+    "submitButton": "Send feedback",
+    "sendingButton": "Sending...",
+    "successTitle": "Thank you!",
+    "successMessage": "Your feedback was sent. We'll review and improve.",
+    "sendError": "Error sending. Please try again.",
+    "locations": {
+      "waRecord": "WhatsApp - Create record",
+      "waQuery": "WhatsApp - Query data",
+      "waEdit": "WhatsApp - Edit/Delete record",
+      "appExpenses": "App - Expenses",
+      "appIncomes": "App - Income",
+      "appGoals": "App - Goals",
+      "appReminders": "App - Reminders",
+      "appImport": "App - Import Statement",
+      "appSettings": "App - Settings",
+      "other": "Other"
+    },
+    "types": {
+      "bug": {
+        "label": "Bug 🐛",
+        "description": "Something broke or didn't work as expected"
+      },
+      "suggestion": {
+        "label": "Suggestion 💡",
+        "description": "An idea to improve Florim"
+      },
+      "feedback": {
+        "label": "Feedback 💬",
+        "description": "A general opinion about the product"
+      }
+    }
+  },
+  "authHandoff": {
+    "title": "Authenticating…",
+    "subtitle": "You will be redirected shortly.",
+    "errorTitle": "Invalid or expired link",
+    "errorSubtitle": "Open the app and try again.",
+    "loginLink": "Go to login"
+  },
+  "pricing": {
+    "title": "Plans",
+    "subtitle": "Choose the plan that best fits your family's rhythm.",
+    "subscribeCta": "Subscribe",
+    "trialNote": "30 days free. Cancel anytime.",
+    "unavailable": "Plan not available at the moment.",
+    "keyBenefitsTitle": "Key Benefits",
+    "foundersTag": "Founders",
+    "checkoutLabel": "Checkout",
+    "closeButton": "Close",
+    "loading": "Loading…",
+    "activating": "Activating subscription",
+    "confirming": "Confirming your details...",
+    "errors": {
+      "invalidSession": "Invalid session. Please log in again.",
+      "loadError": "Unable to load plans.",
+      "activationPending": "Payment confirmed, but sync is still pending. Try again in a moment.",
+      "activationError": "Failed to confirm subscription."
+    },
+    "plans": {
+      "standard_monthly": {
+        "name": "Monthly Plan",
+        "teaser": "Ideal for those who want to start with flexibility.",
+        "period": "/ month",
+        "benefitsTitle": "Benefits:",
+        "benefits": [
+          "Unlimited expenses and income tracking",
+          "Dreams and savings goals organization",
+          "Clear monthly balance view",
+          "Full historical comparisons",
+          "Unlimited WhatsApp + AI queries",
+          "Unlimited import and export"
+        ],
+        "quote": "Less than a coffee a week. More than a spreadsheet.",
+        "price": "19,90"
+      },
+      "standard_yearly": {
+        "name": "Annual Plan",
+        "teaser": "For families who want commitment and continuity.",
+        "period": "/ year",
+        "benefitsTitle": "Benefits:",
+        "benefits": [
+          "Equivalent to R$ 15.75/month",
+          "Save R$ 49.80 per year",
+          "Priority access to new features",
+          "Continuous updates",
+          "Price stability during the contract"
+        ],
+        "quote": "A small investment to care for what sustains the home.",
+        "price": "189,00"
+      },
+      "founders_monthly": {
+        "name": "Founders Monthly Plan",
+        "teaser": "Exclusive for selected families.",
+        "period": "/ month",
+        "benefitsTitle": "Special benefits:",
+        "benefits": [
+          "Lifetime promotional price",
+          "Early access to new features",
+          "Participation in system evolution",
+          "Recognition as a founding user"
+        ],
+        "quote": "Those who arrive first, build together.",
+        "price": "14,90"
+      },
+      "founders_yearly": {
+        "name": "Founders Annual Plan",
+        "teaser": "Exclusive for selected families.",
+        "period": "/ year",
+        "benefitsTitle": "Special benefits:",
+        "benefits": [
+          "Lifetime promotional price",
+          "Early access to new features",
+          "Participation in system evolution",
+          "Recognition as a founding user"
+        ],
+        "quote": "Those who arrive first, build together.",
+        "price": "149,00"
+      }
+    },
+    "keyBenefits": [
+      "Financial clarity every day",
+      "Less conflict, more alignment",
+      "Organization without pressure",
+      "Technology with sensitivity",
+      "Made for families"
+    ]
+  },
+  "about": {
+    "title": "Family financial management system",
+    "tagline": "Florim is a family financial organization system created to bring clarity, dialogue, and peace of mind to everyday home life.",
+    "body1a": "It goes beyond managing numbers.",
+    "body1b": "Florim takes care of real life. It wasn't born in a boardroom, but inside a home.",
+    "body2a": "Here, we understand that money involves emotions, decisions, and human relationships.",
+    "body2b": "That's why the system was designed to be simple, intuitive, and welcoming.",
+    "body3": "At Florim, technology serves care and never excessive control.",
+    "viewPlans": "View plans",
+    "videoLabel": "Florim demo in use"
+  },
+  "support": {
+    "title": "Support",
+    "subtitle": "We're here to help. Response within 1 business day.",
+    "contactTitle": "Contact us",
+    "generalEmailLabel": "General email",
+    "generalEmailNote": "Questions, suggestions and partnerships",
+    "privacyEmailLabel": "Privacy & data",
+    "privacyEmailNote": "Export, deletion and LGPD",
+    "faqTitle": "Frequently asked questions",
+    "privacyLink": "Privacy Policy",
+    "termsLink": "Terms of Use",
+    "cookiesLink": "Cookie Policy",
+    "faq": [
+      {
+        "q": "How do I cancel my subscription?",
+        "a": "In the app or website, go to Settings → Subscription → Manage plan. Cancellation is immediate and you keep access until the end of the paid period."
+      },
+      {
+        "q": "Can I request a refund?",
+        "a": "Yes. We accept refund requests within 7 days of the charge. Contact us at the email below stating the reason."
+      },
+      {
+        "q": "How do I add a family member?",
+        "a": "In Settings → Family, tap \"Invite member\" and enter the person's email. They will receive an invite link valid for 7 days."
+      },
+      {
+        "q": "Does Florim access my bank account?",
+        "a": "No. Florim is 100% manual — you record your entries and we organize them. We never connect to banks or perform transactions."
+      },
+      {
+        "q": "How do I delete my account?",
+        "a": "Go to Settings → Profile → Delete account. All your data is permanently removed, per our Privacy Policy."
+      },
+      {
+        "q": "Is my data safe?",
+        "a": "Yes. Data is stored on Supabase (AWS infrastructure), with encryption in transit and at rest. See our Privacy Policy for details."
+      }
+    ]
   }
 }
