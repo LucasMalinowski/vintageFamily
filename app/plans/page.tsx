@@ -1,15 +1,21 @@
 import type { Metadata } from 'next'
 import PlansContent from './PlansContent'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 
-export const metadata: Metadata = {
-  title: 'Planos',
-  description: 'Veja os planos do Florim. Compare recursos e escolha o melhor para a sua família. Comece grátis, sem cartão.',
-  alternates: { canonical: '/plans' },
-  openGraph: {
-    title: 'Planos Florim - Gestão financeira familiar',
-    description: 'Compare os planos do Florim e comece grátis por 30 dias.',
-    url: 'https://florim.app/plans',
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getUserLocale()
+  const msgs = (await import(`@/messages/${locale}.json`)).default as any
+  const s = msgs.seo.plansPage
+  return {
+    title: s.title,
+    description: s.description,
+    alternates: { canonical: '/plans' },
+    openGraph: {
+      title: s.ogTitle,
+      description: s.ogDescription,
+      url: 'https://florim.app/plans',
+    },
+  }
 }
 
 export default function PlansPage() {

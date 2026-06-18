@@ -2,10 +2,14 @@ import type { Metadata } from 'next'
 import { NextIntlClientProvider } from 'next-intl'
 import { getUserLocale } from '@/lib/i18n/getLocale'
 
-export const metadata: Metadata = {
-  title: 'Feedback',
-  description: 'Envie seu feedback, sugestão ou reporte um bug para a equipe do Florim.',
-  robots: { index: false, follow: false },
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getUserLocale()
+  const msgs = (await import(`@/messages/${locale}.json`)).default as any
+  return {
+    title: msgs.feedback.title,
+    description: msgs.seo.feedback.description,
+    robots: { index: false, follow: false },
+  }
 }
 
 export default async function FeedbackLayout({ children }: { children: React.ReactNode }) {

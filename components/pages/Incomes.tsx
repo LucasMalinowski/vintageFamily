@@ -40,6 +40,7 @@ import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
 import FilterSheet from '@/components/layout/FilterSheet'
 import { getAttachmentViewUrl, parseLegacyAttachment } from '@/lib/security/attachments'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 import CategorySettingsModal from '@/components/categories/CategorySettingsModal'
 import BankStatementImportModal from '@/components/bank-statements/BankStatementImportModal'
 import PdfPreviewModal from '@/components/export/PdfPreviewModal'
@@ -57,7 +58,7 @@ import { buildBrandedPdfBlob, downloadBlob, downloadCsv, openHtmlAsPdf } from '@
 import { usePlan } from '@/lib/billing/plan-context'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 
 type IncomeStatus = 'received' | 'pending'
 
@@ -84,6 +85,7 @@ function isDateInBillingPeriod(date: string, month: number, year: number, cycleD
 
 export default function Incomes() {
   const t = useTranslations()
+  const locale = useLocale() as AppLocale
   const { familyId, user } = useAuth()
   const { tier } = usePlan()
   const isFreeTier = tier === 'free'
@@ -126,13 +128,13 @@ export default function Incomes() {
   const [pdfError, setPdfError] = useState<string | null>(null)
 
   const RECURRENCE_OPTIONS = [
-    { value: 'weekly', label: 'Semanal' },
-    { value: 'biweekly', label: 'Quinzenal' },
-    { value: 'monthly', label: 'Mensal' },
-    { value: 'bimonthly', label: 'Bimestral' },
-    { value: 'quarterly', label: 'Trimestral' },
-    { value: 'semiannual', label: 'Semestral' },
-    { value: 'annual', label: 'Anual' },
+    { value: 'weekly', label: t('incomes.frequencyWeekly') },
+    { value: 'biweekly', label: t('incomes.frequencyBiweekly') },
+    { value: 'monthly', label: t('incomes.frequencyMonthly') },
+    { value: 'bimonthly', label: t('incomes.frequencyBimonthly') },
+    { value: 'quarterly', label: t('incomes.frequencyQuarterly') },
+    { value: 'semiannual', label: t('incomes.frequencySemiannual') },
+    { value: 'annual', label: t('incomes.frequencyAnnual') },
   ]
 
   const [formData, setFormData] = useState({
@@ -178,7 +180,7 @@ export default function Incomes() {
   const loadCategories = useCallback(async () => {
     const { data } = await supabase
       .from('categories')
-      .select('id,name,kind,parent_id,is_system,icon')
+      .select('id,name,name_en,name_es,kind,parent_id,is_system,icon')
       .eq('family_id', familyId!)
       .eq('kind', 'income')
       .order('name')
@@ -269,9 +271,9 @@ export default function Incomes() {
     () => new Map<string, CategoryRecord>(categories.map((category) => [category.id, category])),
     [categories]
   )
-  const categoryLabelMap = useMemo(() => buildCategoryLabelMap(categories), [categories])
+  const categoryLabelMap = useMemo(() => buildCategoryLabelMap(categories, locale), [categories, locale])
   const categoryIconMap = useMemo(() => buildCategoryIconMap(categories), [categories])
-  const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories])
+  const categoryOptions = useMemo(() => buildCategoryOptions(categories, locale), [categories, locale])
 
   useEffect(() => {
     const stored = window.localStorage.getItem('app-filters-open')
@@ -317,14 +319,14 @@ export default function Incomes() {
             .gte('date', format(start, 'yyyy-MM-dd'))
             .lte('date', format(end, 'yyyy-MM-dd'))
           const total = (data || []).reduce((s: number, r: { amount_cents: number }) => s + r.amount_cents, 0)
-          const label = `${getMonthLabel(month).slice(0, 3)}/${String(year).slice(2)}`
+          const label = `${getMonthLabel(month, locale).slice(0, 3)}/${String(year).slice(2)}`
           return { label, value: total }
         }),
       )
       if (!cancelled) setTrendData(results)
     })()
     return () => { cancelled = true }
-  }, [familyId])
+  }, [familyId, locale])
 
   const getCategoryLabel = (categoryId: string | null, fallbackName: string) => {
     if (categoryId) {
@@ -361,7 +363,7 @@ export default function Incomes() {
       : formData.status
 
     if (!category || !categoryLabel) {
-      setFormError('Selecione uma categoria válida.')
+      setFormError(t('common.invalidCategoryError'))
       return
     }
     setFormError(null)
@@ -473,7 +475,7 @@ export default function Incomes() {
 
     if (!response.ok) {
       const body = await response.json().catch(() => null)
-      toast(body?.error ?? 'Erro ao enviar arquivo. Tente novamente.', { type: 'error' })
+      toast(body?.error ?? t('incomes.attachmentUploadError'), { type: 'error' })
       return
     }
 
@@ -533,7 +535,7 @@ export default function Incomes() {
     .slice()
     .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
     .reduce<Array<{ label: string; items: Income[] }>>((groups, income) => {
-      const label = formatMonthYear(income.date)
+      const label = formatMonthYear(income.date, locale)
       const lastGroup = groups[groups.length - 1]
       if (lastGroup && lastGroup.label === label) {
         lastGroup.items.push(income)
@@ -566,8 +568,8 @@ export default function Incomes() {
 
   const prevMonthLabelInc = useMemo(() => {
     if (selectedMonth === ALL_MONTHS_VALUE || selectedMonth === 1) return null
-    return `${getMonthLabel(selectedMonth - 1).slice(0, 3)}/${selectedYear}`
-  }, [selectedMonth, selectedYear])
+    return `${getMonthLabel(selectedMonth - 1, locale).slice(0, 3)}/${selectedYear}`
+  }, [selectedMonth, selectedYear, locale])
 
   const totalDeltaPctInc = prevMonthTotalInc != null && prevMonthTotalInc > 0
     ? Math.round(((total - prevMonthTotalInc) / prevMonthTotalInc) * 100)
@@ -597,10 +599,10 @@ export default function Incomes() {
 
   const trendSeries = useMemo((): LineSeries[] => {
     if (!trendData.length) return []
-    return [{ label: 'Receitas', data: trendData.map((d) => d.value / 100), color: '#6FBF8A' }]
-  }, [trendData])
+    return [{ label: t('comparatives.incomes'), data: trendData.map((d) => d.value / 100), color: '#6FBF8A' }]
+  }, [trendData, t])
 
-  const monthLabelInc = selectedMonth !== ALL_MONTHS_VALUE ? getMonthLabel(selectedMonth) : 'Todos os meses'
+  const monthLabelInc = selectedMonth !== ALL_MONTHS_VALUE ? getMonthLabel(selectedMonth, locale) : getMonthLabel(ALL_MONTHS_VALUE, locale)
 
   const activeFiltersCount = [
     selectedMonth !== getCurrentMonth(),
@@ -618,13 +620,13 @@ export default function Incomes() {
   const activeFilterChips = [
     {
       key: 'month',
-      label: getMonthLabel(selectedMonth),
+      label: getMonthLabel(selectedMonth, locale),
       onRemove: () => setSelectedMonth(getCurrentMonth()),
       disabled: selectedMonth === getCurrentMonth(),
     },
     {
       key: 'year',
-      label: getYearLabel(selectedYear),
+      label: getYearLabel(selectedYear, locale),
       onRemove: () => setSelectedYear(getCurrentYear()),
       disabled: selectedYear === getCurrentYear(),
     },
@@ -656,19 +658,19 @@ export default function Incomes() {
   )
 
   const exportSubtitle = [
-    `Período: ${selectedMonth === ALL_MONTHS_VALUE ? 'todos os meses' : getMonthLabel(selectedMonth)} / ${selectedYear === ALL_YEARS_VALUE ? 'todos os anos' : getYearLabel(selectedYear)}`,
-    selectedCategoryId ? `Categoria: ${getCategoryLabel(selectedCategoryId, 'Categoria')}` : null,
-    selectedStatus ? `Status: ${getIncomeStatusLabel(selectedStatus as IncomeStatus)}` : null,
-    searchTerm ? `Busca: ${searchTerm}` : null,
+    `${t('expenses.periodLabel')}: ${selectedMonth === ALL_MONTHS_VALUE ? getMonthLabel(ALL_MONTHS_VALUE, locale).toLowerCase() : getMonthLabel(selectedMonth, locale)} / ${selectedYear === ALL_YEARS_VALUE ? getYearLabel(ALL_YEARS_VALUE, locale).toLowerCase() : getYearLabel(selectedYear, locale)}`,
+    selectedCategoryId ? `${t('incomes.category')}: ${getCategoryLabel(selectedCategoryId, t('incomes.category'))}` : null,
+    selectedStatus ? `${t('incomes.status')}: ${getIncomeStatusLabel(selectedStatus as IncomeStatus)}` : null,
+    searchTerm ? `${t('common.search')}: ${searchTerm}` : null,
   ]
     .filter(Boolean)
     .join(' • ')
 
   const exportTable = {
     filename: `receitas-${format(new Date(), 'yyyy-MM-dd')}`,
-    title: 'Receitas',
+    title: t('incomes.exportTitle'),
     subtitle: exportSubtitle,
-    headers: ['Data', 'Descrição', 'Categoria', 'Status', 'Valor', 'Observações'],
+    headers: [t('incomes.csvHeaderDate'), t('incomes.csvHeaderDescription'), t('incomes.csvHeaderCategory'), t('incomes.csvHeaderStatus'), t('incomes.csvHeaderAmount'), t('incomes.csvHeaderNotes')],
     rows: exportRows,
   }
 
@@ -677,17 +679,18 @@ export default function Incomes() {
       .filter((i) => i.status === 'received')
       .reduce((sum, i) => sum + i.amount_cents, 0)
     return buildBrandedPdfBlob({
-      title: 'Receitas',
-      filterSummary: exportSubtitle || 'Sem filtros ativos',
-      headers: ['Data', 'Descricao', 'Categoria', 'Status', 'Observacao', 'Valor'],
+      title: t('incomes.exportTitle'),
+      filterSummary: exportSubtitle || t('common.noActiveFilters'),
+      headers: [t('incomes.csvHeaderDate'), t('incomes.csvHeaderDescriptionPdf'), t('incomes.csvHeaderCategory'), t('incomes.csvHeaderStatus'), t('incomes.csvHeaderNotesPdf'), t('incomes.csvHeaderAmount')],
       rows: exportRows,
       cards: [
-        { label: 'TOTAL', value: formatBRL(total) },
-        { label: 'RECEBIDO', value: formatBRL(receivedCents) },
-        { label: 'A RECEBER', value: formatBRL(total - receivedCents) },
+        { label: t('incomes.pdfTotal'), value: formatBRL(total) },
+        { label: t('incomes.pdfReceived'), value: formatBRL(receivedCents) },
+        { label: t('incomes.pdfReceivable'), value: formatBRL(total - receivedCents) },
       ],
       generatedDate: formatDate(new Date()),
       accentColor: '#3E8E5C',
+      locale,
     })
   }
 
@@ -713,7 +716,7 @@ export default function Incomes() {
       setPdfBlob(blob)
       setPdfUrl(url)
     } catch {
-      setPdfError('Não foi possível gerar o preview do PDF nesta tela.')
+      setPdfError(t('incomes.pdfPreviewError'))
     } finally {
       setPdfGenerating(false)
       setExportingFormat(null)
@@ -725,15 +728,15 @@ export default function Incomes() {
       const url = pdfUrl || URL.createObjectURL(await buildIncomePdfBlob())
       openHtmlAsPdf(url)
     } catch {
-      setPdfError('Não foi possível abrir o PDF desta tela.')
+      setPdfError(t('incomes.pdfOpenError'))
     }
   }
 
   const totalLabel = selectedStatus === 'pending'
-    ? 'Total A Receber'
+    ? t('incomes.totalReceivable')
     : selectedStatus === 'received'
-      ? 'Total Recebido'
-      : 'Total no período'
+      ? t('incomes.totalReceived')
+      : t('incomes.totalForPeriod')
 
   const checkExportLimit = async (): Promise<boolean> => {
     if (!isFreeTier) return true
@@ -789,8 +792,8 @@ export default function Incomes() {
             <SlidersHorizontal className="w-4 h-4 text-petrol shrink-0" />
             <span className="leading-tight text-left truncate">
               {selectedMonth === ALL_MONTHS_VALUE
-                ? (selectedYear === ALL_YEARS_VALUE ? 'Todos' : 'Todos os meses')
-                : `${getMonthLabel(selectedMonth).slice(0, 3)}${selectedYear === ALL_YEARS_VALUE ? ' • Todos os anos' : ` ${selectedYear}`}`}
+                ? (selectedYear === ALL_YEARS_VALUE ? t('filterSheet.allOption') : getMonthLabel(ALL_MONTHS_VALUE, locale))
+                : `${getMonthLabel(selectedMonth, locale).slice(0, 3)}${selectedYear === ALL_YEARS_VALUE ? ` • ${getYearLabel(ALL_YEARS_VALUE, locale)}` : ` ${selectedYear}`}`}
             </span>
           </button>
 
@@ -802,9 +805,9 @@ export default function Incomes() {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Buscar..."
+                  placeholder={t('common.searchPlaceholder')}
                   autoFocus
-                  aria-label="Buscar receitas"
+                  aria-label={t('incomes.searchAria')}
                   className="h-[38px] w-full rounded-[10px] border border-border bg-bg pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-petrol/30"
                 />
               </div>
@@ -812,7 +815,7 @@ export default function Incomes() {
                 type="button"
                 onClick={() => { setMobileSearchExpanded(false); setSearchTerm('') }}
                 className="w-[38px] h-[38px] rounded-[10px] border border-border bg-bg text-ink/60 flex items-center justify-center shrink-0"
-                aria-label="Fechar busca"
+                aria-label={t('common.closeSearch')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -831,7 +834,7 @@ export default function Incomes() {
                 type="button"
                 onClick={() => setMobileSearchExpanded(true)}
                 className="w-[38px] h-[38px] rounded-[10px] border border-border bg-bg text-ink/60 flex items-center justify-center shrink-0"
-                aria-label="Buscar"
+                aria-label={t('common.search')}
               >
                 <Search className="w-4 h-4" />
               </button>
@@ -842,7 +845,7 @@ export default function Incomes() {
             type="button"
             onClick={() => setAddMenuOpen((prev) => !prev)}
             className="w-[38px] h-[38px] rounded-[10px] bg-coffee text-paper flex items-center justify-center shrink-0"
-            aria-label="Adicionar"
+            aria-label={t('common.add')}
           >
             <Plus className="w-5 h-5" />
           </button>
@@ -859,8 +862,8 @@ export default function Incomes() {
                     <Edit2 className="w-4 h-4 text-ink/60" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-ink">Adicionar manualmente</p>
-                    <p className="text-xs text-ink/45">Preencher um formulário</p>
+                    <p className="text-sm font-medium text-ink">{t('incomes.addManually')}</p>
+                    <p className="text-xs text-ink/45">{t('incomes.addManuallyDesc')}</p>
                   </div>
                 </button>
                 <button
@@ -872,8 +875,8 @@ export default function Incomes() {
                     <Download className="w-4 h-4 text-ink/60" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-ink">Importar extrato</p>
-                    <p className="text-xs text-ink/45">OFX, CSV de banco</p>
+                    <p className="text-sm font-medium text-ink">{t('incomes.importBank')}</p>
+                    <p className="text-xs text-ink/45">{t('incomes.importBankDesc')}</p>
                   </div>
                 </button>
                 <button
@@ -885,8 +888,8 @@ export default function Incomes() {
                     <Tag className="w-4 h-4 text-ink/60" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-ink">Categorias</p>
-                    <p className="text-xs text-ink/45">Gerenciar categorias</p>
+                    <p className="text-sm font-medium text-ink">{t('incomes.manageCategories')}</p>
+                    <p className="text-xs text-ink/45">{t('incomes.manageCategoriesDesc')}</p>
                   </div>
                 </button>
                 <button
@@ -900,7 +903,7 @@ export default function Incomes() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-ink">{t('incomes.exportCsv')}</p>
-                    <p className="text-xs text-ink/45">Planilha com os dados</p>
+                    <p className="text-xs text-ink/45">{t('incomes.exportCsvDesc')}</p>
                   </div>
                 </button>
                 <button
@@ -914,7 +917,7 @@ export default function Incomes() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-ink">{t('incomes.exportPdf')}</p>
-                    <p className="text-xs text-ink/45">Relatório para imprimir</p>
+                    <p className="text-xs text-ink/45">{t('incomes.exportPdfDesc')}</p>
                   </div>
                 </button>
               </div>
@@ -931,13 +934,13 @@ export default function Incomes() {
           >
             <SlidersHorizontal className="w-4 h-4 text-petrol" />
             {selectedMonth === ALL_MONTHS_VALUE
-              ? (selectedYear === ALL_YEARS_VALUE ? 'Todos' : String(selectedYear))
-              : `${getMonthLabel(selectedMonth).slice(0, 3)} ${selectedYear !== ALL_YEARS_VALUE ? selectedYear : ''}`}
+              ? (selectedYear === ALL_YEARS_VALUE ? t('filterSheet.allOption') : String(selectedYear))
+              : `${getMonthLabel(selectedMonth, locale).slice(0, 3)} ${selectedYear !== ALL_YEARS_VALUE ? selectedYear : ''}`}
             <ChevronDown className={`w-3.5 h-3.5 text-ink/40 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
           </button>
           <div className="flex items-center h-[38px] bg-white border border-border rounded-[10px] px-3 gap-2 flex-1 max-w-[380px]">
             <Search className="w-4 h-4 text-petrol shrink-0" />
-            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder={t('incomes.search')} aria-label="Buscar por nome ou categoria" className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none" />
+            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder={t('incomes.search')} aria-label={t('incomes.searchFilterAria')} className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none" />
           </div>
           <div className="flex-1" />
           <button type="button" onClick={() => setIsCategorySettingsOpen(true)} className="flex items-center gap-1.5 h-[38px] px-3.5 rounded-[10px] border border-border bg-white text-ink/70 text-[13px] font-medium hover:bg-paper transition-vintage">
@@ -958,7 +961,7 @@ export default function Incomes() {
                     type="button"
                     onClick={() => setAddMenuOpen((prev) => !prev)}
                     className="w-[38px] h-[38px] rounded-[10px] bg-coffee text-paper flex items-center justify-center"
-                    aria-label="Adicionar"
+                    aria-label={t('common.add')}
                   >
                     <Plus className="w-5 h-5" />
                   </button>
@@ -975,8 +978,8 @@ export default function Incomes() {
                             <Edit2 className="w-4 h-4 text-ink/60" />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-ink">Adicionar manualmente</p>
-                            <p className="text-xs text-ink/45">Preencher um formulário</p>
+                            <p className="text-sm font-medium text-ink">{t('incomes.addManually')}</p>
+                            <p className="text-xs text-ink/45">{t('incomes.addManuallyDesc')}</p>
                           </div>
                         </button>
                         <button
@@ -988,8 +991,8 @@ export default function Incomes() {
                             <Download className="w-4 h-4 text-ink/60" />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-ink">Importar extrato</p>
-                            <p className="text-xs text-ink/45">OFX, CSV de banco</p>
+                            <p className="text-sm font-medium text-ink">{t('incomes.importBank')}</p>
+                            <p className="text-xs text-ink/45">{t('incomes.importBankDesc')}</p>
                           </div>
                         </button>
                         <button
@@ -1003,7 +1006,7 @@ export default function Incomes() {
                           </div>
                           <div>
                             <p className="text-sm font-medium text-ink">{t('incomes.exportCsv')}</p>
-                            <p className="text-xs text-ink/45">Planilha com os dados</p>
+                            <p className="text-xs text-ink/45">{t('incomes.exportCsvDesc')}</p>
                           </div>
                         </button>
                         <button
@@ -1017,7 +1020,7 @@ export default function Incomes() {
                           </div>
                           <div>
                             <p className="text-sm font-medium text-ink">{t('incomes.exportPdf')}</p>
-                            <p className="text-xs text-ink/45">Relatório para imprimir</p>
+                            <p className="text-xs text-ink/45">{t('incomes.exportPdfDesc')}</p>
                           </div>
                         </button>
                       </div>
@@ -1052,11 +1055,11 @@ export default function Incomes() {
                   label={t('incomes.status')}
                   value={selectedStatus}
                   onChange={(v) => setSelectedStatus(v as '' | IncomeStatus)}
-                  options={[{ value: '', label: 'Todos' }, { value: 'received', label: t('incomes.statusReceived') }, { value: 'pending', label: t('incomes.statusPending') }]}
+                  options={[{ value: '', label: t('filterSheet.allOption') }, { value: 'received', label: t('incomes.statusReceived') }, { value: 'pending', label: t('incomes.statusPending') }]}
                 />
               </div>
               {activeFiltersCount > 0 && (
-                <button type="button" onClick={clearFilters} className="text-xs text-[#B05C3A] hover:underline self-end pb-2">Limpar filtros</button>
+                <button type="button" onClick={clearFilters} className="text-xs text-[#B05C3A] hover:underline self-end pb-2">{t('common.clearFilters')}</button>
               )}
             </div>
           </div>
@@ -1095,7 +1098,7 @@ export default function Incomes() {
                 value={selectedStatus}
                 onChange={(v) => setSelectedStatus((v as IncomeStatus) || '')}
                 options={[
-                  { value: '', label: 'Todos' },
+                  { value: '', label: t('filterSheet.allOption') },
                   { value: 'received', label: t('incomes.statusReceived') },
                   { value: 'pending', label: t('incomes.statusPending') },
                 ]}
@@ -1135,7 +1138,7 @@ export default function Incomes() {
                     <AnalyticsKpiCard
                       label={t('incomes.kpiPending')}
                       value={formatBRL(pending)}
-                      sub={pending > 0 ? `${filteredIncomes.filter(i => i.status === 'pending').length} pendente(s)` : 'Tudo recebido'}
+                      sub={pending > 0 ? t('incomes.pendingCountSuffix', { count: filteredIncomes.filter(i => i.status === 'pending').length }) : t('incomes.allReceived')}
                       iconTheme="orange"
                       icon={Clock}
                     />
@@ -1145,8 +1148,8 @@ export default function Incomes() {
                   <div className="grid md:grid-cols-[1fr_280px] gap-4">
                     <div className="bg-white rounded-xl border border-border shadow-soft p-4">
                       <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-semibold text-ink font-serif">Evolução das receitas</h3>
-                        <span className="text-[11px] text-ink/45">Últimos 6 meses</span>
+                        <h3 className="text-sm font-semibold text-ink font-serif">{t('incomes.trendTitle')}</h3>
+                        <span className="text-[11px] text-ink/45">{t('incomes.last6Months')}</span>
                       </div>
                       {trendSeries.length > 0 ? (
                         <LineChart series={trendSeries} labels={trendData.map(d => d.label)} height={160} />
@@ -1180,7 +1183,7 @@ export default function Incomes() {
                         }}
                       />
                     ) : (
-                      <div className="text-sm text-ink/40 italic p-2">Sem dados</div>
+                      <div className="text-sm text-ink/40 italic p-2">{t('incomes.noData')}</div>
                     )}
                   </div>
                 </div>
@@ -1239,7 +1242,7 @@ export default function Incomes() {
                                     className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-vintage disabled:opacity-50 ${
                                       isReceived ? 'border-olive bg-olive' : 'border-amber-400 bg-transparent'
                                     }`}
-                                    aria-label={`Marcar ${income.description} como ${isReceived ? 'a receber' : 'recebido'}`}
+                                    aria-label={t(isReceived ? 'incomes.markAsPendingAria' : 'incomes.markAsReceivedAria', { description: income.description })}
                                   >
                                     {isReceived && <Check className="h-3 w-3 text-white" />}
                                   </button>
@@ -1306,7 +1309,7 @@ export default function Incomes() {
                                 className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-vintage disabled:opacity-50 ${
                                   isReceived ? 'border-olive bg-olive' : 'border-amber-400 bg-transparent hover:border-olive'
                                 }`}
-                                aria-label={`Marcar ${income.description} como ${isReceived ? 'a receber' : 'recebido'}`}
+                                aria-label={t(isReceived ? 'incomes.markAsPendingAria' : 'incomes.markAsReceivedAria', { description: income.description })}
                               >
                                 {isReceived && <Check className="h-3 w-3 text-white" />}
                               </button>
@@ -1371,7 +1374,7 @@ export default function Incomes() {
         <div className="md:hidden shrink-0 px-[18px] pt-3 pb-2 border-t border-border bg-offWhite">
           <div className="h-[44px] flex items-center justify-center">
             <p className="text-center text-[13px] text-gold italic">
-              O fruto do trabalho honrado alimenta os sonhos da família.
+              {t('incomes.motivationalSubtitle')}
             </p>
           </div>
         </div>
@@ -1380,7 +1383,7 @@ export default function Incomes() {
         <footer className="hidden md:block mt-auto w-full">
           <div className="h-[56px] bg-paper flex items-center justify-center px-6">
             <p className="text-center text-[13px] text-gold italic">
-              O fruto do trabalho honrado alimenta os sonhos da família.
+              {t('incomes.motivationalSubtitle')}
             </p>
           </div>
         </footer>
@@ -1419,7 +1422,7 @@ export default function Incomes() {
               onChange={(e) => { const v = e.target.value; setFormData(prev => ({ ...prev, description: v })) }}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder={t('incomes.descriptionPlaceholder')}
-              aria-label="Descrição da receita"
+              aria-label={t('incomes.descriptionAria')}
             />
             {suggestedCategoryId && !formData.categoryId && categoryLabelMap.get(suggestedCategoryId) && (
               <button
@@ -1427,7 +1430,7 @@ export default function Incomes() {
                 onClick={() => { setFormData(f => ({ ...f, categoryId: suggestedCategoryId })); setSuggestedCategoryId(null) }}
                 className="mt-1.5 flex items-center gap-1.5 text-xs text-petrol border border-petrol/30 rounded-full px-2.5 py-1 hover:bg-petrol/5 transition-vintage"
               >
-                <span className="text-ink/40">Sugestão:</span>
+                <span className="text-ink/40">{t('common.suggestionLabel')}</span>
                 <span className="font-medium">{categoryLabelMap.get(suggestedCategoryId)}</span>
                 <Check className="w-3 h-3 ml-0.5" />
               </button>
@@ -1467,7 +1470,7 @@ export default function Incomes() {
               value={formData.date}
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-              aria-label="Data da receita"
+              aria-label={t('incomes.dateAria')}
             />
           </div>
 
@@ -1494,7 +1497,7 @@ export default function Incomes() {
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 resize-none"
               rows={3}
               placeholder={t('incomes.notesPlaceholder')}
-              aria-label="Observação"
+              aria-label={t('common.notesAria')}
             />
           </div>
 
@@ -1507,7 +1510,7 @@ export default function Incomes() {
                   onChange={(e) => setFormData({ ...formData, isRecurring: e.target.checked })}
                   className="w-5 h-5 rounded border-border"
                 />
-                <span className="text-sm font-body text-ink">Receita recorrente</span>
+                <span className="text-sm font-body text-ink">{t('incomes.recurring')}</span>
               </label>
               {formData.isRecurring && (
                 <div className="space-y-3 pl-7">
@@ -1520,7 +1523,7 @@ export default function Incomes() {
                     variant="modal"
                   />
                   <div>
-                    <label className="block text-sm font-body text-ink mb-2">Valor recorrente</label>
+                    <label className="block text-sm font-body text-ink mb-2">{t('incomes.recurringAmountLabel')}</label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
@@ -1529,7 +1532,7 @@ export default function Incomes() {
                           formData.isFixedAmount ? 'border-coffee bg-coffee/5' : 'border-border hover:bg-paper'
                         }`}
                       >
-                        <div className={`text-sm font-semibold mb-0.5 ${formData.isFixedAmount ? 'text-coffee' : 'text-ink'}`}>Mesmo valor</div>
+                        <div className={`text-sm font-semibold mb-0.5 ${formData.isFixedAmount ? 'text-coffee' : 'text-ink'}`}>{t('incomes.fixedAmountOption')}</div>
                         <div className="text-xs text-ink/60">repete com o valor atual</div>
                       </button>
                       <button
@@ -1539,13 +1542,13 @@ export default function Incomes() {
                           !formData.isFixedAmount ? 'border-petrol bg-petrol/5' : 'border-border hover:bg-paper'
                         }`}
                       >
-                        <div className={`text-sm font-semibold mb-0.5 ${!formData.isFixedAmount ? 'text-petrol' : 'text-ink'}`}>Valor variável</div>
-                        <div className="text-xs text-ink/60">informar a cada mês</div>
+                        <div className={`text-sm font-semibold mb-0.5 ${!formData.isFixedAmount ? 'text-petrol' : 'text-ink'}`}>{t('incomes.variableAmountOption')}</div>
+                        <div className="text-xs text-ink/60">{t('incomes.variableAmountOptionDesc')}</div>
                       </button>
                     </div>
                     {!formData.isFixedAmount && (
                       <p className="mt-2 text-xs text-petrol bg-petrol/5 border border-petrol/20 rounded-lg p-2">
-                        📋 Cada ocorrência será criada com valor a preencher.
+                        📋 {t('incomes.variableAmountNote')}
                       </p>
                     )}
                   </div>
@@ -1635,20 +1638,20 @@ export default function Incomes() {
                       try {
                         window.open(await getAttachmentViewUrl(detailIncome.attachment_path, attachmentUrl), '_blank', 'noopener,noreferrer')
                       } catch {
-                        alert('Não foi possível abrir o anexo.')
+                        alert(t('incomes.attachmentOpenError'))
                       }
                     }}
                     className="text-petrol hover:opacity-80 transition-vintage"
                   >
-                    Visualizar anexo
+                    {t('incomes.viewAttachment')}
                   </button>
                 ) : (
-                  <p>Sem arquivo anexado</p>
+                  <p>{t('incomes.noAttachmentFile')}</p>
                 )}
               </div>
               {detailIncome.created_by && (
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-ink/50">Criado por</p>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">{t('incomes.createdByLabel')}</p>
                   <p>{familyMembers.get(detailIncome.created_by) ?? '-'}</p>
                 </div>
               )}
@@ -1681,7 +1684,7 @@ export default function Incomes() {
         status={selectedStatus || undefined}
         showStatus
         statusOptions={[
-          { value: '', label: 'Todos' },
+          { value: '', label: t('filterSheet.allOption') },
           { value: 'received', label: t('incomes.statusReceived') },
           { value: 'pending', label: t('incomes.statusPending') },
         ]}
@@ -1692,20 +1695,20 @@ export default function Incomes() {
         }}
       />
 
-      <Modal isOpen={showPaywallModal} onClose={() => setShowPaywallModal(false)} title="Limite atingido">
+      <Modal isOpen={showPaywallModal} onClose={() => setShowPaywallModal(false)} title={t('common.limitReached')}>
         <div className="space-y-4">
           <p className="text-ink/80 text-sm">
-            Você atingiu o limite de 3 exportações/importações gratuitas este mês.
+            {t('comparatives.paywallBody')}
           </p>
           <p className="text-ink/60 text-sm">
-            Assine o Florim Pro para exportações ilimitadas e outros recursos avançados.
+            {t('comparatives.paywallPro')}
           </p>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={() => setShowPaywallModal(false)} className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage text-sm">
-              Fechar
+              {t('common.close')}
             </button>
             <Link href="/settings/billing" className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg text-sm font-semibold text-center hover:bg-coffee/90 transition-vintage">
-              Ver planos
+              {t('comparatives.paywallCta')}
             </Link>
           </div>
         </div>

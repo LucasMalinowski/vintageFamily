@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { getTranslations } from 'next-intl/server'
 import { getAccessTokenFromAuthHeader, getAccessTokenFromCookieStore, requireUserByAccessToken } from '@/lib/billing/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 
 function cleanString(value: unknown) {
   return typeof value === 'string' && value.trim() ? value.trim() : ''
@@ -24,8 +26,10 @@ function getAuthMetadataName(user: {
 
 export async function GET(request: Request) {
   const cookieStore = await cookies()
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
   const token = getAccessTokenFromAuthHeader(request) ?? getAccessTokenFromCookieStore(cookieStore)
-  const auth = await requireUserByAccessToken(token)
+  const auth = await requireUserByAccessToken(token, locale)
 
   if (!auth.user) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
@@ -37,7 +41,7 @@ export async function GET(request: Request) {
     .maybeSingle()
 
   if (error || !data) {
-    return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 404 })
+    return NextResponse.json({ error: t('profile.profileNotFound') }, { status: 404 })
   }
 
   return NextResponse.json({

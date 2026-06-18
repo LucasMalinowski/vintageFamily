@@ -28,10 +28,11 @@ interface SSOButtonsProps {
 }
 
 export function SSODivider() {
+  const t = useTranslations()
   return (
     <div className="flex items-center gap-3 my-5">
       <div className="flex-1 h-px bg-border" />
-      <span className="text-[13px] text-ink/40 font-body shrink-0">ou continue com</span>
+      <span className="text-[13px] text-ink/40 font-body shrink-0">{t('ssoButtons.orContinueWith')}</span>
       <div className="flex-1 h-px bg-border" />
     </div>
   )
@@ -61,7 +62,7 @@ export function SSOButtons({ onError, disabled = false }: SSOButtonsProps) {
           ux_mode: 'popup',
           callback: async (response: { code?: string; error?: string }) => {
             if (response.error || !response.code) {
-              onError?.('Erro ao entrar com Google.')
+              onError?.(t('ssoButtons.errors.google'))
               setGoogleLoading(false)
               return
             }
@@ -75,12 +76,12 @@ export function SSOButtons({ onError, disabled = false }: SSOButtonsProps) {
               })
               if (!res.ok) {
                 const payload = await res.json().catch(() => ({}))
-                throw new Error(payload?.error ?? 'Falha ao autenticar com Google.')
+                throw new Error(payload?.error ?? t('ssoButtons.errors.googleAuthFailed'))
               }
               const { idToken } = await res.json()
               await signInWithGoogle(idToken)
             } catch (err: any) {
-              onError?.(err.message ?? 'Erro ao entrar com Google.')
+              onError?.(err.message ?? t('ssoButtons.errors.google'))
               setGoogleLoading(false)
             }
           },
@@ -103,7 +104,7 @@ export function SSOButtons({ onError, disabled = false }: SSOButtonsProps) {
 
   const handleGoogleClick = () => {
     if (!codeClientRef.current) {
-      onError?.('Google ainda não está pronto. Tente novamente em instantes.')
+      onError?.(t('ssoButtons.errors.googleNotReady'))
       return
     }
     codeClientRef.current.requestCode()
@@ -115,7 +116,7 @@ export function SSOButtons({ onError, disabled = false }: SSOButtonsProps) {
       await signInWithApple()
       // signInWithApple triggers a redirect — page unmounts, no finally needed
     } catch (err: any) {
-      onError?.(err.message ?? 'Erro ao entrar com Apple.')
+      onError?.(err.message ?? t('ssoButtons.errors.apple'))
       setAppleLoading(false)
     }
   }

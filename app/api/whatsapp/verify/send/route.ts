@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import crypto from 'crypto'
+import { getTranslations } from 'next-intl/server'
 import { getAccessTokenFromAuthHeader, getAccessTokenFromCookieStore, requireUserByAccessToken } from '@/lib/billing/auth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 
 const OTP_COOLDOWN_MS = 60_000
 const OTP_HOURLY_LIMIT = 5
@@ -23,22 +25,24 @@ function hashOtp(code: string): string {
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies()
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
   const token = getAccessTokenFromAuthHeader(request) ?? getAccessTokenFromCookieStore(cookieStore)
-  const { error, user } = await requireUserByAccessToken(token)
+  const { error, user } = await requireUserByAccessToken(token, locale)
   if (error || !user) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 })
   }
 
   const body = await request.json().catch(() => ({}))
   const rawPhone: string = body.phone ?? ''
 
   if (!rawPhone) {
-    return NextResponse.json({ error: 'Número de telefone obrigatório.' }, { status: 400 })
+    return NextResponse.json({ error: t('whatsapp.phoneRequired') }, { status: 400 })
   }
 
   const normalized = normalizePhone(rawPhone)
   if (!/^\+\d{10,15}$/.test(normalized)) {
-    return NextResponse.json({ error: 'Número de telefone inválido.' }, { status: 400 })
+    return NextResponse.json({ error: t('whatsapp.invalidPhone') }, { status: 400 })
   }
 
   // Check if this phone belongs to another user
@@ -50,7 +54,7 @@ export async function POST(request: NextRequest) {
     .maybeSingle()
 
   if (existing) {
-    return NextResponse.json({ error: 'Este número já está cadastrado em outra conta.' }, { status: 409 })
+    return NextResponse.json({ error: t('whatsapp.phoneAlreadyRegistered') }, { status: 409 })
   }
 
   // Rate limiting: enforce cooldown and hourly cap
@@ -64,7 +68,7 @@ export async function POST(request: NextRequest) {
     if (elapsed < OTP_COOLDOWN_MS) {
       const wait = Math.ceil((OTP_COOLDOWN_MS - elapsed) / 1000)
       return NextResponse.json(
-        { error: `Aguarde ${wait}s antes de solicitar um novo código.` },
+        { error: t('whatsapp.cooldownWait', { seconds: wait }) },
         { status: 429 }
       )
     }
@@ -77,7 +81,7 @@ export async function POST(request: NextRequest) {
 
   if (!hourExpired && hourCount >= OTP_HOURLY_LIMIT) {
     return NextResponse.json(
-      { error: 'Limite de envios atingido. Tente novamente em 1 hora.' },
+      { error: t('whatsapp.hourlyLimitReached') },
       { status: 429 }
     )
   }

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 import { checkRateLimit } from '@/lib/billing/rate-limit'
 import { DOWNGRADE_PATHS, isFoundersPlan, isPlanCode, UPGRADE_PATHS } from '@/lib/billing/constants'
 import { getPlanCodeByPriceId, getPriceIdByPlanCode, stripe } from '@/lib/billing/stripe'
@@ -18,8 +20,10 @@ function getProrationAmount(invoice: any) {
 
 export async function POST(request: Request) {
   try {
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
     const accessToken = getAccessTokenFromAuthHeader(request)
-    const auth = await requireUserByAccessToken(accessToken)
+    const auth = await requireUserByAccessToken(accessToken, locale)
 
     if (!auth.user) {
       return NextResponse.json({ error: auth.error }, { status: auth.status })
@@ -27,16 +31,16 @@ export async function POST(request: Request) {
 
     const allowed = await checkRateLimit(auth.user.id, 'change-subscription-now', 5)
     if (!allowed) {
-      return NextResponse.json({ error: 'Muitas tentativas. Aguarde um momento e tente novamente.' }, { status: 429 })
+      return NextResponse.json({ error: t('billing.tooManyAttempts') }, { status: 429 })
     }
 
     const profile = await getProfileByUserId(auth.user.id)
     if (!profile) {
-      return NextResponse.json({ error: 'Perfil do usuário não encontrado.' }, { status: 404 })
+      return NextResponse.json({ error: t('billing.userProfileNotFound') }, { status: 404 })
     }
 
     if (profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Apenas administradores da família podem gerenciar cobrança.' }, { status: 403 })
+      return NextResponse.json({ error: t('billing.adminOnly') }, { status: 403 })
     }
 
     const body = (await request.json().catch(() => null)) as { plan_code?: string; proration_date?: number } | null
@@ -44,7 +48,7 @@ export async function POST(request: Request) {
     const prorationDate = typeof body?.proration_date === 'number' ? body.proration_date : Math.floor(Date.now() / 1000)
 
     if (!targetPlanCode || !isPlanCode(targetPlanCode)) {
-      return NextResponse.json({ error: 'Plano inválido.' }, { status: 400 })
+      return NextResponse.json({ error: t('billing.invalidPlan') }, { status: 400 })
     }
 
     const [{ data: currentSubscription }, { data: family }, { data: planSetting }] = await Promise.all([
@@ -66,15 +70,15 @@ export async function POST(request: Request) {
     ])
 
     if (!currentSubscription?.stripe_subscription_id || !currentSubscription.plan_code) {
-      return NextResponse.json({ error: 'Nenhuma assinatura ativa encontrada.' }, { status: 400 })
+      return NextResponse.json({ error: t('billing.noActiveSubscription') }, { status: 400 })
     }
 
     if (!planSetting?.is_active) {
-      return NextResponse.json({ error: 'O plano de destino está indisponível.' }, { status: 400 })
+      return NextResponse.json({ error: t('billing.targetPlanUnavailable') }, { status: 400 })
     }
 
     if (isFoundersPlan(targetPlanCode) && !family?.founders_enabled) {
-      return NextResponse.json({ error: 'Sua família não está habilitada para o Plano Fundadores.' }, { status: 403 })
+      return NextResponse.json({ error: t('billing.foundersNotEnabled') }, { status: 403 })
     }
 
     const currentPlanCode = currentSubscription.plan_code as keyof typeof UPGRADE_PATHS
@@ -82,7 +86,7 @@ export async function POST(request: Request) {
     const isDowngrade = DOWNGRADE_PATHS[currentPlanCode]?.includes(targetPlanCode)
 
     if (!isUpgrade && !isDowngrade) {
-      return NextResponse.json({ error: 'Esta alteração de plano não é permitida.' }, { status: 400 })
+      return NextResponse.json({ error: t('billing.planChangeNotAllowed') }, { status: 400 })
     }
 
     const stripeSubscription = await stripe.subscriptions.retrieve(currentSubscription.stripe_subscription_id, {
@@ -93,11 +97,11 @@ export async function POST(request: Request) {
     const currentPlanCodeFromStripe = getPlanCodeByPriceId(currentItem?.price.id ?? null)
 
     if (!currentItem) {
-      return NextResponse.json({ error: 'Item da assinatura não encontrado no Stripe.' }, { status: 400 })
+      return NextResponse.json({ error: t('billing.subscriptionItemNotFound') }, { status: 400 })
     }
 
     if (currentPlanCodeFromStripe !== currentSubscription.plan_code) {
-      return NextResponse.json({ error: 'A assinatura está fora de sincronia. Atualize os dados e tente novamente.' }, { status: 409 })
+      return NextResponse.json({ error: t('billing.subscriptionOutOfSync') }, { status: 409 })
     }
 
     const targetPriceId = getPriceIdByPlanCode(targetPlanCode)
@@ -143,6 +147,8 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     console.error('change-subscription-now failed', error)
-    return NextResponse.json({ error: billingErrorMessage(error, 'Erro inesperado ao alterar plano.') }, { status: 500 })
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
+    return NextResponse.json({ error: billingErrorMessage(error, t('billing.changePlanUnexpectedError')) }, { status: 500 })
   }
 }

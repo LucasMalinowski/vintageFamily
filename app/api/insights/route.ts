@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { getAccessTokenFromAuthHeader, requireUserByAccessToken, getProfileByUserId } from '@/lib/billing/auth'
 import { hasBillingAccess } from '@/lib/billing/access'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { getUsageCounters } from '@/lib/billing/free-tier'
 import { FREE_TIER_LIMITS } from '@/lib/billing/constants'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 
 export async function GET(request: NextRequest) {
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
   const token = getAccessTokenFromAuthHeader(request)
-  const { error, user } = await requireUserByAccessToken(token)
-  if (error || !user) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+  const { error, user } = await requireUserByAccessToken(token, locale)
+  if (error || !user) return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 })
 
   const profile = await getProfileByUserId(user.id)
-  if (!profile) return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 404 })
+  if (!profile) return NextResponse.json({ error: t('insights.profileNotFound') }, { status: 404 })
 
   const access = await hasBillingAccess({ familyId: profile.family_id })
   const hasFullInsightAccess = access.isPaidTier || access.hasActiveTrial

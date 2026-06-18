@@ -40,6 +40,7 @@ import { format } from 'date-fns'
 import ActionMenu from '@/components/ui/ActionMenu'
 import FilterSheet from '@/components/layout/FilterSheet'
 import { getAttachmentViewUrl, parseLegacyAttachment } from '@/lib/security/attachments'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 import CategorySettingsModal from '@/components/categories/CategorySettingsModal'
 import BankStatementImportModal from '@/components/bank-statements/BankStatementImportModal'
 import {
@@ -57,7 +58,7 @@ import PdfPreviewModal from '@/components/export/PdfPreviewModal'
 import { usePlan } from '@/lib/billing/plan-context'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 
 type PaymentMethod = 'PIX' | 'Credito' | 'Debito' | 'ValeAlimentacao' | 'Dinheiro' | 'Cheque' | 'Transferência'
 
@@ -163,18 +164,19 @@ interface Expense {
   created_at: string
 }
 
-const formatPaymentLabel = (method: PaymentMethod | null, installments: number | null) => {
+const formatPaymentLabel = (t: ReturnType<typeof useTranslations>, method: PaymentMethod | null, installments: number | null) => {
   if (method === 'Credito') {
     const count = installments && installments > 1 ? `${installments}x` : ''
-    return count ? `Credito ${count}` : 'Credito'
+    const label = t('filterSheet.methodCredit')
+    return count ? `${label} ${count}` : label
   }
-  if (method === 'Debito') return 'Debito'
+  if (method === 'Debito') return t('filterSheet.methodDebit')
   if (method === 'PIX') return 'PIX'
-  if (method === 'ValeAlimentacao') return 'Vale Alimentação'
-  if (method === 'Dinheiro') return 'Dinheiro'
-  if (method === 'Cheque') return 'Cheque'
-  if (method === 'Transferência') return 'Transferência'
-  return 'Não definido'
+  if (method === 'ValeAlimentacao') return t('filterSheet.methodMealVoucher')
+  if (method === 'Dinheiro') return t('filterSheet.methodCash')
+  if (method === 'Cheque') return t('filterSheet.methodCheck')
+  if (method === 'Transferência') return t('filterSheet.methodTransfer')
+  return t('expenses.methodNotSet')
 }
 
 function isDateInBillingPeriod(date: string, month: number, year: number, cycleDay: number): boolean {
@@ -186,6 +188,7 @@ function isDateInBillingPeriod(date: string, month: number, year: number, cycleD
 
 export default function Expenses() {
   const t = useTranslations()
+  const locale = useLocale() as AppLocale
   const { familyId, user } = useAuth()
   const { tier } = usePlan()
   const isFreeTier = tier === 'free'
@@ -232,13 +235,13 @@ export default function Expenses() {
 
   // Form
   const RECURRENCE_OPTIONS = [
-    { value: 'weekly', label: 'Semanal' },
-    { value: 'biweekly', label: 'Quinzenal' },
-    { value: 'monthly', label: 'Mensal' },
-    { value: 'bimonthly', label: 'Bimestral' },
-    { value: 'quarterly', label: 'Trimestral' },
-    { value: 'semiannual', label: 'Semestral' },
-    { value: 'annual', label: 'Anual' },
+    { value: 'weekly', label: t('expenses.frequencyWeekly') },
+    { value: 'biweekly', label: t('expenses.frequencyBiweekly') },
+    { value: 'monthly', label: t('expenses.frequencyMonthly') },
+    { value: 'bimonthly', label: t('expenses.frequencyBimonthly') },
+    { value: 'quarterly', label: t('expenses.frequencyQuarterly') },
+    { value: 'semiannual', label: t('expenses.frequencySemiannual') },
+    { value: 'annual', label: t('expenses.frequencyAnnual') },
   ]
 
   const [formData, setFormData] = useState({
@@ -390,9 +393,9 @@ export default function Expenses() {
     () => new Map<string, CategoryRecord>(categories.map((category) => [category.id, category])),
     [categories]
   )
-  const categoryLabelMap = useMemo(() => buildCategoryLabelMap(categories), [categories])
+  const categoryLabelMap = useMemo(() => buildCategoryLabelMap(categories, locale), [categories, locale])
   const categoryIconMap = useMemo(() => buildCategoryIconMap(categories), [categories])
-  const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories])
+  const categoryOptions = useMemo(() => buildCategoryOptions(categories, locale), [categories, locale])
 
   useEffect(() => {
     const stored = window.localStorage.getItem('app-filters-open')
@@ -429,7 +432,7 @@ export default function Expenses() {
   async function loadCategories() {
     const { data } = await supabase
       .from('categories')
-      .select('id,name,kind,parent_id,is_system,icon,monthly_limit_cents')
+      .select('id,name,name_en,name_es,kind,parent_id,is_system,icon,monthly_limit_cents')
       .eq('family_id', familyId!)
       .eq('kind', 'expense')
       .order('name')
@@ -506,7 +509,7 @@ export default function Expenses() {
     const categoryLabel = category ? (categoryLabelMap.get(category.id) || category.name) : null
 
     if (!category || !categoryLabel) {
-      setFormError('Selecione uma categoria válida.')
+      setFormError(t('common.invalidCategoryError'))
       return
     }
     setFormError(null)
@@ -723,7 +726,7 @@ export default function Expenses() {
 
     if (!response.ok) {
       const body = await response.json().catch(() => null)
-      toast(body?.error ?? 'Erro ao enviar arquivo. Tente novamente.', { type: 'error' })
+      toast(body?.error ?? t('expenses.attachmentUploadError'), { type: 'error' })
       return
     }
 
@@ -808,8 +811,8 @@ export default function Expenses() {
 
   const prevMonthLabel = useMemo(() => {
     if (selectedMonth === ALL_MONTHS_VALUE || selectedMonth === 1) return null
-    return `${getMonthLabel(selectedMonth - 1).slice(0, 3)}/${selectedYear}`
-  }, [selectedMonth, selectedYear])
+    return `${getMonthLabel(selectedMonth - 1, locale).slice(0, 3)}/${selectedYear}`
+  }, [selectedMonth, selectedYear, locale])
 
   const totalDeltaPct = prevMonthTotal != null && prevMonthTotal > 0
     ? Math.round(((total - prevMonthTotal) / prevMonthTotal) * 100)
@@ -867,8 +870,8 @@ export default function Expenses() {
 
 
   const monthLabel = selectedMonth !== ALL_MONTHS_VALUE
-    ? getMonthLabel(selectedMonth)
-    : 'Todos os meses'
+    ? getMonthLabel(selectedMonth, locale)
+    : getMonthLabel(ALL_MONTHS_VALUE, locale)
   const [visibleCount, setVisibleCount] = useState(30)
   const sortedExpenses = filteredExpenses.slice().sort((a, b) =>
     b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at)
@@ -876,7 +879,7 @@ export default function Expenses() {
   const visibleExpenses = sortedExpenses.slice(0, visibleCount)
   const hasMore = sortedExpenses.length > visibleCount
   const groupedExpenses = visibleExpenses.reduce<Array<{ label: string; items: Expense[] }>>((groups, expense) => {
-    const label = formatMonthYear(expense.date)
+    const label = formatMonthYear(expense.date, locale)
     const lastGroup = groups[groups.length - 1]
     if (lastGroup && lastGroup.label === label) {
       lastGroup.items.push(expense)
@@ -906,13 +909,13 @@ export default function Expenses() {
   const activeFilterChips = [
     {
       key: 'month',
-      label: getMonthLabel(selectedMonth),
+      label: getMonthLabel(selectedMonth, locale),
       onRemove: () => setSelectedMonth(getCurrentMonth()),
       disabled: selectedMonth === getCurrentMonth(),
     },
     {
       key: 'year',
-      label: getYearLabel(selectedYear),
+      label: getYearLabel(selectedYear, locale),
       onRemove: () => setSelectedYear(getCurrentYear()),
       disabled: selectedYear === getCurrentYear(),
     },
@@ -940,7 +943,7 @@ export default function Expenses() {
     ...(onlyInstallments
       ? [{
           key: 'installments',
-          label: 'Somente parceladas',
+          label: t('expenses.onlyInstallmentsLabel'),
           onRemove: () => setOnlyInstallments(false),
         }]
       : []),
@@ -950,8 +953,8 @@ export default function Expenses() {
     formatDate(expense.date),
     expense.description,
     getCategoryLabel(expense.category_id, expense.category_name),
-    expense.status === 'paid' ? 'Pago' : 'Em aberto',
-    formatPaymentLabel(expense.payment_method, expense.installments),
+    expense.status === 'paid' ? t('expenses.statusPaid') : t('expenses.statusOpen'),
+    formatPaymentLabel(t, expense.payment_method, expense.installments),
     expense.installments && expense.installments > 1 ? `${expense.installments}x` : '',
     formatBRL(expense.amount_cents),
     expense.paid_at ? formatDate(expense.paid_at) : '',
@@ -959,41 +962,41 @@ export default function Expenses() {
   ])
 
   const exportSubtitle = [
-    `Período: ${selectedMonth === ALL_MONTHS_VALUE ? 'todos os meses' : getMonthLabel(selectedMonth)} / ${selectedYear === ALL_YEARS_VALUE ? 'todos os anos' : getYearLabel(selectedYear)}`,
-    selectedCategoryId ? `Categoria: ${getCategoryLabel(selectedCategoryId, 'Categoria')}` : null,
-    selectedStatus ? `Status: ${selectedStatus === 'paid' ? 'Pago' : 'Em aberto'}` : null,
-    selectedPaymentMethod ? `Método: ${selectedPaymentMethod}` : null,
-    onlyInstallments ? 'Apenas parceladas' : null,
+    `${t('expenses.periodLabel')}: ${selectedMonth === ALL_MONTHS_VALUE ? getMonthLabel(ALL_MONTHS_VALUE, locale).toLowerCase() : getMonthLabel(selectedMonth, locale)} / ${selectedYear === ALL_YEARS_VALUE ? getYearLabel(ALL_YEARS_VALUE, locale).toLowerCase() : getYearLabel(selectedYear, locale)}`,
+    selectedCategoryId ? `${t('expenses.category')}: ${getCategoryLabel(selectedCategoryId, t('expenses.category'))}` : null,
+    selectedStatus ? `${t('expenses.status')}: ${selectedStatus === 'paid' ? t('expenses.statusPaid') : t('expenses.statusOpen')}` : null,
+    selectedPaymentMethod ? `${t('expenses.method')}: ${selectedPaymentMethod}` : null,
+    onlyInstallments ? t('expenses.onlyInstallmentsLabel') : null,
   ]
     .filter(Boolean)
     .join(' • ')
 
   const exportTable = {
     filename: `despesas-${format(new Date(), 'yyyy-MM-dd')}`,
-    title: 'Despesas',
+    title: t('expenses.exportTitle'),
     subtitle: exportSubtitle,
-    headers: ['Data', 'Descrição', 'Categoria', 'Status', 'Método', 'Parcelas', 'Valor', 'Pago em', 'Observações'],
+    headers: [t('expenses.csvHeaderDate'), t('expenses.csvHeaderDescription'), t('expenses.csvHeaderCategory'), t('expenses.csvHeaderStatus'), t('expenses.csvHeaderMethod'), t('expenses.csvHeaderInstallments'), t('expenses.csvHeaderAmount'), t('expenses.csvHeaderPaidAt'), t('expenses.csvHeaderNotes')],
     rows: exportRows,
   }
 
   const buildFilterSummary = () => {
-    const monthLabel = selectedMonth === ALL_MONTHS_VALUE ? null : getMonthLabel(selectedMonth)
+    const monthLabel = selectedMonth === ALL_MONTHS_VALUE ? null : getMonthLabel(selectedMonth, locale)
     const yearLabel = selectedYear === ALL_YEARS_VALUE ? null : String(selectedYear)
-    const categoryLabel = selectedCategoryId ? getCategoryLabel(selectedCategoryId, 'Categoria') : null
-    const statusLabel = selectedStatus === 'paid' ? 'Pago' : selectedStatus === 'open' ? 'Em aberto' : null
+    const categoryLabel = selectedCategoryId ? getCategoryLabel(selectedCategoryId, t('expenses.category')) : null
+    const statusLabel = selectedStatus === 'paid' ? t('expenses.statusPaid') : selectedStatus === 'open' ? t('expenses.statusOpen') : null
     const methodLabel = selectedPaymentMethod || null
-    const installmentsLabel = onlyInstallments ? 'Somente parceladas' : null
+    const installmentsLabel = onlyInstallments ? t('expenses.onlyInstallmentsLabel') : null
 
     const parts = [
-      monthLabel || 'Todos os meses',
-      yearLabel ? `Ano ${yearLabel}` : 'Todos os anos',
-      categoryLabel ? `Categoria: ${categoryLabel}` : 'Todas as categorias',
-      statusLabel ? `Status: ${statusLabel}` : 'Todos os status',
-      methodLabel ? `Método: ${methodLabel}` : null,
+      monthLabel || getMonthLabel(ALL_MONTHS_VALUE, locale),
+      yearLabel ? t('expenses.yearPrefix', { year: yearLabel }) : getYearLabel(ALL_YEARS_VALUE, locale),
+      categoryLabel ? `${t('expenses.category')}: ${categoryLabel}` : t('expenses.allCategoriesLabel'),
+      statusLabel ? `${t('expenses.status')}: ${statusLabel}` : t('expenses.allStatusLabel'),
+      methodLabel ? `${t('expenses.method')}: ${methodLabel}` : null,
       installmentsLabel,
     ].filter(Boolean)
 
-    return parts.length ? parts.join(' • ') : 'Sem filtros ativos'
+    return parts.length ? parts.join(' • ') : t('common.noActiveFilters')
   }
 
   const generatePdfBlob = async (expensesOverride = sortedExpenses, includeSignatureOverride = includeSignatures) => {
@@ -1003,28 +1006,29 @@ export default function Expenses() {
       .reduce((sum, e) => sum + e.amount_cents, 0)
 
     return buildBrandedPdfBlob({
-      title: 'Registro de Despesas',
+      title: t('expenses.pdfTitle'),
       filterSummary: buildFilterSummary(),
       headers: ['Data', 'Descricao', 'Categoria', 'Status', 'Metodo', 'Parcelas', 'Pago em', 'Observacao', 'Valor'],
       rows: expensesOverride.map((expense) => [
         formatDate(expense.date),
         expense.description,
         getCategoryLabel(expense.category_id, expense.category_name),
-        expense.status === 'paid' ? 'Pago' : expense.status === 'pending_confirmation' ? 'Aguardando confirmação' : 'Em aberto',
-        formatPaymentLabel(expense.payment_method, expense.installments),
+        expense.status === 'paid' ? t('expenses.statusPaid') : expense.status === 'pending_confirmation' ? t('expenses.statusPendingConfirmation') : t('expenses.statusOpen'),
+        formatPaymentLabel(t, expense.payment_method, expense.installments),
         expense.installments && expense.installments > 1 ? `${expense.installments}x` : '',
         expense.paid_at ? formatDate(expense.paid_at) : '',
         expense.notes || '',
         formatBRL(expense.amount_cents),
       ]),
       cards: [
-        { label: 'TOTAL', value: formatBRL(totalCents) },
-        { label: 'PAGO', value: formatBRL(paidCents) },
-        { label: 'EM ABERTO', value: formatBRL(totalCents - paidCents) },
+        { label: t('incomes.pdfTotal'), value: formatBRL(totalCents) },
+        { label: t('expenses.statusPaid').toUpperCase(), value: formatBRL(paidCents) },
+        { label: t('expenses.statusOpen').toUpperCase(), value: formatBRL(totalCents - paidCents) },
       ],
       generatedDate: formatDate(new Date()),
       includeSignatures: includeSignatureOverride,
       accentColor: '#B05C3A',
+      locale,
     })
   }
 
@@ -1119,8 +1123,8 @@ export default function Expenses() {
             <SlidersHorizontal className="w-4 h-4 text-petrol shrink-0" />
             <span className="leading-tight text-left truncate">
               {selectedMonth === ALL_MONTHS_VALUE
-                ? (selectedYear === ALL_YEARS_VALUE ? 'Todos' : `Todos os meses`)
-                : `${getMonthLabel(selectedMonth).slice(0, 3)}${selectedYear === ALL_YEARS_VALUE ? ' • Todos os anos' : ` ${selectedYear}`}`}
+                ? (selectedYear === ALL_YEARS_VALUE ? t('filterSheet.allOption') : getMonthLabel(ALL_MONTHS_VALUE, locale))
+                : `${getMonthLabel(selectedMonth, locale).slice(0, 3)}${selectedYear === ALL_YEARS_VALUE ? ` • ${getYearLabel(ALL_YEARS_VALUE, locale)}` : ` ${selectedYear}`}`}
             </span>
           </button>
 
@@ -1134,7 +1138,7 @@ export default function Expenses() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder={t('expenses.search')}
                   autoFocus
-                  aria-label="Buscar despesas"
+                  aria-label={t('expenses.searchAria')}
                   className="h-[38px] w-full rounded-[10px] border border-border bg-bg pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-petrol/30"
                 />
               </div>
@@ -1142,7 +1146,7 @@ export default function Expenses() {
                 type="button"
                 onClick={() => { setMobileSearchExpanded(false); setSearchTerm('') }}
                 className="w-[38px] h-[38px] rounded-[10px] border border-border bg-bg text-ink/60 flex items-center justify-center shrink-0"
-                aria-label="Fechar busca"
+                aria-label={t('common.closeSearch')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1155,13 +1159,13 @@ export default function Expenses() {
                 className="flex-1 flex items-center justify-center gap-1.5 h-[38px] px-3 rounded-[10px] border border-border bg-bg text-petrol text-sm font-medium"
               >
                 <Tag className="w-4 h-4" />
-                <span>Categorias</span>
+                <span>{t('expenses.manageCategories')}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setMobileSearchExpanded(true)}
                 className="w-[38px] h-[38px] rounded-[10px] border border-border bg-bg text-ink/60 flex items-center justify-center shrink-0"
-                aria-label="Buscar"
+                aria-label={t('common.search')}
               >
                 <Search className="w-4 h-4" />
               </button>
@@ -1172,7 +1176,7 @@ export default function Expenses() {
           type="button"
           onClick={() => setAddMenuOpen((prev) => !prev)}
           className="w-[38px] h-[38px] rounded-[10px] bg-coffee text-paper flex items-center justify-center shrink-0"
-          aria-label="Adicionar"
+          aria-label={t('common.add')}
         >
           <Plus className="w-5 h-5" />
         </button>
@@ -1189,8 +1193,8 @@ export default function Expenses() {
                   <Edit2 className="w-4 h-4 text-ink/60" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-ink">Adicionar manualmente</p>
-                  <p className="text-xs text-ink/45">Preencher um formulário</p>
+                  <p className="text-sm font-medium text-ink">{t('expenses.addManually')}</p>
+                  <p className="text-xs text-ink/45">{t('expenses.addManuallyDesc')}</p>
                 </div>
               </button>
               <button
@@ -1203,7 +1207,7 @@ export default function Expenses() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-ink">{t('expenses.importBank')}</p>
-                  <p className="text-xs text-ink/45">OFX, CSV de banco</p>
+                  <p className="text-xs text-ink/45">{t('expenses.importBankDesc')}</p>
                 </div>
               </button>
               <button
@@ -1215,8 +1219,8 @@ export default function Expenses() {
                   <Tag className="w-4 h-4 text-ink/60" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-ink">Categorias</p>
-                  <p className="text-xs text-ink/45">Gerenciar categorias</p>
+                  <p className="text-sm font-medium text-ink">{t('expenses.manageCategories')}</p>
+                  <p className="text-xs text-ink/45">{t('expenses.manageCategoriesDesc')}</p>
                 </div>
               </button>
               <button
@@ -1230,7 +1234,7 @@ export default function Expenses() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-ink">{t('expenses.exportCsv')}</p>
-                  <p className="text-xs text-ink/45">Planilha com os dados</p>
+                  <p className="text-xs text-ink/45">{t('expenses.exportCsvDesc')}</p>
                 </div>
               </button>
               <button
@@ -1244,7 +1248,7 @@ export default function Expenses() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-ink">{t('expenses.exportPdf')}</p>
-                  <p className="text-xs text-ink/45">Relatório para imprimir</p>
+                  <p className="text-xs text-ink/45">{t('expenses.exportPdfDesc')}</p>
                 </div>
               </button>
             </div>
@@ -1261,8 +1265,8 @@ export default function Expenses() {
         >
           <SlidersHorizontal className="w-4 h-4 text-petrol" />
           {selectedMonth === ALL_MONTHS_VALUE
-            ? (selectedYear === ALL_YEARS_VALUE ? 'Todos' : String(selectedYear))
-            : `${getMonthLabel(selectedMonth).slice(0, 3)} ${selectedYear !== ALL_YEARS_VALUE ? selectedYear : ''}`}
+            ? (selectedYear === ALL_YEARS_VALUE ? t('filterSheet.allOption') : String(selectedYear))
+            : `${getMonthLabel(selectedMonth, locale).slice(0, 3)} ${selectedYear !== ALL_YEARS_VALUE ? selectedYear : ''}`}
           <ChevronDown className={`w-3.5 h-3.5 text-ink/40 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
         </button>
         <div className="flex items-center h-[38px] bg-white border border-border rounded-[10px] px-3 gap-2 flex-1 max-w-[380px]">
@@ -1271,7 +1275,7 @@ export default function Expenses() {
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             placeholder={t('expenses.search')}
-            aria-label="Buscar por nome ou categoria"
+            aria-label={t('expenses.searchFilterAria')}
             className="flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 outline-none"
           />
         </div>
@@ -1314,7 +1318,7 @@ export default function Expenses() {
                   label={t('expenses.status')}
                   value={selectedStatus}
                   onChange={setSelectedStatus}
-                  options={[{ value: '', label: 'Todos' }, { value: 'paid', label: t('expenses.statusPaid') }, { value: 'open', label: t('expenses.statusOpen') }]}
+                  options={[{ value: '', label: t('filterSheet.allOption') }, { value: 'paid', label: t('expenses.statusPaid') }, { value: 'open', label: t('expenses.statusOpen') }]}
                 />
               </div>
               <div className="min-w-[160px]">
@@ -1323,7 +1327,7 @@ export default function Expenses() {
                   label={t('expenses.method')}
                   value={selectedPaymentMethod}
                   onChange={setSelectedPaymentMethod}
-                  options={[{ value: '', label: 'Todos' }, { value: 'PIX', label: 'PIX' }, { value: 'Credito', label: 'Crédito' }, { value: 'Debito', label: 'Débito' }, { value: 'ValeAlimentacao', label: 'Vale Alimentação' }, { value: 'Dinheiro', label: 'Dinheiro' }, { value: 'Cheque', label: 'Cheque' }, { value: 'Transferência', label: 'Transferência' }]}
+                  options={[{ value: '', label: t('filterSheet.allOption') }, { value: 'PIX', label: 'PIX' }, { value: 'Credito', label: t('filterSheet.methodCredit') }, { value: 'Debito', label: t('filterSheet.methodDebit') }, { value: 'ValeAlimentacao', label: t('filterSheet.methodMealVoucher') }, { value: 'Dinheiro', label: t('filterSheet.methodCash') }, { value: 'Cheque', label: t('filterSheet.methodCheck') }, { value: 'Transferência', label: t('filterSheet.methodTransfer') }]}
                 />
               </div>
               <div className="flex items-center gap-2 text-[13px] text-ink select-none">
@@ -1331,7 +1335,7 @@ export default function Expenses() {
                   type="button"
                   role="switch"
                   aria-checked={onlyInstallments}
-                  aria-label="Somente parceladas"
+                  aria-label={t('expenses.installmentsFilterAria')}
                   onClick={() => setOnlyInstallments(v => !v)}
                   className="relative w-8 h-[18px] rounded-full transition-colors shrink-0 cursor-pointer"
                   style={{ background: onlyInstallments ? '#3F6E7A' : '#E4D7C2' }}
@@ -1341,10 +1345,10 @@ export default function Expenses() {
                     style={{ left: onlyInstallments ? '18px' : '2px' }}
                   />
                 </button>
-                Somente parceladas
+                {t('expenses.onlyInstallmentsLabel')}
               </div>
               {activeFiltersCount > 0 && (
-                <button type="button" onClick={clearFilters} className="text-xs text-terracotta hover:underline">Limpar filtros</button>
+                <button type="button" onClick={clearFilters} className="text-xs text-terracotta hover:underline">{t('common.clearFilters')}</button>
               )}
           </div>
         </div>
@@ -1381,9 +1385,9 @@ export default function Expenses() {
                   icon={Clock}
                 />
                 <AnalyticsKpiCard
-                  label="Categorias ativas"
+                  label={t('expenses.activeCategoriesLabel')}
                   value={String(categoryBreakdown.length)}
-                  sub={`${sortedExpenses.length} lançamentos`}
+                  sub={t('expenses.rowCountSuffix', { count: sortedExpenses.length })}
                   iconTheme="purple"
                   icon={Tag}
                 />
@@ -1395,8 +1399,8 @@ export default function Expenses() {
             ) : filteredExpenses.length === 0 ? (
               <EmptyState
                 icon={<Receipt className="w-16 h-16" />}
-                message="Ainda não há despesas aqui, um bom começo."
-                submessage="Use o botão + para adicionar uma despesa."
+                message={t('expenses.emptyState')}
+                submessage={t('expenses.emptyStateSubmessage')}
               />
             ) : (
               <div className="flex flex-col md:flex-row gap-5">
@@ -1426,10 +1430,10 @@ export default function Expenses() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[13.5px] font-semibold" style={{ color: '#B05C3A' }}>
-                          {count} despesa{count !== 1 ? 's' : ''} recorrente{count !== 1 ? 's' : ''} para confirmar
+                          {count === 1 ? t('expenses.recurringToConfirmOne') : t('expenses.recurringToConfirmMany', { count })}
                         </p>
                         <p className="text-xs text-ink/55 mt-0.5">
-                          Pré-registramos com base em meses anteriores. Confirme para incluir no orçamento.
+                          {t('expenses.recurringToConfirmDesc')}
                         </p>
                       </div>
                       <button
@@ -1438,7 +1442,7 @@ export default function Expenses() {
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-vintage"
                         style={{ borderColor: 'rgba(176,92,58,0.3)', color: '#B05C3A', background: '#fff' }}
                       >
-                        Revisar →
+                        {t('expenses.reviewButton')} →
                       </button>
                     </div>
                   )
@@ -1470,15 +1474,15 @@ export default function Expenses() {
                         const isPaid = expense.status === 'paid'
                         const isPending = expense.status === 'pending_confirmation'
                         const railColor = getCatRailColor(catLabel)
-                        const methodLabel = expense.payment_method === 'Credito' ? 'Crédito'
-                          : expense.payment_method === 'Debito' ? 'Débito'
-                          : expense.payment_method === 'ValeAlimentacao' ? 'Vale'
-                          : expense.payment_method === 'Transferência' ? 'Transferência'
+                        const methodLabel = expense.payment_method === 'Credito' ? t('filterSheet.methodCredit')
+                          : expense.payment_method === 'Debito' ? t('filterSheet.methodDebit')
+                          : expense.payment_method === 'ValeAlimentacao' ? t('filterSheet.methodMealVoucher')
+                          : expense.payment_method === 'Transferência' ? t('filterSheet.methodTransfer')
                           : expense.payment_method ?? ''
                         const installmentBadge = expense.payment_method === 'Credito' && expense.installments && expense.installments > 1
                           ? `${expense.installment_index ?? 1}/${expense.installments}x` : null
                         const isOverdue = todayIso !== '' && !isPaid && !isPending && expense.date < todayIso
-                        const statusLabel = isPaid ? 'PAGO' : isPending ? 'A CONFIRMAR' : isOverdue ? 'ATRASADO' : 'EM ABERTO'
+                        const statusLabel = isPaid ? t('expenses.statusPaid').toUpperCase() : isPending ? t('expenses.statusPendingConfirmationShort').toUpperCase() : isOverdue ? t('reminders.overdue').toUpperCase() : t('expenses.statusOpen').toUpperCase()
                         const statusBg = isPaid ? 'rgba(111,191,138,0.18)' : isPending ? 'rgba(47,111,126,0.15)' : isOverdue ? 'rgba(176,92,58,0.18)' : 'rgba(194,164,93,0.22)'
                         const statusFg = isPaid ? '#3E8E5C' : isPending ? '#2F6F7E' : isOverdue ? '#B05C3A' : '#A58E5F'
                         return (
@@ -1500,7 +1504,7 @@ export default function Expenses() {
                                     className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border-2 transition-vintage disabled:opacity-50 ${
                                       isPaid ? 'border-olive bg-olive' : 'border-border bg-transparent'
                                     }`}
-                                    aria-label={`Marcar ${expense.description} como ${isPaid ? 'em aberto' : 'pago'}`}
+                                    aria-label={t(isPaid ? 'expenses.markAsOpenAria' : 'expenses.markAsPaidAria', { description: expense.description })}
                                   >
                                     {isPaid && <Check className="h-3 w-3 text-white" />}
                                   </button>
@@ -1524,7 +1528,7 @@ export default function Expenses() {
                                   {isPaid ? (
                                     <span className="rounded-full bg-olive/15 px-2.5 py-0.5 text-[11px] font-semibold text-olive">{t('expenses.statusPaid')}</span>
                                   ) : isPending ? (
-                                    <span className="rounded-full bg-petrol/10 border border-petrol/30 px-2.5 py-0.5 text-[11px] font-semibold text-petrol">Aguardando confirmação</span>
+                                    <span className="rounded-full bg-petrol/10 border border-petrol/30 px-2.5 py-0.5 text-[11px] font-semibold text-petrol">{t('expenses.statusPendingConfirmation')}</span>
                                   ) : (
                                     <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600">{t('expenses.statusOpen')}</span>
                                   )}
@@ -1561,10 +1565,10 @@ export default function Expenses() {
                                     )}
                                     {expense.payment_method === null && (
                                       <span
-                                        title="Método de pagamento não definido. Edite para definir."
+                                        title={t('expenses.paymentMethodNote')}
                                         className="text-[10px] text-amber-600 border border-amber-400/40 rounded px-1.5 py-0.5 shrink-0 cursor-help"
                                       >
-                                        ⚠ Sem método
+                                        ⚠ {t('expenses.noMethodBadge')}
                                       </span>
                                     )}
                                   </div>
@@ -1589,7 +1593,7 @@ export default function Expenses() {
                                   className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[5px] border-[1.5px] transition-vintage disabled:opacity-50 ${
                                     isPaid ? 'border-olive bg-olive' : 'border-border bg-transparent hover:border-olive'
                                   }`}
-                                  aria-label={`Marcar como ${isPaid ? 'em aberto' : 'pago'}`}
+                                  aria-label={t(isPaid ? 'expenses.toggleOpenAria' : 'expenses.toggleStatusPaidAria')}
                                 >
                                   {isPaid && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
                                 </button>
@@ -1697,7 +1701,7 @@ export default function Expenses() {
         </div>
         <div className="h-[44px] flex items-center justify-center">
           <p className="text-center text-[13px] text-gold italic">
-            Cada conta paga é um gesto de cuidado com o amanhã da família.
+            {t('expenses.motivationalSubtitle')}
           </p>
         </div>
       </div>
@@ -1706,7 +1710,7 @@ export default function Expenses() {
       <footer className="hidden md:block mt-auto w-full">
         <div className="h-[56px] bg-paper flex items-center justify-center px-6">
           <p className="text-center text-[13px] text-gold italic">
-            Cada conta paga é um gesto de cuidado com o amanhã da família.
+            {t('expenses.motivationalSubtitle')}
           </p>
         </div>
       </footer>
@@ -1714,7 +1718,7 @@ export default function Expenses() {
       <PdfPreviewModal
         isOpen={isPdfModalOpen}
         onClose={closePdfModal}
-        title="Preview do PDF"
+        title={t('common.pdfPreviewTitle')}
         summary={buildFilterSummary()}
         pdfUrl={pdfUrl}
         isGenerating={exportingFormat === 'pdf'}
@@ -1725,7 +1729,7 @@ export default function Expenses() {
           await refreshPdfPreview(nextValue)
         }}
         onDownload={downloadPreviewPdf}
-        downloadLabel="Imprimir ou salvar"
+        downloadLabel={t('common.pdfDownloadLabel')}
       />
 
       {/* Expense form — RightDrawer on desktop, Modal on mobile */}
@@ -1747,7 +1751,7 @@ export default function Expenses() {
               required
               value={formData.description}
               onChange={(e) => { const v = e.target.value; setFormData(prev => ({ ...prev, description: v })) }}
-              aria-label="Descrição da despesa"
+              aria-label={t('expenses.descriptionAria')}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder={t('expenses.descriptionPlaceholder')}
             />
@@ -1757,7 +1761,7 @@ export default function Expenses() {
                 onClick={() => { setFormData(f => ({ ...f, categoryId: suggestedCategoryId })); setSuggestedCategoryId(null) }}
                 className="mt-1.5 flex items-center gap-1.5 text-xs text-petrol border border-petrol/30 rounded-full px-2.5 py-1 hover:bg-petrol/5 transition-vintage"
               >
-                <span className="text-ink/40">Sugestão:</span>
+                <span className="text-ink/40">{t('common.suggestionLabel')}</span>
                 <span className="font-medium">{categoryLabelMap.get(suggestedCategoryId)}</span>
                 <Check className="w-3 h-3 ml-0.5" />
               </button>
@@ -1787,7 +1791,7 @@ export default function Expenses() {
               required
               value={formData.date}
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              aria-label="Data da despesa"
+              aria-label={t('expenses.dateAria')}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
@@ -1821,7 +1825,7 @@ export default function Expenses() {
                   }
                 </p>
                 <p className="text-ink/60 text-xs mt-0.5">
-                  Limite do mês: {formatBRL(limitCents)} · já lançado {formatBRL(spentCents)}.
+                  {t('expenses.monthlyLimitNote', { limit: formatBRL(limitCents), spent: formatBRL(spentCents) })}
                 </p>
                 <div className="w-full h-1.5 rounded-full bg-border/50 overflow-hidden mt-2">
                   <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(projectedPct, 100)}%`, backgroundColor: barColor }} />
@@ -1844,7 +1848,7 @@ export default function Expenses() {
                       : 'border-border bg-bg text-ink hover:bg-paper'
                   }`}
                 >
-                  {method === 'Credito' ? 'Crédito' : method === 'Debito' ? 'Débito' : method === 'ValeAlimentacao' ? 'Vale Alimentação' : method}
+                  {method === 'Credito' ? t('filterSheet.methodCredit') : method === 'Debito' ? t('filterSheet.methodDebit') : method === 'ValeAlimentacao' ? t('filterSheet.methodMealVoucher') : method}
                 </button>
               ))}
             </div>
@@ -1872,7 +1876,7 @@ export default function Expenses() {
             const uniform = firstCents === lastCents
             return (
               <div className="rounded-lg bg-paper border border-border px-4 py-3 text-sm space-y-1">
-                <p className="font-serif font-medium text-ink">Resumo do parcelamento</p>
+                <p className="font-serif font-medium text-ink">{t('expenses.installmentSummaryTitle')}</p>
                 {uniform ? (
                   <p className="text-ink/70">
                     {formData.installments}x de{' '}
@@ -1884,7 +1888,7 @@ export default function Expenses() {
                     <span className="font-numbers font-semibold text-petrol">{formatBRL(lastCents)}</span>
                     {' '}+ 1x de{' '}
                     <span className="font-numbers font-semibold text-petrol">{formatBRL(firstCents)}</span>
-                    <span className="text-xs text-ink/40 ml-1">(arredondamento)</span>
+                    <span className="text-xs text-ink/40 ml-1">{t('expenses.roundingNote')}</span>
                   </p>
                 )}
               </div>
@@ -1925,7 +1929,7 @@ export default function Expenses() {
                     variant="modal"
                   />
                   <div>
-                    <label className="block text-sm font-body text-ink mb-2">Valor recorrente</label>
+                    <label className="block text-sm font-body text-ink mb-2">{t('expenses.recurringAmountLabel')}</label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
@@ -1934,8 +1938,8 @@ export default function Expenses() {
                           formData.isFixedAmount ? 'border-coffee bg-coffee/5' : 'border-border hover:bg-paper'
                         }`}
                       >
-                        <div className={`text-sm font-semibold mb-0.5 ${formData.isFixedAmount ? 'text-coffee' : 'text-ink'}`}>Mesmo valor</div>
-                        <div className="text-xs text-ink/60">repete com o valor atual</div>
+                        <div className={`text-sm font-semibold mb-0.5 ${formData.isFixedAmount ? 'text-coffee' : 'text-ink'}`}>{t('expenses.fixedAmountOption')}</div>
+                        <div className="text-xs text-ink/60">{t('expenses.fixedAmountOptionDesc')}</div>
                       </button>
                       <button
                         type="button"
@@ -1944,13 +1948,13 @@ export default function Expenses() {
                           !formData.isFixedAmount ? 'border-petrol bg-petrol/5' : 'border-border hover:bg-paper'
                         }`}
                       >
-                        <div className={`text-sm font-semibold mb-0.5 ${!formData.isFixedAmount ? 'text-petrol' : 'text-ink'}`}>Valor variável</div>
-                        <div className="text-xs text-ink/60">informar a cada mês</div>
+                        <div className={`text-sm font-semibold mb-0.5 ${!formData.isFixedAmount ? 'text-petrol' : 'text-ink'}`}>{t('expenses.variableAmountOption')}</div>
+                        <div className="text-xs text-ink/60">{t('expenses.variableAmountOptionDesc')}</div>
                       </button>
                     </div>
                     {!formData.isFixedAmount && (
                       <p className="mt-2 text-xs text-petrol bg-petrol/5 border border-petrol/20 rounded-lg p-2">
-                        📋 Cada ocorrência será criada com valor a preencher.
+                        📋 {t('expenses.variableAmountNote')}
                       </p>
                     )}
                   </div>
@@ -1985,7 +1989,7 @@ export default function Expenses() {
         onClose={() => setDeleteConfirmId(null)}
         onConfirm={confirmDelete}
         title={t('expenses.confirmDelete')}
-        message="Esta despesa será removida permanentemente. Esta ação não pode ser desfeita."
+        message={t('expenses.deleteConfirmMessage')}
         confirmLabel={t('expenses.deleteButton')}
         loading={deleting}
       />
@@ -2019,11 +2023,11 @@ export default function Expenses() {
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-ink/50">{t('expenses.status')}</p>
-                  <p>{detailExpense.status === 'paid' ? t('expenses.statusPaid') : detailExpense.status === 'pending_confirmation' ? 'Aguardando confirmação' : t('expenses.statusOpen')}</p>
+                  <p>{detailExpense.status === 'paid' ? t('expenses.statusPaid') : detailExpense.status === 'pending_confirmation' ? t('expenses.statusPendingConfirmation') : t('expenses.statusOpen')}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-ink/50">{t('expenses.method')}</p>
-                  <p>{formatPaymentLabel(detailExpense.payment_method, detailExpense.installments)}</p>
+                  <p>{formatPaymentLabel(t, detailExpense.payment_method, detailExpense.installments)}</p>
                 </div>
               </div>
               <div>
@@ -2031,7 +2035,7 @@ export default function Expenses() {
                 <p>{cleanNotes || '-'}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-ink/50">Arquivo</p>
+                <p className="text-xs uppercase tracking-wide text-ink/50">{t('expenses.attachment')}</p>
                 {hasAttachment ? (
                   <button
                     type="button"
@@ -2039,20 +2043,20 @@ export default function Expenses() {
                       try {
                         window.open(await getAttachmentViewUrl(detailExpense.attachment_path, attachmentUrl), '_blank', 'noopener,noreferrer')
                       } catch {
-                        toast('Não foi possível abrir o anexo. Tente novamente.', { type: 'error' })
+                        toast(t('expenses.attachmentOpenError'), { type: 'error' })
                       }
                     }}
                     className="text-petrol hover:opacity-80 transition-vintage"
                   >
-                    Visualizar anexo
+                    {t('expenses.viewAttachment')}
                   </button>
                 ) : (
-                  <p>Sem arquivo anexado</p>
+                  <p>{t('expenses.noAttachmentFile')}</p>
                 )}
               </div>
               {detailExpense.created_by && (
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-ink/50">Criado por</p>
+                  <p className="text-xs uppercase tracking-wide text-ink/50">{t('expenses.createdByLabel')}</p>
                   <p>{familyMembers.get(detailExpense.created_by) ?? '-'}</p>
                 </div>
               )}
@@ -2094,20 +2098,20 @@ export default function Expenses() {
         }}
       />
 
-      <Modal isOpen={showPaywallModal} onClose={() => setShowPaywallModal(false)} title="Limite atingido">
+      <Modal isOpen={showPaywallModal} onClose={() => setShowPaywallModal(false)} title={t('common.limitReached')}>
         <div className="space-y-4">
           <p className="text-ink/80 text-sm">
-            Você atingiu o limite de 3 exportações/importações gratuitas este mês.
+            {t('comparatives.paywallBody')}
           </p>
           <p className="text-ink/60 text-sm">
-            Assine o Florim Pro para exportações ilimitadas e outros recursos avançados.
+            {t('comparatives.paywallPro')}
           </p>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={() => setShowPaywallModal(false)} className="flex-1 px-4 py-3 border border-border rounded-lg hover:bg-paper transition-vintage text-sm">
-              Fechar
+              {t('common.close')}
             </button>
             <Link href="/settings/billing" className="flex-1 px-4 py-3 bg-coffee text-paper rounded-lg text-sm font-semibold text-center hover:bg-coffee/90 transition-vintage">
-              Ver planos
+              {t('comparatives.paywallCta')}
             </Link>
           </div>
         </div>

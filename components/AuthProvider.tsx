@@ -42,7 +42,7 @@ async function syncServerSession(session: Pick<Session, 'access_token' | 'refres
 
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}))
-    throw new Error(payload?.error || errorMsg || 'Não foi possível sincronizar a sessão.')
+    throw new Error(payload?.error || errorMsg || 'Could not synchronize session.')
   }
 }
 
@@ -287,7 +287,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error
       if (!data.session) throw new Error(t('auth.googleAuthError'))
 
-      await syncServerSession(data.session)
+      await syncServerSession(data.session, t('auth.syncError'))
       setUser(data.session.user)
       setAuthStatus('authenticated')
 

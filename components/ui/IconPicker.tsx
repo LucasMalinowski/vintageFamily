@@ -120,7 +120,7 @@ export default function IconPicker({ value, onSelect }: IconPickerProps) {
           onClick={() => { onSelect(null); setOpen(false) }}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-ink/60 hover:bg-paper transition-vintage mb-1"
         >
-          <X className="w-4 h-4" /> Nenhum ícone
+          <X className="w-4 h-4" /> {t('iconPicker.noIcon')}
         </button>
 
         <div className="grid grid-cols-6 gap-1">
@@ -164,7 +164,7 @@ export default function IconPicker({ value, onSelect }: IconPickerProps) {
             : 'border-border/70 bg-paper text-ink/40 hover:border-coffee/35'
         )}
         aria-label={t('iconPicker.title')}
-        title={value || 'Sem ícone'}
+        title={value || t('iconPicker.noIcon')}
       >
         {/* eslint-disable-next-line react-hooks/static-components */}
         {CurrentIcon ? <CurrentIcon className="w-4 h-4" /> : <Tag className="w-4 h-4" />}

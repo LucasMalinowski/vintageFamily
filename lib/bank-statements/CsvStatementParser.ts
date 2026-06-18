@@ -1,5 +1,60 @@
+import type { AppLocale } from '@/lib/i18n/getLocale'
 import type { BankId, ParsedStatementTransaction } from '@/lib/bank-statements/types'
 import { clampConfidence, detectTransactionType, normalizeFreeText } from '@/lib/bank-statements/utils'
+
+// ─── User-facing strings (warnings shown in the import review UI) ────────────
+// Plain in-file translation table (no async/React context here, same approach
+// as lib/mailer.ts / lib/forecast/narrator.ts elsewhere in the app).
+
+type SkipReasonCode = 'investment' | 'internal_transfer'
+
+const STRINGS: Record<AppLocale, {
+  csvEmpty: string
+  csvNoHeader: string
+  csvFallbackDescription: string
+  skipReasonLabel: Record<SkipReasonCode, string>
+  csvSkippedWarning: (count: number, reason: string) => string
+}> = {
+  'pt-BR': {
+    csvEmpty: 'O arquivo CSV está vazio ou não possui dados suficientes.',
+    csvNoHeader: 'O CSV não possui cabeçalho reconhecível. Verifique se o arquivo é do banco correto e não foi editado manualmente.',
+    csvFallbackDescription: 'Lançamento CSV',
+    skipReasonLabel: {
+      investment: 'movimentação de investimento ou reserva',
+      internal_transfer: 'movimentação interna entre contas',
+    },
+    csvSkippedWarning: (count, reason) =>
+      count === 1
+        ? `1 lançamento CSV foi ignorado por parecer ${reason}.`
+        : `${count} lançamentos CSV foram ignorados por parecerem ${reason}.`,
+  },
+  en: {
+    csvEmpty: "The CSV file is empty or doesn't have enough data.",
+    csvNoHeader: "The CSV doesn't have a recognizable header. Check that the file is from the correct bank and hasn't been manually edited.",
+    csvFallbackDescription: 'CSV transaction',
+    skipReasonLabel: {
+      investment: 'an investment or savings reserve transaction',
+      internal_transfer: 'an internal transfer between accounts',
+    },
+    csvSkippedWarning: (count, reason) =>
+      count === 1
+        ? `1 CSV transaction was ignored for appearing to be ${reason}.`
+        : `${count} CSV transactions were ignored for appearing to be ${reason}.`,
+  },
+  es: {
+    csvEmpty: 'El archivo CSV está vacío o no tiene suficientes datos.',
+    csvNoHeader: 'El CSV no tiene un encabezado reconocible. Verifica que el archivo sea del banco correcto y no haya sido editado manualmente.',
+    csvFallbackDescription: 'Transacción CSV',
+    skipReasonLabel: {
+      investment: 'un movimiento de inversión o reserva',
+      internal_transfer: 'un movimiento interno entre cuentas',
+    },
+    csvSkippedWarning: (count, reason) =>
+      count === 1
+        ? `1 transacción CSV fue ignorada por parecer ${reason}.`
+        : `${count} transacciones CSV fueron ignoradas por parecer ${reason}.`,
+  },
+}
 
 // ─── Shared skip keywords (same logic as OfxStatementParser) ─────────────────
 
@@ -234,13 +289,13 @@ function detectNumberLocale(
 
 // ─── Skip logic (investment / internal transfers) ─────────────────────────────
 
-function detectSkipReason(description: string): string | null {
+function detectSkipReason(description: string): SkipReasonCode | null {
   const haystack = normalizeFreeText(description)
   if (INVESTMENT_SKIP_KEYWORDS.some((kw) => haystack.includes(kw))) {
-    return 'movimentação de investimento ou reserva'
+    return 'investment'
   }
   if (INTERNAL_TRANSFER_SKIP_KEYWORDS.some((kw) => haystack.includes(kw))) {
-    return 'movimentação interna entre contas'
+    return 'internal_transfer'
   }
   return null
 }
@@ -255,11 +310,13 @@ export interface CsvParseResult {
 export class CsvStatementParser {
   private readonly profile: CsvProfile
 
-  constructor(private readonly bank: BankId) {
+  constructor(private readonly bank: BankId, private readonly locale: AppLocale = 'pt-BR') {
     this.profile = PROFILES[bank]
   }
 
   parse(content: string): CsvParseResult {
+    const strings = STRINGS[this.locale]
+
     const text = stripBom(content)
     const rawLines = text
       .replace(/\r\n/g, '\n')
@@ -269,7 +326,7 @@ export class CsvStatementParser {
       .filter(Boolean)
 
     if (rawLines.length < 2) {
-      return { items: [], warnings: ['O arquivo CSV está vazio ou não possui dados suficientes.'] }
+      return { items: [], warnings: [strings.csvEmpty] }
     }
 
     const delimiter: ',' | ';' =
@@ -294,10 +351,7 @@ export class CsvStatementParser {
     if (!columns || headerIdx === -1) {
       return {
         items: [],
-        warnings: [
-          'O CSV não possui cabeçalho reconhecível. ' +
-          'Verifique se o arquivo é do banco correto e não foi editado manualmente.',
-        ],
+        warnings: [strings.csvNoHeader],
       }
     }
 
@@ -307,7 +361,7 @@ export class CsvStatementParser {
         : this.profile.numberLocale
 
     const items: ParsedStatementTransaction[] = []
-    const ignoredReasons = new Map<string, number>()
+    const ignoredReasons = new Map<SkipReasonCode, number>()
 
     for (let i = headerIdx + 1; i < rawLines.length; i++) {
       const line = rawLines[i]
@@ -323,7 +377,7 @@ export class CsvStatementParser {
 
       const part1 = (row[columns.desc1] ?? '').trim()
       const part2 = columns.desc2 !== null ? (row[columns.desc2] ?? '').trim() : ''
-      const rawDescription = [part1, part2].filter(Boolean).join(' - ') || 'Lançamento CSV'
+      const rawDescription = [part1, part2].filter(Boolean).join(' - ') || strings.csvFallbackDescription
 
       let amount = 0
       let type: 'income' | 'expense'
@@ -394,8 +448,8 @@ export class CsvStatementParser {
       })
     }
 
-    const warnings = [...ignoredReasons.entries()].map(
-      ([reason, count]) => `${count} lançamento(s) CSV foram ignorados por parecerem ${reason}.`
+    const warnings = [...ignoredReasons.entries()].map(([reason, count]) =>
+      strings.csvSkippedWarning(count, strings.skipReasonLabel[reason])
     )
 
     return { items, warnings }

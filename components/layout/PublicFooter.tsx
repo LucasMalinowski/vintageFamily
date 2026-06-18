@@ -47,27 +47,30 @@ export default async function PublicFooter({ color = 'sidebar' }: PublicFooterPr
 
   const columns = [
     {
-      title: 'Produto',
+      key: 'product',
+      title: t('publicFooter.productColumn'),
       items: [
-        { label: 'Funcionalidades', href: '/#features' },
-        { label: 'Planos', href: '/plans' },
-        { label: 'Sobre nós', href: '/about' },
+        { label: t('publicFooter.features'), href: '/#features' },
+        { label: t('publicFooter.plans'), href: '/plans' },
+        { label: t('publicNav.about'), href: '/about' },
       ],
     },
     {
-      title: 'Suporte',
+      key: 'support',
+      title: t('publicFooter.supportColumn'),
       items: [
-        { label: 'Central de ajuda', href: '/support' },
+        { label: t('publicFooter.helpCenter'), href: '/support' },
         { label: t('publicFooter.contact'), href: 'mailto:contato@florim.app' },
         { label: t('publicFooter.privacy'), href: 'mailto:privacidade@florim.app' },
       ],
     },
     {
-      title: 'Legal',
+      key: 'legal',
+      title: t('publicFooter.legalColumn'),
       items: [
         { label: t('publicFooter.terms'), href: '/terms' },
         { label: t('publicFooter.privacy'), href: '/privacy' },
-        { label: 'Cookies', href: '/cookies' },
+        { label: t('publicFooter.cookies'), href: '/cookies' },
       ],
     },
   ]
@@ -82,11 +85,11 @@ export default async function PublicFooter({ color = 'sidebar' }: PublicFooterPr
           <span className={`font-serif text-lg font-light tracking-widest ${theme.brand}`}>FLORIM</span>
         </div>
         <div className="flex flex-wrap justify-center gap-5">
-          <Link href="/about" className={`text-[13px] transition-vintage ${theme.link}`}>Sobre</Link>
-          <Link href="/plans" className={`text-[13px] transition-vintage ${theme.link}`}>Planos</Link>
+          <Link href="/about" className={`text-[13px] transition-vintage ${theme.link}`}>{t('publicNav.about')}</Link>
+          <Link href="/plans" className={`text-[13px] transition-vintage ${theme.link}`}>{t('publicFooter.plans')}</Link>
           <Link href="/privacy" className={`text-[13px] transition-vintage ${theme.link}`}>{t('publicFooter.privacy')}</Link>
           <Link href="/terms" className={`text-[13px] transition-vintage ${theme.link}`}>{t('publicFooter.terms')}</Link>
-          <Link href="/cookies" className={`text-[13px] transition-vintage ${theme.link}`}>Cookies</Link>
+          <Link href="/cookies" className={`text-[13px] transition-vintage ${theme.link}`}>{t('publicFooter.cookies')}</Link>
         </div>
         <p suppressHydrationWarning className={`text-[12px] ${theme.bottom}`}>© {new Date().getFullYear()} Florim</p>
       </div>
@@ -104,13 +107,13 @@ export default async function PublicFooter({ color = 'sidebar' }: PublicFooterPr
               <span className={`font-serif text-lg font-light tracking-widest ${theme.brand}`}>FLORIM</span>
             </div>
             <p className={`text-sm leading-relaxed max-w-xs ${theme.muted}`}>
-              Feito por uma família, para famílias. Organizar dinheiro junto, com calma.
+              {t('publicFooter.tagline')}
             </p>
           </div>
 
           {/* Link columns */}
           {columns.map((col) => (
-            <div key={col.title}>
+            <div key={col.key}>
               <div className={`text-[11px] tracking-widest uppercase font-semibold mb-4 ${theme.title}`}>
                 {col.title}
               </div>
@@ -122,7 +125,7 @@ export default async function PublicFooter({ color = 'sidebar' }: PublicFooterPr
                     </Link>
                   </li>
                 ))}
-                {col.title === 'Legal' && (
+                {col.key === 'legal' && (
                   <li>
                     <CookiePreferencesLink className={`text-sm transition-vintage ${theme.link}`} />
                   </li>

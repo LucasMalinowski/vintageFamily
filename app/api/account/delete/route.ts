@@ -4,6 +4,8 @@ import { supabaseService } from '@/lib/billing/supabase-service'
 import { stripe } from '@/lib/billing/stripe'
 import { sendAccountDeletionEmail } from '@/lib/mailer'
 import { getAccessTokenFromAuthHeader, requireUserByAccessToken } from '@/lib/billing/auth'
+import { getUserLocale } from '@/lib/i18n/getLocale'
+import { getTranslations } from 'next-intl/server'
 
 async function cancelFamilyStripeSubscription(familyId: string) {
   try {
@@ -40,6 +42,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
 
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
+
 	  const userId = auth.user.id
 	  const [body, profileResult] = await Promise.all([
 	    request.json().catch(() => ({})),
@@ -53,29 +58,29 @@ export async function POST(request: Request) {
 	  const { data: profile, error: profileError } = profileResult
 
   if (profileError || !profile) {
-    return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 400 })
+    return NextResponse.json({ error: t('account.profileNotFound') }, { status: 400 })
   }
 
   const { data: deletionRows, error: deletionError } = await supabaseAdmin.rpc(
     'delete_user_profile_for_account_deletion',
     {
       p_user_id: userId,
-      p_new_admin_id: typeof newAdminId === 'string' ? newAdminId : null,
+      p_new_admin_id: typeof newAdminId === 'string' ? newAdminId : undefined,
     }
   )
 
   if (deletionError) {
     if (deletionError.message.includes('new_admin_required')) {
-      return NextResponse.json({ error: 'Escolha quem assumirá a administração.' }, { status: 400 })
+      return NextResponse.json({ error: t('account.noAdminChosen') }, { status: 400 })
     }
     if (deletionError.message.includes('invalid_new_admin')) {
-      return NextResponse.json({ error: 'Novo administrador inválido.' }, { status: 400 })
+      return NextResponse.json({ error: t('account.invalidNewAdmin') }, { status: 400 })
     }
     if (deletionError.message.includes('profile_not_found')) {
-      return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 400 })
+      return NextResponse.json({ error: t('account.profileNotFound') }, { status: 400 })
     }
 
-    return NextResponse.json({ error: 'Erro ao preparar exclusão da conta.' }, { status: 500 })
+    return NextResponse.json({ error: t('account.deletionPrepFailed') }, { status: 500 })
   }
 
   const deletionResult = deletionRows?.[0]
@@ -84,12 +89,12 @@ export async function POST(request: Request) {
   }
 
   if (profile.email) {
-    void sendAccountDeletionEmail({ to: profile.email, name: profile.name ?? '' })
+    void sendAccountDeletionEmail({ to: profile.email, name: profile.name ?? '', locale })
   }
 
   const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
   if (authDeleteError) {
-    return NextResponse.json({ error: 'Erro ao excluir conta.' }, { status: 500 })
+    return NextResponse.json({ error: t('account.deletionFailed') }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

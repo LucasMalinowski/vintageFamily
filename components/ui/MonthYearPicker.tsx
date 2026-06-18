@@ -2,7 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { MONTHS, getCurrentMonth, getCurrentYear, ALL_MONTHS_VALUE } from '@/lib/dates'
+import { useLocale } from 'next-intl'
+import { getMonths, getMonthLabel, getCurrentMonth, getCurrentYear, ALL_MONTHS_VALUE } from '@/lib/dates'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 
 interface MonthYearPickerProps {
   month: number
@@ -19,10 +21,12 @@ export default function MonthYearPicker({
   minYear = 2020,
   allowAll = true,
 }: MonthYearPickerProps) {
+  const locale = useLocale() as AppLocale
   const [open, setOpen] = useState(false)
   const [pickerYear, setPickerYear] = useState(year > 0 ? year : getCurrentYear())
   const ref = useRef<HTMLDivElement>(null)
   const maxYear = getCurrentYear() + 2
+  const months = getMonths(locale)
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -54,7 +58,7 @@ export default function MonthYearPicker({
     else onChange(month + 1, year)
   }
 
-  const monthName = MONTHS.find((m) => m.value === month)?.label.slice(0, 3) ?? ''
+  const monthName = months.find((m) => m.value === month)?.label.slice(0, 3) ?? ''
   const label = isAll ? `Todos / ${year > 0 ? year : '-'}` : `${monthName} ${year > 0 ? year : ''}`
 
   return (
@@ -112,7 +116,7 @@ export default function MonthYearPicker({
 
           {/* Month grid */}
           <div className="grid grid-cols-3 gap-1 mb-2">
-            {MONTHS.map((m) => {
+            {months.map((m) => {
               const active = !isAll && month === m.value && year === pickerYear
               return (
                 <button
@@ -137,7 +141,7 @@ export default function MonthYearPicker({
                 isAll ? 'bg-coffee/10 text-coffee' : 'text-ink/45 hover:bg-paper'
               }`}
             >
-              Todos os meses
+              {getMonthLabel(ALL_MONTHS_VALUE, locale)}
             </button>
           )}
         </div>

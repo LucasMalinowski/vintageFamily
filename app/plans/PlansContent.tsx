@@ -2,64 +2,23 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
 import { Check, X, ChevronDown } from 'lucide-react'
 import PublicNavbar from '@/components/layout/PublicNavbar'
 import PublicFooter from '@/components/layout/PublicFooter'
-
-// ── Data ─────────────────────────────────────────────────────────────────────
-
-const COMPARISON_ROWS = [
-  { label: 'Despesas c/ parcelamento', free: true, pro: true },
-  { label: 'Receitas', free: true, pro: true },
-  { label: 'Objetivos e sonhos', free: true, pro: true },
-  { label: 'Lembretes e vencimento', free: true, pro: true },
-  { label: 'Família compartilhada', free: true, pro: true },
-  { label: 'WhatsApp para registrar lançamentos', free: '25/mês', pro: 'Ilimitado' },
-  { label: 'Consultas com IA pelo WhatsApp', free: '7/mês', pro: 'Ilimitado' },
-  { label: 'Insights sob demanda', free: '3/mês', pro: 'Ilimitado' },
-  { label: 'Insights automáticos', free: '1/mês + previsão', pro: 'Semanal, quinzenal ou mensal' },
-  { label: 'Sugestão de categorias com IA', free: true, pro: true },
-  { label: 'Detecção de registros recorrentes', free: true, pro: true },
-  { label: 'Importação e exportação', free: '3/mês', pro: 'Ilimitado' },
-  { label: 'Histórico nos comparativos', free: '2 meses', pro: 'Completo' },
-  { label: 'Prioridade em novidades', free: false, pro: true },
-]
-
-const FAQ_ITEMS = [
-  {
-    q: 'Existe plano gratuito?',
-    a: 'Sim. O plano gratuito continua disponível depois do cadastro, com limites mensais para WhatsApp, consultas com IA, insights e importações/exportações. Você pode assinar o Pro quando precisar de uso ilimitado.',
-  },
-  {
-    q: 'Quantas pessoas podem usar a mesma conta?',
-    a: 'Você pode convidar membros da sua família. Todos compartilham os mesmos dados em tempo real, tanto no gratuito quanto no Pro.',
-  },
-  {
-    q: 'Posso cancelar a qualquer momento?',
-    a: 'Sim. No Pro mensal, você cancela quando quiser e o acesso continua até o fim do período pago. No Pro anual, o cancelamento encerra a renovação automática no próximo ciclo anual.',
-  },
-  {
-    q: 'Meus dados financeiros estão seguros?',
-    a: 'Sim. Os dados são armazenados com criptografia em repouso e em trânsito. Nunca vendemos ou compartilhamos informações da sua família com terceiros.',
-  },
-  {
-    q: 'Posso trocar do plano mensal para o anual depois?',
-    a: 'Sim. Você pode migrar do Pro mensal para o Pro anual a qualquer momento pela área de configurações da sua conta, sem perder nenhum dado.',
-  },
-  {
-    q: 'O que muda do gratuito para o Pro?',
-    a: 'O Pro remove os limites mensais das rotinas principais, libera histórico comparativo completo, importação/exportação ilimitada, WhatsApp e IA para uso contínuo, além de configuração avançada de insights.',
-  },
-]
+import { PLANS_CONTENT, type ComparisonRow } from './PlansContent.content'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
 function PlanToggle({
   value,
   onChange,
+  t,
 }: {
   value: 'monthly' | 'annual'
   onChange: (v: 'monthly' | 'annual') => void
+  t: ReturnType<typeof useTranslations>
 }) {
   return (
     <div className="inline-flex items-center gap-1 bg-offWhite border border-border rounded-full p-1">
@@ -72,7 +31,7 @@ function PlanToggle({
             : 'text-ink/60 hover:text-ink'
         }`}
       >
-        Mensal
+        {t('plans.monthly')}
       </button>
       <button
         type="button"
@@ -83,7 +42,7 @@ function PlanToggle({
             : 'text-ink/60 hover:text-ink'
         }`}
       >
-        Anual
+        {t('plans.annual')}
         {value !== 'annual' && (
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-gold/20 text-gold font-semibold">
             −17%
@@ -100,7 +59,7 @@ function ComparisonValue({ value }: { value: string | boolean }) {
   return <span className="text-[11px] md:text-[13px] text-ink/65">{value}</span>
 }
 
-function ComparisonTable() {
+function ComparisonTable({ rows, t }: { rows: ComparisonRow[]; t: ReturnType<typeof useTranslations> }) {
   const COL = 'grid-cols-[1fr_76px_82px]'
 
   return (
@@ -108,11 +67,11 @@ function ComparisonTable() {
       {/* ── Mobile grid (no horizontal scroll) ── */}
       <div className="md:hidden rounded-[18px] border border-border shadow-soft overflow-hidden">
         <div className={`grid ${COL} items-center bg-offWhite border-b border-border px-4 py-3 gap-x-2`}>
-          <span className="text-[10px] font-semibold text-ink/40 uppercase tracking-wide">Funcionalidade</span>
-          <span className="text-[10px] font-semibold text-coffee text-center leading-tight">Grátis</span>
-          <span className="text-[10px] font-semibold text-coffee text-center leading-tight">Pro</span>
+          <span className="text-[10px] font-semibold text-ink/40 uppercase tracking-wide">{t('plans.tableFeature')}</span>
+          <span className="text-[10px] font-semibold text-coffee text-center leading-tight">{t('plans.tableFree')}</span>
+          <span className="text-[10px] font-semibold text-coffee text-center leading-tight">{t('plans.tablePro')}</span>
         </div>
-        {COMPARISON_ROWS.map((row, i) => (
+        {rows.map((row, i) => (
           <div
             key={row.label}
             className={`grid ${COL} items-center px-4 py-3 border-b border-border last:border-0 gap-x-2 ${i % 2 === 0 ? 'bg-paper' : 'bg-offWhite'}`}
@@ -127,18 +86,18 @@ function ComparisonTable() {
           </div>
         ))}
         <div className={`grid ${COL} items-center bg-sidebar px-4 py-4 gap-x-2`}>
-          <span className="text-[13px] font-semibold text-paper/70">Preço</span>
+          <span className="text-[13px] font-semibold text-paper/70">{t('plans.tablePrice')}</span>
           <div className="text-center">
             <p className="font-numbers text-[15px] font-normal text-gold leading-tight">0</p>
-            <p className="text-paper/45 text-[9px]">/mês</p>
+            <p className="text-paper/45 text-[9px]">{t('plans.perMonth')}</p>
           </div>
           <div className="text-center">
             <p className="font-numbers text-[15px] font-normal text-gold leading-tight">19,90</p>
-            <p className="text-paper/45 text-[9px]">/mês</p>
+            <p className="text-paper/45 text-[9px]">{t('plans.perMonth')}</p>
           </div>
         </div>
         <p className="px-4 py-2.5 text-[10px] text-ink/40 bg-offWhite">
-          Pro anual: R$ 189,00/ano, equivalente a R$ 15,75/mês.
+          {t('plans.tableAnnualNoteMobile')}
         </p>
       </div>
 
@@ -148,18 +107,18 @@ function ComparisonTable() {
           <thead>
             <tr className="bg-offWhite border-b border-border">
               <th className="text-left px-5 py-4 text-[13px] font-semibold text-ink/50 font-body">
-                Funcionalidade
+                {t('plans.tableFeature')}
               </th>
               <th className="px-5 py-4 text-center text-[13px] font-semibold text-coffee font-body">
-                Gratuito
+                {t('plans.tableFreeFull')}
               </th>
               <th className="px-5 py-4 text-center text-[13px] font-semibold text-coffee font-body">
-                Florim Pro
+                {t('plans.tableProFull')}
               </th>
             </tr>
           </thead>
           <tbody>
-            {COMPARISON_ROWS.map((row, i) => (
+            {rows.map((row, i) => (
               <tr
                 key={row.label}
                 className={`border-b border-border last:border-0 ${i % 2 === 0 ? 'bg-paper' : 'bg-offWhite'}`}
@@ -174,20 +133,20 @@ function ComparisonTable() {
               </tr>
             ))}
             <tr className="bg-sidebar">
-              <td className="px-5 py-4 text-[13px] font-semibold text-paper/80 font-body">Preço</td>
+              <td className="px-5 py-4 text-[13px] font-semibold text-paper/80 font-body">{t('plans.tablePrice')}</td>
               <td className="px-5 py-4 text-center">
                 <span className="font-numbers text-[22px] font-normal text-gold leading-none">0</span>
-                <span className="text-paper/60 text-xs ml-1">/mês</span>
+                <span className="text-paper/60 text-xs ml-1">{t('plans.perMonth')}</span>
               </td>
               <td className="px-5 py-4 text-center">
                 <span className="font-numbers text-[22px] font-normal text-gold leading-none">19,90</span>
-                <span className="text-paper/60 text-xs ml-1">/mês</span>
+                <span className="text-paper/60 text-xs ml-1">{t('plans.perMonth')}</span>
               </td>
             </tr>
           </tbody>
         </table>
         <p className="px-5 py-3 text-[11px] text-ink/40 bg-offWhite rounded-b-[18px]">
-          Pro anual: R$ 189,00/ano. Equivalente a R$ 15,75/mês e mais de 2 meses grátis em relação ao mensal.
+          {t('plans.tableAnnualNoteDesktop')}
         </p>
       </div>
     </>
@@ -221,6 +180,9 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 
 export default function PlansContent() {
   const [billing, setBilling] = useState<'monthly' | 'annual'>('annual')
+  const t = useTranslations()
+  const locale = useLocale() as AppLocale
+  const content = PLANS_CONTENT[locale]
 
   const monthlyPrice = '19,90'
   const annualMonthly = '15,75'
@@ -233,18 +195,18 @@ export default function PlansContent() {
       {/* ── Page header ──────────────────────────────────────────── */}
       <section className="pt-28 pb-10 md:pt-36 md:pb-14 px-5 text-center">
         <p className="text-[11px] tracking-[0.2em] uppercase text-gold font-semibold mb-4">
-          Planos & preços
+          {t('plans.kicker')}
         </p>
         <h1 className="font-serif font-light text-[34px] md:text-[54px] text-coffee leading-[1.05] mb-4">
-          Simples, transparente e justo.
+          {t('plans.heroTitle')}
         </h1>
         <p className="text-ink/55 text-[15px] md:text-[18px] font-light leading-relaxed mb-8 max-w-lg mx-auto">
-          Comece no plano gratuito. Assine o Pro quando quiser liberar automações e IA sem limites mensais.
+          {t('plans.heroSubtitle')}
         </p>
         <p className="text-[11px] tracking-[0.18em] uppercase text-ink/35 font-semibold mb-3">
-          Cobrança do Pro
+          {t('plans.billingLabel')}
         </p>
-        <PlanToggle value={billing} onChange={setBilling} />
+        <PlanToggle value={billing} onChange={setBilling} t={t} />
       </section>
 
       {/* ── Plan cards ───────────────────────────────────────────── */}
@@ -253,18 +215,18 @@ export default function PlansContent() {
 
           {/* Free */}
           <div className="flex flex-col rounded-[22px] border border-border bg-offWhite p-6 md:p-8 shadow-soft">
-            <h2 className="font-serif text-[24px] text-coffee mb-1">Gratuito</h2>
-            <p className="text-sm text-ink/55 mb-5">Para começar e manter a casa organizada.</p>
+            <h2 className="font-serif text-[24px] text-coffee mb-1">{t('plans.freeTitle')}</h2>
+            <p className="text-sm text-ink/55 mb-5">{t('plans.freeSubtitle')}</p>
             <div className="flex items-baseline gap-1.5 mb-2">
               <span className="text-base text-coffee/60">R$</span>
               <span className="font-numbers text-[48px] font-normal leading-none text-coffee" style={{ fontVariantNumeric: 'tabular-nums' }}>
                 0
               </span>
-              <span className="text-base text-coffee/60">/mês</span>
+              <span className="text-base text-coffee/60">{t('plans.perMonth')}</span>
             </div>
-            <p className="text-[13px] text-ink/45 mb-6">Sem cartão. Seus dados continuam disponíveis.</p>
+            <p className="text-[13px] text-ink/45 mb-6">{t('plans.freeNote')}</p>
             <ul className="flex flex-col gap-2 text-sm text-ink/70 mb-7 flex-1">
-              {['Registro ilimitado de contas, receitas, objetivos e lembretes', 'Família compartilhada', '25 registros por WhatsApp/mês', '7 consultas com IA/mês', '3 insights sob demanda/mês', '3 importações/exportações/mês', 'Histórico comparativo de 2 meses'].map((b) => (
+              {content.freeBullets.map((b) => (
                 <li key={b} className="flex items-center gap-2">
                   <Check size={14} className="text-olive shrink-0" />
                   <span>{b}</span>
@@ -275,7 +237,7 @@ export default function PlansContent() {
               href="/signup"
               className="block text-center py-3.5 px-4 rounded-full bg-sidebar text-paper text-sm font-semibold hover:bg-sidebar/80 transition-vintage"
             >
-              Criar conta grátis
+              {t('plans.createFreeAccount')}
             </Link>
           </div>
 
@@ -287,18 +249,18 @@ export default function PlansContent() {
                 : 'border-border bg-offWhite opacity-70'
             }`}
           >
-            <h2 className="font-serif text-[24px] text-coffee mb-1">Pro Mensal</h2>
-            <p className="text-sm text-ink/55 mb-5">Para usar WhatsApp, IA e importações sem travar.</p>
+            <h2 className="font-serif text-[24px] text-coffee mb-1">{t('plans.monthlyProTitle')}</h2>
+            <p className="text-sm text-ink/55 mb-5">{t('plans.monthlyProSubtitle')}</p>
             <div className="flex items-baseline gap-1.5 mb-2">
               <span className="text-base text-coffee/60">R$</span>
               <span className="font-numbers text-[48px] font-normal leading-none text-coffee" style={{ fontVariantNumeric: 'tabular-nums' }}>
                 {monthlyPrice}
               </span>
-              <span className="text-base text-coffee/60">/mês</span>
+              <span className="text-base text-coffee/60">{t('plans.perMonth')}</span>
             </div>
-            <p className="text-[13px] text-ink/45 mb-6">Cobrado mensalmente. Cancele quando quiser.</p>
+            <p className="text-[13px] text-ink/45 mb-6">{t('plans.monthlyProNote')}</p>
             <ul className="flex flex-col gap-2 text-sm text-ink/70 mb-7 flex-1">
-              {['Tudo do gratuito', 'WhatsApp e consultas com IA ilimitadas', 'Insights sob demanda ilimitados', 'Importação e exportação ilimitadas', 'Histórico comparativo completo', 'Frequência de insights ajustável', 'Prioridade em novas funcionalidades'].map((b) => (
+              {content.monthlyProBullets.map((b) => (
                 <li key={b} className="flex items-center gap-2">
                   <Check size={14} className="text-olive shrink-0" />
                   <span>{b}</span>
@@ -309,7 +271,7 @@ export default function PlansContent() {
               href="/signup"
               className="block text-center py-3.5 px-4 rounded-full bg-sidebar text-paper text-sm font-semibold hover:bg-sidebar/80 transition-vintage"
             >
-              Assinar Pro mensal
+              {t('plans.subscribeMonthly')}
             </Link>
           </div>
 
@@ -322,13 +284,13 @@ export default function PlansContent() {
             }`}
           >
             <div className="absolute -top-3.5 right-6 bg-gold text-sidebar text-[11px] tracking-widest uppercase px-3 py-1 rounded-full font-semibold">
-              Mais escolhido
+              {t('plans.mostChosen')}
             </div>
             <h2 className={`font-serif text-[24px] mb-1 ${billing === 'annual' ? 'text-gold' : 'text-coffee'}`}>
-              Pro Anual
+              {t('plans.annualProTitle')}
             </h2>
             <p className={`text-sm mb-5 ${billing === 'annual' ? 'text-paper/55' : 'text-ink/55'}`}>
-              O mesmo Pro, com 2 meses grátis.
+              {t('plans.annualProSubtitle')}
             </p>
             <div className="flex items-baseline gap-1.5 mb-1">
               <span className={`text-base ${billing === 'annual' ? 'text-paper/60' : 'text-coffee/60'}`}>R$</span>
@@ -338,18 +300,13 @@ export default function PlansContent() {
               >
                 {annualMonthly}
               </span>
-              <span className={`text-base ${billing === 'annual' ? 'text-paper/60' : 'text-coffee/60'}`}>/mês</span>
+              <span className={`text-base ${billing === 'annual' ? 'text-paper/60' : 'text-coffee/60'}`}>{t('plans.perMonth')}</span>
             </div>
             <p className={`text-[13px] mb-6 ${billing === 'annual' ? 'text-paper/45' : 'text-ink/45'}`}>
-              Cobrado como R$ {annualTotal}/ano. Cancele antes da renovação.
+              {t('plans.annualProNote', { total: annualTotal })}
             </p>
             <ul className={`flex flex-col gap-2 text-sm mb-7 flex-1 ${billing === 'annual' ? 'text-paper/75' : 'text-ink/70'}`}>
-              {[
-                'Tudo do Pro mensal',
-                'Economia de R$ 49,80 no ano',
-                'Preço fixo durante o contrato',
-                'Prioridade em novas funcionalidades',
-              ].map((b) => (
+              {content.annualProBullets.map((b) => (
                 <li key={b} className="flex items-center gap-2">
                   <Check size={14} className="text-gold shrink-0" />
                   <span>{b}</span>
@@ -360,17 +317,17 @@ export default function PlansContent() {
               href="/signup"
               className="block text-center py-3.5 px-4 rounded-full bg-gold text-sidebar text-sm font-semibold hover:opacity-90 transition-vintage"
             >
-              Assinar Pro anual
+              {t('plans.subscribeAnnual')}
             </Link>
           </div>
         </div>
 
         {/* Trust strip */}
         <div className="max-w-3xl mx-auto mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-[13px] text-ink/50">
-          <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" /> Gratuito sem cartão</span>
-          <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" /> Cancele quando quiser</span>
-          <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" /> Membros ilimitados</span>
-          <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" /> Dados seguros</span>
+          <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" /> {t('plans.trustNoCard')}</span>
+          <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" /> {t('plans.trustCancelAnytime')}</span>
+          <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" /> {t('plans.trustUnlimitedMembers')}</span>
+          <span className="flex items-center gap-1.5"><Check size={13} className="text-olive" /> {t('plans.trustSecureData')}</span>
         </div>
       </section>
 
@@ -378,12 +335,12 @@ export default function PlansContent() {
       <section className="bg-offWhite px-5 py-12 md:py-20 md:px-12">
         <div className="max-w-3xl mx-auto">
           <h2 className="font-serif font-light text-[26px] md:text-[40px] text-coffee text-center mb-3">
-            O que está incluído
+            {t('plans.includedTitle')}
           </h2>
           <p className="text-center text-ink/50 text-[14px] md:text-[16px] font-light mb-8 md:mb-10">
-            O gratuito cobre o essencial. O Pro remove limites e aprofunda automações.
+            {t('plans.includedSubtitle')}
           </p>
-          <ComparisonTable />
+          <ComparisonTable rows={content.comparisonRows} t={t} />
         </div>
       </section>
 
@@ -391,23 +348,23 @@ export default function PlansContent() {
       <section className="px-5 py-12 md:py-20 md:px-12">
         <div className="max-w-2xl mx-auto">
           <h2 className="font-serif font-light text-[26px] md:text-[40px] text-coffee text-center mb-3">
-            Perguntas frequentes
+            {t('plans.faqTitle')}
           </h2>
           <p className="text-center text-ink/50 text-[14px] font-light mb-10">
-            Ficou com dúvida? A gente responde.
+            {t('plans.faqSubtitle')}
           </p>
           <div className="rounded-[18px] border border-border bg-offWhite px-5 md:px-7 shadow-soft">
-            {FAQ_ITEMS.map((item) => (
+            {content.faqItems.map((item) => (
               <FaqItem key={item.q} q={item.q} a={item.a} />
             ))}
           </div>
           <p className="mt-6 text-center text-[13px] text-ink/50">
-            Outras dúvidas?{' '}
+            {t('plans.otherQuestions')}{' '}
             <a
               href="mailto:contato@florim.app"
               className="text-gold hover:underline underline-offset-2 transition-vintage"
             >
-              Escreva para contato@florim.app
+              {t('plans.writeToUs')}
             </a>
           </p>
         </div>
@@ -417,23 +374,23 @@ export default function PlansContent() {
       <section className="bg-sidebar px-5 py-14 md:py-20 md:px-12">
         <div className="max-w-xl mx-auto text-center">
           <h2 className="font-serif font-light text-[28px] md:text-[42px] text-paper mb-4 leading-[1.1]">
-            Comece hoje. A família agradece.
+            {t('plans.finalCtaTitle')}
           </h2>
           <p className="text-paper/55 text-[14px] md:text-[16px] font-light mb-8">
-            Plano gratuito disponível. Sem cartão. Cancele o Pro quando quiser.
+            {t('plans.finalCtaSubtitle')}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               href="/signup"
               className="px-8 py-4 rounded-full bg-gold text-sidebar font-bold text-[15px] hover:opacity-90 transition-vintage shadow-vintage text-center"
             >
-              Criar conta grátis
+              {t('plans.createFreeAccount')}
             </Link>
             <Link
               href="/login"
               className="px-8 py-4 rounded-full border border-paper/30 text-paper font-semibold text-[15px] hover:bg-paper/10 transition-vintage text-center"
             >
-              Já tenho conta
+              {t('plans.alreadyHaveAccount')}
             </Link>
           </div>
         </div>

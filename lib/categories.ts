@@ -1,3 +1,5 @@
+import type { AppLocale } from '@/lib/i18n/getLocale'
+
 export type CategoryKind = 'income' | 'expense'
 
 const CATEGORY_COLOR_PALETTE = [
@@ -21,6 +23,8 @@ export const getGoalColor = (index: number): string => GOAL_COLOR_PALETTE[index 
 export interface CategoryRecord {
   id: string
   name: string
+  name_en?: string | null
+  name_es?: string | null
   kind: CategoryKind
   parent_id: string | null
   is_system: boolean
@@ -36,31 +40,48 @@ export const CATEGORY_ROOT_VALUE = '__root__'
 
 export const normalizeCategoryName = (value: string) => value.trim().replace(/\s+/g, ' ')
 
-export const buildCategoryTree = (categories: CategoryRecord[]): CategoryNode[] => {
+// User-created categories have no name_en/name_es (NULL) and fall back to `name` (pt-BR).
+export const resolveCategoryName = (
+  category: Pick<CategoryRecord, 'name' | 'name_en' | 'name_es'>,
+  locale: AppLocale = 'pt-BR'
+): string => {
+  if (locale === 'en' && category.name_en) return category.name_en
+  if (locale === 'es' && category.name_es) return category.name_es
+  return category.name
+}
+
+const INTL_COLLATOR_LOCALE: Record<AppLocale, string> = { 'pt-BR': 'pt-BR', en: 'en-US', es: 'es-ES' }
+
+export const buildCategoryTree = (categories: CategoryRecord[], locale: AppLocale = 'pt-BR'): CategoryNode[] => {
+  const collatorLocale = INTL_COLLATOR_LOCALE[locale]
+  const byName = (a: CategoryRecord, b: CategoryRecord) =>
+    resolveCategoryName(a, locale).localeCompare(resolveCategoryName(b, locale), collatorLocale)
+
   const main = categories
     .filter((category) => !category.parent_id)
-    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+    .sort(byName)
 
   return main.map((category) => ({
     ...category,
     children: categories
       .filter((child) => child.parent_id === category.id)
-      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+      .sort(byName),
   }))
 }
 
-export const buildCategoryLabelMap = (categories: CategoryRecord[]) => {
+export const buildCategoryLabelMap = (categories: CategoryRecord[], locale: AppLocale = 'pt-BR') => {
   const byId = new Map<string, CategoryRecord>(categories.map((category) => [category.id, category]))
   const labels = new Map<string, string>()
 
   for (const category of categories) {
     if (!category.parent_id) {
-      labels.set(category.id, category.name)
+      labels.set(category.id, resolveCategoryName(category, locale))
       continue
     }
 
     const parent = byId.get(category.parent_id)
-    labels.set(category.id, parent ? `${parent.name} / ${category.name}` : category.name)
+    const childName = resolveCategoryName(category, locale)
+    labels.set(category.id, parent ? `${resolveCategoryName(parent, locale)} / ${childName}` : childName)
   }
 
   return labels
@@ -73,7 +94,9 @@ export const findCategoryIdByStoredName = (
   const normalized = normalizeCategoryName(storedName || '')
   if (!normalized) return null
 
-  const labels = buildCategoryLabelMap(categories)
+  // storedName is frozen historical text (always written in pt-BR at record-creation time),
+  // so match against the canonical pt-BR label/name, not a locale-resolved one.
+  const labels = buildCategoryLabelMap(categories, 'pt-BR')
   for (const category of categories) {
     const label = labels.get(category.id) || category.name
     if (normalizeCategoryName(label) === normalized || normalizeCategoryName(category.name) === normalized) {
@@ -84,14 +107,15 @@ export const findCategoryIdByStoredName = (
   return null
 }
 
-export const buildCategoryOptions = (categories: CategoryRecord[]) => {
-  const tree = buildCategoryTree(categories)
+export const buildCategoryOptions = (categories: CategoryRecord[], locale: AppLocale = 'pt-BR') => {
+  const tree = buildCategoryTree(categories, locale)
   const options: Array<{ value: string; label: string; meta?: { parentLabel?: string; depth?: number; icon?: string | null } }> = []
 
   for (const main of tree) {
-    options.push({ value: main.id, label: main.name, meta: { depth: 0, icon: main.icon } })
+    const mainLabel = resolveCategoryName(main, locale)
+    options.push({ value: main.id, label: mainLabel, meta: { depth: 0, icon: main.icon } })
     for (const child of main.children) {
-      options.push({ value: child.id, label: child.name, meta: { parentLabel: main.name, depth: 1, icon: null } })
+      options.push({ value: child.id, label: resolveCategoryName(child, locale), meta: { parentLabel: mainLabel, depth: 1, icon: null } })
     }
   }
 

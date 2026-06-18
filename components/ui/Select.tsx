@@ -6,6 +6,7 @@ import { Check, ChevronDown, Search } from 'lucide-react'
 import clsx from 'clsx'
 import CategoryIcon from '@/components/ui/CategoryIcon'
 import { matchesSearch } from '@/lib/filterSearch'
+import { useTranslations } from 'next-intl'
 
 interface SelectOption {
   value: string
@@ -36,6 +37,7 @@ export default function Select({
   required = false,
   variant = 'default',
 }: SelectProps) {
+  const t = useTranslations()
   const selectedOption = options.find((option) => option.value === value) || null
   const [searchTerm, setSearchTerm] = useState('')
   const handleChange = (nextValue: string) => {
@@ -136,7 +138,7 @@ export default function Select({
                         type="text"
                         value={searchTerm}
                         onChange={(event) => setSearchTerm(event.target.value)}
-                        placeholder="Buscar categoria"
+                        placeholder={t('common.searchCategory')}
                         className="w-full bg-transparent text-sm text-ink placeholder:text-ink/35 focus:outline-none"
                       />
                     </label>

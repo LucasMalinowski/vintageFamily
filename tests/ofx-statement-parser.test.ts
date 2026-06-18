@@ -72,8 +72,8 @@ describe('OfxStatementParser', () => {
       type: 'expense',
     })
     expect(parsed.warnings).toEqual([
-      '1 lançamento(s) OFX foram ignorados por parecerem movimentação de investimento ou reserva.',
-      '1 lançamento(s) OFX foram ignorados por parecerem transferência interna.',
+      '1 lançamento OFX foi ignorado por parecer movimentação de investimento ou reserva.',
+      '1 lançamento OFX foi ignorado por parecer transferência interna.',
     ])
   })
 })

@@ -1,5 +1,37 @@
+import type { AppLocale } from '@/lib/i18n/getLocale'
+
 type ExportValue = string | number | boolean | null | undefined
 const FORMULA_PREFIX = /^[=+\-@\t\r]/
+
+const REPORT_STRINGS: Record<AppLocale, {
+  generatedOn: string
+  signatureResponsible: string
+  signatureFinancial: string
+  footerQuote: string
+  records: (count: number) => string
+}> = {
+  'pt-BR': {
+    generatedOn: 'Gerado em',
+    signatureResponsible: 'Assinatura Responsável',
+    signatureFinancial: 'Assinatura Financeiro',
+    footerQuote: '"Cuidar do dinheiro da casa é cuidar do tempo juntos."',
+    records: (count) => `${count} registro${count !== 1 ? 's' : ''}`,
+  },
+  en: {
+    generatedOn: 'Generated on',
+    signatureResponsible: 'Responsible Signature',
+    signatureFinancial: 'Financial Signature',
+    footerQuote: '"Taking care of the household money is taking care of time together."',
+    records: (count) => `${count} record${count !== 1 ? 's' : ''}`,
+  },
+  es: {
+    generatedOn: 'Generado el',
+    signatureResponsible: 'Firma Responsable',
+    signatureFinancial: 'Firma Financiero',
+    footerQuote: '"Cuidar el dinero de la casa es cuidar el tiempo juntos."',
+    records: (count) => `${count} registro${count !== 1 ? 's' : ''}`,
+  },
+}
 
 export interface ExportTable {
   filename: string
@@ -130,6 +162,7 @@ export interface BrandedPdfOptions {
   generatedDate: string
   includeSignatures?: boolean
   accentColor?: string
+  locale?: AppLocale
 }
 
 export const buildBrandedPdfBlob = async ({
@@ -141,7 +174,9 @@ export const buildBrandedPdfBlob = async ({
   generatedDate,
   includeSignatures = false,
   accentColor = '#3E5F4B',
+  locale = 'pt-BR',
 }: BrandedPdfOptions): Promise<Blob> => {
+  const strings = REPORT_STRINGS[locale]
   const logoData = await loadLogoDataUrl()
 
   const catColIdx = headers.findIndex(h => /categ/i.test(h))
@@ -180,7 +215,7 @@ export const buildBrandedPdfBlob = async ({
     if (total === 0) return ''
     const tds = headers.map((_, i) => {
       if (i === amountColIdx) return `<td style="text-align:right;font-weight:700;color:${accentColor};font-variant-numeric:tabular-nums">R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>`
-      if (i === 0) return `<td style="font-weight:600;color:rgba(47,59,51,.55)">${rows.length} registro${rows.length !== 1 ? 's' : ''}</td>`
+      if (i === 0) return `<td style="font-weight:600;color:rgba(47,59,51,.55)">${strings.records(rows.length)}</td>`
       return '<td></td>'
     }).join('')
     return `<tfoot><tr>${tds}</tr></tfoot>`
@@ -196,15 +231,15 @@ export const buildBrandedPdfBlob = async ({
   const signaturesHtml = includeSignatures ? `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:40px">
       <div><div style="border-top:1px solid #C2A45D;padding-top:6px">
-        <p style="font-size:9px;color:rgba(47,59,51,.55)">Assinatura Responsável</p></div></div>
+        <p style="font-size:9px;color:rgba(47,59,51,.55)">${strings.signatureResponsible}</p></div></div>
       <div><div style="border-top:1px solid #C2A45D;padding-top:6px">
-        <p style="font-size:9px;color:rgba(47,59,51,.55)">Assinatura Financeiro</p></div></div>
+        <p style="font-size:9px;color:rgba(47,59,51,.55)">${strings.signatureFinancial}</p></div></div>
     </div>` : ''
 
   const logoImg = logoData ? `<img src="${logoData}" style="width:28px;height:28px;object-fit:contain" alt="" />` : ''
 
   const html = `<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="${locale}">
 <head>
 <meta charset="utf-8" />
 <title>${title} — Florim</title>
@@ -264,7 +299,7 @@ tfoot td{padding:9px 12px;border-top:1px solid #E4D7C2}
       ${logoImg}
       <div><div class="brand-name">Florim Finanças</div><div class="brand-sub">florim.app</div></div>
     </div>
-    <div class="gen-date">Gerado em ${generatedDate}</div>
+    <div class="gen-date">${strings.generatedOn} ${generatedDate}</div>
   </div>
 
   <div class="title-block">
@@ -286,7 +321,7 @@ tfoot td{padding:9px 12px;border-top:1px solid #E4D7C2}
   ${signaturesHtml}
 
   <div class="footer">
-    <div class="footer-quote">"Cuidar do dinheiro da casa é cuidar do tempo juntos."</div>
+    <div class="footer-quote">${strings.footerQuote}</div>
     <div class="footer-txt">Florim &middot; ${generatedDate}</div>
   </div>
 </div>

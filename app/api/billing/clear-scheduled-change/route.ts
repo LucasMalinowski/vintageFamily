@@ -1,14 +1,18 @@
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 import { checkRateLimit } from '@/lib/billing/rate-limit'
 import { stripe } from '@/lib/billing/stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
 
 export async function POST(request: Request) {
   try {
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
     const accessToken = getAccessTokenFromAuthHeader(request)
-    const auth = await requireUserByAccessToken(accessToken)
+    const auth = await requireUserByAccessToken(accessToken, locale)
 
     if (!auth.user) {
       return NextResponse.json({ error: auth.error }, { status: auth.status })
@@ -16,16 +20,16 @@ export async function POST(request: Request) {
 
     const allowed = await checkRateLimit(auth.user.id, 'clear-scheduled-change', 5)
     if (!allowed) {
-      return NextResponse.json({ error: 'Muitas tentativas. Aguarde um momento e tente novamente.' }, { status: 429 })
+      return NextResponse.json({ error: t('billing.tooManyAttempts') }, { status: 429 })
     }
 
     const profile = await getProfileByUserId(auth.user.id)
     if (!profile) {
-      return NextResponse.json({ error: 'Perfil do usuário não encontrado.' }, { status: 404 })
+      return NextResponse.json({ error: t('billing.userProfileNotFound') }, { status: 404 })
     }
 
     if (profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Apenas administradores da família podem gerenciar cobrança.' }, { status: 403 })
+      return NextResponse.json({ error: t('billing.adminOnly') }, { status: 403 })
     }
 
     const { data: currentSubscription } = await supabaseService
@@ -35,7 +39,7 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (!currentSubscription?.stripe_subscription_id) {
-      return NextResponse.json({ error: 'Nenhuma assinatura ativa encontrada.' }, { status: 404 })
+      return NextResponse.json({ error: t('billing.noActiveSubscription') }, { status: 404 })
     }
 
     const stripeSubscription = await stripe.subscriptions.retrieve(currentSubscription.stripe_subscription_id, {
@@ -55,6 +59,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, cleared: true })
   } catch (error: any) {
     console.error('clear-scheduled-change failed', error)
-    return NextResponse.json({ error: billingErrorMessage(error, 'Erro inesperado ao remover alteração agendada.') }, { status: 500 })
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
+    return NextResponse.json({ error: billingErrorMessage(error, t('billing.clearScheduledChangeUnexpectedError')) }, { status: 500 })
   }
 }

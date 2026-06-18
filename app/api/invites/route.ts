@@ -1,14 +1,18 @@
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { sendInviteEmail } from '@/lib/mailer'
 import { getAccessTokenFromAuthHeader, requireUserByAccessToken } from '@/lib/billing/auth'
 import { generateUrlToken, sha256Hex } from '@/lib/security/tokens'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 
 const INVITE_EXPIRY_DAYS = 7
 
 export async function POST(request: Request) {
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
   const accessToken = getAccessTokenFromAuthHeader(request)
-  const auth = await requireUserByAccessToken(accessToken)
+  const auth = await requireUserByAccessToken(accessToken, locale)
   if (!auth.user) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
@@ -16,7 +20,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null)
   const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : null
   if (!email || typeof email !== 'string') {
-    return NextResponse.json({ error: 'Email obrigatório.' }, { status: 400 })
+    return NextResponse.json({ error: t('invites.emailRequired') }, { status: 400 })
   }
 
   const { data: profile, error: profileError } = await supabaseAdmin
@@ -26,11 +30,11 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   if (profileError || !profile) {
-    return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 400 })
+    return NextResponse.json({ error: t('invites.profileNotFound') }, { status: 400 })
   }
 
   if (profile.role !== 'admin') {
-    return NextResponse.json({ error: 'Apenas administradores podem enviar convites.' }, { status: 403 })
+    return NextResponse.json({ error: t('invites.onlyAdminsCanInvite') }, { status: 403 })
   }
 
   const { data: family, error: familyError } = await supabaseAdmin
@@ -40,7 +44,7 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   if (familyError || !family) {
-    return NextResponse.json({ error: 'Família não encontrada.' }, { status: 400 })
+    return NextResponse.json({ error: t('invites.familyNotFound') }, { status: 400 })
   }
 
   await supabaseAdmin
@@ -68,21 +72,21 @@ export async function POST(request: Request) {
 
   if (inviteError) {
     if (inviteError.code === '23505') {
-      return NextResponse.json({ error: 'Já existe um convite pendente para este email.' }, { status: 409 })
+      return NextResponse.json({ error: t('invites.alreadyPending') }, { status: 409 })
     }
-    return NextResponse.json({ error: 'Erro ao criar convite.' }, { status: 500 })
+    return NextResponse.json({ error: t('invites.createFailed') }, { status: 500 })
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
   if (!appUrl) {
-    return NextResponse.json({ error: 'Configuração do servidor incompleta.' }, { status: 500 })
+    return NextResponse.json({ error: t('invites.serverConfigIncomplete') }, { status: 500 })
   }
   const inviteLink = `${appUrl}/invite?token=${token}`
 
   try {
-    await sendInviteEmail({ to: email, inviteLink, familyName: family.name })
+    await sendInviteEmail({ to: email, inviteLink, familyName: family.name, locale })
   } catch {
-    return NextResponse.json({ error: 'Erro ao enviar email de convite.' }, { status: 500 })
+    return NextResponse.json({ error: t('invites.sendEmailFailed') }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

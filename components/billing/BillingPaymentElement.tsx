@@ -41,7 +41,7 @@ function BillingPaymentForm({
       })
 
       if (result.error) {
-        setError(result.error.message || 'Não foi possível atualizar o método de pagamento.')
+        setError(result.error.message || t('billing.paymentMethodUpdateFailed'))
       } else {
         onSuccess({ setupIntentId: result.setupIntent?.id })
       }
@@ -59,7 +59,7 @@ function BillingPaymentForm({
     })
 
     if (result.error) {
-      setError(result.error.message || 'Não foi possível confirmar o pagamento.')
+      setError(result.error.message || t('billing.paymentConfirmFailed'))
     } else {
       onSuccess({ paymentIntentId: result.paymentIntent?.id })
     }
@@ -104,8 +104,10 @@ export default function BillingPaymentElement({
   onSuccess: (result?: { setupIntentId?: string; paymentIntentId?: string }) => void
   onCancel: () => void
 }) {
+  const t = useTranslations()
+
   if (!stripePromise) {
-    return <p className="text-sm text-red-700">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY nao configurada.</p>
+    return <p className="text-sm text-red-700">{t('billing.stripeNotConfigured')}</p>
   }
 
   return (

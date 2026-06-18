@@ -7,6 +7,8 @@ import { BANK_IDS, type BankId, type ReviewedImportItem, type StatementFileForma
 import { BankStatementImportError, BankStatementImportService, buildImportPreview } from '@/lib/bank-statements/BankStatementImportService'
 import { MAX_CSV_SIZE_BYTES, MAX_OFX_SIZE_BYTES } from '@/lib/bank-statements/constants'
 import { flushPostHogLogs, posthogLogs } from '@/lib/posthog-logs'
+import { getUserLocale } from '@/lib/i18n/getLocale'
+import { getTranslations } from 'next-intl/server'
 
 export const runtime = 'nodejs'
 
@@ -33,16 +35,19 @@ function detectFormatFromBuffer(buf: Buffer): StatementFileFormat | null {
 }
 
 export async function POST(request: Request) {
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
+
   try {
     const accessToken = getAccessTokenFromAuthHeader(request)
     const auth = await requireUserByAccessToken(accessToken)
     if (auth.error || !auth.user) {
-      return NextResponse.json({ error: auth.error || 'Não autorizado.' }, { status: auth.status })
+      return NextResponse.json({ error: auth.error || t('common.unauthorized') }, { status: auth.status })
     }
 
     const profile = await getProfileByUserId(auth.user.id)
     if (!profile?.family_id) {
-      return NextResponse.json({ error: 'Família não encontrada para o usuário autenticado.' }, { status: 403 })
+      return NextResponse.json({ error: t('bankStatements.familyNotFound') }, { status: 403 })
     }
 
     const formData = await request.formData()
@@ -55,7 +60,7 @@ export async function POST(request: Request) {
         const usage = await checkAndIncrementExportImport(profile.family_id)
         if (!usage.allowed) {
           return NextResponse.json(
-            { error: 'Você atingiu o limite de 3 importações/exportações gratuitas este mês. Assine o Pro para continuar.' },
+            { error: t('bankStatements.importLimitReached') },
             { status: 403 }
           )
         }
@@ -65,39 +70,39 @@ export async function POST(request: Request) {
     const file = formData.get('file')
 
     if (!BANK_IDS.includes(bank)) {
-      return NextResponse.json({ error: 'Banco não suportado para esta importação.' }, { status: 422 })
+      return NextResponse.json({ error: t('bankStatements.unsupportedBank') }, { status: 422 })
     }
 
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: 'Arquivo não enviado.' }, { status: 400 })
+      return NextResponse.json({ error: t('bankStatements.fileNotSent') }, { status: 400 })
     }
 
     const format = detectFormat(file.name, file.type)
     if (!format) {
-      return NextResponse.json({ error: 'Envie um arquivo CSV ou OFX válido.' }, { status: 422 })
+      return NextResponse.json({ error: t('bankStatements.invalidFileFormat') }, { status: 422 })
     }
 
     const selectedBank = BANK_TUTORIALS_BY_ID[bank]
     if (!selectedBank.supportedImportFormats.includes(format)) {
       const preferred = selectedBank.preferredImportFormat.toUpperCase()
       return NextResponse.json(
-        { error: `Este banco não suporta ${format.toUpperCase()} neste fluxo. Use ${preferred}.` },
+        { error: t('bankStatements.unsupportedFormatForBank', { format: format.toUpperCase(), preferred }) },
         { status: 422 }
       )
     }
 
     if (format === 'csv' && file.size > MAX_CSV_SIZE_BYTES) {
-      return NextResponse.json({ error: 'O CSV excede o tamanho máximo permitido de 5 MB.' }, { status: 422 })
+      return NextResponse.json({ error: t('bankStatements.csvTooLarge') }, { status: 422 })
     }
 
     if (format === 'ofx' && file.size > MAX_OFX_SIZE_BYTES) {
-      return NextResponse.json({ error: 'O OFX excede o tamanho máximo permitido de 5 MB.' }, { status: 422 })
+      return NextResponse.json({ error: t('bankStatements.ofxTooLarge') }, { status: 422 })
     }
 
     const fileBuffer = Buffer.from(await file.arrayBuffer())
     const detectedFormat = detectFormatFromBuffer(fileBuffer)
     if (!detectedFormat || detectedFormat !== format) {
-      return NextResponse.json({ error: 'O conteúdo do arquivo não corresponde ao formato declarado.' }, { status: 422 })
+      return NextResponse.json({ error: t('bankStatements.fileContentMismatch') }, { status: 422 })
     }
 
     const service = new BankStatementImportService()
@@ -108,23 +113,24 @@ export async function POST(request: Request) {
       fileName: file.name,
       familyId: profile.family_id,
       userId: auth.user.id,
+      locale,
     }
 
     if (action === 'commit') {
       const reviewPayload = formData.get('reviewPayload')
       if (typeof reviewPayload !== 'string') {
-        return NextResponse.json({ error: 'A revisão da importação não foi enviada.' }, { status: 422 })
+        return NextResponse.json({ error: t('bankStatements.reviewNotSent') }, { status: 422 })
       }
 
       let reviewedItems: ReviewedImportItem[]
       try {
         const parsed = JSON.parse(reviewPayload)
         if (!Array.isArray(parsed)) {
-          return NextResponse.json({ error: 'A revisão da importação está inválida.' }, { status: 422 })
+          return NextResponse.json({ error: t('bankStatements.reviewInvalid') }, { status: 422 })
         }
         reviewedItems = parsed as ReviewedImportItem[]
       } catch {
-        return NextResponse.json({ error: 'A revisão da importação está inválida.' }, { status: 422 })
+        return NextResponse.json({ error: t('bankStatements.reviewInvalid') }, { status: 422 })
       }
 
       const result = await service.commit({
@@ -202,6 +208,6 @@ export async function POST(request: Request) {
 
     posthogLogs.error('Bank statement import failed', { endpoint: '/api/bank-statements/import' }, error)
     await flushPostHogLogs()
-    return NextResponse.json({ error: 'Falha ao importar o extrato bancário.' }, { status: 500 })
+    return NextResponse.json({ error: t('bankStatements.importFailed') }, { status: 500 })
   }
 }

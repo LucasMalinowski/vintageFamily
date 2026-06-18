@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
 import { isPlanCode } from '@/lib/billing/constants'
 import { supabaseService } from '@/lib/billing/supabase-service'
+import { getUserLocale } from '@/lib/i18n/getLocale'
+import { getTranslations } from 'next-intl/server'
 
 async function requireSuperAdmin(request: Request) {
   const accessToken = getAccessTokenFromAuthHeader(request)
@@ -13,7 +15,9 @@ async function requireSuperAdmin(request: Request) {
 
   const profile = await getProfileByUserId(auth.user.id)
   if (!profile?.super_admin) {
-    return { ok: false as const, response: NextResponse.json({ error: 'Acesso negado.' }, { status: 403 }) }
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
+    return { ok: false as const, response: NextResponse.json({ error: t('admin.accessDenied') }, { status: 403 }) }
   }
 
   return { ok: true as const }
@@ -29,7 +33,9 @@ export async function GET(request: Request) {
     .order('created_at', { ascending: true })
 
   if (error) {
-    return NextResponse.json({ error: 'Erro ao carregar planos.' }, { status: 500 })
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
+    return NextResponse.json({ error: t('admin.plansLoadFailed') }, { status: 500 })
   }
 
   return NextResponse.json({ plans: data })
@@ -38,6 +44,9 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   const admin = await requireSuperAdmin(request)
   if (!admin.ok) return admin.response
+
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
 
   const body = (await request.json().catch(() => null)) as
     | {
@@ -48,11 +57,11 @@ export async function PATCH(request: Request) {
     | null
 
   if (!body?.plan_code || !isPlanCode(body.plan_code)) {
-    return NextResponse.json({ error: 'Plano inválido.' }, { status: 400 })
+    return NextResponse.json({ error: t('admin.invalidPlan') }, { status: 400 })
   }
 
   if (typeof body.is_visible !== 'boolean' && typeof body.is_active !== 'boolean') {
-    return NextResponse.json({ error: 'Nenhuma alteração foi informada.' }, { status: 400 })
+    return NextResponse.json({ error: t('admin.noChangesProvided') }, { status: 400 })
   }
 
   const updatePayload: Record<string, boolean> = {}
@@ -67,7 +76,7 @@ export async function PATCH(request: Request) {
     .maybeSingle()
 
   if (error || !data) {
-    return NextResponse.json({ error: 'Plano não encontrado.' }, { status: 500 })
+    return NextResponse.json({ error: t('admin.planNotFound') }, { status: 500 })
   }
 
   return NextResponse.json({ plan: data })

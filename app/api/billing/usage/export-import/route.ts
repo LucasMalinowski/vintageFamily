@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 import { hasBillingAccess } from '@/lib/billing/access'
 import { checkAndIncrementExportImport, getUsageCounters } from '@/lib/billing/free-tier'
 import { FREE_TIER_LIMITS } from '@/lib/billing/constants'
@@ -7,15 +9,17 @@ import { FREE_TIER_LIMITS } from '@/lib/billing/constants'
 // GET - check remaining without consuming
 export async function GET(request: Request) {
   try {
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
     const accessToken = getAccessTokenFromAuthHeader(request)
-    const auth = await requireUserByAccessToken(accessToken)
+    const auth = await requireUserByAccessToken(accessToken, locale)
     if (auth.error || !auth.user) {
       return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
     const profile = await getProfileByUserId(auth.user.id)
     if (!profile?.family_id) {
-      return NextResponse.json({ error: 'Família não encontrada.' }, { status: 403 })
+      return NextResponse.json({ error: t('billing.familyNotFound') }, { status: 403 })
     }
 
     const access = await hasBillingAccess({ familyId: profile.family_id })
@@ -29,22 +33,26 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ allowed: remaining > 0, remaining })
   } catch {
-    return NextResponse.json({ error: 'Erro inesperado.' }, { status: 500 })
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
+    return NextResponse.json({ error: t('billing.genericUnexpectedError') }, { status: 500 })
   }
 }
 
 // POST - check and consume one unit
 export async function POST(request: Request) {
   try {
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
     const accessToken = getAccessTokenFromAuthHeader(request)
-    const auth = await requireUserByAccessToken(accessToken)
+    const auth = await requireUserByAccessToken(accessToken, locale)
     if (auth.error || !auth.user) {
       return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
     const profile = await getProfileByUserId(auth.user.id)
     if (!profile?.family_id) {
-      return NextResponse.json({ error: 'Família não encontrada.' }, { status: 403 })
+      return NextResponse.json({ error: t('billing.familyNotFound') }, { status: 403 })
     }
 
     const access = await hasBillingAccess({ familyId: profile.family_id })
@@ -56,6 +64,8 @@ export async function POST(request: Request) {
     const result = await checkAndIncrementExportImport(profile.family_id)
     return NextResponse.json(result)
   } catch {
-    return NextResponse.json({ error: 'Erro inesperado.' }, { status: 500 })
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
+    return NextResponse.json({ error: t('billing.genericUnexpectedError') }, { status: 500 })
   }
 }

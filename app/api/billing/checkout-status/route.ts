@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 import { ACTIVE_SUBSCRIPTION_STATUSES } from '@/lib/billing/constants'
 import { getPlanCodeByPriceId, stripe } from '@/lib/billing/stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
@@ -14,8 +16,10 @@ function toIso(timestamp?: number | null) {
 
 export async function POST(request: Request) {
   try {
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
     const accessToken = getAccessTokenFromAuthHeader(request)
-    const auth = await requireUserByAccessToken(accessToken)
+    const auth = await requireUserByAccessToken(accessToken, locale)
 
     if (!auth.user) {
       return NextResponse.json({ error: auth.error }, { status: auth.status })
@@ -23,7 +27,7 @@ export async function POST(request: Request) {
 
     const profile = await getProfileByUserId(auth.user.id)
     if (!profile) {
-      return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 404 })
+      return NextResponse.json({ error: t('billing.profileNotFound') }, { status: 404 })
     }
 
     const { data: subscription } = await supabaseService
@@ -61,6 +65,8 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     console.error('checkout-status failed', error)
-    return NextResponse.json({ error: billingErrorMessage(error, 'Erro inesperado na cobrança.') }, { status: 500 })
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
+    return NextResponse.json({ error: billingErrorMessage(error, t('billing.unexpectedError')) }, { status: 500 })
   }
 }

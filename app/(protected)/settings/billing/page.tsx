@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslations, useLocale } from 'next-intl'
 import { Info } from 'lucide-react'
 import BillingPaymentElement from '@/components/billing/BillingPaymentElement'
 import { getAuthBearerToken } from '@/lib/billing/client'
@@ -65,57 +66,54 @@ type PaymentFlow =
     }
   | null
 
-const STATUS_LABELS: Record<string, string> = {
-  active: 'Ativa',
-  trialing: 'Em teste',
-  canceled: 'Cancelada',
-  incomplete: 'Incompleta',
-  incomplete_expired: 'Expirada',
-  past_due: 'Em atraso',
-  unpaid: 'Não paga',
-  paused: 'Pausada',
+type Translator = ReturnType<typeof useTranslations>
+
+function getStatusLabel(t: Translator, status: string) {
+  const knownStatuses = ['active', 'trialing', 'canceled', 'incomplete', 'incomplete_expired', 'past_due', 'unpaid', 'paused']
+  if (knownStatuses.includes(status)) return t(`billing.page.statusLabels.${status}`)
+  return status
 }
 
-function formatPlanName(planCode: PlanCode | null | undefined) {
-  if (!planCode) return 'Sem assinatura'
+function formatPlanName(t: Translator, planCode: PlanCode | null | undefined) {
+  if (!planCode) return t('billing.page.noSubscription')
   return PLAN_NAME[planCode] ?? planCode
 }
 
-function formatAccessPlanName(access: BillingResponse['access'] | undefined, planCode: PlanCode | null) {
-  if (planCode) return formatPlanName(planCode)
-  if (access?.hasLifetimeAccess) return 'Acesso vitalício'
-  if (access?.hasActiveTrial) return 'Teste gratuito'
-  return 'Plano gratuito'
+function formatAccessPlanName(t: Translator, access: BillingResponse['access'] | undefined, planCode: PlanCode | null) {
+  if (planCode) return formatPlanName(t, planCode)
+  if (access?.hasLifetimeAccess) return t('billing.page.lifetimeAccess')
+  if (access?.hasActiveTrial) return t('billing.page.freeTrial')
+  return t('billing.page.freePlan')
 }
 
-function formatCurrency(amountInCents: number, currency: string) {
-  return new Intl.NumberFormat('pt-BR', {
+function formatCurrency(locale: string, amountInCents: number, currency: string) {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: currency.toUpperCase(),
   }).format(amountInCents / 100)
 }
 
-function getImmediateAdjustmentLabel(amountInCents: number) {
-  if (amountInCents > 0) return 'Cobrança imediata'
-  if (amountInCents < 0) return 'Crédito gerado'
-  return 'Sem ajuste imediato'
+function getImmediateAdjustmentLabel(t: Translator, amountInCents: number) {
+  if (amountInCents > 0) return t('billing.page.immediateCharge')
+  if (amountInCents < 0) return t('billing.page.creditGenerated')
+  return t('billing.page.noImmediateAdjustment')
 }
 
-function getImmediateAdjustmentHelpText(amountInCents: number) {
+function getImmediateAdjustmentHelpText(t: Translator, amountInCents: number) {
   if (amountInCents > 0) {
-    return 'Este valor será cobrado agora para concluir a alteração de plano.'
+    return t('billing.page.immediateChargeHelp')
   }
 
   if (amountInCents < 0) {
-    return 'Este valor será mantido como crédito para próximas cobranças. Não há reembolso automático no cartão.'
+    return t('billing.page.creditGeneratedHelp')
   }
 
-  return 'Esta alteração não gera cobrança nem crédito imediato.'
+  return t('billing.page.noImmediateAdjustmentHelp')
 }
 
-function getNextRenewalLabel(planCode: PlanCode) {
-  if (planCode === 'standard_monthly') return 'Próxima renovação mensal'
-  return 'Próxima renovação anual'
+function getNextRenewalLabel(t: Translator, planCode: PlanCode) {
+  if (planCode === 'standard_monthly') return t('billing.page.nextRenewalMonthly')
+  return t('billing.page.nextRenewalAnnual')
 }
 
 function getEstimatedNextCharge(recurringAmount: number | null, immediateAdjustment: number) {
@@ -123,20 +121,21 @@ function getEstimatedNextCharge(recurringAmount: number | null, immediateAdjustm
   return Math.max(recurringAmount + Math.min(immediateAdjustment, 0), 0)
 }
 
-function formatApproximateCycles(creditAmount: number, recurringAmount: number | null) {
+function formatApproximateCycles(t: Translator, creditAmount: number, recurringAmount: number | null) {
   if (creditAmount >= 0 || !recurringAmount || recurringAmount <= 0) return null
 
   const cycles = Math.abs(creditAmount) / recurringAmount
   if (cycles < 1) return null
 
   const rounded = Math.floor(cycles)
-  const label = rounded === 1 ? 'mês' : 'meses'
-  const value = String(rounded)
+  const label = rounded === 1 ? t('billing.page.month') : t('billing.page.months')
 
-  return `${value} ${label}`
+  return `${rounded} ${label}`
 }
 
 export default function BillingSettingsPage() {
+  const t = useTranslations()
+  const locale = useLocale()
   const [data, setData] = useState<BillingResponse | null>(null)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [message, setMessage] = useState<string | null>(null)
@@ -162,17 +161,17 @@ export default function BillingSettingsPage() {
 
   const renewalLabel = useMemo(() => {
     if (!data?.subscription) {
-      if (data?.access?.hasLifetimeAccess) return 'Sem cobrança recorrente'
-      if (data?.access?.hasActiveTrial) return 'Teste gratuito ativo'
-      return 'Sem assinatura ativa'
+      if (data?.access?.hasLifetimeAccess) return t('billing.page.noRecurringCharge')
+      if (data?.access?.hasActiveTrial) return t('billing.page.activeTrial')
+      return t('billing.page.noActiveSubscription')
     }
-    return data.subscription.cancel_at_period_end ? 'Renovação automática desativada' : 'Renovação automática ativa'
-  }, [data?.access?.hasActiveTrial, data?.access?.hasLifetimeAccess, data?.subscription])
+    return data.subscription.cancel_at_period_end ? t('billing.page.autoRenewDisabled') : t('billing.page.autoRenewEnabled')
+  }, [data?.access?.hasActiveTrial, data?.access?.hasLifetimeAccess, data?.subscription, t])
 
   const load = async () => {
     const token = await getAuthBearerToken()
     if (!token) {
-      setMessage('Sessão inválida. Faça login novamente.')
+      setMessage(t('common.sessionExpired'))
       setLoading(false)
       return
     }
@@ -192,7 +191,7 @@ export default function BillingSettingsPage() {
 	    ])
 
     if (!billingResponse.ok) {
-      setMessage(billingPayload?.error || 'Não foi possível carregar dados de assinatura.')
+      setMessage(billingPayload?.error || t('billing.page.errorLoadSubscription'))
       setLoading(false)
       return
     }
@@ -202,7 +201,7 @@ export default function BillingSettingsPage() {
     if (invoicesResponse.ok) {
       setInvoices(invoicesPayload?.invoices || [])
     } else if (billingPayload?.billing?.can_manage) {
-      setMessage(invoicesPayload?.error || 'Não foi possível carregar as faturas.')
+      setMessage(invoicesPayload?.error || t('billing.page.errorLoadInvoices'))
     }
 
     setLoading(false)
@@ -216,7 +215,7 @@ export default function BillingSettingsPage() {
   const withToken = async () => {
     const token = await getAuthBearerToken()
     if (!token) {
-      setMessage('Sessão inválida. Faça login novamente.')
+      setMessage(t('common.sessionExpired'))
       return null
     }
 
@@ -239,7 +238,7 @@ export default function BillingSettingsPage() {
     setActionLoading(null)
 
     if (!response.ok || !payload?.client_secret) {
-      setMessage(payload?.error || 'Não foi possível iniciar a atualização do método de pagamento.')
+      setMessage(payload?.error || t('billing.page.errorStartPaymentMethodUpdate'))
       return
     }
 
@@ -270,7 +269,7 @@ export default function BillingSettingsPage() {
     setActionLoading(null)
 
     if (!response.ok || !payload?.client_secret) {
-      setMessage(payload?.error || 'Não foi possível iniciar a assinatura.')
+      setMessage(payload?.error || t('billing.page.errorStartSubscription'))
       return
     }
 
@@ -301,12 +300,12 @@ export default function BillingSettingsPage() {
     setActionLoading(null)
 
     if (!response.ok) {
-      setMessage(payload?.error || 'Não foi possível atualizar o cancelamento.')
+      setMessage(payload?.error || t('billing.page.errorUpdateCancellation'))
       return
     }
 
     if (cancelAtPeriodEnd) posthog.capture(EVENTS.CANCELLATION_STARTED)
-    setMessage(cancelAtPeriodEnd ? 'Assinatura programada para encerrar no fim do período.' : 'Renovação automática reativada com sucesso.')
+    setMessage(cancelAtPeriodEnd ? t('billing.page.cancellationScheduled') : t('billing.page.autoRenewResumed'))
     await load()
   }
 
@@ -330,7 +329,7 @@ export default function BillingSettingsPage() {
     setActionLoading(null)
 
     if (!response.ok) {
-      setMessage(payload?.error || 'Falha ao atualizar assinatura.')
+      setMessage(payload?.error || t('billing.page.errorUpdateSubscription'))
       return
     }
 
@@ -348,7 +347,7 @@ export default function BillingSettingsPage() {
       return
     }
 
-    setMessage(`Assinatura atualizada para ${PLAN_NAME[planCode]}.`)
+    setMessage(t('billing.page.subscriptionUpdatedTo', { plan: PLAN_NAME[planCode] }))
     await load()
   }
 
@@ -372,11 +371,11 @@ export default function BillingSettingsPage() {
     setActionLoading(null)
 
     if (!response.ok) {
-      setMessage(payload?.error || 'Falha ao agendar downgrade.')
+      setMessage(payload?.error || t('billing.page.errorScheduleDowngrade'))
       return
     }
 
-    setMessage(`Downgrade para ${PLAN_NAME[planCode]} agendado para o fim do período atual.`)
+    setMessage(t('billing.page.downgradeScheduledTo', { plan: PLAN_NAME[planCode] }))
     await load()
   }
 
@@ -398,11 +397,11 @@ export default function BillingSettingsPage() {
     setActionLoading(null)
 
     if (!response.ok) {
-      setMessage(payload?.error || 'Falha ao remover alteração agendada.')
+      setMessage(payload?.error || t('billing.page.errorClearScheduledChange'))
       return
     }
 
-    setMessage('Alteração de plano agendada removida com sucesso.')
+    setMessage(t('billing.page.scheduledChangeCleared'))
     await load()
   }
 
@@ -464,7 +463,7 @@ export default function BillingSettingsPage() {
 
       if (!response.ok) {
         setPlanPreview(null)
-        setMessage(payload?.error || 'Não foi possível simular a alteração de plano.')
+        setMessage(payload?.error || t('billing.page.errorSimulatePlanChange'))
         return
       }
 
@@ -522,7 +521,7 @@ export default function BillingSettingsPage() {
         setActionLoading(null)
 
         if (!response.ok) {
-          setMessage(payload?.error || 'Falha ao alterar assinatura.')
+          setMessage(payload?.error || t('billing.page.errorChangeSubscription'))
           return
         }
 
@@ -541,7 +540,7 @@ export default function BillingSettingsPage() {
           return
         }
 
-        setMessage(`Assinatura atualizada para ${PLAN_NAME[selectedPlan]}.`)
+        setMessage(t('billing.page.subscriptionUpdatedTo', { plan: PLAN_NAME[selectedPlan] }))
         await load()
         setPlanPickerOpen(false)
         return
@@ -559,72 +558,74 @@ export default function BillingSettingsPage() {
   }
 
   const planActionLabel = (() => {
-    if (!selectedPlan) return 'Selecione um plano'
-    if (selectedPlanAction === 'subscribe') return `Assinar ${PLAN_NAME[selectedPlan]}`
-    if (selectedPlanAction === 'upgrade') return `Ir para ${PLAN_NAME[selectedPlan]}`
+    if (!selectedPlan) return t('billing.page.selectPlan')
+    if (selectedPlanAction === 'subscribe') return t('billing.page.subscribeTo', { plan: PLAN_NAME[selectedPlan] })
+    if (selectedPlanAction === 'upgrade') return t('billing.page.goToPlan', { plan: PLAN_NAME[selectedPlan] })
     if (selectedPlanAction === 'downgrade') {
       return changeTiming === 'now'
-        ? `Trocar agora para ${PLAN_NAME[selectedPlan]}`
-        : `Agendar ${PLAN_NAME[selectedPlan]}`
+        ? t('billing.page.switchNowTo', { plan: PLAN_NAME[selectedPlan] })
+        : t('billing.page.scheduleTo', { plan: PLAN_NAME[selectedPlan] })
     }
-    if (selectedPlanAction === 'current' && scheduledChange?.target_plan) return 'Remover alteração agendada'
-    if (selectedPlanAction === 'current') return 'Plano atual'
-    return 'Alteração indisponível'
+    if (selectedPlanAction === 'current' && scheduledChange?.target_plan) return t('billing.page.removeScheduledChange')
+    if (selectedPlanAction === 'current') return t('billing.page.currentPlan')
+    return t('billing.page.changeUnavailable')
   })()
 
   if (loading) {
-    return <div className="rounded-vintage border border-border bg-bg p-6 shadow-vintage text-ink/60">Carregando cobrança…</div>
+    return <div className="rounded-vintage border border-border bg-bg p-6 shadow-vintage text-ink/60">{t('billing.page.loadingBilling')}</div>
   }
 
   return (
     <>
       <div className="rounded-vintage border border-border bg-bg p-6 shadow-vintage">
-        <h1 className="mb-2 text-2xl font-serif text-coffee">Assinatura e pagamentos</h1>
-        <p className="mb-6 text-sm text-ink/60">Gerencie plano, faturas, método de pagamento e cancelamento sem sair do app.</p>
+        <h1 className="mb-2 text-2xl font-serif text-coffee">{t('billing.page.title')}</h1>
+        <p className="mb-6 text-sm text-ink/60">{t('billing.page.subtitle')}</p>
 
         {message ? <p className="mb-4 text-sm text-ink/70">{message}</p> : null}
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-lg border border-border bg-paper p-4">
-            <h2 className="mb-2 text-sm uppercase tracking-wide text-ink/50">Assinatura atual</h2>
-            <p className="text-lg font-semibold text-coffee">{formatAccessPlanName(access, currentPlan)}</p>
+            <h2 className="mb-2 text-sm uppercase tracking-wide text-ink/50">{t('billing.page.currentSubscription')}</h2>
+            <p className="text-lg font-semibold text-coffee">{formatAccessPlanName(t, access, currentPlan)}</p>
             <p className="mt-1 text-xs text-ink/60">
-              Status:{' '}
+              {t('billing.page.statusLabel')}:{' '}
               {data?.subscription?.status
-                ? STATUS_LABELS[data.subscription.status] || data.subscription.status
+                ? getStatusLabel(t, data.subscription.status) || data.subscription.status
                 : access?.hasActiveTrial
-                  ? 'Em teste'
+                  ? t('billing.page.statusLabels.trialing')
                   : access?.hasLifetimeAccess
-                    ? 'Vitalício'
-                    : 'Gratuito'}
+                    ? t('billing.page.lifetimeStatus')
+                    : t('billing.page.freeStatus')}
             </p>
             <p className="mt-1 text-xs text-ink/60">
-              {data?.subscription?.current_period_end ? 'Período atual até' : access?.hasActiveTrial ? 'Teste gratuito até' : 'Período atual até'}:{' '}
+              {access?.hasActiveTrial && !data?.subscription?.current_period_end ? t('billing.page.trialUntil') : t('billing.page.currentPeriodUntil')}:{' '}
               {data?.subscription?.current_period_end
-                ? new Date(data.subscription.current_period_end).toLocaleDateString('pt-BR')
+                ? new Date(data.subscription.current_period_end).toLocaleDateString(locale)
                 : access?.trialExpiresAt
-                  ? new Date(access.trialExpiresAt).toLocaleDateString('pt-BR')
-                  : 'n/d'}
+                  ? new Date(access.trialExpiresAt).toLocaleDateString(locale)
+                  : t('billing.page.notAvailable')}
             </p>
             <p className="mt-1 text-xs text-ink/60">{renewalLabel}</p>
             {!hasStripeSubscription && canManage ? (
               <p className="mt-3 text-xs text-ink/60">
-                Escolha um plano para ativar uma assinatura recorrente.
+                {t('billing.page.choosePlanToActivate')}
               </p>
             ) : null}
             {scheduledChange?.target_plan && scheduledChange.effective_at ? (
               <p className="mt-2 text-xs text-ink/60">
-                Alteração agendada: {PLAN_NAME[scheduledChange.target_plan]} em{' '}
-                {new Date(scheduledChange.effective_at).toLocaleDateString('pt-BR')}
+                {t('billing.page.scheduledChangeLabel', {
+                  plan: PLAN_NAME[scheduledChange.target_plan],
+                  date: new Date(scheduledChange.effective_at).toLocaleDateString(locale),
+                })}
               </p>
             ) : null}
           </div>
 
           <div className="rounded-lg border border-border bg-paper p-4">
-            <h2 className="mb-2 text-sm uppercase tracking-wide text-ink/50">Ações</h2>
+            <h2 className="mb-2 text-sm uppercase tracking-wide text-ink/50">{t('billing.page.actions')}</h2>
 
             {!canManage ? (
-              <p className="text-sm text-ink/60">Somente administradores da família podem gerenciar cobrança.</p>
+              <p className="text-sm text-ink/60">{t('billing.page.onlyAdminsCanManage')}</p>
             ) : (
               <div className="flex flex-col gap-2">
                 <button
@@ -635,7 +636,7 @@ export default function BillingSettingsPage() {
                   }}
                   className="rounded-full border border-border bg-bg px-4 py-2 text-sm text-ink/70 hover:bg-offWhite disabled:opacity-60"
                 >
-                  {hasStripeSubscription ? 'Alterar Plano de Assinatura' : 'Escolher plano de assinatura'}
+                  {hasStripeSubscription ? t('billing.page.changeSubscriptionPlan') : t('billing.page.choosePlan')}
                 </button>
                 <button
                   type="button"
@@ -643,7 +644,7 @@ export default function BillingSettingsPage() {
                   disabled={!data?.subscription || actionLoading === 'payment_method'}
                   className="rounded-full border border-border bg-bg px-4 py-2 text-sm text-ink/70 hover:bg-offWhite disabled:opacity-60"
                 >
-                  {actionLoading === 'payment_method' ? 'Carregando...' : 'Atualizar método de pagamento'}
+                  {actionLoading === 'payment_method' ? t('billing.page.loadingEllipsis') : t('billing.page.updatePaymentMethod')}
                 </button>
                 {scheduledChange?.target_plan ? (
                   <button
@@ -652,7 +653,7 @@ export default function BillingSettingsPage() {
                     disabled={actionLoading === 'clear_schedule'}
                     className="rounded-full border border-border bg-bg px-4 py-2 text-sm text-ink/70 hover:bg-offWhite disabled:opacity-60"
                   >
-                    {actionLoading === 'clear_schedule' ? 'Processando...' : 'Remover alteração agendada'}
+                    {actionLoading === 'clear_schedule' ? t('billing.page.processingEllipsis') : t('billing.page.removeScheduledChange')}
                   </button>
                 ) : null}
                 <button
@@ -662,10 +663,10 @@ export default function BillingSettingsPage() {
                   className="rounded-full border border-border bg-bg px-4 py-2 text-sm text-ink/70 hover:bg-offWhite disabled:opacity-60"
                 >
                   {actionLoading === 'cancel' || actionLoading === 'resume'
-                    ? 'Processando...'
+                    ? t('billing.page.processingEllipsis')
                     : data?.subscription?.cancel_at_period_end
-                      ? 'Reativar renovação automática'
-                      : 'Cancelar Assinatura'}
+                      ? t('billing.page.resumeAutoRenew')
+                      : t('billing.page.cancelSubscription')}
                 </button>
               </div>
             )}
@@ -674,14 +675,14 @@ export default function BillingSettingsPage() {
 
         <div className="mt-6 rounded-lg border border-border bg-paper p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-sm uppercase tracking-wide text-ink/50">Faturas</h2>
-            <span className="text-xs text-ink/50">{invoices.length} registro(s)</span>
+            <h2 className="text-sm uppercase tracking-wide text-ink/50">{t('billing.page.invoices')}</h2>
+            <span className="text-xs text-ink/50">{t('billing.page.recordsCount', { count: invoices.length })}</span>
           </div>
 
           {!canManage ? (
-            <p className="text-sm text-ink/60">Somente administradores da família podem visualizar as faturas.</p>
+            <p className="text-sm text-ink/60">{t('billing.page.onlyAdminsCanViewInvoices')}</p>
           ) : invoices.length === 0 ? (
-            <p className="text-sm text-ink/60">Nenhuma fatura encontrada para esta família.</p>
+            <p className="text-sm text-ink/60">{t('billing.page.noInvoicesFound')}</p>
           ) : (
             <div className="space-y-3">
               {invoices.map((invoice) => (
@@ -691,11 +692,11 @@ export default function BillingSettingsPage() {
                       {invoice.number || invoice.id}
                     </p>
                     <p className="text-xs text-ink/60">
-                      {new Date(invoice.created * 1000).toLocaleDateString('pt-BR')} · {invoice.status || 'sem status'}
+                      {new Date(invoice.created * 1000).toLocaleDateString(locale)} · {invoice.status || t('billing.page.noStatus')}
                     </p>
                   </div>
                   <div className="text-sm text-ink/70">
-                    {formatCurrency(invoice.amount_paid || invoice.amount_due, invoice.currency)}
+                    {formatCurrency(locale, invoice.amount_paid || invoice.amount_due, invoice.currency)}
                   </div>
                   <div className="flex gap-2">
                     {invoice.hosted_invoice_url ? (
@@ -705,14 +706,14 @@ export default function BillingSettingsPage() {
                         rel="noreferrer"
                         className="rounded-full border border-border bg-bg px-3 py-2 text-xs text-ink/70 hover:bg-offWhite"
                       >
-                        Ver fatura
+                        {t('billing.page.viewInvoice')}
                       </a>
                     ) : null}
                     <a
                       href={`/api/billing/invoices/${invoice.id}/pdf`}
                       className="rounded-full border border-border bg-bg px-3 py-2 text-xs text-ink/70 hover:bg-offWhite"
                     >
-                      Baixar PDF
+                      {t('billing.page.downloadPdf')}
                     </a>
                   </div>
                 </div>
@@ -728,20 +729,20 @@ export default function BillingSettingsPage() {
             <div className="border-b border-border bg-offWhite px-6 py-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-coffee/55">Cobrança</p>
+                  <p className="text-xs uppercase tracking-[0.24em] text-coffee/55">{t('billing.page.billingLabel')}</p>
                   <h3 className="mt-1 text-2xl font-serif text-coffee">
                     {paymentFlow.type === 'payment_method'
-                      ? 'Atualizar método de pagamento'
+                      ? t('billing.page.updatePaymentMethod')
                       : paymentFlow.type === 'subscription'
-                        ? `Assinar ${PLAN_NAME[paymentFlow.targetPlan]}`
-                        : `Confirmar ${PLAN_NAME[paymentFlow.targetPlan]}`}
+                        ? t('billing.page.subscribeTo', { plan: PLAN_NAME[paymentFlow.targetPlan] })
+                        : t('billing.page.confirmPlan', { plan: PLAN_NAME[paymentFlow.targetPlan] })}
                   </h3>
                   <p className="mt-2 text-sm text-ink/65">
                     {paymentFlow.type === 'payment_method'
-                      ? 'Informe os novos dados do cartão para futuras cobranças.'
+                      ? t('billing.page.enterNewCardDetails')
                       : paymentFlow.type === 'subscription'
-                        ? 'Informe os dados de pagamento para ativar sua assinatura.'
-                        : 'Confirme o ajuste de cobrança para concluir a alteração de plano.'}
+                        ? t('billing.page.enterPaymentDetails')
+                        : t('billing.page.confirmBillingAdjustment')}
                   </p>
                 </div>
                 <button
@@ -749,7 +750,7 @@ export default function BillingSettingsPage() {
                   className="rounded-full border border-border bg-bg px-3 py-2 text-sm text-ink/70 transition-vintage hover:bg-offWhite"
                   onClick={() => setPaymentFlow(null)}
                 >
-                  Fechar
+                  {t('common.close')}
                 </button>
               </div>
             </div>
@@ -758,47 +759,48 @@ export default function BillingSettingsPage() {
               {paymentFlow.type === 'plan_change' ? (
                 <div className="mb-5 rounded-[18px] border border-border bg-paper p-4 text-sm text-ink/70">
                   <div className="flex items-center justify-between gap-3">
-                    <span>Plano atual</span>
+                    <span>{t('billing.page.currentPlanLabel')}</span>
                     <span className="font-medium text-coffee">{PLAN_NAME[paymentFlow.currentPlan]}</span>
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-3">
-                    <span>Novo plano</span>
+                    <span>{t('billing.page.newPlanLabel')}</span>
                     <span className="font-medium text-coffee">{PLAN_NAME[paymentFlow.targetPlan]}</span>
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-3">
-                    <span>{getImmediateAdjustmentLabel(paymentFlow.amountDue)}</span>
+                    <span>{getImmediateAdjustmentLabel(t, paymentFlow.amountDue)}</span>
                     <span className="flex items-center gap-2 font-semibold text-coffee">
                       <span
                         className="group relative inline-flex h-5 w-5 cursor-help items-center justify-center text-ink/55"
-                        aria-label="Informações sobre ajuste imediato"
+                        aria-label={t('billing.immediateAdjustmentInfo')}
                       >
                         <Info className="h-4 w-4" />
                         <span className="pointer-events-none absolute right-0 top-full z-10 mt-2 hidden w-72 rounded-[14px] border border-border bg-bg p-3 text-left text-xs font-normal text-ink/70 shadow-soft group-hover:block">
-                          {getImmediateAdjustmentHelpText(paymentFlow.amountDue)}
+                          {getImmediateAdjustmentHelpText(t, paymentFlow.amountDue)}
                         </span>
                       </span>
-                      {formatCurrency(paymentFlow.amountDue, paymentFlow.currency)}
+                      {formatCurrency(locale, paymentFlow.amountDue, paymentFlow.currency)}
                     </span>
                   </div>
                   {paymentFlow.targetRecurringAmount !== null ? (
                     <>
                       <div className="mt-2 flex items-center justify-between gap-3">
                         <div>
-                          <div>Preço base da renovação</div>
-                          <div className="text-xs text-ink/55">{getNextRenewalLabel(paymentFlow.targetPlan)}</div>
+                          <div>{t('billing.page.baseRenewalPrice')}</div>
+                          <div className="text-xs text-ink/55">{getNextRenewalLabel(t, paymentFlow.targetPlan)}</div>
                         </div>
                         <span className="font-medium text-coffee">
-                          {formatCurrency(paymentFlow.targetRecurringAmount, paymentFlow.currency)}
+                          {formatCurrency(locale, paymentFlow.targetRecurringAmount, paymentFlow.currency)}
                         </span>
                       </div>
                       {getEstimatedNextCharge(paymentFlow.targetRecurringAmount, paymentFlow.amountDue) !== null ? (
                         <div className="mt-2 flex items-center justify-between gap-3">
                           <div>
-                            <div>Estimativa da próxima cobrança</div>
-                            <div className="text-xs text-ink/55">Considerando o crédito já gerado nesta alteração.</div>
+                            <div>{t('billing.page.estimatedNextCharge')}</div>
+                            <div className="text-xs text-ink/55">{t('billing.page.consideringCreditGenerated')}</div>
                           </div>
                           <span className="font-medium text-coffee">
                             {formatCurrency(
+                              locale,
                               getEstimatedNextCharge(paymentFlow.targetRecurringAmount, paymentFlow.amountDue) || 0,
                               paymentFlow.currency,
                             )}
@@ -814,10 +816,10 @@ export default function BillingSettingsPage() {
                 clientSecret={paymentFlow.clientSecret}
                 submitLabel={
                   paymentFlow.type === 'payment_method'
-                    ? 'Salvar cartão'
+                    ? t('billing.page.saveCard')
                     : paymentFlow.type === 'subscription'
-                      ? 'Confirmar assinatura'
-                      : 'Confirmar mudança de plano'
+                      ? t('billing.page.confirmSubscription')
+                      : t('billing.page.confirmPlanChange')
                 }
                 onCancel={() => setPaymentFlow(null)}
                 onSuccess={async (result) => {
@@ -838,7 +840,7 @@ export default function BillingSettingsPage() {
 
                     const payload = await response.json().catch(() => null)
                     if (!response.ok) {
-                      setMessage(payload?.error || 'Não foi possível salvar o método de pagamento.')
+                      setMessage(payload?.error || t('billing.page.errorSavePaymentMethod'))
                       return
                     }
                   }
@@ -846,10 +848,10 @@ export default function BillingSettingsPage() {
                   setPaymentFlow(null)
                   setMessage(
                     paymentFlow.type === 'payment_method'
-                      ? 'Método de pagamento atualizado com sucesso.'
+                      ? t('billing.page.paymentMethodUpdated')
                       : paymentFlow.type === 'subscription'
-                        ? `Assinatura iniciada no ${PLAN_NAME[paymentFlow.targetPlan]}.`
-                        : `Assinatura atualizada para ${PLAN_NAME[paymentFlow.targetPlan]}.`,
+                        ? t('billing.page.subscriptionStartedOn', { plan: PLAN_NAME[paymentFlow.targetPlan] })
+                        : t('billing.page.subscriptionUpdatedTo', { plan: PLAN_NAME[paymentFlow.targetPlan] }),
                   )
                   await load()
                 }}
@@ -865,12 +867,12 @@ export default function BillingSettingsPage() {
             <div className="border-b border-border bg-offWhite px-6 py-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-coffee/55">Cobrança</p>
-                  <h3 className="mt-1 text-2xl font-serif text-coffee">Alterar Plano de Assinatura</h3>
+                  <p className="text-xs uppercase tracking-[0.24em] text-coffee/55">{t('billing.page.billingLabel')}</p>
+                  <h3 className="mt-1 text-2xl font-serif text-coffee">{t('billing.page.changeSubscriptionPlan')}</h3>
                   <p className="mt-2 text-sm text-ink/65">
                     {currentPlan
-                      ? 'Escolha o plano desejado. Mudanças para planos superiores acontecem agora; mudanças para planos inferiores ficam agendadas para o fim do período.'
-                      : 'Escolha o plano para ativar sua assinatura.'}
+                      ? t('billing.page.choosePlanDescription')
+                      : t('billing.page.choosePlanToActivateDescription')}
                   </p>
                 </div>
                 <button
@@ -878,7 +880,7 @@ export default function BillingSettingsPage() {
                   className="rounded-full border border-border bg-bg px-3 py-2 text-sm text-ink/70 transition-vintage hover:bg-offWhite"
                   onClick={() => setPlanPickerOpen(false)}
                 >
-                  Fechar
+                  {t('common.close')}
                 </button>
               </div>
             </div>
@@ -903,20 +905,20 @@ export default function BillingSettingsPage() {
                         <div className="font-medium text-coffee">{PLAN_NAME[planCode]}</div>
                         <div className="mt-1 text-xs text-ink/60">
                           {isCurrent
-                            ? 'Plano atual'
+                            ? t('billing.page.currentPlan')
                             : isScheduled
-                              ? `Alteração já agendada para ${new Date(scheduledChange!.effective_at!).toLocaleDateString('pt-BR')}`
+                              ? t('billing.page.changeAlreadyScheduledFor', { date: new Date(scheduledChange!.effective_at!).toLocaleDateString(locale) })
                               : resolvePlanChangeAction(planCode) === 'subscribe'
-                                ? 'Iniciar assinatura'
+                                ? t('billing.page.startSubscription')
                                 : resolvePlanChangeAction(planCode) === 'upgrade'
-                                  ? 'Mudança imediata'
+                                  ? t('billing.page.immediateChange')
                                   : resolvePlanChangeAction(planCode) === 'downgrade'
-                                    ? 'Mudança no fim do período'
-                                    : 'Indisponível'}
+                                    ? t('billing.page.changeAtPeriodEnd')
+                                    : t('billing.page.unavailable')}
                         </div>
                       </div>
                       <div className="text-xs text-ink/60">
-                        {isCurrent ? 'Atual' : isScheduled ? 'Agendado' : null}
+                        {isCurrent ? t('billing.page.currentBadge') : isScheduled ? t('billing.page.scheduledBadge') : null}
                       </div>
                     </button>
                   )
@@ -933,7 +935,7 @@ export default function BillingSettingsPage() {
                         changeTiming === 'period_end' ? 'border-sidebar text-coffee' : 'border-border text-ink/70'
                       }`}
                     >
-                      Trocar no fim do período
+                      {t('billing.page.switchAtPeriodEnd')}
                     </button>
                     <button
                       type="button"
@@ -942,7 +944,7 @@ export default function BillingSettingsPage() {
                         changeTiming === 'now' ? 'border-sidebar text-coffee' : 'border-border text-ink/70'
                       }`}
                     >
-                      Trocar agora
+                      {t('billing.page.switchNow')}
                     </button>
                   </div>
 
@@ -950,37 +952,40 @@ export default function BillingSettingsPage() {
                     <div className="space-y-2">
                       <div className="rounded-[16px] border border-border bg-offWhite px-4 py-3">
                         <div className="flex items-center justify-between gap-3">
-                          <span>Até a troca</span>
+                          <span>{t('billing.page.untilSwitch')}</span>
                           <span className="font-medium text-coffee">{PLAN_NAME[currentPlan as PlanCode]}</span>
                         </div>
                         <div className="mt-1 text-xs text-ink/55">
-                          Seu plano atual permanece ativo até{' '}
-                          {new Date(data.subscription.current_period_end).toLocaleDateString('pt-BR')}.
+                          {t('billing.page.currentPlanActiveUntil', {
+                            date: new Date(data.subscription.current_period_end).toLocaleDateString(locale),
+                          })}
                         </div>
                       </div>
 
                       {planPreview && planPreview.targetRecurringAmount !== null ? (
                         <div className="rounded-[16px] border border-border bg-offWhite px-4 py-3">
                           <div className="flex items-center justify-between gap-3">
-                            <span>Cobrança imediata</span>
-                            <span className="font-medium text-coffee">R$ 0,00</span>
+                            <span>{t('billing.page.immediateCharge')}</span>
+                            <span className="font-medium text-coffee">{formatCurrency(locale, 0, planPreview.currency)}</span>
                           </div>
                           <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                             <div>
-                              <div>{getNextRenewalLabel(selectedPlan)}</div>
+                              <div>{getNextRenewalLabel(t, selectedPlan)}</div>
                               <div className="text-xs text-ink/55">
-                                O novo valor passa a valer somente após a data acima.
+                                {t('billing.page.newValueAppliesAfterDate')}
                               </div>
                             </div>
                             <span className="pt-0.5 text-right font-medium text-coffee">
-                              {formatCurrency(planPreview.targetRecurringAmount, planPreview.currency)}
+                              {formatCurrency(locale, planPreview.targetRecurringAmount, planPreview.currency)}
                             </span>
                           </div>
                         </div>
                       ) : (
                         <div>
-                          A mudança para {PLAN_NAME[selectedPlan]} será aplicada em{' '}
-                          {new Date(data.subscription.current_period_end).toLocaleDateString('pt-BR')}.
+                          {t('billing.page.changeToPlanWillApplyOn', {
+                            plan: PLAN_NAME[selectedPlan],
+                            date: new Date(data.subscription.current_period_end).toLocaleDateString(locale),
+                          })}
                         </div>
                       )}
                     </div>
@@ -989,47 +994,48 @@ export default function BillingSettingsPage() {
                       {actionLoading === 'preview_change' ? (
                         <div className="flex flex-col items-center justify-center gap-3 rounded-[16px] border border-border bg-offWhite px-4 py-6 text-center text-sm text-ink/70">
                           <div className="h-8 w-8 animate-spin rounded-full border-4 border-sidebar/20 border-t-sidebar" />
-                          <div>Simulando ajuste de cobrança…</div>
+                          <div>{t('billing.page.simulatingBillingAdjustment')}</div>
                         </div>
                       ) : null}
                       {actionLoading !== 'preview_change' && planPreview ? (
                         <>
                           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-                            <span>{getImmediateAdjustmentLabel(planPreview.immediateAdjustment)}</span>
+                            <span>{getImmediateAdjustmentLabel(t, planPreview.immediateAdjustment)}</span>
                             <span className="flex items-center justify-end gap-2 pt-0.5 text-right font-medium text-coffee">
                               <span
                                 className="group relative inline-flex h-5 w-5 cursor-help items-center justify-center text-ink/55"
-                                aria-label="Informações sobre ajuste imediato"
+                                aria-label={t('billing.immediateAdjustmentInfo')}
                               >
                                 <Info className="h-4 w-4" />
                                 <span className="pointer-events-none absolute right-0 top-full z-10 mt-2 hidden w-72 rounded-[14px] border border-border bg-bg p-3 text-left text-xs font-normal text-ink/70 shadow-soft group-hover:block">
-                                  {getImmediateAdjustmentHelpText(planPreview.immediateAdjustment)}
+                                  {getImmediateAdjustmentHelpText(t, planPreview.immediateAdjustment)}
                                 </span>
                               </span>
-                              {formatCurrency(planPreview.immediateAdjustment, planPreview.currency)}
+                              {formatCurrency(locale, planPreview.immediateAdjustment, planPreview.currency)}
                             </span>
                           </div>
                           {planPreview.targetRecurringAmount !== null ? (
                             <>
                               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                                 <div>
-                                  <div>Preço base da renovação</div>
-                                  <div className="text-xs text-ink/55">{getNextRenewalLabel(selectedPlan)}</div>
+                                  <div>{t('billing.page.baseRenewalPrice')}</div>
+                                  <div className="text-xs text-ink/55">{getNextRenewalLabel(t, selectedPlan)}</div>
                                 </div>
                                 <span className="pt-0.5 text-right font-medium text-coffee">
-                                  {formatCurrency(planPreview.targetRecurringAmount, planPreview.currency)}
+                                  {formatCurrency(locale, planPreview.targetRecurringAmount, planPreview.currency)}
                                 </span>
                               </div>
                               {getEstimatedNextCharge(planPreview.targetRecurringAmount, planPreview.immediateAdjustment) !== null ? (
                                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                                   <div>
-                                    <div>Estimativa da próxima cobrança</div>
+                                    <div>{t('billing.page.estimatedNextCharge')}</div>
                                     <div className="text-xs text-ink/55">
-                                      Considerando o crédito já gerado nesta alteração.
+                                      {t('billing.page.consideringCreditGenerated')}
                                     </div>
                                   </div>
                                   <span className="pt-0.5 text-right font-medium text-coffee">
                                     {formatCurrency(
+                                      locale,
                                       getEstimatedNextCharge(
                                         planPreview.targetRecurringAmount,
                                         planPreview.immediateAdjustment,
@@ -1040,16 +1046,17 @@ export default function BillingSettingsPage() {
                                 </div>
                               ) : null}
                               {selectedPlan === 'standard_monthly' &&
-                              formatApproximateCycles(planPreview.immediateAdjustment, planPreview.targetRecurringAmount) ? (
+                              formatApproximateCycles(t, planPreview.immediateAdjustment, planPreview.targetRecurringAmount) ? (
                                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                                   <div>
-                                    <div>Estimativa de duração do crédito</div>
+                                    <div>{t('billing.page.estimatedCreditDuration')}</div>
                                     <div className="text-xs text-ink/55">
-                                      Aproximação com base no valor mensal atual, sem considerar futuras mudanças.
+                                      {t('billing.page.creditDurationApproximationNote')}
                                     </div>
                                   </div>
                                   <span className="pt-0.5 text-right font-medium leading-6 text-coffee">
                                     {formatApproximateCycles(
+                                      t,
                                       planPreview.immediateAdjustment,
                                       planPreview.targetRecurringAmount,
                                     )}
@@ -1067,7 +1074,7 @@ export default function BillingSettingsPage() {
 
               {selectedPlan?.startsWith('founders_') && !foundersEligible ? (
                 <div className="rounded-[18px] border border-border bg-paper p-4 text-sm text-ink/70">
-                  O Plano Fundadores só fica disponível para famílias habilitadas.
+                  {t('billing.page.foundersOnlyAvailable')}
                 </div>
               ) : null}
 
@@ -1077,7 +1084,7 @@ export default function BillingSettingsPage() {
                   onClick={() => setPlanPickerOpen(false)}
                   className="rounded-full border border-border bg-bg px-4 py-3 text-sm font-medium text-ink/70 transition-vintage hover:bg-offWhite"
                 >
-                  Fechar
+                  {t('common.close')}
                 </button>
                 <button
                   type="button"

@@ -4,15 +4,20 @@ import PublicNavbar from '@/components/layout/PublicNavbar'
 import PublicFooter from '@/components/layout/PublicFooter'
 import { getUserLocale } from '@/lib/i18n/getLocale'
 
-export const metadata: Metadata = {
-  title: 'O Florim',
-  description: 'Sistema de controle financeiro familiar criado para trazer clareza, diálogo e tranquilidade ao cotidiano da casa.',
-  alternates: { canonical: '/about' },
-  openGraph: {
-    title: 'O Florim - Sistema financeiro familiar',
-    description: 'Criado dentro de uma família, para famílias.',
-    url: 'https://florim.app/about',
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getUserLocale()
+  const msgs = (await import(`@/messages/${locale}.json`)).default as any
+  const s = msgs.seo.about
+  return {
+    title: s.title,
+    description: s.description,
+    alternates: { canonical: '/about' },
+    openGraph: {
+      title: s.ogTitle,
+      description: s.ogDescription,
+      url: 'https://florim.app/about',
+    },
+  }
 }
 
 export default async function AboutPage() {

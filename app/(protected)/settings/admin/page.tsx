@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations, useLocale } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { LogIn, Trash2 } from 'lucide-react'
 import { useAuth } from '@/components/AuthProvider'
@@ -28,28 +29,28 @@ function dateInputToISO(date: string): string | null {
   return date + 'T23:59:59.000Z'
 }
 
-function formatTrialExpiry(iso: string | null): string {
+function formatTrialExpiry(t: ReturnType<typeof useTranslations>, locale: string, iso: string | null): string {
   if (!iso) return '-'
   const d = new Date(iso)
   const days = Math.ceil((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-  const formatted = d.toLocaleDateString('pt-BR')
-  if (days < 0) return `${formatted} (expirado)`
-  if (days === 0) return `${formatted} (hoje)`
-  return `${formatted} (+${days}d)`
+  const formatted = d.toLocaleDateString(locale)
+  if (days < 0) return t('admin.trialExpiredOn', { date: formatted })
+  if (days === 0) return t('admin.trialExpiresToday', { date: formatted })
+  return t('admin.trialExpiresInDays', { date: formatted, days })
 }
 
-function StatusBadge({ family }: { family: FamilyRow }) {
+function StatusBadge({ family, t }: { family: FamilyRow; t: ReturnType<typeof useTranslations> }) {
   if (family.lifetime_access) {
     return (
       <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-olive/15 text-olive">
-        Permanente
+        {t('admin.statusPermanent')}
       </span>
     )
   }
   if (family.subscription_status && ['active', 'trialing'].includes(family.subscription_status)) {
     return (
       <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-petrol/15 text-petrol">
-        Pago
+        {t('admin.statusPaid')}
       </span>
     )
   }
@@ -58,18 +59,20 @@ function StatusBadge({ family }: { family: FamilyRow }) {
     const days = Math.ceil((new Date(family.trial_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     return (
       <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-gold/20 text-coffee">
-        Teste ({days}d)
+        {t('admin.statusTrialDays', { days })}
       </span>
     )
   }
   return (
     <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-ink/10 text-ink/55">
-      Gratuito
+      {t('admin.statusFree')}
     </span>
   )
 }
 
 export default function SuperAdminSettingsPage() {
+  const t = useTranslations()
+  const locale = useLocale()
   const { user, familyId: activeFamilyId, switchFamily } = useAuth()
   const router = useRouter()
   const [checkingAdmin, setCheckingAdmin] = useState(true)
@@ -96,7 +99,7 @@ export default function SuperAdminSettingsPage() {
 
       const token = await getAuthBearerToken()
       if (!token) {
-        setMessage('Sessão inválida. Faça login novamente.')
+        setMessage(t('common.sessionExpired'))
         return
       }
 
@@ -106,7 +109,7 @@ export default function SuperAdminSettingsPage() {
 
       const payload = await response.json().catch(() => null)
       if (!response.ok) {
-        setMessage(payload?.error || 'Falha ao carregar famílias.')
+        setMessage(payload?.error || t('admin.errorLoadFamilies'))
         return
       }
 
@@ -132,7 +135,7 @@ export default function SuperAdminSettingsPage() {
 
     const token = await getAuthBearerToken()
     if (!token) {
-      setMessage('Sessão inválida. Faça login novamente.')
+      setMessage(t('common.sessionExpired'))
       setSavingFamilyId(null)
       return
     }
@@ -148,7 +151,7 @@ export default function SuperAdminSettingsPage() {
 
     const payload = await response.json().catch(() => null)
     if (!response.ok) {
-      setMessage(payload?.error || 'Falha ao atualizar família.')
+      setMessage(payload?.error || t('admin.errorUpdateFamily'))
       setSavingFamilyId(null)
       return
     }
@@ -171,16 +174,14 @@ export default function SuperAdminSettingsPage() {
     try {
       await switchFamily(familyId)
     } catch (err: any) {
-      setMessage(err?.message || 'Falha ao entrar na família.')
+      setMessage(err?.message || t('admin.errorEnterFamily'))
     } finally {
       setSwitchingFamilyId(null)
     }
   }
 
   const deleteFamily = async (family: FamilyRow) => {
-    const confirmed = window.confirm(
-      `Excluir a família "${family.name}" e todos os dados vinculados a ela? Esta ação não pode ser desfeita.`
-    )
+    const confirmed = window.confirm(t('admin.confirmDeleteFamily', { name: family.name }))
     if (!confirmed) return
 
     setDeletingFamilyId(family.id)
@@ -188,7 +189,7 @@ export default function SuperAdminSettingsPage() {
 
     const token = await getAuthBearerToken()
     if (!token) {
-      setMessage('Sessão inválida. Faça login novamente.')
+      setMessage(t('common.sessionExpired'))
       setDeletingFamilyId(null)
       return
     }
@@ -204,7 +205,7 @@ export default function SuperAdminSettingsPage() {
 
     const payload = await response.json().catch(() => null)
     if (!response.ok) {
-      setMessage(payload?.error || 'Falha ao excluir família.')
+      setMessage(payload?.error || t('admin.errorDeleteFamily'))
       setDeletingFamilyId(null)
       return
     }
@@ -221,7 +222,7 @@ export default function SuperAdminSettingsPage() {
   if (checkingAdmin) {
     return (
       <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
-        <p className="text-sm text-ink/60">Carregando…</p>
+        <p className="text-sm text-ink/60">{t('common.loading')}</p>
       </div>
     )
   }
@@ -231,9 +232,9 @@ export default function SuperAdminSettingsPage() {
   return (
     <div className="space-y-6">
       <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
-        <h1 className="text-2xl font-serif text-coffee mb-2">Superadministrador</h1>
+        <h1 className="text-2xl font-serif text-coffee mb-2">{t('admin.superAdminTitle')}</h1>
         <p className="text-sm text-ink/60">
-          Controle acesso, período de teste e elegibilidade por família.
+          {t('admin.superAdminSubtitle')}
         </p>
       </div>
 
@@ -248,20 +249,20 @@ export default function SuperAdminSettingsPage() {
           <table className="min-w-full text-sm">
             <thead className="bg-paper border-b border-border">
               <tr className="text-left text-ink/60">
-                <th className="px-4 py-3 font-medium">Família</th>
-                <th className="px-4 py-3 font-medium">Membros</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium min-w-[260px]">Trial até</th>
-                <th className="px-4 py-3 font-medium">Fundadores</th>
-                <th className="px-4 py-3 font-medium">Permanente</th>
-                <th className="px-4 py-3 font-medium text-right">Ações</th>
+                <th className="px-4 py-3 font-medium">{t('admin.colFamily')}</th>
+                <th className="px-4 py-3 font-medium">{t('admin.colMembers')}</th>
+                <th className="px-4 py-3 font-medium">{t('admin.colStatus')}</th>
+                <th className="px-4 py-3 font-medium min-w-[260px]">{t('admin.colTrialUntil')}</th>
+                <th className="px-4 py-3 font-medium">{t('admin.colFounders')}</th>
+                <th className="px-4 py-3 font-medium">{t('admin.colPermanent')}</th>
+                <th className="px-4 py-3 font-medium text-right">{t('admin.colActions')}</th>
               </tr>
             </thead>
             <tbody>
               {families.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-sm text-ink/50">
-                    Nenhuma família cadastrada.
+                    {t('admin.noFamiliesRegistered')}
                   </td>
                 </tr>
               ) : null}
@@ -286,7 +287,7 @@ export default function SuperAdminSettingsPage() {
 
                     <td className="px-4 py-4">
                       {family.members.length === 0 ? (
-                        <p className="text-xs text-ink/40">Sem membros</p>
+                        <p className="text-xs text-ink/40">{t('admin.noMembers')}</p>
                       ) : (
                         <div className="space-y-1">
                           {family.members.map((member) => (
@@ -299,19 +300,19 @@ export default function SuperAdminSettingsPage() {
                     </td>
 
                     <td className="px-4 py-4">
-                      <StatusBadge family={family} />
+                      <StatusBadge family={family} t={t} />
                     </td>
 
                     <td className="px-4 py-4">
                       <p className="text-xs text-ink/45 mb-2">
-                        {formatTrialExpiry(family.trial_expires_at)}
+                        {formatTrialExpiry(t, locale, family.trial_expires_at)}
                       </p>
                       <div className="flex items-center gap-2">
                         <input
                           type="date"
                           value={inputDateStr}
                           disabled={isBusy}
-                          aria-label="Data de expiração do trial"
+                          aria-label={t('admin.trialExpiryAria')}
                           onChange={(e) =>
                             setTrialInputs((prev) => ({ ...prev, [family.id]: e.target.value }))
                           }
@@ -328,7 +329,7 @@ export default function SuperAdminSettingsPage() {
                             disabled={isBusy}
                             className="px-2.5 py-1 text-xs bg-coffee text-paper rounded-lg hover:bg-coffee/90 transition-vintage disabled:opacity-50 whitespace-nowrap"
                           >
-                            {isSaving ? '...' : 'Salvar'}
+                            {isSaving ? '...' : t('common.save')}
                           </button>
                         )}
                       </div>
@@ -364,7 +365,7 @@ export default function SuperAdminSettingsPage() {
                           className="accent-coffee"
                         />
                         <span className="text-sm text-ink/70">
-                          {family.founders_enabled ? 'Ativo' : 'Inativo'}
+                          {family.founders_enabled ? t('admin.active') : t('admin.inactive')}
                         </span>
                       </label>
                     </td>
@@ -381,7 +382,7 @@ export default function SuperAdminSettingsPage() {
                           className="accent-coffee"
                         />
                         <span className="text-sm text-ink/70">
-                          {family.lifetime_access ? 'Ativo' : 'Inativo'}
+                          {family.lifetime_access ? t('admin.active') : t('admin.inactive')}
                         </span>
                       </label>
                     </td>
@@ -390,8 +391,8 @@ export default function SuperAdminSettingsPage() {
                       <div className="inline-flex items-center gap-2">
                         <button
                           type="button"
-                          title={isActive ? 'Família atual' : 'Entrar nesta família'}
-                          aria-label={`Entrar na família ${family.name}`}
+                          title={isActive ? t('admin.currentFamily') : t('admin.enterThisFamily')}
+                          aria-label={t('admin.enterFamilyNamed', { name: family.name })}
                           disabled={isBusy || isActive}
                           onClick={() => enterFamily(family.id)}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-coffee/30 text-coffee hover:bg-coffee/10 transition-vintage disabled:opacity-40 disabled:cursor-not-allowed"
@@ -404,8 +405,8 @@ export default function SuperAdminSettingsPage() {
                         </button>
                         <button
                           type="button"
-                          title="Excluir família"
-                          aria-label={`Excluir família ${family.name}`}
+                          title={t('admin.deleteFamilyTitle')}
+                          aria-label={t('admin.deleteFamilyNamed', { name: family.name })}
                           disabled={isBusy}
                           onClick={() => deleteFamily(family)}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-terracotta/30 text-terracotta hover:bg-terracotta/10 transition-vintage disabled:opacity-40 disabled:cursor-not-allowed"

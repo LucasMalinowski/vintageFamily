@@ -7,11 +7,24 @@ import { supabase } from '@/lib/supabase'
 import Topbar from '@/components/layout/Topbar'
 import { Camera } from 'lucide-react'
 import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
-import { validateImageFile } from '@/lib/security/images'
+import { ImageValidationError, validateImageFile } from '@/lib/security/images'
 import { useTranslations } from 'next-intl'
 
 function cleanString(value: unknown) {
   return typeof value === 'string' && value.trim() ? value.trim() : ''
+}
+
+function getAvatarValidationErrorMessage(err: unknown, t: ReturnType<typeof useTranslations>): string {
+  if (err instanceof ImageValidationError) {
+    const messageByCode: Record<typeof err.code, string> = {
+      too_large: t('profile.errorAvatarTooLarge'),
+      invalid_image: t('profile.errorAvatar'),
+      extension_mismatch: t('profile.errorAvatarExtensionMismatch'),
+      mime_mismatch: t('profile.errorAvatarMimeMismatch'),
+    }
+    return messageByCode[err.code]
+  }
+  return t('profile.errorAvatar')
 }
 
 function getAuthDisplayName(user: NonNullable<ReturnType<typeof useAuth>['user']>) {
@@ -108,7 +121,7 @@ export default function Profile() {
       try {
         image = await validateImageFile(avatarFile, 2 * 1024 * 1024)
       } catch (err) {
-        setError(err instanceof Error ? err.message : t('profile.errorAvatar'))
+        setError(getAvatarValidationErrorMessage(err, t))
         setSaving(false)
         return
       }
@@ -178,7 +191,7 @@ export default function Profile() {
                   type="button"
                   onClick={() => inputRef.current?.click()}
                   className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-sidebar flex items-center justify-center border-2 border-paper hover:bg-sidebar/90 transition-vintage"
-                  aria-label="Editar foto"
+                  aria-label={t('profile.editPhotoAria')}
                 >
                   <Camera className="w-4 h-4 text-white" />
                 </button>
@@ -188,12 +201,12 @@ export default function Profile() {
                 type="file"
                 accept="image/*"
                 className="hidden"
-                aria-label="Selecionar foto de perfil"
+                aria-label={t('profile.selectPhotoAria')}
                 onChange={handleAvatarChange}
               />
               <div className="text-center">
-                <p className="font-serif text-xl text-coffee">{profileName || 'Usuário'}</p>
-                <p className="text-sm text-ink/50">Família {familyName || '-'}</p>
+                <p className="font-serif text-xl text-coffee">{profileName || t('profileSheet.userFallback')}</p>
+                <p className="text-sm text-ink/50">{t('profileSheet.family', { name: familyName || '-' })}</p>
               </div>
             </div>
 

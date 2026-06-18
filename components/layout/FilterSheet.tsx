@@ -5,7 +5,8 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { getMonthOptions, getYearOptions } from '@/lib/dates'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 
 interface FilterSheetProps {
   open: boolean
@@ -20,23 +21,6 @@ interface FilterSheetProps {
   statusOptions?: Array<{ value: string; label: string }>
 }
 
-const DEFAULT_STATUS_OPTIONS = [
-  { value: '', label: 'Todos' },
-  { value: 'paid', label: 'Pago' },
-  { value: 'open', label: 'Em aberto' },
-]
-
-const METHOD_OPTIONS = [
-  { value: '', label: 'Todos' },
-  { value: 'PIX', label: 'PIX' },
-  { value: 'Credito', label: 'Crédito' },
-  { value: 'Debito', label: 'Débito' },
-  { value: 'ValeAlimentacao', label: 'Vale Alimentação' },
-  { value: 'Dinheiro', label: 'Dinheiro' },
-  { value: 'Cheque', label: 'Cheque' },
-  { value: 'Transferência', label: 'Transferência' },
-]
-
 export default function FilterSheet({
   open,
   onClose,
@@ -47,17 +31,34 @@ export default function FilterSheet({
   onApply,
   showStatus = false,
   showMethod = false,
-  statusOptions = DEFAULT_STATUS_OPTIONS,
+  statusOptions,
 }: FilterSheetProps) {
   const t = useTranslations()
+  const locale = useLocale() as AppLocale
+  const defaultStatusOptions = [
+    { value: '', label: t('filterSheet.allOption') },
+    { value: 'paid', label: t('expenses.statusPaid') },
+    { value: 'open', label: t('expenses.statusOpen') },
+  ]
+  const resolvedStatusOptions = statusOptions ?? defaultStatusOptions
+  const methodOptions = [
+    { value: '', label: t('filterSheet.allOption') },
+    { value: 'PIX', label: 'PIX' },
+    { value: 'Credito', label: t('filterSheet.methodCredit') },
+    { value: 'Debito', label: t('filterSheet.methodDebit') },
+    { value: 'ValeAlimentacao', label: t('filterSheet.methodMealVoucher') },
+    { value: 'Dinheiro', label: t('filterSheet.methodCash') },
+    { value: 'Cheque', label: t('filterSheet.methodCheck') },
+    { value: 'Transferência', label: t('filterSheet.methodTransfer') },
+  ]
   const [mounted, setMounted] = useState(false)
   const [animated, setAnimated] = useState(false)
   const [localMonth, setLocalMonth] = useState(month)
   const [localYear, setLocalYear] = useState(year)
   const [localStatus, setLocalStatus] = useState(status)
 	  const [localMethod, setLocalMethod] = useState(method)
-	  const monthOptions = getMonthOptions(true)
-	  const yearOptions = getYearOptions(2020, true)
+	  const monthOptions = getMonthOptions(true, locale)
+	  const yearOptions = getYearOptions(2020, true, locale)
 	  const monthButtons = monthOptions.filter((option) => option.value !== '0')
 	  const yearButtons = yearOptions.filter((option) => option.value !== '0')
 
@@ -202,7 +203,7 @@ export default function FilterSheet({
             <div>
               <p className="text-xs uppercase tracking-wide text-ink/50 mb-3 font-medium">{t('filterSheet.status')}</p>
               <div className="flex gap-2 flex-wrap">
-                  {statusOptions.map((opt) => (
+                  {resolvedStatusOptions.map((opt) => (
                     <button
                       key={opt.value}
                       type="button"
@@ -225,7 +226,7 @@ export default function FilterSheet({
             <div>
               <p className="text-xs uppercase tracking-wide text-ink/50 mb-3 font-medium">{t('filterSheet.method')}</p>
               <div className="flex gap-2 flex-wrap">
-                {METHOD_OPTIONS.map((opt) => (
+                {methodOptions.map((opt) => (
                   <button
                     key={opt.value}
                     type="button"

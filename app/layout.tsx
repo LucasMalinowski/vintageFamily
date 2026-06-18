@@ -4,6 +4,8 @@ import Script from 'next/script'
 import Providers from '@/components/Providers'
 import CookieBanner from '@/components/CookieBanner'
 import MobileAppBanner from '@/components/MobileAppBanner'
+import { getUserLocale } from '@/lib/i18n/getLocale'
+import { getTranslations } from 'next-intl/server'
 
 const organizationJsonLd = {
   '@context': 'https://schema.org',
@@ -24,50 +26,57 @@ const organizationJsonLd = {
   },
 }
 
-export const metadata: Metadata = {
-  title: {
-    default: 'Florim - Gestão financeira familiar',
-    template: '%s | Florim',
-  },
-  description: 'Gestão financeira familiar com alma vintage. Controle suas finanças em família, com despesas, receitas, objetivos financeiros e insights semanais.',
-  metadataBase: new URL('https://florim.app'),
-  alternates: {
-    canonical: '/',
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: { index: true, follow: true },
-  },
-  icons: {
-    icon: [
-      { url: '/logo-small.png', sizes: '500x500', type: 'image/png' },
-      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
-    ],
-    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
-  },
-  openGraph: {
-    siteName: 'Florim',
-    title: 'Florim - Gestão financeira familiar',
-    description: 'Gestão financeira familiar com alma vintage. Controle suas finanças em família, com despesas, receitas, objetivos financeiros e insights semanais.',
-    url: 'https://florim.app',
-    type: 'website',
-    locale: 'pt_BR',
-    images: [
-      {
-        url: '/og',
-        width: 1200,
-        height: 630,
-        alt: 'Florim - Gestão financeira familiar',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Florim - Gestão financeira familiar',
-    description: 'Gestão financeira familiar com alma vintage.',
-    images: ['/og'],
-  },
+const OG_LOCALE: Record<string, string> = { 'pt-BR': 'pt_BR', en: 'en_US', es: 'es_ES' }
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'seo.root' })
+
+  return {
+    title: {
+      default: t('title'),
+      template: '%s | Florim',
+    },
+    description: t('description'),
+    metadataBase: new URL('https://florim.app'),
+    alternates: {
+      canonical: '/',
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: { index: true, follow: true },
+    },
+    icons: {
+      icon: [
+        { url: '/logo-small.png', sizes: '500x500', type: 'image/png' },
+        { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      ],
+      apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    },
+    openGraph: {
+      siteName: 'Florim',
+      title: t('ogTitle'),
+      description: t('ogDescription'),
+      url: 'https://florim.app',
+      type: 'website',
+      locale: OG_LOCALE[locale] ?? 'pt_BR',
+      images: [
+        {
+          url: '/og',
+          width: 1200,
+          height: 630,
+          alt: t('ogTitle'),
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: t('ogTitle'),
+      description: t('twitterDescription'),
+      images: ['/og'],
+    },
+  }
 }
 
 export const viewport: Viewport = {
@@ -77,13 +86,14 @@ export const viewport: Viewport = {
   themeColor: '#f5f1eb',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const locale = await getUserLocale()
   return (
-	    <html lang="pt-BR">
+	    <html lang={locale}>
 	      <body className="bg-paper text-ink font-body">
 	        <script type="application/ld+json">{JSON.stringify(organizationJsonLd)}</script>
 	        <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />

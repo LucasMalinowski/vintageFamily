@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 import { checkRateLimit } from '@/lib/billing/rate-limit'
 import { ACTIVE_SUBSCRIPTION_STATUSES, DOWNGRADE_PATHS, isPlanCode } from '@/lib/billing/constants'
 import { getPlanCodeByPriceId, getPriceIdByPlanCode, stripe } from '@/lib/billing/stripe'
@@ -8,8 +10,10 @@ import { supabaseService } from '@/lib/billing/supabase-service'
 
 export async function POST(request: Request) {
   try {
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
     const accessToken = getAccessTokenFromAuthHeader(request)
-    const auth = await requireUserByAccessToken(accessToken)
+    const auth = await requireUserByAccessToken(accessToken, locale)
 
     if (!auth.user) {
       return NextResponse.json({ error: auth.error }, { status: auth.status })
@@ -17,23 +21,23 @@ export async function POST(request: Request) {
 
     const allowed = await checkRateLimit(auth.user.id, 'downgrade-subscription', 5)
     if (!allowed) {
-      return NextResponse.json({ error: 'Muitas tentativas. Aguarde um momento e tente novamente.' }, { status: 429 })
+      return NextResponse.json({ error: t('billing.tooManyAttempts') }, { status: 429 })
     }
 
     const profile = await getProfileByUserId(auth.user.id)
     if (!profile) {
-      return NextResponse.json({ error: 'Perfil do usuário não encontrado.' }, { status: 404 })
+      return NextResponse.json({ error: t('billing.userProfileNotFound') }, { status: 404 })
     }
 
     if (profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Apenas administradores da família podem gerenciar cobrança.' }, { status: 403 })
+      return NextResponse.json({ error: t('billing.adminOnly') }, { status: 403 })
     }
 
     const body = (await request.json().catch(() => null)) as { plan_code?: string } | null
     const targetPlanCode = body?.plan_code
 
     if (!targetPlanCode || !isPlanCode(targetPlanCode)) {
-      return NextResponse.json({ error: 'Plano inválido.' }, { status: 400 })
+      return NextResponse.json({ error: t('billing.invalidPlan') }, { status: 400 })
     }
 
     const { data: currentSubscription } = await supabaseService
@@ -43,16 +47,16 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (!currentSubscription?.stripe_subscription_id || !currentSubscription.plan_code) {
-      return NextResponse.json({ error: 'Nenhuma assinatura ativa disponível para downgrade.' }, { status: 400 })
+      return NextResponse.json({ error: t('billing.noActiveSubscriptionForDowngrade') }, { status: 400 })
     }
 
     if (!currentSubscription.status || !ACTIVE_SUBSCRIPTION_STATUSES.has(currentSubscription.status)) {
-      return NextResponse.json({ error: 'A assinatura atual não pode ser alterada.' }, { status: 400 })
+      return NextResponse.json({ error: t('billing.currentSubscriptionCannotBeChanged') }, { status: 400 })
     }
 
     const allowedDowngrades = DOWNGRADE_PATHS[currentSubscription.plan_code as keyof typeof DOWNGRADE_PATHS] || []
     if (!allowedDowngrades.includes(targetPlanCode)) {
-      return NextResponse.json({ error: 'Este downgrade não é permitido.' }, { status: 400 })
+      return NextResponse.json({ error: t('billing.downgradeNotAllowed') }, { status: 400 })
     }
 
     const { data: planSetting } = await supabaseService
@@ -62,7 +66,7 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (!planSetting?.is_active) {
-      return NextResponse.json({ error: 'O plano de destino está indisponível.' }, { status: 400 })
+      return NextResponse.json({ error: t('billing.targetPlanUnavailable') }, { status: 400 })
     }
 
     const stripeSubscription = await stripe.subscriptions.retrieve(currentSubscription.stripe_subscription_id, {
@@ -73,15 +77,15 @@ export async function POST(request: Request) {
     const currentPlanCodeFromStripe = getPlanCodeByPriceId(currentItem?.price.id ?? null)
 
     if (!currentItem) {
-      return NextResponse.json({ error: 'Item da assinatura não encontrado no Stripe.' }, { status: 400 })
+      return NextResponse.json({ error: t('billing.subscriptionItemNotFound') }, { status: 400 })
     }
 
     if (!ACTIVE_SUBSCRIPTION_STATUSES.has(stripeSubscription.status)) {
-      return NextResponse.json({ error: 'A assinatura no Stripe não pode ser alterada agora.' }, { status: 400 })
+      return NextResponse.json({ error: t('billing.stripeSubscriptionCannotBeChangedNow') }, { status: 400 })
     }
 
     if (currentPlanCodeFromStripe !== currentSubscription.plan_code) {
-      return NextResponse.json({ error: 'A assinatura está fora de sincronia. Atualize os dados e tente novamente.' }, { status: 409 })
+      return NextResponse.json({ error: t('billing.subscriptionOutOfSync') }, { status: 409 })
     }
 
     const targetPriceId = getPriceIdByPlanCode(targetPlanCode)
@@ -90,7 +94,7 @@ export async function POST(request: Request) {
     const currentPeriodEnd = currentItem.current_period_end
 
     if (!currentPeriodStart || !currentPeriodEnd) {
-      return NextResponse.json({ error: 'Período atual da assinatura não encontrado.' }, { status: 400 })
+      return NextResponse.json({ error: t('billing.currentPeriodNotFound') }, { status: 400 })
     }
 
     let scheduleId = typeof stripeSubscription.schedule === 'string'
@@ -138,6 +142,8 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     console.error('downgrade-subscription failed', error)
-    return NextResponse.json({ error: billingErrorMessage(error, 'Erro inesperado na cobrança.') }, { status: 500 })
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
+    return NextResponse.json({ error: billingErrorMessage(error, t('billing.unexpectedError')) }, { status: 500 })
   }
 }

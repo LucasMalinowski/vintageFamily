@@ -232,7 +232,7 @@ export default function DonutCategoryModal({
                                     </span>
                                     {e.payment_method && (
                                       <span className="text-[11px] text-ink/45">
-                                        {e.payment_method === 'PIX' ? 'PIX' : e.payment_method === 'Credito' ? 'Crédito' : e.payment_method === 'Debito' ? 'Débito' : e.payment_method}
+                                        {e.payment_method === 'PIX' ? 'PIX' : e.payment_method === 'Credito' ? t('filterSheet.methodCredit') : e.payment_method === 'Debito' ? t('filterSheet.methodDebit') : e.payment_method}
                                       </span>
                                     )}
                                   </div>
@@ -243,7 +243,7 @@ export default function DonutCategoryModal({
                                     className="text-[10.5px] font-bold uppercase tracking-wide"
                                     style={{ color: isPaid ? '#3E8E5C' : '#A58E5F' }}
                                   >
-                                    {isPaid ? 'Pago' : 'Em aberto'}
+                                    {isPaid ? t('expenses.statusPaid') : t('expenses.statusOpen')}
                                   </span>
                                 </div>
                               </div>
@@ -258,9 +258,9 @@ export default function DonutCategoryModal({
                       <div className="w-11 h-11 rounded-full bg-parchment flex items-center justify-center">
                         <MousePointer2 className="w-5 h-5 text-ink/35" />
                       </div>
-                      <p className="text-[14px] font-serif text-coffee">Selecione uma categoria</p>
+                      <p className="text-[14px] font-serif text-coffee">{t('donutModal.selectCategory')}</p>
                       <p className="text-[12px] text-ink/45 leading-relaxed max-w-[200px]">
-                        Clique em uma fatia do gráfico ou em uma categoria da lista para ver os lançamentos.
+                        {t('donutModal.selectCategoryHint')}
                       </p>
                     </div>
                   )}

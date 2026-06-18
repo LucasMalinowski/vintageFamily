@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { FAMILY_CATEGORY_SEEDS } from '@/lib/families/categorySeeds'
 import { sendWelcomeEmail } from '@/lib/mailer'
 import { checkRateLimit } from '@/lib/billing/rate-limit'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 
 type CreateFamilyBody = {
   familyName: string
@@ -11,34 +13,37 @@ type CreateFamilyBody = {
 }
 
 export async function POST(request: Request) {
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
+
   try {
     const authHeader = request.headers.get('Authorization') || ''
     const accessToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
 
     if (!accessToken) {
-      return NextResponse.json({ error: 'Token de acesso ausente.' }, { status: 401 })
+      return NextResponse.json({ error: t('families.accessTokenMissing') }, { status: 401 })
     }
 
     const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken)
     if (authError || !authData.user) {
-      return NextResponse.json({ error: 'Sessão inválida.' }, { status: 401 })
+      return NextResponse.json({ error: t('families.invalidSession') }, { status: 401 })
     }
 
     // Rate limit: max 3 family creation attempts per user per hour
     const allowed = await checkRateLimit(authData.user.id, 'families-create', 3, 3600)
     if (!allowed) {
-      return NextResponse.json({ error: 'Muitas tentativas. Aguarde antes de tentar novamente.' }, { status: 429 })
+      return NextResponse.json({ error: t('families.tooManyAttempts') }, { status: 429 })
     }
 
     const { familyName, name, email } = (await request.json()) as CreateFamilyBody
     if (!familyName || !name || !email) {
-      return NextResponse.json({ error: 'Campos obrigatórios ausentes.' }, { status: 400 })
+      return NextResponse.json({ error: t('families.missingRequiredFields') }, { status: 400 })
     }
     const cleanFamilyName = familyName.trim().slice(0, 120)
     const cleanName = name.trim().slice(0, 120)
     const cleanEmail = email.trim().toLowerCase()
     if (cleanFamilyName.length < 2 || cleanName.length < 2 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) {
-      return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 })
+      return NextResponse.json({ error: t('families.invalidPayload') }, { status: 400 })
     }
 
     const trialExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -53,7 +58,7 @@ export async function POST(request: Request) {
       .single()
 
     if (familyError || !family) {
-      return NextResponse.json({ error: 'Não foi possível criar a família.' }, { status: 500 })
+      return NextResponse.json({ error: t('families.createFamilyFailed') }, { status: 500 })
     }
 
     const { error: userError } = await supabaseAdmin.from('users').insert({
@@ -66,7 +71,7 @@ export async function POST(request: Request) {
     })
 
     if (userError) {
-      return NextResponse.json({ error: 'Não foi possível criar o perfil do usuário.' }, { status: 500 })
+      return NextResponse.json({ error: t('families.createUserProfileFailed') }, { status: 500 })
     }
 
     const parentCategories = FAMILY_CATEGORY_SEEDS.map(({ children, ...category }) => ({
@@ -80,7 +85,7 @@ export async function POST(request: Request) {
       .select('id,name,kind')
 
     if (categoriesError) {
-      return NextResponse.json({ error: 'Não foi possível criar as categorias padrão.' }, { status: 500 })
+      return NextResponse.json({ error: t('families.createCategoriesFailed') }, { status: 500 })
     }
 
     const parentByKey = new Map(
@@ -107,7 +112,7 @@ export async function POST(request: Request) {
     if (childCategories.length > 0) {
       const { error: childCategoriesError } = await (supabaseAdmin.from('categories') as any).insert(childCategories)
       if (childCategoriesError) {
-        return NextResponse.json({ error: 'Não foi possível criar as subcategorias padrão.' }, { status: 500 })
+        return NextResponse.json({ error: t('families.createSubcategoriesFailed') }, { status: 500 })
       }
     }
 
@@ -119,12 +124,12 @@ export async function POST(request: Request) {
 
     const { error: savingsError } = await supabaseAdmin.from('savings').insert(defaultSavings)
     if (savingsError) {
-      return NextResponse.json({ error: 'Não foi possível criar os sonhos padrão.' }, { status: 500 })
+      return NextResponse.json({ error: t('families.createSavingsFailed') }, { status: 500 })
     }
 
-    void sendWelcomeEmail({ to: cleanEmail, name: cleanName, familyName: cleanFamilyName })
+    void sendWelcomeEmail({ to: cleanEmail, name: cleanName, familyName: cleanFamilyName, locale })
     return NextResponse.json({ familyId: family.id })
   } catch {
-    return NextResponse.json({ error: 'Erro inesperado ao criar família.' }, { status: 500 })
+    return NextResponse.json({ error: t('families.unexpectedCreateError') }, { status: 500 })
   }
 }

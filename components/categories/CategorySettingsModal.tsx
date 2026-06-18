@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Bell, BellOff, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
 import { triggerWidgetSync } from '@/lib/notifications/triggerWidgetSync'
-import { CategoryKind, normalizeCategoryName } from '@/lib/categories'
+import { CategoryKind, normalizeCategoryName, resolveCategoryName } from '@/lib/categories'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 import CategoryIcon from '@/components/ui/CategoryIcon'
 import IconPicker from '@/components/ui/IconPicker'
 import { formatBRL } from '@/lib/money'
@@ -23,6 +24,8 @@ type Scope = 'categories' | 'savings'
 type NodeItem = {
   id: string
   name: string
+  name_en?: string | null
+  name_es?: string | null
   parent_id: string | null
   is_system: boolean
   icon: string | null
@@ -40,16 +43,19 @@ interface CategorySettingsModalProps {
 
 type ComposerMode = 'main' | 'child' | null
 
-const buildTree = (items: NodeItem[]) => {
+const buildTree = (items: NodeItem[], locale: AppLocale) => {
+  const byName = (a: NodeItem, b: NodeItem) =>
+    resolveCategoryName(a, locale).localeCompare(resolveCategoryName(b, locale), locale)
+
   const main = items
     .filter((item) => !item.parent_id)
-    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+    .sort(byName)
 
   return main.map((item) => ({
     ...item,
     children: items
       .filter((child) => child.parent_id === item.id)
-      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+      .sort(byName),
   }))
 }
 
@@ -72,6 +78,7 @@ export default function CategorySettingsModal({
   kind,
 }: CategorySettingsModalProps) {
   const t = useTranslations()
+  const locale = useLocale() as AppLocale
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [items, setItems] = useState<NodeItem[]>([])
@@ -111,7 +118,7 @@ export default function CategorySettingsModal({
 
     const { data } = await supabase
       .from('categories')
-      .select('id,name,kind,parent_id,is_system,icon,monthly_limit_cents')
+      .select('id,name,name_en,name_es,kind,parent_id,is_system,icon,monthly_limit_cents')
       .eq('family_id', familyId)
       .eq('kind', kind!)
       .order('name')
@@ -192,20 +199,18 @@ export default function CategorySettingsModal({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, familyId, scope, kind])
 
-  const tree = useMemo(() => buildTree(items), [items])
+  const tree = useMemo(() => buildTree(items, locale), [items, locale])
   const selectedMain = useMemo(
     () => tree.find((main) => main.id === selectedMainId) || null,
     [tree, selectedMainId]
   )
   const isSavingsScope = scope === 'savings'
-  const entityLabel = isSavingsScope ? 'objetivo' : 'categoria'
-  const entityLabelTitle = isSavingsScope ? 'Objetivo' : 'Categoria'
-  const mainEntityLabel = isSavingsScope ? 'objetivo principal' : 'categoria principal'
-  const mainEntityLabelTitle = isSavingsScope ? 'Objetivo Principal' : 'Categoria Principal'
-  const childEntityLabel = isSavingsScope ? 'subobjetivo' : 'subcategoria'
-  const childEntityLabelTitle = isSavingsScope ? 'Subobjetivo' : 'Subcategoria'
-  const mainEntityPluralTitle = isSavingsScope ? 'Objetivos principais' : 'Categorias principais'
-  const childEntityPluralTitle = isSavingsScope ? 'Subobjetivos' : 'Subcategorias'
+  const entityLabel = isSavingsScope ? t('categoryModal.entityGoal') : t('categoryModal.entityCategory')
+  const mainEntityLabel = isSavingsScope ? t('categoryModal.mainEntityGoal') : t('categoryModal.mainEntityCategory')
+  const childEntityLabel = isSavingsScope ? t('categoryModal.childEntityGoal') : t('categoryModal.childEntityCategory')
+  const childEntityLabelTitle = isSavingsScope ? t('categoryModal.childEntityGoalTitle') : t('categoryModal.childEntityCategoryTitle')
+  const mainEntityPluralTitle = isSavingsScope ? t('categoryModal.mainEntityGoalsPlural') : t('categoryModal.mainEntityCategoriesPlural')
+  const childEntityPluralTitle = isSavingsScope ? t('categoryModal.childEntityGoalsPlural') : t('categoryModal.childEntityCategoriesPlural')
 
   useEffect(() => {
     if (tree.length === 0) {
@@ -236,7 +241,7 @@ export default function CategorySettingsModal({
 
   const startCreateChild = () => {
     if (!selectedMain) {
-      alert(`Selecione um ${mainEntityLabel} primeiro.`)
+      alert(t('categoryModal.selectMainFirst', { entity: mainEntityLabel }))
       return
     }
     setComposerMode('child')
@@ -273,7 +278,7 @@ export default function CategorySettingsModal({
     if (!familyId) return
     const name = normalizeCategoryName(draftName)
     if (!name) {
-      alert(`Informe o nome d${isSavingsScope ? 'o' : 'a'} ${entityLabel}.`)
+      alert(t('categoryModal.enterNameFor', { entity: entityLabel }))
       return
     }
     setSaving(true)
@@ -386,7 +391,7 @@ export default function CategorySettingsModal({
           value={draftName}
           onChange={(event) => setDraftName(event.target.value)}
           autoFocus
-          aria-label={`Nome d${isSavingsScope ? 'o' : 'a'} ${entityLabel}`}
+          aria-label={isSavingsScope ? t('categoryModal.nameOfGoalAria') : t('categoryModal.nameOfCategoryAria')}
           className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50"
           placeholder={placeholder}
         />
@@ -426,7 +431,7 @@ export default function CategorySettingsModal({
       return (
         <tr className="bg-offWhite">
           <td colSpan={4} className="px-3 py-3">
-            <p className="text-xs text-ink/50 mb-2">Editando · {item.name}</p>
+            <p className="text-xs text-ink/50 mb-2">{t('categoryModal.editingLabel', { name: resolveCategoryName(item, locale) })}</p>
             <ComposerForm
               placeholder={depth === 0 ? t('categoryModal.namePlaceholder') : t('categoryModal.subNamePlaceholder')}
               showIconPicker={depth === 0}
@@ -450,9 +455,9 @@ export default function CategorySettingsModal({
                 <span className="w-5 shrink-0" />
               )}
               {item.icon && <CategoryIcon name={item.icon} className="w-4 h-4 shrink-0 text-sidebar/60" />}
-              <span className={`text-sm truncate ${depth === 0 ? 'font-semibold text-sidebar' : 'text-ink/80'}`}>{item.name}</span>
+              <span className={`text-sm truncate ${depth === 0 ? 'font-semibold text-sidebar' : 'text-ink/80'}`}>{resolveCategoryName(item, locale)}</span>
               {item.is_system && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/20 text-gold shrink-0">Sistema</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/20 text-gold shrink-0">{t('categoryModal.systemBadge')}</span>
               )}
             </div>
           </td>
@@ -466,14 +471,14 @@ export default function CategorySettingsModal({
                   onChange={(e) => setDraftLimit(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') saveLimit(item.id); if (e.key === 'Escape') cancelEditLimit() }}
                   autoFocus
-                  aria-label="Limite mensal da categoria"
+                  aria-label={t('categoryModal.limitAria')}
                   min="0"
                   step="0.01"
                   className="w-24 px-2 py-1 border border-coffee/50 rounded text-sm bg-paper focus:outline-none focus:ring-1 focus:ring-coffee/40"
                   placeholder="0,00"
                 />
                 <button type="button" onClick={() => saveLimit(item.id)} disabled={savingLimit} className="text-xs px-2 py-1 rounded bg-coffee text-paper disabled:opacity-60">
-                  Salvar limite
+                  {t('categoryModal.saveLimitButton')}
                 </button>
                 <button type="button" onClick={cancelEditLimit} className="text-xs px-1.5 py-1 rounded border border-border text-ink/60">
                   ×
@@ -499,17 +504,17 @@ export default function CategorySettingsModal({
                     onClick={() => startEditLimit(item)}
                     className="text-sm text-petrol/80 hover:text-petrol transition-colors"
                   >
-                    + Definir
+                    {t('categoryModal.defineLimitButton')}
                   </button>
                   {childrenWithLimit.length > 0 && !isExpanded && (
                     <button
                       type="button"
                       onClick={() => toggleExpandMain(item.id)}
-                      title={`${childrenWithLimit.length} subcategoria${childrenWithLimit.length > 1 ? 's têm' : ' tem'} limite definido`}
+                      title={childrenWithLimit.length > 1 ? t('categoryModal.subcategoriesHaveLimitMany', { count: childrenWithLimit.length }) : t('categoryModal.subcategoriesHaveLimitOne')}
                       className="flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-gold/15 text-gold hover:bg-gold/25 transition-colors"
                     >
                       <span>↓</span>
-                      <span>{childrenWithLimit.length} limite{childrenWithLimit.length > 1 ? 's' : ''}</span>
+                      <span>{t('categoryModal.limitsCountBadge', { count: childrenWithLimit.length })}</span>
                     </button>
                   )}
                 </div>
@@ -528,7 +533,7 @@ export default function CategorySettingsModal({
                 <LimitBar pct={pct} />
               </div>
             ) : (
-              <span className="text-sm text-ink/30">Sem limite</span>
+              <span className="text-sm text-ink/30">{t('categoryModal.noLimit')}</span>
             )}
           </td>
           <td className="px-3 py-2.5 w-24">
@@ -538,7 +543,7 @@ export default function CategorySettingsModal({
                   type="button"
                   onClick={() => handleToggleBell(item.id)}
                   disabled={togglingBellId === item.id}
-                  title={silencedIds.has(item.id) ? 'Alertas silenciados este mês, clique para reativar' : 'Silenciar alertas este mês'}
+                  title={silencedIds.has(item.id) ? t('categoryModal.silenceAlertsActive') : t('categoryModal.silenceAlerts')}
                   className={`p-1 rounded border transition-colors ${silencedIds.has(item.id) ? 'border-gold/60 text-gold' : 'border-border text-ink/40 hover:text-ink/70'}`}
                 >
                   {silencedIds.has(item.id) ? <BellOff className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
@@ -548,7 +553,7 @@ export default function CategorySettingsModal({
                 type="button"
                 onClick={() => startEdit(item)}
                 className="p-1 rounded border border-border text-ink/60 hover:bg-paper hover:text-ink"
-                aria-label={`Editar ${item.name}`}
+                aria-label={t('categoryModal.editAria', { name: resolveCategoryName(item, locale) })}
               >
                 <Pencil className="w-3.5 h-3.5" />
               </button>
@@ -556,7 +561,7 @@ export default function CategorySettingsModal({
                 type="button"
                 onClick={() => handleDelete(item)}
                 className="p-1 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10"
-                aria-label={`Excluir ${item.name}`}
+                aria-label={t('categoryModal.deleteAria', { name: resolveCategoryName(item, locale) })}
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -577,12 +582,12 @@ export default function CategorySettingsModal({
     )
   }
 
-  const modalTitle = isExpenseTable ? 'Gerenciar categorias · Despesas' : (isSavingsScope ? 'Objetivos' : 'Categorias')
+  const modalTitle = isExpenseTable ? t('categoryModal.modalTitleExpense') : (isSavingsScope ? t('categoryModal.modalTitleGoals') : t('categoryModal.modalTitleCategories'))
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} size="xl">
       {isExpenseTable && (
-        <p className="text-sm text-ink/50 mb-3">Defina um teto mensal por categoria, opcional.</p>
+        <p className="text-sm text-ink/50 mb-3">{t('categoryModal.monthlyLimitHint')}</p>
       )}
 
       <div className="rounded-lg border border-border bg-paper min-h-[60vh] flex flex-col">
@@ -590,15 +595,15 @@ export default function CategorySettingsModal({
           <p className="text-sm text-ink/60 p-4">{t('categoryModal.loading')}</p>
         ) : tree.length === 0 ? (
           <div className="space-y-3 p-4">
-            <p className="text-sm text-ink/60">Nenhum{isSavingsScope ? '' : 'a'} {entityLabel} cadastrad{isSavingsScope ? 'o' : 'a'}.</p>
+            <p className="text-sm text-ink/60">{isSavingsScope ? t('categoryModal.noGoalsRegistered') : t('categoryModal.noCategoriesRegistered')}</p>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={draftName}
                 onChange={(event) => setDraftName(event.target.value)}
-                aria-label={`Nov${isSavingsScope ? 'o' : 'a'} ${mainEntityLabelTitle}`}
+                aria-label={isSavingsScope ? t('categoryModal.newMainGoalAria') : t('categoryModal.newMainCategoryAria')}
                 className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
-                placeholder={`Nov${isSavingsScope ? 'o' : 'a'} ${mainEntityLabelTitle}`}
+                placeholder={isSavingsScope ? t('categoryModal.newMainGoalAria') : t('categoryModal.newMainCategoryAria')}
               />
               <button
                 type="button"
@@ -606,7 +611,7 @@ export default function CategorySettingsModal({
                 disabled={saving}
                 className="px-3 py-2 rounded-lg bg-petrol text-white text-sm disabled:opacity-60"
               >
-                Criar
+                {t('categoryModal.createButton')}
               </button>
             </div>
           </div>
@@ -617,10 +622,10 @@ export default function CategorySettingsModal({
               <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-border bg-bg/30">
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-widest text-ink/40 font-medium">Categoria</th>
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-widest text-ink/40 font-medium w-44">Limite mensal</th>
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-widest text-ink/40 font-medium w-48">Este mês</th>
-                    <th className="px-3 py-2 w-20" aria-label="Ações" />
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-widest text-ink/40 font-medium">{t('categoryModal.tableHeaderCategory')}</th>
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-widest text-ink/40 font-medium w-44">{t('categoryModal.tableHeaderMonthlyLimit')}</th>
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-widest text-ink/40 font-medium w-48">{t('categoryModal.tableHeaderThisMonth')}</th>
+                    <th className="px-3 py-2 w-20" aria-label={t('common.actions')} />
                   </tr>
                 </thead>
                 <tbody>
@@ -644,14 +649,14 @@ export default function CategorySettingsModal({
                 className="flex items-center gap-1.5 text-sm text-petrol hover:text-petrol/80 transition-vintage"
               >
                 <Plus className="w-4 h-4" />
-                Nova categoria
+                {t('categoryModal.newCategoryButton')}
               </button>
               <button
                 type="button"
                 onClick={onClose}
                 className="px-4 py-2 rounded-lg bg-petrol text-white text-sm hover:bg-petrol/90 transition-vintage"
               >
-                Concluído
+                {t('categoryModal.doneButton')}
               </button>
             </div>
           </div>
@@ -671,7 +676,7 @@ export default function CategorySettingsModal({
 
                     {isEditingThis ? (
                       <div className="px-3 py-3">
-                        <ComposerForm placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${entityLabel}`} showIconPicker onCancel={resetComposer} />
+                        <ComposerForm placeholder={isSavingsScope ? t('categoryModal.nameOfGoalAria') : t('categoryModal.nameOfCategoryAria')} showIconPicker onCancel={resetComposer} />
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 px-3 py-3">
@@ -679,15 +684,15 @@ export default function CategorySettingsModal({
                           <ChevronDown className={`w-4 h-4 shrink-0 text-ink/40 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                           {main.icon && <CategoryIcon name={main.icon} className="w-4 h-4 shrink-0 text-sidebar/60" />}
                           <div className="min-w-0">
-                            <span className="block font-semibold text-sidebar truncate">{main.name}</span>
-                            <span className="text-[10px] text-ink/40">{(main as NodeItem & { children?: NodeItem[] }).children?.length ?? 0} {childEntityLabel}{(main as NodeItem & { children?: NodeItem[] }).children?.length === 1 ? '' : 's'}{main.is_system ? ' · Sistema' : ''}</span>
+                            <span className="block font-semibold text-sidebar truncate">{resolveCategoryName(main, locale)}</span>
+                            <span className="text-[10px] text-ink/40">{(main as NodeItem & { children?: NodeItem[] }).children?.length ?? 0} {childEntityLabel}{(main as NodeItem & { children?: NodeItem[] }).children?.length === 1 ? '' : 's'}{main.is_system ? ` · ${t('categoryModal.systemBadge')}` : ''}</span>
                           </div>
                         </button>
                         <div className="flex items-center gap-1 shrink-0">
-                          <button type="button" onClick={() => startEdit(main)} className="p-1.5 rounded border border-border text-ink/70 hover:bg-paper" aria-label={`Editar ${main.name}`}>
+                          <button type="button" onClick={() => startEdit(main)} className="p-1.5 rounded border border-border text-ink/70 hover:bg-paper" aria-label={t('categoryModal.editAria', { name: resolveCategoryName(main, locale) })}>
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
-                          <button type="button" onClick={() => handleDelete(main)} className="p-1.5 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10" aria-label={`Excluir ${main.name}`}>
+                          <button type="button" onClick={() => handleDelete(main)} className="p-1.5 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10" aria-label={t('categoryModal.deleteAria', { name: resolveCategoryName(main, locale) })}>
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -703,19 +708,19 @@ export default function CategorySettingsModal({
                               <div className="h-0.5 bg-gradient-to-r from-petrol via-olive to-gold" />
                               {isEditingChild ? (
                                 <div className="px-3 py-2">
-                                  <ComposerForm placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${childEntityLabel}`} onCancel={resetComposer} />
+                                  <ComposerForm placeholder={isSavingsScope ? t('categoryModal.nameOfSubgoalAria') : t('categoryModal.nameOfSubcategoryAria')} onCancel={resetComposer} />
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-2 px-3 py-2">
                                   <div className="flex-1 min-w-0">
-                                    <span className="block text-sm font-semibold text-ink/80 truncate">{child.name}</span>
-                                    {child.is_system && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/20 text-gold">Sistema</span>}
+                                    <span className="block text-sm font-semibold text-ink/80 truncate">{resolveCategoryName(child, locale)}</span>
+                                    {child.is_system && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/20 text-gold">{t('categoryModal.systemBadge')}</span>}
                                   </div>
                                   <div className="flex items-center gap-1 shrink-0">
-                                    <button type="button" onClick={() => startEdit(child)} className="p-1.5 rounded border border-border text-ink/70 hover:bg-paper" aria-label={`Editar ${child.name}`}>
+                                    <button type="button" onClick={() => startEdit(child)} className="p-1.5 rounded border border-border text-ink/70 hover:bg-paper" aria-label={t('categoryModal.editAria', { name: resolveCategoryName(child, locale) })}>
                                       <Pencil className="w-3 h-3" />
                                     </button>
-                                    <button type="button" onClick={() => handleDelete(child)} className="p-1.5 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10" aria-label={`Excluir ${child.name}`}>
+                                    <button type="button" onClick={() => handleDelete(child)} className="p-1.5 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10" aria-label={t('categoryModal.deleteAria', { name: resolveCategoryName(child, locale) })}>
                                       <Trash2 className="w-3 h-3" />
                                     </button>
                                   </div>
@@ -726,12 +731,12 @@ export default function CategorySettingsModal({
                         })}
                         {isNewChildHere ? (
                           <div className="ml-5 px-3 py-2 rounded-[14px] border-2 border-coffee/30 bg-offWhite">
-                            <ComposerForm placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${childEntityLabel}`} onCancel={resetComposer} />
+                            <ComposerForm placeholder={isSavingsScope ? t('categoryModal.nameOfSubgoalAria') : t('categoryModal.nameOfSubcategoryAria')} onCancel={resetComposer} />
                           </div>
                         ) : (
                           <button type="button" onClick={() => startCreateChildFor(main.id)} className="ml-5 flex items-center gap-1.5 text-xs text-petrol px-2 py-1.5 rounded-lg border border-petrol/30 hover:bg-petrol/5 transition-vintage">
                             <Plus className="w-3 h-3" />
-                            Nov{isSavingsScope ? 'o' : 'a'} {childEntityLabel}
+                            {isSavingsScope ? t('categoryModal.newSubgoalButton') : t('categoryModal.newSubcategoryButton')}
                           </button>
                         )}
                       </div>
@@ -742,11 +747,11 @@ export default function CategorySettingsModal({
 
               <div className="pt-1 space-y-2">
                 <button type="button" onClick={startCreateMain} className="w-full px-3 py-2.5 rounded-lg bg-petrol text-white text-sm hover:bg-petrol/90 transition-vintage">
-                  + Nov{isSavingsScope ? 'o' : 'a'} {mainEntityLabelTitle}
+                  + {isSavingsScope ? t('categoryModal.newMainGoalButton') : t('categoryModal.newMainCategoryButton')}
                 </button>
                 {isMainComposer && !editingId && (
                   <div className="px-3 py-3 rounded-lg border-2 border-coffee/30 bg-offWhite">
-                    <ComposerForm placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${mainEntityLabel}`} showIconPicker onCancel={resetComposer} />
+                    <ComposerForm placeholder={isSavingsScope ? t('categoryModal.nameOfMainGoalAria') : t('categoryModal.nameOfMainCategoryAria')} showIconPicker onCancel={resetComposer} />
                   </div>
                 )}
               </div>
@@ -769,7 +774,7 @@ export default function CategorySettingsModal({
                           <div className="px-3 py-3 space-y-2">
                             <div className="flex gap-2 items-center">
                               <IconPicker value={draftIcon} onSelect={setDraftIcon} />
-                              <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label={`Nome d${isSavingsScope ? 'o' : 'a'} ${entityLabel}`} className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${entityLabel}`} />
+                              <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label={isSavingsScope ? t('categoryModal.nameOfGoalAria') : t('categoryModal.nameOfCategoryAria')} className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder={isSavingsScope ? t('categoryModal.nameOfGoalAria') : t('categoryModal.nameOfCategoryAria')} />
                             </div>
                             <div className="flex gap-2">
                               <button type="button" onClick={resetComposer} className="px-3 py-1.5 rounded-lg border border-border text-sm text-ink/70">{t('categoryModal.cancelButton')}</button>
@@ -782,21 +787,21 @@ export default function CategorySettingsModal({
                               <div className="min-w-0 flex items-center gap-2">
                                 {main.icon && <CategoryIcon name={main.icon} className="w-4 h-4 shrink-0 text-sidebar/60" />}
                                 <div className="min-w-0">
-                                  <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">Principal</p>
-                                  <span className="block font-semibold text-sidebar truncate">{main.name}</span>
+                                  <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">{t('categoryModal.mainLabel')}</p>
+                                  <span className="block font-semibold text-sidebar truncate">{resolveCategoryName(main, locale)}</span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-1 shrink-0">
-                                <button type="button" onClick={(event) => { event.stopPropagation(); startEdit(main) }} className="p-1 rounded border border-border text-ink/70 hover:bg-paper" aria-label={`Editar ${main.name}`}>
+                                <button type="button" onClick={(event) => { event.stopPropagation(); startEdit(main) }} className="p-1 rounded border border-border text-ink/70 hover:bg-paper" aria-label={t('categoryModal.editAria', { name: resolveCategoryName(main, locale) })}>
                                   <Pencil className="w-3.5 h-3.5" />
                                 </button>
-                                <button type="button" onClick={(event) => { event.stopPropagation(); handleDelete(main) }} className="p-1 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10" aria-label={`Excluir ${main.name}`}>
+                                <button type="button" onClick={(event) => { event.stopPropagation(); handleDelete(main) }} className="p-1 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10" aria-label={t('categoryModal.deleteAria', { name: resolveCategoryName(main, locale) })}>
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
                             </button>
                             <div className="px-3 pb-3 min-h-7 flex items-center">
-                              {main.is_system ? <span className="text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold">Sistema</span> : null}
+                              {main.is_system ? <span className="text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold">{t('categoryModal.systemBadge')}</span> : null}
                             </div>
                           </>
                         )}
@@ -806,13 +811,13 @@ export default function CategorySettingsModal({
                 </div>
                 <div className="mt-3 pt-2 border-t border-border/70 space-y-2">
                   <button type="button" onClick={startCreateMain} className="w-full px-3 py-2 rounded-md bg-petrol text-white text-sm hover:bg-petrol/90 transition-vintage">
-                    Nov{isSavingsScope ? 'o' : 'a'} {mainEntityLabelTitle}
+                    {isSavingsScope ? t('categoryModal.newMainGoalButton') : t('categoryModal.newMainCategoryButton')}
                   </button>
                   {isMainComposer && !editingId ? (
                     <div className="space-y-2">
                       <div className="flex gap-2 items-center">
                         <IconPicker value={draftIcon} onSelect={setDraftIcon} />
-                        <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label={`Nome d${isSavingsScope ? 'o' : 'a'} ${mainEntityLabel}`} className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${mainEntityLabel}`} />
+                        <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label={isSavingsScope ? t('categoryModal.nameOfMainGoalAria') : t('categoryModal.nameOfMainCategoryAria')} className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder={isSavingsScope ? t('categoryModal.nameOfMainGoalAria') : t('categoryModal.nameOfMainCategoryAria')} />
                       </div>
                       <div className="flex gap-2">
                         <button type="button" onClick={resetComposer} className="px-3 py-2 rounded-lg border border-border text-sm text-ink/70">{t('categoryModal.cancelButton')}</button>
@@ -825,11 +830,11 @@ export default function CategorySettingsModal({
 
               {/* Right: subcategories */}
               <div className="rounded-lg border border-border/80 bg-bg/50 p-2">
-                <p className="text-xs uppercase tracking-wide text-ink/50 px-2 py-1">{selectedMain ? `${childEntityPluralTitle} de ${selectedMain.name}` : childEntityPluralTitle}</p>
+                <p className="text-xs uppercase tracking-wide text-ink/50 px-2 py-1">{selectedMain ? (isSavingsScope ? t('categoryModal.subgoalsOf', { name: resolveCategoryName(selectedMain, locale) }) : t('categoryModal.subcategoriesOf', { name: resolveCategoryName(selectedMain, locale) })) : childEntityPluralTitle}</p>
                 {!selectedMain ? (
-                  <p className="text-sm text-ink/60 px-2 py-3">Selecione um{isSavingsScope ? '' : 'a'} {mainEntityLabel}.</p>
+                  <p className="text-sm text-ink/60 px-2 py-3">{isSavingsScope ? t('categoryModal.selectMainGoal') : t('categoryModal.selectMainCategory')}</p>
                 ) : (selectedMain as NodeItem & { children?: NodeItem[] }).children?.length === 0 && !(isChildComposer && !editingId) ? (
-                  <p className="text-sm text-ink/60 px-2 py-3">Sem {childEntityLabel}s.</p>
+                  <p className="text-sm text-ink/60 px-2 py-3">{isSavingsScope ? t('categoryModal.noSubgoals') : t('categoryModal.noSubcategories')}</p>
                 ) : (
                   <div className="space-y-3 max-h-[56vh] overflow-auto pr-1">
                     <div className={`overflow-hidden rounded-[18px] border-2 ${mainStackTone} shadow-soft`}>
@@ -838,11 +843,11 @@ export default function CategorySettingsModal({
                         <div className="min-w-0 flex items-center gap-2">
                           {selectedMain.icon && <CategoryIcon name={selectedMain.icon} className="w-5 h-5 shrink-0 text-sidebar/60" />}
                           <div className="min-w-0">
-                            <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">{entityLabelTitle} base</p>
-                            <h5 className="text-lg font-semibold text-sidebar truncate">{selectedMain.name}</h5>
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">{isSavingsScope ? t('categoryModal.goalBaseLabel') : t('categoryModal.categoryBaseLabel')}</p>
+                            <h5 className="text-lg font-semibold text-sidebar truncate">{resolveCategoryName(selectedMain, locale)}</h5>
                           </div>
                         </div>
-                        {selectedMain.is_system ? <span className="flex-shrink-0 text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold">Sistema</span> : null}
+                        {selectedMain.is_system ? <span className="flex-shrink-0 text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold">{t('categoryModal.systemBadge')}</span> : null}
                       </div>
                     </div>
                     {(selectedMain as NodeItem & { children: NodeItem[] }).children.map((child) => {
@@ -852,7 +857,7 @@ export default function CategorySettingsModal({
                           <div className="h-1 bg-gradient-to-r from-petrol via-olive to-gold" />
                           {isEditingChild ? (
                             <div className="px-4 py-3 space-y-2">
-                              <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label={`Nome d${isSavingsScope ? 'o' : 'a'} ${childEntityLabel}`} className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${childEntityLabel}`} />
+                              <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label={isSavingsScope ? t('categoryModal.nameOfSubgoalAria') : t('categoryModal.nameOfSubcategoryAria')} className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder={isSavingsScope ? t('categoryModal.nameOfSubgoalAria') : t('categoryModal.nameOfSubcategoryAria')} />
                               <div className="flex gap-2">
                                 <button type="button" onClick={resetComposer} className="px-3 py-1.5 rounded-lg border border-border text-sm text-ink/70">{t('categoryModal.cancelButton')}</button>
                                 <button type="button" onClick={saveComposer} disabled={saving} className="px-3 py-1.5 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60">{saving ? t('categoryModal.savingButton') : t('categoryModal.saveButton')}</button>
@@ -863,19 +868,19 @@ export default function CategorySettingsModal({
                               <div className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left">
                                 <div className="min-w-0">
                                   <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40 mb-1">{childEntityLabelTitle}</p>
-                                  <span className="block text-sm font-semibold text-ink/80 truncate">{child.name}</span>
+                                  <span className="block text-sm font-semibold text-ink/80 truncate">{resolveCategoryName(child, locale)}</span>
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0">
-                                  <button type="button" onClick={() => startEdit(child)} className="p-1 rounded border border-border text-ink/70 hover:bg-paper" aria-label={`Editar ${child.name}`}>
+                                  <button type="button" onClick={() => startEdit(child)} className="p-1 rounded border border-border text-ink/70 hover:bg-paper" aria-label={t('categoryModal.editAria', { name: resolveCategoryName(child, locale) })}>
                                     <Pencil className="w-3.5 h-3.5" />
                                   </button>
-                                  <button type="button" onClick={() => handleDelete(child)} className="p-1 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10" aria-label={`Excluir ${child.name}`}>
+                                  <button type="button" onClick={() => handleDelete(child)} className="p-1 rounded border border-terracotta/40 text-terracotta hover:bg-terracotta/10" aria-label={t('categoryModal.deleteAria', { name: resolveCategoryName(child, locale) })}>
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
                               </div>
                               <div className="px-4 pb-3 min-h-7 flex items-center">
-                                {child.is_system ? <span className="text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold">Sistema</span> : null}
+                                {child.is_system ? <span className="text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold">{t('categoryModal.systemBadge')}</span> : null}
                               </div>
                             </>
                           )}
@@ -887,11 +892,11 @@ export default function CategorySettingsModal({
 
                 <div className="mt-3 pt-2 border-t border-border/70 space-y-2">
                   <button type="button" onClick={startCreateChild} className="w-full px-3 py-2 rounded-md bg-petrol text-white text-sm hover:bg-petrol/90 transition-vintage" disabled={!selectedMain}>
-                    Nov{isSavingsScope ? 'o' : 'a'} {childEntityLabelTitle}
+                    {isSavingsScope ? t('categoryModal.newSubgoalButton') : t('categoryModal.newSubcategoryButton')}
                   </button>
                   {isChildComposer && !editingId ? (
                     <div className="space-y-2">
-                      <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label={`Nov${isSavingsScope ? 'o' : 'a'} ${childEntityLabel}`} className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder={`Nome d${isSavingsScope ? 'o' : 'a'} ${childEntityLabel}`} />
+                      <input type="text" value={draftName} onChange={(event) => setDraftName(event.target.value)} autoFocus aria-label={isSavingsScope ? t('categoryModal.newSubgoalAria') : t('categoryModal.newSubcategoryAria')} className="w-full px-3 py-2 bg-paper border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-paper-2/50" placeholder={isSavingsScope ? t('categoryModal.nameOfSubgoalAria') : t('categoryModal.nameOfSubcategoryAria')} />
                       <div className="flex gap-2">
                         <button type="button" onClick={resetComposer} className="px-3 py-2 rounded-lg border border-border text-sm text-ink/70">{t('categoryModal.cancelButton')}</button>
                         <button type="button" onClick={saveComposer} disabled={saving} className="px-3 py-2 rounded-lg bg-coffee text-paper text-sm disabled:opacity-60">{saving ? t('categoryModal.savingButton') : t('categoryModal.saveButton')}</button>

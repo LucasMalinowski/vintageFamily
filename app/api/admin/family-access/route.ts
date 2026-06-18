@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
 import { supabaseService } from '@/lib/billing/supabase-service'
+import { getUserLocale } from '@/lib/i18n/getLocale'
+import { getTranslations } from 'next-intl/server'
 
 async function requireSuperAdmin(request: Request) {
   const accessToken = getAccessTokenFromAuthHeader(request)
@@ -12,7 +14,9 @@ async function requireSuperAdmin(request: Request) {
 
   const profile = await getProfileByUserId(auth.user.id)
   if (!profile?.super_admin) {
-    return { ok: false as const, response: NextResponse.json({ error: 'Acesso negado.' }, { status: 403 }) }
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
+    return { ok: false as const, response: NextResponse.json({ error: t('admin.accessDenied') }, { status: 403 }) }
   }
 
   return { ok: true as const, profile }
@@ -130,7 +134,12 @@ export async function GET(request: Request) {
     : [{ data: [], error: null }, { data: [], error: null }]
 
   if (usersError || subsError) {
-    return NextResponse.json({ error: usersError?.message || subsError?.message || 'Não foi possível carregar as famílias.' }, { status: 500 })
+    if (usersError?.message || subsError?.message) {
+      return NextResponse.json({ error: usersError?.message || subsError?.message }, { status: 500 })
+    }
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
+    return NextResponse.json({ error: t('admin.familiesLoadFailed') }, { status: 500 })
   }
 
   // Take most-recent subscription per family (already ordered by updated_at desc)
@@ -159,6 +168,9 @@ export async function PATCH(request: Request) {
   const admin = await requireSuperAdmin(request)
   if (!admin.ok) return admin.response
 
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
+
   const body = (await request.json().catch(() => null)) as {
     family_id?: string
     lifetime_access?: boolean
@@ -167,7 +179,7 @@ export async function PATCH(request: Request) {
   } | null
 
   if (!body?.family_id) {
-    return NextResponse.json({ error: 'Família inválida.' }, { status: 400 })
+    return NextResponse.json({ error: t('admin.invalidFamily') }, { status: 400 })
   }
 
   const hasLifetimeChange = typeof body.lifetime_access === 'boolean'
@@ -175,11 +187,11 @@ export async function PATCH(request: Request) {
   const hasTrialChange = body !== null && 'trial_expires_at' in body
 
   if (!hasLifetimeChange && !hasFoundersChange && !hasTrialChange) {
-    return NextResponse.json({ error: 'Nenhuma alteração foi informada.' }, { status: 400 })
+    return NextResponse.json({ error: t('admin.noChangesProvided') }, { status: 400 })
   }
 
   if (hasTrialChange && body.trial_expires_at !== null && isNaN(Date.parse(body.trial_expires_at as string))) {
-    return NextResponse.json({ error: 'Data inválida.' }, { status: 400 })
+    return NextResponse.json({ error: t('admin.invalidDate') }, { status: 400 })
   }
 
   const { data: familyUsers, error: usersError } = await supabaseService
@@ -217,7 +229,7 @@ export async function PATCH(request: Request) {
     .maybeSingle()
 
   if (familyError || !family) {
-    return NextResponse.json({ error: familyError?.message || 'Não foi possível recarregar o acesso da família.' }, { status: 500 })
+    return NextResponse.json({ error: familyError?.message || t('admin.familyAccessReloadFailed') }, { status: 500 })
   }
 
   return NextResponse.json({
@@ -236,14 +248,17 @@ export async function DELETE(request: Request) {
   const admin = await requireSuperAdmin(request)
   if (!admin.ok) return admin.response
 
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
+
   const body = (await request.json().catch(() => null)) as { family_id?: string } | null
 
   if (!body?.family_id) {
-    return NextResponse.json({ error: 'Família inválida.' }, { status: 400 })
+    return NextResponse.json({ error: t('admin.invalidFamily') }, { status: 400 })
   }
 
   if (admin.profile.family_id === body.family_id) {
-    return NextResponse.json({ error: 'Não é possível excluir a própria família por este painel.' }, { status: 400 })
+    return NextResponse.json({ error: t('admin.cannotDeleteOwnFamily') }, { status: 400 })
   }
 
   const [{ data: family, error: familyError }, { data: familyUsers, error: usersError }] = await Promise.all([
@@ -259,11 +274,11 @@ export async function DELETE(request: Request) {
   ])
 
   if (familyError || usersError) {
-    return NextResponse.json({ error: familyError?.message || usersError?.message || 'Não foi possível carregar a família.' }, { status: 500 })
+    return NextResponse.json({ error: familyError?.message || usersError?.message || t('admin.familyLoadFailed') }, { status: 500 })
   }
 
   if (!family) {
-    return NextResponse.json({ error: 'Família não encontrada.' }, { status: 404 })
+    return NextResponse.json({ error: t('admin.familyNotFound') }, { status: 404 })
   }
 
   const userIds = (familyUsers ?? []).map((user) => user.id)
@@ -341,7 +356,7 @@ export async function DELETE(request: Request) {
     if (familyDeleteError) throw new Error(`families: ${familyDeleteError.message}`)
   } catch (error) {
     console.error('[admin-family-delete] database cleanup failed', error)
-    return NextResponse.json({ error: 'Erro ao excluir os dados da família.' }, { status: 500 })
+    return NextResponse.json({ error: t('admin.familyDataDeleteFailed') }, { status: 500 })
   }
 
   const authDeleteErrors = (
@@ -355,7 +370,7 @@ export async function DELETE(request: Request) {
 
   if (authDeleteErrors.length > 0) {
     console.error('[admin-family-delete] auth cleanup failed', authDeleteErrors)
-    return NextResponse.json({ error: 'Família removida, mas houve erro ao remover alguns usuários de autenticação.' }, { status: 500 })
+    return NextResponse.json({ error: t('admin.familyDeletedAuthCleanupFailed') }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

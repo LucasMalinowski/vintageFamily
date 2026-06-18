@@ -20,14 +20,14 @@ type InsightRow = {
   sent_channels: string[]
 }
 
-function formatRelative(isoDate: string): string {
+function formatRelative(isoDate: string, t: ReturnType<typeof useTranslations>): string {
   const diff = Math.floor((Date.now() - new Date(isoDate).getTime()) / 60_000)
-  if (diff < 60) return `${diff}min atrás`
-  if (diff < 1440) return `${Math.floor(diff / 60)}h atrás`
-  return `${Math.floor(diff / 1440)}d atrás`
+  if (diff < 60) return t('insights.minutesAgo', { count: diff })
+  if (diff < 1440) return t('insights.hoursAgo', { count: Math.floor(diff / 60) })
+  return t('insights.daysAgo', { count: Math.floor(diff / 1440) })
 }
 
-async function reportInsightError(insightId: string, content: string, setReporting: (id: string | null) => void, setReported: (fn: (prev: Set<string>) => Set<string>) => void) {
+async function reportInsightError(insightId: string, content: string, t: ReturnType<typeof useTranslations>, setReporting: (id: string | null) => void, setReported: (fn: (prev: Set<string>) => Set<string>) => void) {
   setReporting(insightId)
   try {
     await fetch('/api/feedback', {
@@ -36,7 +36,7 @@ async function reportInsightError(insightId: string, content: string, setReporti
       body: JSON.stringify({
         type: 'bug',
         location: 'insights',
-        description: `Insight incorreto reportado pelo usuário.\n\nConteúdo:\n${content.slice(0, 500)}`,
+        description: t('insights.reportedIncorrectDescription', { content: content.slice(0, 500) }),
       }),
     })
     setReported((prev) => new Set(prev).add(insightId))
@@ -174,14 +174,14 @@ export default function InsightsPage() {
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2.5">
                   <MessageCircleQuestion className="w-5 h-5 text-petrol" />
-                  <h2 className="font-serif text-[18px] text-ink font-medium">Perguntar sobre suas finanças</h2>
+                  <h2 className="font-serif text-[18px] text-ink font-medium">{t('insights.askTitle')}</h2>
                 </div>
                 {!hasFullInsightAccess && (
                   <span
                     className="text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0"
                     style={{ background: 'rgba(194,164,93,0.15)', color: '#A58E5F' }}
                   >
-                    {onDemandRemaining} de {onDemandLimit} perguntas restantes este mês
+                    {t('insights.questionsRemaining', { remaining: onDemandRemaining, limit: onDemandLimit })}
                   </span>
                 )}
               </div>
@@ -192,7 +192,7 @@ export default function InsightsPage() {
                   onChange={(e) => setQuestion(e.target.value)}
                   rows={3}
                   placeholder={t('insights.questionPlaceholder')}
-                  aria-label="Pergunta para análise financeira"
+                  aria-label={t('insights.questionAria')}
                   className="w-full px-4 py-3 bg-paper border border-border rounded-[10px] text-[14px] text-ink placeholder:text-ink/40 focus:outline-none focus:ring-2 focus:ring-petrol/20 resize-none transition-vintage"
                   disabled={asking || (!hasFullInsightAccess && onDemandRemaining === 0)}
                 />
@@ -207,7 +207,7 @@ export default function InsightsPage() {
                     {asking ? t('insights.generating') : t('insights.generateInsight')}
                   </button>
                   <p className="text-[12px] text-ink/45 italic">
-                    Sua pergunta é processada nos seus dados, privada por padrão.
+                    {t('insights.privacyNote')}
                   </p>
                 </div>
               </form>
@@ -215,11 +215,11 @@ export default function InsightsPage() {
                 <div className="flex items-start gap-2 p-3 mt-3 rounded-lg border" style={{ background: 'rgba(194,164,93,0.08)', borderColor: 'rgba(194,164,93,0.25)' }}>
                   <span className="text-[14px] mt-0.5 shrink-0" style={{ color: '#A58E5F' }}>🔒</span>
                   <p className="text-[12px] text-ink/70">
-                    Você atingiu o limite mensal do plano gratuito.{' '}
+                    {t('insights.monthlyLimitReached')}{' '}
                     <Link href="/settings/billing" className="text-coffee font-medium underline">
-                      Assine o plano Pro
+                      {t('insights.subscribeToPro')}
                     </Link>{' '}
-                    para perguntas ilimitadas.
+                    {t('insights.forUnlimitedQuestions')}
                   </p>
                 </div>
               )}
@@ -272,9 +272,9 @@ export default function InsightsPage() {
                               className="text-[10px] font-bold tracking-[0.10em] uppercase"
                               style={{ color: isAsk ? '#3F6E7A' : '#A58E5F' }}
                             >
-                              {isAsk ? 'Sua pergunta' : 'Análise automática'}
+                              {isAsk ? t('insights.yourQuestion') : t('insights.automaticAnalysis')}
                             </span>
-                            <span className="text-[11.5px] text-ink/45">· {formatRelative(insight.created_at)}</span>
+                            <span className="text-[11.5px] text-ink/45">· {formatRelative(insight.created_at, t)}</span>
                             <div className="flex-1" />
                             {insight.sent_channels.map((ch) => (
                               <span key={ch} className="text-[10.5px] font-medium px-2 py-0.5 rounded-full bg-ink/[0.06] text-ink/50">
@@ -318,7 +318,7 @@ export default function InsightsPage() {
                               <button
                                 type="button"
                                 disabled={reportingId === insight.id}
-                                onClick={() => reportInsightError(insight.id, insight.content, setReportingId, setReportedIds)}
+                                onClick={() => reportInsightError(insight.id, insight.content, t, setReportingId, setReportedIds)}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] border border-border bg-white text-[12px] text-ink/50 hover:bg-paper transition-vintage disabled:opacity-50"
                               >
                                 <Flag className="w-3.5 h-3.5" /> Reportar
@@ -339,7 +339,7 @@ export default function InsightsPage() {
             <AnalyticsKpiCard
               label={t('insights.title')}
               value={String(insights.length)}
-              sub={`${proactiveCount} automáticos · ${onDemandUsed} perguntas`}
+              sub={t('insights.sidebarSummary', { proactiveCount, onDemandUsed })}
               iconTheme="purple"
               icon={Sparkles}
             />
@@ -347,7 +347,7 @@ export default function InsightsPage() {
             {/* Preferências */}
             <div className="bg-white rounded-xl border border-border shadow-soft p-5">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-serif text-[16px] text-coffee">Preferências</h3>
+                <h3 className="font-serif text-[16px] text-coffee">{t('insights.preferencesTitle')}</h3>
                 {prefSaving && <span className="text-[11px] text-ink/40">Salvando…</span>}
               </div>
               <div className="space-y-0">
@@ -386,7 +386,7 @@ export default function InsightsPage() {
                 >
                   <Sparkles className="w-3.5 h-3.5 shrink-0" style={{ color: '#A58E5F' }} />
                   <p className="text-[12px] text-ink/70 flex-1">
-                    Pro: perguntas ilimitadas + histórico completo.
+                    {t('insights.proUpsell')}
                   </p>
                 </div>
               )}

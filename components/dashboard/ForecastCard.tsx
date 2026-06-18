@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronUp, TrendingUp } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { supabase } from '@/lib/supabase'
 import { formatBRL } from '@/lib/money'
 
@@ -28,29 +28,37 @@ type AnomalyFlag = {
   alreadyConfirmed: boolean
 }
 
-const CONFIDENCE_BADGE: Record<Confidence, { label: string; className: string }> = {
-  high:         { label: 'Boa previsão',    className: 'bg-olive/15 text-olive' },
-  medium:       { label: 'Previsão média',  className: 'bg-gold/20 text-[#8a6d35]' },
-  low:          { label: 'Poucos dados',    className: 'bg-terracotta/15 text-terracotta' },
-  insufficient: { label: 'Sem dados',       className: 'bg-ink/10 text-ink/50' },
-}
-
-const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
-
-function monthName(yyyyMM: string): string {
-  const m = parseInt(yyyyMM.split('-')[1], 10)
-  return MONTHS_PT[m - 1] ?? yyyyMM
+const CONFIDENCE_BADGE_CLASSNAME: Record<Confidence, string> = {
+  high:         'bg-olive/15 text-olive',
+  medium:       'bg-gold/20 text-[#8a6d35]',
+  low:          'bg-terracotta/15 text-terracotta',
+  insufficient: 'bg-ink/10 text-ink/50',
 }
 
 export default function ForecastCard() {
   const t = useTranslations()
+  const locale = useLocale()
   const [forecast, setForecast] = useState<ForecastResult | null>(null)
   const [anomalies, setAnomalies] = useState<AnomalyFlag[]>([])
   const [narrative, setNarrative] = useState('')
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(false)
   const [dismissedAnomalies, setDismissedAnomalies] = useState<Set<string>>(new Set())
+
+  function monthName(yyyyMM: string): string {
+    const [year, month] = yyyyMM.split('-').map((p) => parseInt(p, 10))
+    if (!year || !month) return yyyyMM
+    const date = new Date(year, month - 1, 1)
+    const name = new Intl.DateTimeFormat(locale, { month: 'long' }).format(date)
+    return name.charAt(0).toUpperCase() + name.slice(1)
+  }
+
+  const confidenceBadge: Record<Confidence, { label: string; className: string }> = {
+    high:         { label: t('forecastCard.confidenceHigh'),         className: CONFIDENCE_BADGE_CLASSNAME.high },
+    medium:       { label: t('forecastCard.confidenceMedium'),       className: CONFIDENCE_BADGE_CLASSNAME.medium },
+    low:          { label: t('forecastCard.confidenceLow'),          className: CONFIDENCE_BADGE_CLASSNAME.low },
+    insufficient: { label: t('forecastCard.confidenceInsufficient'), className: CONFIDENCE_BADGE_CLASSNAME.insufficient },
+  }
 
   useEffect(() => {
     async function load() {
@@ -112,14 +120,14 @@ export default function ForecastCard() {
 
   if (!forecast) return null
 
-  const badge = CONFIDENCE_BADGE[forecast.confidence]
+  const badge = confidenceBadge[forecast.confidence]
   const pendingAnomalies = anomalies.filter(a => !dismissedAnomalies.has(a.category_name)).slice(0, 2)
 
   const breakdownItems = [
-    { label: 'Fixos recorrentes', value: forecast.fixedTotal },
-    { label: 'Parcelas em curso', value: forecast.installmentsTotal },
-    { label: 'Variáveis (estimado)', value: forecast.variableEstimate },
-    { label: 'Eventos sazonais', value: forecast.annualEventsTotal },
+    { label: t('forecastCard.breakdownFixed'), value: forecast.fixedTotal },
+    { label: t('forecastCard.breakdownInstallments'), value: forecast.installmentsTotal },
+    { label: t('forecastCard.breakdownVariable'), value: forecast.variableEstimate },
+    { label: t('forecastCard.breakdownAnnualEvents'), value: forecast.annualEventsTotal },
   ].filter(item => item.value > 0)
 
   return (
@@ -149,8 +157,7 @@ export default function ForecastCard() {
         {/* Low-confidence warning */}
         {(forecast.confidence === 'insufficient' || forecast.confidence === 'low') && (
           <p className="text-[12px] text-terracotta leading-snug mt-2 mb-3 bg-terracotta/10 rounded-lg px-3 py-2">
-            ⚠️ Estimativa preliminar — ainda não temos dados suficientes dos meses anteriores para um cálculo
-            preciso. Conforme você for registrando despesas, a previsão fica mais precisa.
+            ⚠️ {t('forecastCard.lowConfidenceWarning')}
           </p>
         )}
 
@@ -168,7 +175,7 @@ export default function ForecastCard() {
             className="flex items-center gap-1 text-[11px] text-petrol font-medium mt-2"
           >
             {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            {expanded ? 'Ocultar detalhes' : 'Ver detalhes'}
+            {expanded ? t('forecastCard.hideDetails') : t('forecastCard.viewDetails')}
           </button>
         )}
 
@@ -193,22 +200,24 @@ export default function ForecastCard() {
           {pendingAnomalies.map(anomaly => (
             <div key={anomaly.category_name}>
               <p className="text-[12px] text-ink/70 leading-snug mb-2">
-                <span className="font-semibold text-ink">{anomaly.category_name}</span> em{' '}
-                {monthName(anomaly.month)} foi {formatBRL(anomaly.amount_cents)} acima do normal.
-                Isso se repete todo ano?
+                {t('forecastCard.anomalyMessage', {
+                  category: anomaly.category_name,
+                  month: monthName(anomaly.month),
+                  amount: formatBRL(anomaly.amount_cents),
+                })}
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => confirmAnnual(anomaly)}
                   className="text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-coffee text-paper"
                 >
-                  Sim, é anual
+                  {t('forecastCard.confirmAnnual')}
                 </button>
                 <button
                   onClick={() => dismissAnomaly(anomaly.category_name)}
                   className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-border text-ink/60"
                 >
-                  Foi pontual
+                  {t('forecastCard.confirmOneTime')}
                 </button>
               </div>
             </div>

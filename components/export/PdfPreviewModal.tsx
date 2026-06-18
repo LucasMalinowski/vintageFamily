@@ -48,7 +48,7 @@ export default function PdfPreviewModal({
                 type="button"
                 role="switch"
                 aria-checked={includeSignatures}
-                aria-label="Incluir assinaturas no PDF"
+                aria-label={t('common.pdfSignaturesAria')}
                 onClick={() => onToggleSignatures(!includeSignatures)}
                 className="relative w-8 h-[18px] rounded-full transition-colors shrink-0 cursor-pointer"
                 style={{ background: includeSignatures ? '#6FBF8A' : '#E4D7C2' }}
@@ -58,7 +58,7 @@ export default function PdfPreviewModal({
                   style={{ left: includeSignatures ? '18px' : '2px' }}
                 />
               </button>
-              Assinaturas
+              {t('pdfPreview.signatures')}
             </div>
           ) : null}
         </div>
@@ -77,7 +77,7 @@ export default function PdfPreviewModal({
             </div>
           ) : (
             <div className="flex h-[70vh] items-center justify-center text-sm text-ink/60">
-              {isGenerating ? t('bankStatement.processing') : 'Clique em "Gerar PDF" para gerar a pré-visualização.'}
+              {isGenerating ? t('bankStatement.processing') : t('pdfPreview.generatePrompt')}
             </div>
           )}
         </div>

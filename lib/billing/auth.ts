@@ -1,5 +1,7 @@
 import { NextRequest } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { supabaseService } from '@/lib/billing/supabase-service'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 
 type CookieStoreLike = {
   get: (name: string) => { value: string } | undefined
@@ -75,15 +77,17 @@ export function getAccessTokenFromCookieStore(cookieStore: CookieStoreLike) {
   return null
 }
 
-export async function requireUserByAccessToken(accessToken: string | null) {
+export async function requireUserByAccessToken(accessToken: string | null, locale?: AppLocale) {
+  const t = await getTranslations({ locale: locale ?? 'pt-BR', namespace: 'apiErrors' })
+
   if (!accessToken) {
-    return { error: 'Não autorizado.', status: 401 as const, user: null }
+    return { error: t('common.unauthorized'), status: 401 as const, user: null }
   }
 
   const { data, error } = await supabaseService.auth.getUser(accessToken)
 
   if (error || !data.user) {
-    return { error: 'Não autorizado.', status: 401 as const, user: null }
+    return { error: t('common.unauthorized'), status: 401 as const, user: null }
   }
 
   return { error: null, status: 200 as const, user: data.user }

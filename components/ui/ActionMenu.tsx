@@ -46,7 +46,7 @@ export default function ActionMenu({ onEdit, onDelete, onView, onAttach, onDepos
         onClick={() => setOpen((prev) => !prev)}
         disabled={disabled}
         className="text-gold flex items-center justify-center hover:bg-paper transition-vintage disabled:opacity-60"
-        aria-label="Mais ações"
+        aria-label={t('common.moreOptions')}
       >
         <MoreVertical className="w-6 h-6" />
       </button>
@@ -127,7 +127,7 @@ export default function ActionMenu({ onEdit, onDelete, onView, onAttach, onDepos
         ref={fileInputRef}
         type="file"
         className="hidden"
-        aria-label="Selecionar arquivo"
+        aria-label={t('common.selectFile')}
         onChange={(event) => {
           const file = event.target.files?.[0]
           if (!file) return

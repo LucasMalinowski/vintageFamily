@@ -1,14 +1,20 @@
 import type { Metadata } from 'next'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 
-export const metadata: Metadata = {
-  title: 'Sobre o Florim',
-  description: 'Conheça a história do Florim, o app de gestão financeira familiar com alma vintage feito no Brasil.',
-  alternates: { canonical: '/sobre' },
-  openGraph: {
-    title: 'Sobre o Florim',
-    description: 'A história do app de finanças familiares com alma vintage.',
-    url: 'https://florim.app/sobre',
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getUserLocale()
+  const msgs = (await import(`@/messages/${locale}.json`)).default as any
+  const s = msgs.seo.sobre
+  return {
+    title: s.title,
+    description: s.description,
+    alternates: { canonical: '/sobre' },
+    openGraph: {
+      title: s.ogTitle,
+      description: s.ogDescription,
+      url: 'https://florim.app/sobre',
+    },
+  }
 }
 
 export default function SobreLayout({ children }: { children: React.ReactNode }) {

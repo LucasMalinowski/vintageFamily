@@ -10,7 +10,7 @@ import Modal from '@/components/ui/Modal'
 import { useRouter } from 'next/navigation'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
-import { validateImageFile } from '@/lib/security/images'
+import { ImageValidationError, validateImageFile } from '@/lib/security/images'
 import { NEXT_LOCALE_COOKIE, SUPPORTED_LOCALES, type AppLocale } from '@/lib/i18n/getLocale'
 
 type PhoneState = 'none' | 'pending' | 'verified'
@@ -42,6 +42,19 @@ const COUNTRY_CODES = [
 ] as const
 
 type CountryOption = (typeof COUNTRY_CODES)[number]
+
+function getAvatarValidationErrorMessage(err: unknown, t: ReturnType<typeof useTranslations>): string {
+  if (err instanceof ImageValidationError) {
+    const messageByCode: Record<typeof err.code, string> = {
+      too_large: t('profile.errorAvatarTooLarge'),
+      invalid_image: t('profile.errorAvatar'),
+      extension_mismatch: t('profile.errorAvatarExtensionMismatch'),
+      mime_mismatch: t('profile.errorAvatarMimeMismatch'),
+    }
+    return messageByCode[err.code]
+  }
+  return t('profile.errorAvatar')
+}
 
 function findCountryBySlug(slug: string) {
   return COUNTRY_CODES.find((country) => country.slug === slug) ?? COUNTRY_CODES[0]
@@ -334,7 +347,7 @@ export default function ProfileSettingsPage() {
       try {
         image = await validateImageFile(avatarFile, 2 * 1024 * 1024)
       } catch (err) {
-        setError(err instanceof Error ? err.message : t('profile.errorAvatar'))
+        setError(getAvatarValidationErrorMessage(err, t))
         setSavingProfile(false)
         return
       }
@@ -548,7 +561,7 @@ export default function ProfileSettingsPage() {
                       <>
                         <button
                           type="button"
-                          aria-label="Fechar lista de países"
+                          aria-label={t('profile.closeCountryListAria')}
                           className="fixed inset-0 z-20 cursor-default"
                           onClick={() => setCountryMenuOpen(false)}
                         />
@@ -612,7 +625,7 @@ export default function ProfileSettingsPage() {
                     value={phoneInput}
                     onChange={(e) => setPhoneInput(e.target.value)}
                     placeholder="45 99999-9999"
-                    aria-label="Número de telefone"
+                    aria-label={t('profile.phoneNumberAria')}
                     className="flex-1 px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage"
                   />
                 </div>
@@ -638,7 +651,7 @@ export default function ProfileSettingsPage() {
                     inputMode="numeric"
                     maxLength={6}
                     value={otpInput}
-                    aria-label="Código de verificação"
+                    aria-label={t('profile.verificationCodeAria')}
                     onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder="000000"
                     className="w-32 px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage text-center tracking-widest font-numbers"

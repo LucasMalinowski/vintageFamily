@@ -7,6 +7,8 @@ import {
   getProfileByUserId,
 } from '@/lib/billing/auth'
 import { checkAndAlertCategoryLimit } from '@/lib/categories/limitAlert'
+import { getUserLocale } from '@/lib/i18n/getLocale'
+import { getTranslations } from 'next-intl/server'
 
 /**
  * POST /api/categories/check-limit
@@ -20,13 +22,15 @@ export async function POST(request: NextRequest) {
   const cookieStore = await cookies()
   const token = getAccessTokenFromAuthHeader(request) ?? getAccessTokenFromCookieStore(cookieStore)
   const { error: authError, user } = await requireUserByAccessToken(token)
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
   if (authError || !user) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 })
   }
 
   const profile = await getProfileByUserId(user.id)
   if (!profile?.family_id) {
-    return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 404 })
+    return NextResponse.json({ error: t('account.profileNotFound') }, { status: 404 })
   }
 
   let body: { categoryId?: string } = {}
@@ -43,6 +47,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'categoryId required' }, { status: 400 })
   }
 
-  const result = await checkAndAlertCategoryLimit(familyId, categoryId)
+  const result = await checkAndAlertCategoryLimit(familyId, categoryId, locale)
   return NextResponse.json(result)
 }

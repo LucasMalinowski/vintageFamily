@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { format } from 'date-fns'
 import Topbar from '@/components/layout/Topbar'
 import AnalyticsKpiCard from '@/components/ui/AnalyticsKpiCard'
@@ -33,6 +33,7 @@ import { ChevronDown, FileDown, FileText, Folder, Pencil, PiggyBank, SlidersHori
 import CategoryIcon from '@/components/ui/CategoryIcon'
 import { matchesSearch } from '@/lib/filterSearch'
 import FilterSheet from '@/components/layout/FilterSheet'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 import CurrencyInput from '@/components/ui/CurrencyInput'
 import PdfPreviewModal from '@/components/export/PdfPreviewModal'
 import { buildBrandedPdfBlob, downloadBlob, downloadCsv, openHtmlAsPdf } from '@/lib/report-export'
@@ -112,6 +113,7 @@ const emptyTxForm = () => ({
 
 export default function Savings() {
   const t = useTranslations()
+  const locale = useLocale() as AppLocale
   const { familyId, user } = useAuth()
   const [savings, setSavings] = useState<Saving[]>([])
   const [contributions, setContributions] = useState<Contribution[]>([])
@@ -177,7 +179,7 @@ export default function Savings() {
   }, [savings, selectedSavingId])
 
   const getSavingLabel = (savingId: string) =>
-    savingLabelMap.get(savingId) || savings.find((s) => s.id === savingId)?.name || 'Objetivo'
+    savingLabelMap.get(savingId) || savings.find((s) => s.id === savingId)?.name || t('savings.goalLabel')
 
   async function loadSavings() {
     const { data } = await supabase
@@ -373,7 +375,7 @@ export default function Savings() {
   )
 
 
-  const monthLabelSav = selectedMonth !== ALL_MONTHS_VALUE ? getMonthLabel(selectedMonth) : 'Todos'
+  const monthLabelSav = selectedMonth !== ALL_MONTHS_VALUE ? getMonthLabel(selectedMonth, locale) : getMonthLabel(ALL_MONTHS_VALUE, locale)
 
   const perSavingAnalytics = useMemo(() => {
     const analytics: Array<{
@@ -423,13 +425,13 @@ export default function Savings() {
   const activeFilterChips = [
     {
       key: 'month',
-      label: getMonthLabel(selectedMonth),
+      label: getMonthLabel(selectedMonth, locale),
       onRemove: () => setSelectedMonth(getCurrentMonth()),
       disabled: selectedMonth === getCurrentMonth(),
     },
     {
       key: 'year',
-      label: getYearLabel(selectedYear),
+      label: getYearLabel(selectedYear, locale),
       onRemove: () => setSelectedYear(getCurrentYear()),
       disabled: selectedYear === getCurrentYear(),
     },
@@ -444,7 +446,7 @@ export default function Savings() {
 
     return [
       getSavingLabel(saving.id),
-      saving.is_system ? 'Sistema' : 'Manual',
+      saving.is_system ? t('savings.typeSystem') : t('savings.typeManual'),
       saving.target_cents ? formatBRL(saving.target_cents) : '',
       totals?.count ? String(totals.count) : '0',
       totals?.lastDate ? formatDate(totals.lastDate) : '',
@@ -453,18 +455,18 @@ export default function Savings() {
   })
 
   const exportSubtitle = [
-    `Período: ${selectedMonth === ALL_MONTHS_VALUE ? 'todos os meses' : getMonthLabel(selectedMonth)} / ${selectedYear === ALL_YEARS_VALUE ? 'todos os anos' : getYearLabel(selectedYear)}`,
-    selectedSavingId ? `Objetivo: ${getSavingLabel(selectedSavingId)}` : null,
-    searchTerm ? `Busca: ${searchTerm}` : null,
+    `${t('savings.periodLabel')}: ${selectedMonth === ALL_MONTHS_VALUE ? getMonthLabel(ALL_MONTHS_VALUE, locale).toLowerCase() : getMonthLabel(selectedMonth, locale)} / ${selectedYear === ALL_YEARS_VALUE ? getYearLabel(ALL_YEARS_VALUE, locale).toLowerCase() : getYearLabel(selectedYear, locale)}`,
+    selectedSavingId ? `${t('savings.goalLabel')}: ${getSavingLabel(selectedSavingId)}` : null,
+    searchTerm ? `${t('savings.searchLabel')}: ${searchTerm}` : null,
   ]
     .filter(Boolean)
     .join(' • ')
 
   const exportTable = {
     filename: `objetivos-${format(new Date(), 'yyyy-MM-dd')}`,
-    title: 'Objetivos',
+    title: t('savings.exportTitle'),
     subtitle: exportSubtitle,
-    headers: ['Nome', 'Tipo', 'Meta', 'Total', 'Movimentos', 'Última atualização'],
+    headers: [t('savings.csvHeaderName'), t('savings.csvHeaderType'), t('savings.csvHeaderTarget'), t('savings.csvHeaderTotal'), t('savings.csvHeaderMovements'), t('savings.lastUpdated')],
     rows: exportRows,
   }
 
@@ -472,17 +474,18 @@ export default function Savings() {
     const totalSaved = visibleSavings.reduce((sum, s) => sum + (savingTotals.get(s.id)?.total ?? 0), 0)
     const totalTarget = visibleSavings.reduce((sum, s) => sum + (s.target_cents ?? 0), 0)
     return buildBrandedPdfBlob({
-      title: 'Objetivos',
-      filterSummary: exportSubtitle || 'Sem filtros ativos',
-      headers: ['Nome', 'Tipo', 'Meta', 'Movimentos', 'Ultima atualizacao', 'Total'],
+      title: t('savings.exportTitle'),
+      filterSummary: exportSubtitle || t('common.noActiveFilters'),
+      headers: [t('savings.csvHeaderName'), t('savings.csvHeaderType'), t('savings.csvHeaderTarget'), t('savings.csvHeaderMovements'), t('savings.lastUpdated'), t('savings.csvHeaderTotal')],
       rows: exportRows,
       cards: [
-        { label: 'TOTAL GUARDADO', value: formatBRL(totalSaved) },
-        ...(totalTarget > 0 ? [{ label: 'META TOTAL', value: formatBRL(totalTarget) }] : []),
-        { label: 'OBJETIVOS', value: String(visibleSavings.length) },
+        { label: t('savings.pdfTotalSaved'), value: formatBRL(totalSaved) },
+        ...(totalTarget > 0 ? [{ label: t('savings.pdfTotalTarget'), value: formatBRL(totalTarget) }] : []),
+        { label: t('savings.pdfGoalsCount'), value: String(visibleSavings.length) },
       ],
       generatedDate: formatDate(new Date()),
       accentColor: '#3F6E7A',
+      locale,
     })
   }
 
@@ -550,8 +553,8 @@ export default function Savings() {
             <SlidersHorizontal className="w-4 h-4 text-petrol" />
             <span className="leading-tight text-left">
               {selectedMonth === ALL_MONTHS_VALUE
-                ? (selectedYear === ALL_YEARS_VALUE ? 'Todos' : 'Todos os meses')
-                : `${getMonthLabel(selectedMonth).slice(0, 3)}${selectedYear === ALL_YEARS_VALUE ? ' • Todos os anos' : ` ${selectedYear}`}`}
+                ? (selectedYear === ALL_YEARS_VALUE ? t('filterSheet.allOption') : getMonthLabel(ALL_MONTHS_VALUE, locale))
+                : `${getMonthLabel(selectedMonth, locale).slice(0, 3)}${selectedYear === ALL_YEARS_VALUE ? ` • ${getYearLabel(ALL_YEARS_VALUE, locale)}` : ` ${selectedYear}`}`}
             </span>
           </button>
 
@@ -563,9 +566,9 @@ export default function Savings() {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Buscar..."
+                  placeholder={t('common.searchPlaceholder')}
                   autoFocus
-                  aria-label="Buscar objetivos"
+                  aria-label={t('savings.searchAria')}
                   className="h-[38px] w-full rounded-[10px] border border-border bg-bg pl-9 pr-3 text-sm text-ink placeholder:text-ink/45 focus:outline-none focus:ring-2 focus:ring-petrol/30"
                 />
               </div>
@@ -573,7 +576,7 @@ export default function Savings() {
                 type="button"
                 onClick={() => { setMobileSearchExpanded(false); setSearchTerm('') }}
                 className="w-[38px] h-[38px] rounded-[10px] border border-border bg-bg text-ink/60 flex items-center justify-center shrink-0"
-                aria-label="Fechar busca"
+                aria-label={t('common.closeSearch')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -586,13 +589,13 @@ export default function Savings() {
                 className="flex-1 flex items-center justify-center gap-1.5 h-[38px] px-3 rounded-[10px] border border-border bg-bg text-petrol text-sm font-medium"
               >
                 <TrendingUp className="w-4 h-4" />
-                <span>Guardar</span>
+                <span>{t('savings.depositButton')}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setMobileSearchExpanded(true)}
                 className="w-[38px] h-[38px] rounded-[10px] border border-border bg-bg text-ink/60 flex items-center justify-center shrink-0"
-                aria-label="Buscar"
+                aria-label={t('common.search')}
               >
                 <Search className="w-4 h-4" />
               </button>
@@ -603,7 +606,7 @@ export default function Savings() {
             type="button"
             onClick={() => setAddMenuOpen((prev) => !prev)}
             className="w-[38px] h-[38px] rounded-[10px] bg-coffee text-paper flex items-center justify-center shrink-0"
-            aria-label="Mais opções"
+            aria-label={t('common.moreOptions')}
           >
             <Plus className="w-5 h-5" />
           </button>
@@ -692,8 +695,8 @@ export default function Savings() {
           >
             <SlidersHorizontal className="w-4 h-4 text-petrol" />
             {selectedMonth === ALL_MONTHS_VALUE
-              ? (selectedYear === ALL_YEARS_VALUE ? 'Todos' : String(selectedYear))
-              : `${getMonthLabel(selectedMonth).slice(0, 3)} ${selectedYear !== ALL_YEARS_VALUE ? selectedYear : ''}`}
+              ? (selectedYear === ALL_YEARS_VALUE ? t('filterSheet.allOption') : String(selectedYear))
+              : `${getMonthLabel(selectedMonth, locale).slice(0, 3)} ${selectedYear !== ALL_YEARS_VALUE ? selectedYear : ''}`}
             <ChevronDown className={`w-3.5 h-3.5 text-ink/40 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
           </button>
           <div className="flex items-center h-[38px] bg-white border border-border rounded-[10px] px-3 gap-2 flex-1 max-w-[380px]">
@@ -727,11 +730,11 @@ export default function Savings() {
                   label={t('savings.goalLabel')}
                   value={selectedSavingId}
                   onChange={setSelectedSavingId}
-                  options={[{ value: '', label: 'Todos' }, ...savingOptions]}
+                  options={[{ value: '', label: t('filterSheet.allOption') }, ...savingOptions]}
                 />
               </div>
               {activeFiltersCount > 0 && (
-                <button type="button" onClick={clearFilters} className="text-xs text-[#B05C3A] hover:underline self-end pb-2">Limpar filtros</button>
+                <button type="button" onClick={clearFilters} className="text-xs text-[#B05C3A] hover:underline self-end pb-2">{t('common.clearFilters')}</button>
               )}
             </div>
           </div>
@@ -759,7 +762,7 @@ export default function Savings() {
                   label={t('savings.goalLabel')}
                   value={selectedSavingId}
                   onChange={setSelectedSavingId}
-                  options={[{ value: '', label: 'Todos' }, ...savingOptions]}
+                  options={[{ value: '', label: t('filterSheet.allOption') }, ...savingOptions]}
                 />
               </FilterSidebar>
             </div>
@@ -780,7 +783,7 @@ export default function Savings() {
                       <AnalyticsKpiCard
                         label={t('savings.kpiGlobalTarget')}
                         value={`${Math.min(globalProgressPct, 100)}%`}
-                        sub={`de ${formatBRL(globalTarget)}`}
+                        sub={t('savings.ofTarget', { amount: formatBRL(globalTarget) })}
                         iconTheme="orange"
                         icon={Target}
                       />
@@ -817,23 +820,23 @@ export default function Savings() {
                   {(periodDeposits > 0 || periodWithdrawals > 0) && (
                     <div className="bg-white rounded-xl border border-border shadow-soft p-4">
                       <h3 className="text-sm font-semibold text-ink font-serif mb-3">
-                        Movimentação: {monthLabelSav}{selectedYear !== ALL_YEARS_VALUE ? `/${selectedYear}` : ''}
+                        {t('savings.movementHeading')}: {monthLabelSav}{selectedYear !== ALL_YEARS_VALUE ? `/${selectedYear}` : ''}
                       </h3>
                       <div className="flex gap-3 flex-wrap">
                         {periodDeposits > 0 && (
                           <div className="flex-1 min-w-[100px] rounded-lg p-3 border" style={{ background: 'rgba(111,191,138,.08)', borderColor: 'rgba(111,191,138,.25)' }}>
-                            <p className="text-[9.5px] font-bold uppercase tracking-wide text-[#3E9E6A]/80 mb-1">Aportes</p>
+                            <p className="text-[9.5px] font-bold uppercase tracking-wide text-[#3E9E6A]/80 mb-1">{t('savings.deposits')}</p>
                             <p className="text-[15px] font-bold text-[#3E9E6A] tabular-nums">+{formatBRL(periodDeposits)}</p>
                           </div>
                         )}
                         {periodWithdrawals > 0 && (
                           <div className="flex-1 min-w-[100px] rounded-lg p-3 border" style={{ background: 'rgba(192,96,96,.08)', borderColor: 'rgba(192,96,96,.25)' }}>
-                            <p className="text-[9.5px] font-bold uppercase tracking-wide text-[#C06060]/80 mb-1">Resgates</p>
+                            <p className="text-[9.5px] font-bold uppercase tracking-wide text-[#C06060]/80 mb-1">{t('savings.withdrawals')}</p>
                             <p className="text-[15px] font-bold text-[#C06060] tabular-nums">−{formatBRL(periodWithdrawals)}</p>
                           </div>
                         )}
                         <div className="flex-1 min-w-[100px] rounded-lg p-3 border border-border bg-bg">
-                          <p className="text-[9.5px] font-bold uppercase tracking-wide text-ink/50 mb-1">Saldo líquido</p>
+                          <p className="text-[9.5px] font-bold uppercase tracking-wide text-ink/50 mb-1">{t('savings.netLabel')}</p>
                           <p className="text-[15px] font-bold tabular-nums" style={{ color: periodDeposits - periodWithdrawals >= 0 ? '#3E9E6A' : '#C06060' }}>
                             {periodDeposits - periodWithdrawals >= 0 ? '+' : ''}{formatBRL(periodDeposits - periodWithdrawals)}
                           </p>
@@ -848,7 +851,7 @@ export default function Savings() {
                 <div className="hidden md:block mb-5">
                   <div className="flex items-center gap-2.5 mb-3">
                     <span className="w-5 h-px bg-petrol/40" />
-                    <span className="text-[10.5px] tracking-[0.18em] uppercase font-semibold text-petrol/70">Objetivos</span>
+                    <span className="text-[10.5px] tracking-[0.18em] uppercase font-semibold text-petrol/70">{t('savings.title')}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     {savingTree.map((savingNode, i) => {
@@ -874,7 +877,7 @@ export default function Savings() {
                               <p className="font-serif text-[17px] text-coffee font-medium leading-tight">{savingNode.name}</p>
                               <p className="text-[11.5px] text-ink/50 mt-1">
                                 {savingNode.target_cents ? `${t('savings.targetAmount')} ${formatBRL(savingNode.target_cents)}` : t('savings.noTarget')}
-                                {lastDep > 0 ? ` · última + ${formatBRL(lastDep)}` : ''}
+                                {lastDep > 0 ? ` · ${t('savings.lastDepositAbbrev', { amount: formatBRL(lastDep) })}` : ''}
                               </p>
                             </div>
                             {pct !== null && (
@@ -894,14 +897,14 @@ export default function Savings() {
                               className="flex-1 flex items-center justify-center gap-1.5 py-[9px] rounded-[10px] text-white font-semibold text-[13px] border-none transition-vintage"
                               style={{ background: c }}
                             >
-                              <TrendingUp className="w-[13px] h-[13px]" /> Guardar
+                              <TrendingUp className="w-[13px] h-[13px]" /> {t('savings.depositButton')}
                             </button>
                             <button
                               type="button"
                               onClick={() => { setIsWithdrawalOpen(true); setWithdrawalForm({ ...emptyTxForm(), savingId: savingNode.id }) }}
                               className="flex-1 flex items-center justify-center gap-1.5 py-[9px] rounded-[10px] font-semibold text-[13px] border border-border bg-white text-coffee transition-vintage"
                             >
-                              <TrendingDown className="w-[13px] h-[13px]" /> Resgatar
+                              <TrendingDown className="w-[13px] h-[13px]" /> {t('savings.withdrawalButton')}
                             </button>
                           </div>
                           {savingNode.children.length > 0 && (
@@ -929,7 +932,7 @@ export default function Savings() {
               {/* Mobile per-saving cards - desktop has the table above */}
               {!loading && perSavingAnalytics.length > 0 && (
                 <div className="md:hidden space-y-2.5">
-                  <h3 className="text-sm font-semibold text-ink font-serif">Objetivos</h3>
+                  <h3 className="text-sm font-semibold text-ink font-serif">{t('savings.title')}</h3>
                   {perSavingAnalytics.map(({ saving, balance }) => {
                     const pct = saving.target_cents
                       ? Math.min(100, Math.round((balance / saving.target_cents) * 100))
@@ -949,7 +952,7 @@ export default function Savings() {
                               {saving.target_cents ? (
                                 <>
                                   <p className="text-xs font-medium text-ink/70 tabular-nums">{pct}%</p>
-                                  <p className="text-[10px] text-ink/40 tabular-nums">de {formatBRL(saving.target_cents)}</p>
+                                  <p className="text-[10px] text-ink/40 tabular-nums">{t('savings.ofTarget', { amount: formatBRL(saving.target_cents) })}</p>
                                 </>
                               ) : (
                                 <p className="text-xs text-ink/30">{t('savings.noTarget')}</p>
@@ -986,7 +989,7 @@ export default function Savings() {
         {/* Mobile footer - sticky outside scroll */}
         <div className="md:hidden shrink-0 h-[42px] flex items-center justify-center border-t border-border bg-offWhite">
           <p className="text-center text-[13px] text-gold italic">
-            Objetivo é o amanhã ganhando forma.
+            {t('savings.motivationalSubtitle')}
           </p>
         </div>
 
@@ -994,7 +997,7 @@ export default function Savings() {
         <footer className="hidden md:block mt-auto w-full">
           <div className="h-[56px] bg-paper flex items-center justify-center px-6">
             <p className="text-center text-[13px] text-gold italic">
-                Objetivo é o amanhã ganhando forma.
+                {t('savings.motivationalSubtitle')}
             </p>
           </div>
         </footer>
@@ -1037,7 +1040,7 @@ export default function Savings() {
           </div>
           <div>
             <label htmlFor="deposit-date" className="block font-serif font-body text-ink mb-2">
-              Data <span className="text-terracotta">*</span>
+              {t('savings.date')} <span className="text-terracotta">*</span>
             </label>
             <input
               id="deposit-date"
@@ -1045,7 +1048,7 @@ export default function Savings() {
               required
               value={depositForm.date}
               onChange={(e) => setDepositForm({ ...depositForm, date: e.target.value })}
-              aria-label="Data do depósito"
+              aria-label={t('savings.depositDateAria')}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
@@ -1058,7 +1061,7 @@ export default function Savings() {
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 resize-none"
               rows={3}
               placeholder={t('savings.notesPlaceholder')}
-              aria-label="Observação do depósito"
+              aria-label={t('savings.depositNotesAria')}
             />
           </div>
           <div className="flex gap-3 pt-4">
@@ -1085,7 +1088,7 @@ export default function Savings() {
           />
           <div>
             <label htmlFor="withdrawal-amount" className="block font-serif font-body text-ink mb-2">
-              Valor a resgatar (R$) <span className="text-terracotta">*</span>
+              {t('savings.withdrawalAmountLabel')} <span className="text-terracotta">*</span>
             </label>
             <CurrencyInput
               id="withdrawal-amount"
@@ -1097,7 +1100,7 @@ export default function Savings() {
           </div>
           <div>
             <label htmlFor="withdrawal-date" className="block font-serif font-body text-ink mb-2">
-              Data <span className="text-terracotta">*</span>
+              {t('savings.date')} <span className="text-terracotta">*</span>
             </label>
             <input
               id="withdrawal-date"
@@ -1105,7 +1108,7 @@ export default function Savings() {
               required
               value={withdrawalForm.date}
               onChange={(e) => setWithdrawalForm({ ...withdrawalForm, date: e.target.value })}
-              aria-label="Data do resgate"
+              aria-label={t('savings.withdrawalDateAria')}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
@@ -1190,7 +1193,7 @@ export default function Savings() {
               required
               value={editForm.name}
               onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-              aria-label="Nome do objetivo"
+              aria-label={t('savings.goalNameAria')}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>

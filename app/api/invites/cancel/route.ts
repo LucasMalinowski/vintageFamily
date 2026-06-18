@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 
 function getAccessToken(request: Request) {
   const header = request.headers.get('authorization')
@@ -9,19 +11,22 @@ function getAccessToken(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
+
   const accessToken = getAccessToken(request)
   if (!accessToken) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 })
   }
 
   const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken)
   if (authError || !authData.user) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 })
   }
 
   const { inviteId } = await request.json()
   if (!inviteId) {
-    return NextResponse.json({ error: 'Convite obrigatório.' }, { status: 400 })
+    return NextResponse.json({ error: t('invites.inviteRequired') }, { status: 400 })
   }
 
   const { data: requester, error: requesterError } = await supabaseAdmin
@@ -31,11 +36,11 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   if (requesterError || !requester) {
-    return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 400 })
+    return NextResponse.json({ error: t('invites.profileNotFound') }, { status: 400 })
   }
 
   if (requester.role !== 'admin') {
-    return NextResponse.json({ error: 'Apenas administradores.' }, { status: 403 })
+    return NextResponse.json({ error: t('invites.adminsOnly') }, { status: 403 })
   }
 
   const { data: invite, error: inviteError } = await supabaseAdmin
@@ -45,20 +50,20 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   if (inviteError || !invite) {
-    return NextResponse.json({ error: 'Convite não encontrado.' }, { status: 404 })
+    return NextResponse.json({ error: t('invites.inviteNotFound') }, { status: 404 })
   }
 
   if (invite.family_id !== requester.family_id) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 403 })
+    return NextResponse.json({ error: t('common.unauthorized') }, { status: 403 })
   }
 
   if (invite.accepted) {
-    return NextResponse.json({ error: 'Convite já aceito.' }, { status: 409 })
+    return NextResponse.json({ error: t('invites.alreadyAccepted') }, { status: 409 })
   }
 
   const { error: deleteError } = await supabaseAdmin.from('invites').delete().eq('id', inviteId)
   if (deleteError) {
-    return NextResponse.json({ error: 'Erro ao cancelar convite.' }, { status: 500 })
+    return NextResponse.json({ error: t('invites.cancelFailed') }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

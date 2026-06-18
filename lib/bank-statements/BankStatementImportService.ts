@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { OfxStatementParser } from '@/lib/bank-statements/OfxStatementParser'
 import { CsvStatementParser } from '@/lib/bank-statements/CsvStatementParser'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 import type {
   BankId,
   ImportPreviewItem,
@@ -38,6 +39,106 @@ interface ImportRequest {
   fileName: string
   familyId: string
   userId: string
+  locale?: AppLocale
+}
+
+// ─── User-facing strings (errors/warnings surfaced in the import review UI) ──
+// Plain in-file translation table (no async/React context here, same approach
+// as lib/mailer.ts / lib/forecast/narrator.ts elsewhere in the app).
+const STRINGS: Record<AppLocale, {
+  createBatch: string
+  createTechCategory: string
+  loadTechCategories: string
+  saveExpenses: string
+  saveIncomes: string
+  validateCategories: string
+  duplicateFile: string
+  reviewKeyMismatch: string
+  invalidCategory: string
+  invalidCategoryKind: string
+  noTransactionsFound: string
+  categoryResolutionFailed: string
+  emptyDescription: string
+  duplicatesIgnoredWarning: (count: number) => string
+  lowConfidenceSavedWarning: (count: number) => string
+  duplicatesDetectedWarning: (count: number) => string
+  lowConfidenceReviewWarning: (count: number) => string
+}> = {
+  'pt-BR': {
+    createBatch: 'Não foi possível criar o lote de importação.',
+    createTechCategory: 'Não foi possível criar a categoria técnica da importação.',
+    loadTechCategories: 'Não foi possível carregar as categorias técnicas da importação.',
+    saveExpenses: 'Não foi possível gravar as despesas importadas.',
+    saveIncomes: 'Não foi possível gravar as receitas importadas.',
+    validateCategories: 'Não foi possível validar as categorias escolhidas na revisão.',
+    duplicateFile: 'Este arquivo já foi importado para esta família.',
+    reviewKeyMismatch: 'A revisão enviada não corresponde ao arquivo analisado.',
+    invalidCategory: 'Uma das categorias escolhidas não pertence à família atual.',
+    invalidCategoryKind: 'A categoria escolhida não corresponde ao tipo do lançamento.',
+    noTransactionsFound: 'Nenhuma movimentação foi reconhecida nesse arquivo.',
+    categoryResolutionFailed: 'A categoria técnica de importação não pôde ser resolvida.',
+    emptyDescription: 'A descrição revisada não pode ficar vazia.',
+    duplicatesIgnoredWarning: (count) =>
+      count === 1 ? '1 lançamento foi ignorado por duplicidade.' : `${count} lançamentos foram ignorados por duplicidade.`,
+    lowConfidenceSavedWarning: (count) =>
+      count === 1 ? '1 lançamento foi gravado com baixa confiança.' : `${count} lançamentos foram gravados com baixa confiança.`,
+    duplicatesDetectedWarning: (count) =>
+      count === 1
+        ? '1 lançamento parece duplicado e começará marcado para ignorar.'
+        : `${count} lançamentos parecem duplicados e começarão marcados para ignorar.`,
+    lowConfidenceReviewWarning: (count) =>
+      count === 1 ? '1 lançamento exige revisão por baixa confiança.' : `${count} lançamentos exigem revisão por baixa confiança.`,
+  },
+  en: {
+    createBatch: 'Unable to create the import batch.',
+    createTechCategory: 'Unable to create import technical category.',
+    loadTechCategories: 'Unable to load import technical categories.',
+    saveExpenses: 'Unable to save imported expenses.',
+    saveIncomes: 'Unable to save imported income records.',
+    validateCategories: 'Unable to validate the selected categories.',
+    duplicateFile: 'This file has already been imported for this family.',
+    reviewKeyMismatch: "The submitted review doesn't match the analyzed file.",
+    invalidCategory: "One of the chosen categories doesn't belong to the current family.",
+    invalidCategoryKind: "The chosen category doesn't match the transaction type.",
+    noTransactionsFound: 'No transactions were recognized in this file.',
+    categoryResolutionFailed: "The import's technical category couldn't be resolved.",
+    emptyDescription: "The reviewed description can't be empty.",
+    duplicatesIgnoredWarning: (count) =>
+      count === 1 ? '1 transaction was ignored due to duplication.' : `${count} transactions were ignored due to duplication.`,
+    lowConfidenceSavedWarning: (count) =>
+      count === 1 ? '1 transaction was saved with low confidence.' : `${count} transactions were saved with low confidence.`,
+    duplicatesDetectedWarning: (count) =>
+      count === 1
+        ? '1 transaction looks like a duplicate and will start marked to ignore.'
+        : `${count} transactions look like duplicates and will start marked to ignore.`,
+    lowConfidenceReviewWarning: (count) =>
+      count === 1 ? '1 transaction requires review due to low confidence.' : `${count} transactions require review due to low confidence.`,
+  },
+  es: {
+    createBatch: 'No se pudo crear el lote de importación.',
+    createTechCategory: 'No se pudo crear la categoría técnica de importación.',
+    loadTechCategories: 'No se pudieron cargar las categorías técnicas de importación.',
+    saveExpenses: 'No se pudieron guardar los gastos importados.',
+    saveIncomes: 'No se pudieron guardar los ingresos importados.',
+    validateCategories: 'No se pudieron validar las categorías seleccionadas.',
+    duplicateFile: 'Este archivo ya fue importado para esta familia.',
+    reviewKeyMismatch: 'La revisión enviada no corresponde al archivo analizado.',
+    invalidCategory: 'Una de las categorías elegidas no pertenece a la familia actual.',
+    invalidCategoryKind: 'La categoría elegida no corresponde al tipo de transacción.',
+    noTransactionsFound: 'No se reconoció ningún movimiento en este archivo.',
+    categoryResolutionFailed: 'No se pudo resolver la categoría técnica de la importación.',
+    emptyDescription: 'La descripción revisada no puede quedar vacía.',
+    duplicatesIgnoredWarning: (count) =>
+      count === 1 ? '1 transacción fue ignorada por duplicidad.' : `${count} transacciones fueron ignoradas por duplicidad.`,
+    lowConfidenceSavedWarning: (count) =>
+      count === 1 ? '1 transacción fue guardada con baja confianza.' : `${count} transacciones fueron guardadas con baja confianza.`,
+    duplicatesDetectedWarning: (count) =>
+      count === 1
+        ? '1 transacción parece duplicada y comenzará marcada para ignorar.'
+        : `${count} transacciones parecen duplicadas y comenzarán marcadas para ignorar.`,
+    lowConfidenceReviewWarning: (count) =>
+      count === 1 ? '1 transacción requiere revisión por baja confianza.' : `${count} transacciones requieren revisión por baja confianza.`,
+  },
 }
 
 interface AnalyzedImportItem {
@@ -70,7 +171,8 @@ export class BankStatementImportService {
   ) {}
 
   async preview(request: ImportRequest): Promise<ImportPreviewResult> {
-    const analyzed = await this.analyzeImport(request)
+    const strings = STRINGS[request.locale ?? 'pt-BR']
+    const analyzed = await this.analyzeImport(request, strings)
 
     return {
       bank: request.bank,
@@ -100,7 +202,8 @@ export class BankStatementImportService {
   }
 
 	  async commit(request: CommitRequest): Promise<ImportResult> {
-	    const analyzed = await this.analyzeImport(request)
+	    const strings = STRINGS[request.locale ?? 'pt-BR']
+	    const analyzed = await this.analyzeImport(request, strings)
 	    const batchId = globalThis.crypto.randomUUID()
 	    const importedAt = new Date().toISOString()
 
@@ -122,7 +225,7 @@ export class BankStatementImportService {
         batchInsertError.message.includes('bank_statement_import_batches_family_file_hash_unique_idx')
       ) {
         throw new BankStatementImportError(
-          'Este arquivo já foi importado para esta família.',
+          strings.duplicateFile,
           409,
           'duplicate_file',
           batchInsertError.message
@@ -130,7 +233,7 @@ export class BankStatementImportService {
       }
 
       throw new BankStatementImportError(
-        'Não foi possível criar o lote de importação.',
+        strings.createBatch,
         500,
         'batch_create_failed',
         batchInsertError.message
@@ -141,7 +244,7 @@ export class BankStatementImportService {
     const validReviewKeys = new Set(analyzed.items.map((item) => item.previewKey))
     const unknownReviewKey = request.reviewedItems.find((item) => !validReviewKeys.has(item.previewKey))
     if (unknownReviewKey) {
-      throw new BankStatementImportError('A revisão enviada não corresponde ao arquivo analisado.', 422, 'review_key_mismatch')
+      throw new BankStatementImportError(strings.reviewKeyMismatch, 422, 'review_key_mismatch')
     }
 
     const selectedCategoryIds: string[] = []
@@ -150,7 +253,7 @@ export class BankStatementImportService {
         selectedCategoryIds.push(item.categoryId)
       }
     }
-    const availableCategories = await this.loadCategoriesByIds(request.familyId, selectedCategoryIds)
+    const availableCategories = await this.loadCategoriesByIds(request.familyId, selectedCategoryIds, strings)
 
     const committedItems = analyzed.items.flatMap((entry) => {
       const review = reviewedByKey.get(entry.previewKey)
@@ -161,15 +264,15 @@ export class BankStatementImportService {
       }
 
       const nextType = review?.type ?? entry.item.type
-      const nextDescription = this.sanitizeDescription(review?.description?.trim() ? review.description : entry.item.description)
+      const nextDescription = this.sanitizeDescription(review?.description?.trim() ? review.description : entry.item.description, strings)
       const selectedCategory = review?.categoryId ? availableCategories.get(review.categoryId) : null
 
       if (review?.categoryId && !selectedCategory) {
-        throw new BankStatementImportError('Uma das categorias escolhidas não pertence à família atual.', 422, 'invalid_category')
+        throw new BankStatementImportError(strings.invalidCategory, 422, 'invalid_category')
       }
 
       if (selectedCategory && selectedCategory.kind !== nextType) {
-        throw new BankStatementImportError('A categoria escolhida não corresponde ao tipo do lançamento.', 422, 'invalid_category_kind')
+        throw new BankStatementImportError(strings.invalidCategoryKind, 422, 'invalid_category_kind')
       }
 
       return [{
@@ -191,7 +294,7 @@ export class BankStatementImportService {
         selectedCategoryName: selectedCategory?.name || null,
       }]
     })
-    const categories = await this.ensureImportCategories(request.familyId)
+    const categories = await this.ensureImportCategories(request.familyId, strings)
 
     const incomeRows: Database['public']['Tables']['incomes']['Insert'][] = []
     const expenseRows: Database['public']['Tables']['expenses']['Insert'][] = []
@@ -250,7 +353,7 @@ export class BankStatementImportService {
       const result = await this.insertRowsIgnoringDuplicates('incomes', incomeRows)
       if (result.error) {
         throw new BankStatementImportError(
-          'Não foi possível gravar as receitas importadas.',
+          strings.saveIncomes,
           500,
           'income_insert_failed',
           result.error.message
@@ -264,7 +367,7 @@ export class BankStatementImportService {
       const result = await this.insertRowsIgnoringDuplicates('expenses', expenseRows)
       if (result.error) {
         throw new BankStatementImportError(
-          'Não foi possível gravar as despesas importadas.',
+          strings.saveExpenses,
           500,
           'expense_insert_failed',
           result.error.message
@@ -283,10 +386,10 @@ export class BankStatementImportService {
 
     const warnings: string[] = []
     if (summary.duplicatesIgnored > 0) {
-      warnings.push(`${summary.duplicatesIgnored} lançamento(s) foram ignorados por duplicidade.`)
+      warnings.push(strings.duplicatesIgnoredWarning(summary.duplicatesIgnored))
     }
     if (summary.lowConfidenceCount > 0) {
-      warnings.push(`${summary.lowConfidenceCount} lançamento(s) foram gravados com baixa confiança.`)
+      warnings.push(strings.lowConfidenceSavedWarning(summary.lowConfidenceCount))
     }
 
     await this.db
@@ -314,11 +417,11 @@ export class BankStatementImportService {
     }
   }
 
-  private async analyzeImport(request: ImportRequest) {
+  private async analyzeImport(request: ImportRequest, strings: typeof STRINGS[AppLocale]) {
     const { items, parserWarnings } = this.extractTransactions(request)
 
     if (!items.length) {
-      throw new BankStatementImportError('Nenhuma movimentação foi reconhecida nesse arquivo.', 422, 'no_transactions_found')
+      throw new BankStatementImportError(strings.noTransactionsFound, 422, 'no_transactions_found')
     }
 
     const countsByHash = new Map<string, number>()
@@ -367,10 +470,10 @@ export class BankStatementImportService {
 
     const warnings: string[] = [...parserWarnings]
     if (summary.duplicatesDetected > 0) {
-      warnings.push(`${summary.duplicatesDetected} lançamento(s) parecem duplicados e começarão marcados para ignorar.`)
+      warnings.push(strings.duplicatesDetectedWarning(summary.duplicatesDetected))
     }
     if (summary.lowConfidenceCount > 0) {
-      warnings.push(`${summary.lowConfidenceCount} lançamento(s) exigem revisão por baixa confiança.`)
+      warnings.push(strings.lowConfidenceReviewWarning(summary.lowConfidenceCount))
     }
 
     return {
@@ -383,17 +486,18 @@ export class BankStatementImportService {
 
   private extractTransactions(request: ImportRequest): { items: ParsedStatementTransaction[]; parserWarnings: string[] } {
     const content = request.file.toString('utf-8')
+    const locale = request.locale ?? 'pt-BR'
 
     if (request.format === 'ofx') {
-      const parsed = new OfxStatementParser(request.bank).parse(content)
+      const parsed = new OfxStatementParser(request.bank, locale).parse(content)
       return { items: parsed.items, parserWarnings: parsed.warnings }
     }
 
-    const parsed = new CsvStatementParser(request.bank).parse(content)
+    const parsed = new CsvStatementParser(request.bank, locale).parse(content)
     return { items: parsed.items, parserWarnings: parsed.warnings }
   }
 
-  private async ensureImportCategories(familyId: string) {
+  private async ensureImportCategories(familyId: string, strings: typeof STRINGS[AppLocale]) {
     const { data, error } = await this.db
       .from('categories')
       .select('id,kind,name')
@@ -402,7 +506,7 @@ export class BankStatementImportService {
 
     if (error) {
       throw new BankStatementImportError(
-        'Não foi possível carregar as categorias técnicas da importação.',
+        strings.loadTechCategories,
         500,
         'category_lookup_failed',
         error.message
@@ -420,7 +524,7 @@ export class BankStatementImportService {
       const { data: created, error: createError } = await this.db.from('categories').insert(toCreate).select('id,kind')
       if (createError) {
         throw new BankStatementImportError(
-          'Não foi possível criar a categoria técnica da importação.',
+          strings.createTechCategory,
           500,
           'category_create_failed',
           createError.message
@@ -432,13 +536,13 @@ export class BankStatementImportService {
     }
 
     if (!incomeId || !expenseId) {
-      throw new BankStatementImportError('A categoria técnica de importação não pôde ser resolvida.', 500, 'category_resolution_failed')
+      throw new BankStatementImportError(strings.categoryResolutionFailed, 500, 'category_resolution_failed')
     }
 
     return { incomeId, expenseId }
   }
 
-  private async loadCategoriesByIds(familyId: string, categoryIds: string[]) {
+  private async loadCategoriesByIds(familyId: string, categoryIds: string[], strings: typeof STRINGS[AppLocale]) {
     if (!categoryIds.length) {
       return new Map<string, { id: string; kind: 'income' | 'expense'; name: string }>()
     }
@@ -451,7 +555,7 @@ export class BankStatementImportService {
 
     if (error) {
       throw new BankStatementImportError(
-        'Não foi possível validar as categorias escolhidas na revisão.',
+        strings.validateCategories,
         500,
         'category_review_lookup_failed',
         error.message
@@ -509,10 +613,10 @@ export class BankStatementImportService {
     return { insertedCount, error: null as { message: string; code?: string } | null }
   }
 
-  private sanitizeDescription(value: string) {
+  private sanitizeDescription(value: string, strings: typeof STRINGS[AppLocale]) {
     const normalized = value.trim().replace(/\s+/g, ' ')
     if (!normalized) {
-      throw new BankStatementImportError('A descrição revisada não pode ficar vazia.', 422, 'invalid_review_description')
+      throw new BankStatementImportError(strings.emptyDescription, 422, 'invalid_review_description')
     }
 
     return normalized

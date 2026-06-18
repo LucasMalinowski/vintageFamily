@@ -3,6 +3,7 @@
 import { Fragment } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { X } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 interface RightDrawerProps {
   isOpen: boolean
@@ -23,6 +24,7 @@ export default function RightDrawer({
   children,
   size = 'md',
 }: RightDrawerProps) {
+  const t = useTranslations()
   const sizeClasses: Record<string, string> = {
     sm: 'max-w-md',
     md: 'max-w-lg',
@@ -85,7 +87,7 @@ export default function RightDrawer({
                   type="button"
                   onClick={onClose}
                   className="text-ink/40 hover:text-ink transition-vintage shrink-0 mt-0.5"
-                  aria-label="Fechar"
+                  aria-label={t('common.close')}
                 >
                   <X className="w-5 h-5" />
                 </button>

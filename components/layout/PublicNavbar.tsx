@@ -84,7 +84,7 @@ export default function PublicNavbar({ color = 'sidebar', showWordmark = true }:
             className={`${theme.link} transition-vintage ${isAbout ? theme.active : ''}`}
             aria-current={isAbout ? 'page' : undefined}
           >
-            Sobre nós
+            {t('publicNav.about')}
           </Link>
           <Link
             href="/plans"

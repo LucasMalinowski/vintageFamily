@@ -4,9 +4,13 @@ import PublicNavbar from '@/components/layout/PublicNavbar'
 import PublicFooter from '@/components/layout/PublicFooter'
 import { getUserLocale } from '@/lib/i18n/getLocale'
 
-export const metadata: Metadata = {
-  title: 'Suporte',
-  description: 'Central de suporte do Florim. Entre em contato com nossa equipe ou encontre respostas para as dúvidas mais comuns.',
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getUserLocale()
+  const msgs = (await import(`@/messages/${locale}.json`)).default as any
+  return {
+    title: msgs.support.title,
+    description: msgs.seo.support.description,
+  }
 }
 
 export default async function SupportPage() {

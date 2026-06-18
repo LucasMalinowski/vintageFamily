@@ -3,6 +3,7 @@
 import { Fragment } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { AlertTriangle } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 interface ConfirmModalProps {
   isOpen: boolean
@@ -19,12 +20,13 @@ export default function ConfirmModal({
   isOpen,
   onClose,
   onConfirm,
-  title = 'Confirmar',
+  title,
   message,
-  confirmLabel = 'Confirmar',
+  confirmLabel,
   confirmAccent = '#B05C3A',
   loading = false,
 }: ConfirmModalProps) {
+  const t = useTranslations()
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-[200]" onClose={onClose}>
@@ -51,7 +53,7 @@ export default function ConfirmModal({
                   <AlertTriangle className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <Dialog.Title className="font-serif text-[17px] text-coffee">{title}</Dialog.Title>
+                  <Dialog.Title className="font-serif text-[17px] text-coffee">{title ?? t('common.confirm')}</Dialog.Title>
                   <p className="text-[13px] text-ink/65 mt-1 leading-snug">{message}</p>
                 </div>
               </div>
@@ -63,7 +65,7 @@ export default function ConfirmModal({
                   disabled={loading}
                   className="flex-1 px-4 py-2.5 rounded-[10px] border border-border bg-white text-[13px] font-medium text-ink hover:bg-paper transition-vintage disabled:opacity-50"
                 >
-                  Cancelar
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="button"
@@ -72,7 +74,7 @@ export default function ConfirmModal({
                   className="flex-1 px-4 py-2.5 rounded-[10px] text-white text-[13px] font-semibold transition-vintage disabled:opacity-50"
                   style={{ background: confirmAccent }}
                 >
-                  {loading ? 'Aguarde...' : confirmLabel}
+                  {loading ? t('common.pleaseWait') : (confirmLabel ?? t('common.confirm'))}
                 </button>
               </div>
             </Dialog.Panel>

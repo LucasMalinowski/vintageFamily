@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { BarChart3, Bell, Calendar, Check, Plus, PiggyBank, Receipt, Sparkles, Trash2, TrendingUp, Lightbulb } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '../AuthProvider'
@@ -11,45 +11,95 @@ import CalmaView from '@/components/inicio/CalmaView'
 import VintageCard from '../ui/VintageCard'
 import Modal from '../ui/Modal'
 import Select from '../ui/Select'
-import { formatDate, isDueDateToday, isDueDateOverdue, getCurrentMonth, getCurrentYear } from '@/lib/dates'
+import { formatDate, formatMonth, isDueDateToday, isDueDateOverdue, getCurrentMonth, getCurrentYear } from '@/lib/dates'
+import { resolveCategoryName } from '@/lib/categories'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
 import { loadCategoryLimitsForMonth, type CategoryLimitRow, limitBarColor, formatLimitBadge } from '@/lib/categoryLimits'
 import { formatBRL } from '@/lib/money'
 import ForecastCard from '@/components/dashboard/ForecastCard'
 
-const PHRASES = [
-  'Organizar o dinheiro é cuidar do tempo que ainda vamos viver.',
-  'O amor também mora nos detalhes do orçamento.',
-  'Cuidar do dinheiro da casa é cuidar do tempo juntos.',
-  'Cada real guardado é um passo mais leve amanhã.',
-  'A paz começa quando os números fazem sentido.',
-  'Planejar juntos é a linguagem do cuidado.',
-  'Dinheiro bem cuidado, família bem vivida.',
-  'O futuro agradece o planejamento de hoje.',
-  'Juntos, cada conta paga é uma vitória da família.',
-  'Gastar com consciência é um ato de amor.',
-  'Pequenos controles, grandes tranquilidades.',
-  'Quando o dinheiro está em ordem, a mente respira.',
-  'A família que planeja junta, conquista junta.',
-  'Economizar hoje é presentear o amanhã.',
-  'Cada escolha financeira é um voto de confiança no futuro.',
-  'O orçamento é o mapa do lar.',
-  'Simplicidade financeira, riqueza de momentos.',
-  'Finanças em dia, vida mais leve.',
-  'Quem cuida do centavo, cuida do sonho.',
-  'Lembrar com calma também é uma forma de cuidar da casa.',
-]
+const PHRASES: Record<AppLocale, string[]> = {
+  'pt-BR': [
+    'Organizar o dinheiro é cuidar do tempo que ainda vamos viver.',
+    'O amor também mora nos detalhes do orçamento.',
+    'Cuidar do dinheiro da casa é cuidar do tempo juntos.',
+    'Cada real guardado é um passo mais leve amanhã.',
+    'A paz começa quando os números fazem sentido.',
+    'Planejar juntos é a linguagem do cuidado.',
+    'Dinheiro bem cuidado, família bem vivida.',
+    'O futuro agradece o planejamento de hoje.',
+    'Juntos, cada conta paga é uma vitória da família.',
+    'Gastar com consciência é um ato de amor.',
+    'Pequenos controles, grandes tranquilidades.',
+    'Quando o dinheiro está em ordem, a mente respira.',
+    'A família que planeja junta, conquista junta.',
+    'Economizar hoje é presentear o amanhã.',
+    'Cada escolha financeira é um voto de confiança no futuro.',
+    'O orçamento é o mapa do lar.',
+    'Simplicidade financeira, riqueza de momentos.',
+    'Finanças em dia, vida mais leve.',
+    'Quem cuida do centavo, cuida do sonho.',
+    'Lembrar com calma também é uma forma de cuidar da casa.',
+  ],
+  en: [
+    'Organizing money is taking care of the time we still get to live.',
+    'Love lives in the details of the budget too.',
+    'Caring for the household money is caring for time together.',
+    'Every dollar saved is a lighter step tomorrow.',
+    'Peace begins when the numbers make sense.',
+    'Planning together is the language of care.',
+    'Money well cared for, family well lived.',
+    'The future thanks the planning of today.',
+    'Together, every bill paid is a family victory.',
+    'Spending with awareness is an act of love.',
+    'Small controls, great peace of mind.',
+    'When money is in order, the mind can breathe.',
+    'The family that plans together, achieves together.',
+    'Saving today is a gift to tomorrow.',
+    'Every financial choice is a vote of confidence in the future.',
+    'The budget is the map of the home.',
+    'Financial simplicity, richness of moments.',
+    'Finances in order, a lighter life.',
+    'Whoever cares for the cent, cares for the dream.',
+    'Remembering calmly is also a way of caring for the home.',
+  ],
+  es: [
+    'Organizar el dinero es cuidar el tiempo que aún vamos a vivir.',
+    'El amor también vive en los detalles del presupuesto.',
+    'Cuidar el dinero de casa es cuidar el tiempo juntos.',
+    'Cada real ahorrado es un paso más liviano mañana.',
+    'La paz comienza cuando los números tienen sentido.',
+    'Planear juntos es el lenguaje del cuidado.',
+    'Dinero bien cuidado, familia bien vivida.',
+    'El futuro agradece la planificación de hoy.',
+    'Juntos, cada cuenta pagada es una victoria de la familia.',
+    'Gastar con conciencia es un acto de amor.',
+    'Pequeños controles, grandes tranquilidades.',
+    'Cuando el dinero está en orden, la mente respira.',
+    'La familia que planea junta, conquista junta.',
+    'Ahorrar hoy es un regalo para el mañana.',
+    'Cada decisión financiera es un voto de confianza en el futuro.',
+    'El presupuesto es el mapa del hogar.',
+    'Simplicidad financiera, riqueza de momentos.',
+    'Finanzas en orden, vida más liviana.',
+    'Quien cuida el centavo, cuida el sueño.',
+    'Recordar con calma también es una forma de cuidar la casa.',
+  ],
+}
 
-function pickNext(current: string): string {
-  const pool = PHRASES.filter((p) => p !== current)
+function pickNext(current: string, phrases: string[]): string {
+  const pool = phrases.filter((p) => p !== current)
   return pool[Math.floor(Math.random() * pool.length)]
 }
 
-function useTypewriter() {
+function useTypewriter(phrases: string[]) {
   const [displayed, setDisplayed] = useState('')
   const [cursor, setCursor] = useState(true)
-  const [initialPhrase] = useState(() => PHRASES[Math.floor(Math.random() * PHRASES.length)])
+  const [initialPhrase] = useState(() => phrases[Math.floor(Math.random() * phrases.length)])
   const phraseRef = useRef(initialPhrase)
+  const phrasesRef = useRef(phrases)
+  phrasesRef.current = phrases
   const indexRef = useRef(0)
   const directionRef = useRef<'typing' | 'deleting'>('typing')
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -77,7 +127,7 @@ function useTypewriter() {
           setDisplayed(phrase.slice(0, indexRef.current))
           timerRef.current = setTimeout(tick, 35 + Math.random() * 20)
         } else {
-          phraseRef.current = pickNext(phraseRef.current)
+          phraseRef.current = pickNext(phraseRef.current, phrasesRef.current)
           directionRef.current = 'typing'
           setDisplayed('')
           timerRef.current = setTimeout(tick, 400)
@@ -107,11 +157,19 @@ interface Reminder {
 
 type ReminderFilter = 'pending' | 'done' | null
 
+type EmbeddedCategory = { name: string; name_en: string | null; name_es: string | null }
+
 interface Payable {
   id: string
   description: string
   date: string
   category_name: string
+  categories: EmbeddedCategory | EmbeddedCategory[] | null
+}
+
+function payableCategoryLabel(payable: Payable, locale: AppLocale): string {
+  const embedded = Array.isArray(payable.categories) ? payable.categories[0] : payable.categories
+  return embedded ? resolveCategoryName(embedded, locale) : payable.category_name
 }
 
 function DesktopHeroCard({
@@ -120,20 +178,23 @@ function DesktopHeroCard({
   expenseOpen,
   expenseOverdue,
   incomeTotal,
+  t,
 }: {
   familyName: string
   expensePaid: number
   expenseOpen: number
   expenseOverdue: number
   incomeTotal: number
+  t: ReturnType<typeof useTranslations>
 }) {
   const totalExpenses = expensePaid + expenseOpen + expenseOverdue
   const balance = incomeTotal - totalExpenses
   const paidPct = totalExpenses > 0 ? Math.round((expensePaid / totalExpenses) * 100) : 0
   const openPct = totalExpenses > 0 ? Math.round((expenseOpen / totalExpenses) * 100) : 0
   const overduePct = totalExpenses > 0 ? Math.round((expenseOverdue / totalExpenses) * 100) : 0
+  const locale = useLocale() as AppLocale
   const now = new Date()
-  const monthLabel = now.toLocaleString('pt-BR', { month: 'long' })
+  const monthLabel = formatMonth(now.getMonth() + 1, locale)
   const yearLabel = now.getFullYear()
 
   return (
@@ -155,18 +216,18 @@ function DesktopHeroCard({
       <div className="relative flex items-start justify-between gap-6">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] tracking-[0.2em] uppercase font-semibold text-white/55 mb-1">
-            Família {familyName || '-'} · {monthLabel} {yearLabel}
+            {t('dashboard.familyLabel', { familyName: familyName || '-' })} · {monthLabel} {yearLabel}
           </p>
           <p className="font-serif font-light text-[28px] text-white/90 leading-tight mb-4">
-            Livro de Finanças da Família
+            {t('dashboard.familyFinanceBook')}
           </p>
           <p className="font-numbers font-bold text-[42px] text-white leading-none tracking-[-1px] tabular-nums">
             {formatBRL(Math.max(balance, 0))}
           </p>
-          <p className="text-[12.5px] text-white/60 mt-1">Saldo estimado do mês</p>
+          <p className="text-[12.5px] text-white/60 mt-1">{t('dashboard.estimatedMonthBalance')}</p>
         </div>
         <p className="font-serif italic text-[13px] text-white/65 max-w-[220px] text-right leading-relaxed hidden lg:block">
-          &ldquo;Organizar o dinheiro é cuidar do tempo que ainda vamos viver.&rdquo;
+          &ldquo;{t('dashboard.heroQuote')}&rdquo;
         </p>
       </div>
 
@@ -180,9 +241,9 @@ function DesktopHeroCard({
           </div>
           <div className="flex gap-5 mt-2.5">
             {[
-              { label: 'Pago',      color: '#6FBF8A', pct: paidPct,    val: expensePaid },
-              { label: 'Em aberto', color: '#C2A45D', pct: openPct,    val: expenseOpen },
-              { label: 'Atrasado',  color: '#B05C3A', pct: overduePct, val: expenseOverdue },
+              { label: t('expenses.statusPaid'), color: '#6FBF8A', pct: paidPct,    val: expensePaid },
+              { label: t('expenses.statusOpen'), color: '#C2A45D', pct: openPct,    val: expenseOpen },
+              { label: t('reminders.overdue'),   color: '#B05C3A', pct: overduePct, val: expenseOverdue },
             ].map((seg) => (
               <div key={seg.label} className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ background: seg.color }} />
@@ -202,7 +263,9 @@ function DesktopHeroCard({
 
 export default function Dashboard() {
   const t = useTranslations()
-  const { displayed, cursor } = useTypewriter()
+  const locale = useLocale() as AppLocale
+  const phrases = PHRASES[locale]
+  const { displayed, cursor } = useTypewriter(phrases)
 
   // ── Vista Calma ────────────────────────────────────────────────
   const [calmaMode, setCalmaMode] = useState(() =>
@@ -346,7 +409,7 @@ export default function Dashboard() {
     try {
       const { data, error } = await supabase
         .from('expenses')
-        .select('id,description,date,category_name')
+        .select('id,description,date,category_name,categories(name,name_en,name_es)')
         .eq('family_id', familyId!)
         .eq('status', 'open')
         .order('date', { ascending: true })
@@ -519,7 +582,7 @@ export default function Dashboard() {
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                Aconchego
+                {t('dashboard.calmModeLabel')}
               </button>
               <button
                 type="button"
@@ -531,7 +594,7 @@ export default function Dashboard() {
                 }`}
               >
                 <BarChart3 className="w-3.5 h-3.5" />
-                Informativo
+                {t('dashboard.informativeModeLabel')}
               </button>
             </div>
 
@@ -557,8 +620,8 @@ export default function Dashboard() {
                     boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
                   }}
                 >
-                  Alterne entre a vista<br />
-                  <strong>Aconchego</strong> e <strong>Informativa</strong>
+                  {t('dashboard.modeHintLine1')}<br />
+                  <strong>{t('dashboard.calmModeLabel')}</strong> {t('dashboard.modeHintAnd')} <strong>{t('dashboard.informativeModeLabelFem')}</strong>
                 </div>
               </div>
             )}
@@ -570,10 +633,10 @@ export default function Dashboard() {
         {/* Mobile hero - full-width, no rounded corners */}
         <div className="md:hidden bg-[url('/texture-green.png')] bg-cover bg-center py-8 text-center text-paper">
           <p className="text-[10px] tracking-[0.22em] uppercase text-paper/60 mb-3 font-medium">
-            Família {familyName || '-'}
+            {t('dashboard.familyNameOnly', { familyName: familyName || '-' })}
           </p>
           <h1 className="text-3xl font-serif font-thin text-paper leading-snug px-6">
-            Livro de Finanças<br/>da Família {familyName || '-'}
+            {t('dashboard.familyFinanceBook')}<br/>{t('dashboard.familyFinanceBookOf', { familyName: familyName || '-' })}
           </h1>
           <div className="w-10 h-px bg-gold/60 mx-auto mt-5" />
         </div>
@@ -588,6 +651,7 @@ export default function Dashboard() {
                 expenseOpen={monthStats.expenseOpen}
                 expenseOverdue={monthStats.expenseOverdue}
                 incomeTotal={monthStats.incomeTotal}
+                t={t}
               />
             </div>
           )}
@@ -595,10 +659,10 @@ export default function Dashboard() {
           {/* Quick actions — desktop only */}
           <div className="hidden md:grid grid-cols-4 gap-3 mb-4">
             {[
-              { label: 'Nova despesa', sub: 'Conta, compra, parcela', color: '#B05C3A', href: '/expenses', Icon: Receipt },
-              { label: 'Nova receita', sub: 'Salário, freelance',      color: '#3E8E5C', href: '/incomes',  Icon: TrendingUp },
-              { label: 'Guardar',      sub: 'Aporte num sonho',        color: '#3F6E7A', href: '/savings',  Icon: PiggyBank },
-              { label: 'Lembrete',     sub: 'Algo a não esquecer',     color: '#3E5F4B', href: '/reminders',Icon: Calendar },
+              { label: t('expenses.addExpense'), sub: t('dashboard.quickActionExpenseSub'), color: '#B05C3A', href: '/expenses', Icon: Receipt },
+              { label: t('incomes.addIncome'),   sub: t('dashboard.quickActionIncomeSub'),  color: '#3E8E5C', href: '/incomes',  Icon: TrendingUp },
+              { label: t('dashboard.quickActionSave'),     sub: t('dashboard.quickActionSaveSub'),     color: '#3F6E7A', href: '/savings',  Icon: PiggyBank },
+              { label: t('dashboard.quickActionReminder'), sub: t('dashboard.quickActionReminderSub'), color: '#3E5F4B', href: '/reminders',Icon: Calendar },
             ].map((a) => (
               <a
                 key={a.label}
@@ -634,18 +698,18 @@ export default function Dashboard() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="font-serif text-[16px] text-coffee">Insights da família</p>
-                <span className="text-[9px] font-bold uppercase tracking-[0.08em] px-1.5 py-0.5 rounded bg-gold/20 text-gold">NOVO</span>
+                <p className="font-serif text-[16px] text-coffee">{t('dashboard.familyInsights')}</p>
+                <span className="text-[9px] font-bold uppercase tracking-[0.08em] px-1.5 py-0.5 rounded bg-gold/20 text-gold">{t('dashboard.newBadge')}</span>
               </div>
               <p className="text-[12.5px] text-ink/60 mt-0.5">
-                O Florim analisou seus últimos 90 dias e pode encontrar oportunidades de economia.
+                {t('dashboard.insightsPromoBody')}
               </p>
             </div>
             <Link
               href="/insights"
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-[10px] bg-coffee text-paper text-[13px] font-semibold hover:bg-coffee/90 transition-vintage shrink-0"
             >
-              Ver insights
+              {t('dashboard.viewInsights')}
             </Link>
           </div>
 
@@ -656,11 +720,11 @@ export default function Dashboard() {
                 <div className="flex items-baseline gap-3">
                   <div className="flex items-center gap-2.5">
                     <span className="w-5 h-px bg-coffee/40" />
-                    <span className="text-[10.5px] tracking-[0.18em] uppercase font-semibold text-coffee/70">Objetivos em curso</span>
+                    <span className="text-[10.5px] tracking-[0.18em] uppercase font-semibold text-coffee/70">{t('dashboard.goalsInProgress')}</span>
                   </div>
-                  <p className="text-[12.5px] italic font-serif text-ink/50">Pequenos passos viram caminhos.</p>
+                  <p className="text-[12.5px] italic font-serif text-ink/50">{t('dashboard.smallStepsQuote')}</p>
                 </div>
-                <Link href="/savings" className="text-[12px] text-petrol font-semibold hover:underline">Ver objetivos →</Link>
+                <Link href="/savings" className="text-[12px] text-petrol font-semibold hover:underline">{t('dashboard.viewGoals')} →</Link>
               </div>
               <div className="grid grid-cols-4 gap-3">
                 {topSavings.map((s, i) => {
@@ -678,14 +742,14 @@ export default function Dashboard() {
                           )}
                         </div>
                         <p className="font-numbers font-bold text-[20px] text-coffee tabular-nums">{formatBRL(s.balance)}</p>
-                        {s.target && <p className="text-[11px] text-ink/50 mt-0.5">de {formatBRL(s.target)}</p>}
+                        {s.target && <p className="text-[11px] text-ink/50 mt-0.5">{t('dashboard.ofTarget', { amount: formatBRL(s.target) })}</p>}
                         {pct !== null && (
                           <div className="mt-2.5 h-[5px] rounded-full overflow-hidden" style={{ background: `${c}20` }}>
                             <div className="h-full rounded-full" style={{ width: `${pct}%`, background: c }} />
                           </div>
                         )}
                         {s.delta > 0 && (
-                          <p className="text-[11px] font-semibold mt-2" style={{ color: c }}>+ {formatBRL(s.delta)} sem.</p>
+                          <p className="text-[11px] font-semibold mt-2" style={{ color: c }}>{t('dashboard.weeklyDelta', { amount: formatBRL(s.delta) })}</p>
                         )}
                       </div>
                     </Link>
@@ -699,7 +763,7 @@ export default function Dashboard() {
           {!monthStats && (
             <div className="hidden md:block rounded-[20px] overflow-hidden mb-6 bg-[url('/texture-green.png')] bg-cover bg-center py-8 text-center text-paper">
               <h1 className="text-4xl font-serif font-thin text-paper leading-snug px-6">
-                Livro de Finanças<br/>da Família {familyName || '-'}
+                {t('dashboard.familyFinanceBook')}<br/>{t('dashboard.familyFinanceBookOf', { familyName: familyName || '-' })}
               </h1>
               <div className="w-10 h-px bg-gold/60 mx-auto mt-5" />
             </div>
@@ -725,17 +789,17 @@ export default function Dashboard() {
             <VintageCard className="!bg-paper flex h-full flex-col">
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div>
-                  <h3 className="text-xl font-body font-thin text-sidebar">Contas pendentes</h3>
-                  <p className="text-sm text-ink/40 ">Que a casa siga leve.</p>
+                  <h3 className="text-xl font-body font-thin text-sidebar">{t('dashboard.pendingBills')}</h3>
+                  <p className="text-sm text-ink/40 ">{t('dashboard.pendingBillsSubtitle')}</p>
                 </div>
               </div>
 
               <div className="flex flex-1 flex-col">
                 {loadingPayables ? (
-                  <div className="flex-1 text-center py-8 text-ink/60">Carregando…</div>
+                  <div className="flex-1 text-center py-8 text-ink/60">{t('common.loading')}</div>
                 ) : pendingPayables.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center text-center py-8">
-                    <p className="text-petrol mb-2">Sem contas pendentes</p>
+                    <p className="text-petrol mb-2">{t('dashboard.noPendingBills')}</p>
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
@@ -750,11 +814,11 @@ export default function Dashboard() {
                           <div className="flex items-center gap-2 mt-1 text-xs text-ink/60">
                             <span>{formatDate(payable.date, 'dd/MM')}</span>
                             <span>•</span>
-                            <span>{payable.category_name}</span>
+                            <span>{payableCategoryLabel(payable, locale)}</span>
                           </div>
                         </div>
                         <span className="text-xs px-2 py-0.5 rounded bg-gold/20 text-gold">
-                          Em aberto
+                          {t('expenses.statusOpen')}
                         </span>
                       </Link>
                     ))}
@@ -766,7 +830,7 @@ export default function Dashboard() {
                   href="/expenses"
                   className="text-xs text-ink/40 hover:text-ink/60 transition-vintage"
                 >
-                  Ver todos →
+                  {t('dashboard.viewAll')} →
                 </Link>
               </div>
             </VintageCard>
@@ -775,8 +839,8 @@ export default function Dashboard() {
               <div className="mb-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <h3 className="text-lg font-body font-thin text-sidebar">Lembretes da casa</h3>
-                    <p className="text-sm text-ink/40">Notas de cuidado.</p>
+                    <h3 className="text-lg font-body font-thin text-sidebar">{t('dashboard.householdReminders')}</h3>
+                    <p className="text-sm text-ink/40">{t('dashboard.householdRemindersSubtitle')}</p>
                   </div>
                   <button
                     type="button"
@@ -797,7 +861,7 @@ export default function Dashboard() {
                         : 'border border-border bg-offWhite text-ink hover:bg-paper'
                     }`}
                   >
-                    Pendentes
+                    {t('reminders.upcoming')}
                   </button>
                   <button
                     type="button"
@@ -808,7 +872,7 @@ export default function Dashboard() {
                         : 'border border-border bg-offWhite text-ink hover:bg-paper'
                     }`}
                   >
-                    Concluídos
+                    {t('reminders.completed')}
                   </button>
                   <div className="relative group ml-auto">
                     <button
@@ -831,14 +895,14 @@ export default function Dashboard() {
 
               <div className="flex flex-1 flex-col">
                 {loading ? (
-                  <div className="flex-1 text-center py-8 text-ink/60">Carregando…</div>
+                  <div className="flex-1 text-center py-8 text-ink/60">{t('common.loading')}</div>
                 ) : reminders.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center text-center py-8">
-                    <p className="text-petrol mb-2">Sem lembretes por agora</p>
+                    <p className="text-petrol mb-2">{t('dashboard.noRemindersYet')}</p>
                   </div>
                 ) : visibleReminders.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center text-center py-8">
-                    <p className="text-petrol">Sem lembretes para mostrar.</p>
+                    <p className="text-petrol">{t('reminders.noRemindersToShow')}</p>
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
@@ -857,7 +921,7 @@ export default function Dashboard() {
                               ? 'bg-olive border-olive'
                               : 'border-border hover:border-olive'
                           }`}
-                          aria-label={`Marcar ${reminder.title} como ${reminder.is_done ? 'pendente' : 'feito'}`}
+                          aria-label={t(reminder.is_done ? 'reminders.markAsPendingAria' : 'reminders.markAsDoneAria', { title: reminder.title })}
                         >
                           {reminder.is_done && <Check className="w-4 h-4 text-white" />}
                         </button>
@@ -887,7 +951,7 @@ export default function Dashboard() {
                   href="/reminders"
                   className="text-xs text-ink/40 hover:text-ink/60 transition-vintage"
                 >
-                  Ver todos →
+                  {t('dashboard.viewAll')} →
                 </Link>
               </div>
             </VintageCard>
@@ -897,19 +961,21 @@ export default function Dashboard() {
               <VintageCard className="!bg-paper flex flex-col lg:col-span-2">
                 <div className="flex items-start justify-between mb-1">
                   <div>
-                    <h3 className="text-xl font-body font-thin text-sidebar">Limites do mês</h3>
+                    <h3 className="text-xl font-body font-thin text-sidebar">{t('dashboard.monthLimits')}</h3>
                     <p className="text-sm text-ink/40">
                       {limitRows.filter((r) => r.status !== 'ok').length > 0
-                        ? `${limitRows.filter((r) => r.status !== 'ok').length} ${limitRows.filter((r) => r.status !== 'ok').length === 1 ? 'categoria pede' : 'categorias pedem'} atenção.`
-                        : 'Tudo dentro do planejado.'}
+                        ? (limitRows.filter((r) => r.status !== 'ok').length === 1
+                          ? t('dashboard.categoriesNeedAttentionOne', { count: limitRows.filter((r) => r.status !== 'ok').length })
+                          : t('dashboard.categoriesNeedAttentionMany', { count: limitRows.filter((r) => r.status !== 'ok').length }))
+                        : t('dashboard.allWithinPlan')}
                     </p>
                   </div>
                   <Link href="/comparatives" className="text-xs text-ink/40 hover:text-ink/60 transition-vintage mt-1">
-                    Ver todos →
+                    {t('dashboard.viewAll')} →
                   </Link>
                 </div>
                 {loadingLimits ? (
-                  <div className="text-sm text-ink/50 py-4">Carregando…</div>
+                  <div className="text-sm text-ink/50 py-4">{t('common.loading')}</div>
                 ) : (
                   <div className="space-y-3 mt-3">
                     {limitRows.slice(0, 3).map((row) => {
@@ -924,7 +990,7 @@ export default function Dashboard() {
                               {row.parentName && <span className="text-ink/40 font-normal"> · {row.parentName}</span>}
                             </span>
                             <div className="flex-1" />
-                            <span className="text-xs tabular-nums text-ink/50 shrink-0">{formatBRL(row.spentCents)} de {formatBRL(row.limitCents)}</span>
+                            <span className="text-xs tabular-nums text-ink/50 shrink-0">{t('dashboard.spentOfLimit', { spent: formatBRL(row.spentCents), limit: formatBRL(row.limitCents) })}</span>
                             <span className="text-xs font-semibold shrink-0 min-w-[3.5rem] text-right" style={{ color: barColor }}>
                               {badge}
                             </span>
@@ -951,7 +1017,7 @@ export default function Dashboard() {
         <form onSubmit={handleCreateReminder} className="space-y-4">
           <div>
             <label htmlFor="dash-reminder-title" className="block text-sm font-body text-ink mb-2">
-              Título <span className="text-terracotta">*</span>
+              {t('reminders.description')} <span className="text-terracotta">*</span>
             </label>
             <input
               id="dash-reminder-title"
@@ -966,7 +1032,7 @@ export default function Dashboard() {
           </div>
 
           <div>
-            <label htmlFor="dash-reminder-date" className="block text-sm font-body text-ink mb-2">Data</label>
+            <label htmlFor="dash-reminder-date" className="block text-sm font-body text-ink mb-2">{t('reminders.date')}</label>
             <input
               id="dash-reminder-date"
               type="date"
@@ -978,15 +1044,15 @@ export default function Dashboard() {
           </div>
 
           <Select
-            label="Categoria"
+            label={t('common.category')}
             value={reminderForm.category}
             onChange={(value) => setReminderForm({ ...reminderForm, category: value })}
             options={[
-              { value: 'Conta', label: 'Conta' },
-              { value: 'Casa', label: 'Casa' },
-              { value: 'Sonhos', label: 'Sonhos' },
-              { value: 'Família', label: 'Família' },
-              { value: 'Outros', label: 'Outros' },
+              { value: 'Conta', label: t('dashboard.reminderCategoryBill') },
+              { value: 'Casa', label: t('dashboard.reminderCategoryHome') },
+              { value: 'Sonhos', label: t('dashboard.reminderCategoryDreams') },
+              { value: 'Família', label: t('dashboard.reminderCategoryFamily') },
+              { value: 'Outros', label: t('dashboard.reminderCategoryOther') },
             ]}
           />
 

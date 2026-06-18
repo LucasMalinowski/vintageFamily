@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 import { stripe } from '@/lib/billing/stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
 
 export async function POST(request: Request) {
   try {
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
     const accessToken = getAccessTokenFromAuthHeader(request)
-    const auth = await requireUserByAccessToken(accessToken)
+    const auth = await requireUserByAccessToken(accessToken, locale)
 
     if (!auth.user) {
       return NextResponse.json({ error: auth.error }, { status: auth.status })
@@ -15,16 +19,16 @@ export async function POST(request: Request) {
 
     const profile = await getProfileByUserId(auth.user.id)
     if (!profile) {
-      return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 404 })
+      return NextResponse.json({ error: t('billing.profileNotFound') }, { status: 404 })
     }
 
     if (profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Apenas administradores da família podem gerenciar cobrança.' }, { status: 403 })
+      return NextResponse.json({ error: t('billing.adminOnly') }, { status: 403 })
     }
 
     const body = (await request.json().catch(() => null)) as { setup_intent_id?: string } | null
     if (!body?.setup_intent_id) {
-      return NextResponse.json({ error: 'Setup Intent inválido.' }, { status: 400 })
+      return NextResponse.json({ error: t('billing.invalidSetupIntent') }, { status: 400 })
     }
 
     const [{ data: stripeCustomer }, { data: subscription }] = await Promise.all([
@@ -41,7 +45,7 @@ export async function POST(request: Request) {
     ])
 
     if (!stripeCustomer?.stripe_customer_id) {
-      return NextResponse.json({ error: 'Cliente Stripe não encontrado para esta família.' }, { status: 404 })
+      return NextResponse.json({ error: t('billing.stripeCustomerNotFoundForFamily') }, { status: 404 })
     }
 
     const setupIntent = await stripe.setupIntents.retrieve(body.setup_intent_id)
@@ -51,11 +55,11 @@ export async function POST(request: Request) {
       : setupIntent.payment_method?.id
 
     if (setupIntent.status !== 'succeeded' || !paymentMethodId) {
-      return NextResponse.json({ error: 'O método de pagamento ainda não foi confirmado.' }, { status: 400 })
+      return NextResponse.json({ error: t('billing.paymentMethodNotConfirmed') }, { status: 400 })
     }
 
     if (customerId !== stripeCustomer.stripe_customer_id) {
-      return NextResponse.json({ error: 'O método de pagamento não pertence a esta família.' }, { status: 403 })
+      return NextResponse.json({ error: t('billing.paymentMethodNotOwned') }, { status: 403 })
     }
 
     await stripe.customers.update(stripeCustomer.stripe_customer_id, {
@@ -73,6 +77,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true })
   } catch (error: any) {
     console.error('confirm-payment-method-setup failed', error)
-    return NextResponse.json({ error: billingErrorMessage(error, 'Erro inesperado ao salvar o método de pagamento.') }, { status: 500 })
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
+    return NextResponse.json({ error: billingErrorMessage(error, t('billing.savePaymentMethodUnexpectedError')) }, { status: 500 })
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { getTranslations } from 'next-intl/server'
 import {
   getAccessTokenFromAuthHeader,
   getAccessTokenFromCookieStore,
@@ -9,15 +10,18 @@ import {
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { buildCategoryLabelMap } from '@/lib/categories'
 import { nvidiaAIService } from '@/lib/ai/NvidiaAIService'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies()
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
   const token = getAccessTokenFromAuthHeader(request) ?? getAccessTokenFromCookieStore(cookieStore)
-  const { error, user } = await requireUserByAccessToken(token)
-  if (error || !user) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+  const { error, user } = await requireUserByAccessToken(token, locale)
+  if (error || !user) return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 })
 
   const profile = await getProfileByUserId(user.id)
-  if (!profile) return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 404 })
+  if (!profile) return NextResponse.json({ error: t('suggest.profileNotFound') }, { status: 404 })
 
   const body = await request.json()
   const description: string = body?.description ?? ''

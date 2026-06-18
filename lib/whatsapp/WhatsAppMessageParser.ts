@@ -48,14 +48,14 @@ async function buildForecastReply(familyId: string, locale: AppLocale | null): P
   const messages = getWhatsAppMessages(locale)
   const [forecast, anomalies] = await Promise.all([
     computeNextMonthForecast(familyId),
-    detectSpendingAnomalies(familyId),
+    detectSpendingAnomalies(familyId, 12, locale ?? 'pt-BR'),
   ])
 
   if (forecast.confidence === 'insufficient') {
     return messages.forecastInsufficientData
   }
 
-  const narrative = await generateForecastNarrative(forecast, anomalies)
+  const narrative = await generateForecastNarrative(forecast, anomalies, locale ?? 'pt-BR')
   const f = messages.forecast
 
   const lines = [f.header(getWhatsAppMonthName(locale, forecast.targetMonth)), '']
@@ -349,11 +349,11 @@ export async function processWhatsAppMessage(
 
   const { data: categories } = await supabaseAdmin
     .from('categories')
-    .select('id,name,kind,parent_id,is_system,icon')
+    .select('id,name,name_en,name_es,kind,parent_id,is_system,icon')
     .eq('family_id', familyId)
 
   const categoryList = (categories ?? []) as CategoryRecord[]
-  const labelMap = buildCategoryLabelMap(categoryList)
+  const labelMap = buildCategoryLabelMap(categoryList, (userRow.locale as AppLocale | null) ?? 'pt-BR')
 
   let records: Awaited<ReturnType<typeof nvidiaAIService.extractFinancialRecords>>
   try {
@@ -451,11 +451,11 @@ async function saveRecordsAndReply(
   } else {
     const { data: categories } = await supabaseAdmin
       .from('categories')
-      .select('id,name,kind,parent_id,is_system,icon')
+      .select('id,name,name_en,name_es,kind,parent_id,is_system,icon')
       .eq('family_id', familyId)
     categoryList = (categories ?? []) as CategoryRecord[]
   }
-  const labelMap = buildCategoryLabelMap(categoryList)
+  const labelMap = buildCategoryLabelMap(categoryList, locale ?? 'pt-BR')
   const results: SaveResult[] = []
 
   for (const record of records) {
@@ -624,7 +624,7 @@ export async function processWhatsAppButtonReply(
     const records = ((pending.payload as any).records ?? []) as AIExtractedRecord[]
     const { data: cats } = await supabaseAdmin
       .from('categories')
-      .select('id,name,kind,parent_id,is_system,icon')
+      .select('id,name,name_en,name_es,kind,parent_id,is_system,icon')
       .eq('family_id', pending.family_id)
     await saveRecordsAndReply(fromPhone, pending.family_id, records, new Date().toISOString().slice(0, 10), userRow.locale, (cats ?? []) as CategoryRecord[])
   } else {
@@ -656,7 +656,7 @@ async function saveRecord(
         title: record.description,
         due_date: record.date,
         is_done: false,
-        note: 'Criado via WhatsApp',
+        note: s.createdViaWhatsApp,
       })
     const dueDateStr = record.date === todayISO
       ? s.reminderToday
@@ -678,7 +678,7 @@ async function saveRecord(
   // ── Category resolution (expense, income) ───────────────────────────────────
   const kind = record.type === 'income' ? 'income' : 'expense'
   const kindFilteredCategories = categoryList.filter((c) => c.kind === kind)
-  const kindFilteredLabelMap = buildCategoryLabelMap(kindFilteredCategories)
+  const kindFilteredLabelMap = buildCategoryLabelMap(kindFilteredCategories, locale ?? 'pt-BR')
 
   let categoryId = record.category_name
     ? (findCategoryIdByStoredName(kindFilteredCategories, record.category_name) ??
@@ -715,7 +715,7 @@ async function saveRecord(
         payment_method: record.payment_method ?? 'Credito',
         status: i === 0 ? 'paid' : 'open',
         paid_at: i === 0 ? new Date(record.date).toISOString() : null,
-        notes: 'Criado via WhatsApp',
+        notes: s.createdViaWhatsApp,
         low_confidence: false,
         installments: installmentCount,
         installment_index: i + 1,
@@ -731,7 +731,7 @@ async function saveRecord(
       }
       if (categoryId) {
         try {
-          await checkAndAlertCategoryLimit(familyId, categoryId)
+          await checkAndAlertCategoryLimit(familyId, categoryId, locale ?? undefined)
         } catch (err) {
           console.error('[WA] limit-alert check error:', err)
         }
@@ -752,7 +752,7 @@ async function saveRecord(
         payment_method: record.payment_method,
         status,
         paid_at: status === 'paid' ? new Date(record.date).toISOString() : null,
-        notes: 'Criado via WhatsApp',
+        notes: s.createdViaWhatsApp,
         low_confidence: false,
         installments: 1,
       })
@@ -768,7 +768,7 @@ async function saveRecord(
     }
     if (categoryId && status === 'paid') {
       try {
-        await checkAndAlertCategoryLimit(familyId, categoryId)
+        await checkAndAlertCategoryLimit(familyId, categoryId, locale ?? undefined)
       } catch (err) {
         console.error('[WA] limit-alert check error:', err)
       }
@@ -790,7 +790,7 @@ async function saveRecord(
         category_id: categoryId,
         category_name: categoryName ?? 'Outras Receitas',
         status,
-        notes: 'Criado via WhatsApp',
+        notes: s.createdViaWhatsApp,
         low_confidence: false,
       })
       .select('id')
@@ -841,7 +841,7 @@ async function saveRecord(
       saving_id: saving.id,
       amount_cents: amount_cents,
       date: record.date,
-      notes: 'Criado via WhatsApp',
+      notes: s.createdViaWhatsApp,
       type: 'deposit',
     })
     .select('id')
@@ -975,12 +975,12 @@ async function handleMutation(
 
     const { data: categories } = await supabaseAdmin
       .from('categories')
-      .select('id,name,kind,parent_id,is_system,icon')
+      .select('id,name,name_en,name_es,kind,parent_id,is_system,icon')
       .eq('family_id', familyId)
       .eq('kind', kind)
 
     const categoryList = (categories ?? []) as CategoryRecord[]
-    const labelMap = buildCategoryLabelMap(categoryList)
+    const labelMap = buildCategoryLabelMap(categoryList, locale ?? 'pt-BR')
 
     const categoryId =
       findCategoryIdByStoredName(categoryList, intent.edit_category) ??

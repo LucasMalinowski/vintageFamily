@@ -84,7 +84,7 @@ export default function CookieBanner() {
                 onClick={() => setShowManage(true)}
                 className="px-4 py-2 text-sm font-body text-ink/70 border border-border rounded-full hover:bg-paper transition-vintage"
               >
-                Gerenciar
+                {t('cookie.manage')}
               </button>
               <button
                 type="button"
@@ -97,20 +97,20 @@ export default function CookieBanner() {
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-sm font-body font-semibold text-ink">Preferências de cookies</p>
+            <p className="text-sm font-body font-semibold text-ink">{t('cookie.preferencesTitle')}</p>
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm font-body font-medium text-ink">Essenciais</p>
-                  <p className="text-xs text-ink/60 font-body mt-0.5">Necessários para o funcionamento do serviço.</p>
+                  <p className="text-sm font-body font-medium text-ink">{t('cookie.essentialsTitle')}</p>
+                  <p className="text-xs text-ink/60 font-body mt-0.5">{t('cookie.essentialsDesc')}</p>
                 </div>
-                <span className="text-xs text-ink/50 font-body shrink-0 mt-1">Sempre ativo</span>
+                <span className="text-xs text-ink/50 font-body shrink-0 mt-1">{t('cookie.alwaysActive')}</span>
               </div>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm font-body font-medium text-ink">Analíticos (PostHog)</p>
+                  <p className="text-sm font-body font-medium text-ink">{t('cookie.analyticsTitle')}</p>
                   <p className="text-xs text-ink/60 font-body mt-0.5">
-                    Usados para entender como o Florim é utilizado. Processados nos EUA pela PostHog, Inc.
+                    {t('cookie.analyticsDesc')}
                   </p>
                 </div>
                 <input
@@ -118,7 +118,7 @@ export default function CookieBanner() {
                   checked={analyticsEnabled}
                   onChange={(e) => setAnalyticsEnabled(e.target.checked)}
                   className="mt-1 shrink-0 accent-coffee"
-                  aria-label="Habilitar cookies analíticos"
+                  aria-label={t('cookie.analyticsAria')}
                 />
               </div>
             </div>
@@ -128,14 +128,14 @@ export default function CookieBanner() {
                 onClick={() => setShowManage(false)}
                 className="px-4 py-2 text-sm font-body text-ink/70 border border-border rounded-full hover:bg-paper transition-vintage"
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
                 onClick={savePreferences}
                 className="px-4 py-2 text-sm font-body bg-coffee text-paper rounded-full hover:bg-coffee/90 transition-vintage"
               >
-                Salvar preferências
+                {t('cookie.savePreferences')}
               </button>
             </div>
           </div>

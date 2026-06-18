@@ -13,23 +13,51 @@ import {
   parseISO,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 
 export const ALL_MONTHS_VALUE = 0
 export const ALL_YEARS_VALUE = 0
+
+const INTL_LOCALE: Record<AppLocale, string> = {
+  'pt-BR': 'pt-BR',
+  en: 'en-US',
+  es: 'es-ES',
+}
+
+const ALL_MONTHS_LABEL: Record<AppLocale, string> = {
+  'pt-BR': 'Todos os meses',
+  en: 'All months',
+  es: 'Todos los meses',
+}
+
+const ALL_YEARS_LABEL: Record<AppLocale, string> = {
+  'pt-BR': 'Todos os anos',
+  en: 'All years',
+  es: 'Todos los años',
+}
+
+const ALL_RECORDS_LABEL: Record<AppLocale, string> = {
+  'pt-BR': 'Todos os registros',
+  en: 'All records',
+  es: 'Todos los registros',
+}
 
 export function formatDate(date: string | Date, pattern: string = 'dd/MM/yyyy'): string {
   const parsedDate = typeof date === 'string' ? parseISO(date) : date
   return format(parsedDate, pattern, { locale: ptBR })
 }
 
-export function formatMonth(month: number): string {
+export function formatMonth(month: number, locale: AppLocale = 'pt-BR'): string {
   const date = new Date(2000, month - 1, 1)
-  return format(date, 'MMMM', { locale: ptBR })
+  const name = new Intl.DateTimeFormat(INTL_LOCALE[locale], { month: 'long' }).format(date)
+  return name.charAt(0).toUpperCase() + name.slice(1)
 }
 
-export function formatMonthYear(date: string | Date): string {
+export function formatMonthYear(date: string | Date, locale: AppLocale = 'pt-BR'): string {
   const parsedDate = typeof date === 'string' ? parseISO(date) : date
-  const formatted = format(parsedDate, "MMMM 'de' yyyy", { locale: ptBR })
+  const monthName = new Intl.DateTimeFormat(INTL_LOCALE[locale], { month: 'long' }).format(parsedDate)
+  const year = parsedDate.getFullYear()
+  const formatted = locale === 'pt-BR' ? `${monthName} de ${year}` : `${monthName} ${year}`
   return formatted.charAt(0).toUpperCase() + formatted.slice(1)
 }
 
@@ -60,30 +88,33 @@ export function isDateWithinFilters(date: string, month: number, year: number): 
   return true
 }
 
-export function getMonthLabel(month: number): string {
-  if (month === ALL_MONTHS_VALUE) return 'Todos os meses'
-  return MONTHS.find((item) => item.value === month)?.label ?? String(month)
+export function getMonthLabel(month: number, locale: AppLocale = 'pt-BR'): string {
+  if (month === ALL_MONTHS_VALUE) return ALL_MONTHS_LABEL[locale]
+  return getMonths(locale).find((item) => item.value === month)?.label ?? String(month)
 }
 
-export function getYearLabel(year: number): string {
-  if (year === ALL_YEARS_VALUE) return 'Todos os anos'
+export function getYearLabel(year: number, locale: AppLocale = 'pt-BR'): string {
+  if (year === ALL_YEARS_VALUE) return ALL_YEARS_LABEL[locale]
   return String(year)
 }
 
-export function getPeriodLabel(month: number, year: number): string {
+export function getPeriodLabel(month: number, year: number, locale: AppLocale = 'pt-BR'): string {
   if (month === ALL_MONTHS_VALUE && year === ALL_YEARS_VALUE) {
-    return 'Todos os registros'
+    return ALL_RECORDS_LABEL[locale]
   }
 
   if (month === ALL_MONTHS_VALUE) {
-    return `Todos os meses de ${getYearLabel(year)}`
+    return `${ALL_MONTHS_LABEL[locale]} ${locale === 'pt-BR' ? 'de ' : ''}${getYearLabel(year, locale)}`
   }
 
   if (year === ALL_YEARS_VALUE) {
-    return `${getMonthLabel(month)} de todos os anos`
+    const allYearsLower = ALL_YEARS_LABEL[locale].charAt(0).toLowerCase() + ALL_YEARS_LABEL[locale].slice(1)
+    return locale === 'pt-BR'
+      ? `${getMonthLabel(month, locale)} de ${allYearsLower}`
+      : `${getMonthLabel(month, locale)} ${allYearsLower}`
   }
 
-  return `${getMonthLabel(month)} ${year}`
+  return `${getMonthLabel(month, locale)} ${year}`
 }
 
 export function isDueDateToday(date: string | null): boolean {
@@ -104,6 +135,10 @@ export function getNextRecurrence(date: string, recurrence: 'weekly' | 'monthly'
   return format(addMonths(currentDate, 1), 'yyyy-MM-dd')
 }
 
+/**
+ * @deprecated Hardcoded Portuguese month names. Use `getMonths(locale)` instead.
+ * Kept only for backward compatibility with any stray imports.
+ */
 export const MONTHS = [
   { value: 1, label: 'Janeiro' },
   { value: 2, label: 'Fevereiro' },
@@ -119,10 +154,17 @@ export const MONTHS = [
   { value: 12, label: 'Dezembro' },
 ]
 
-export function getMonthOptions(includeAll: boolean = false): { value: string; label: string }[] {
+export function getMonths(locale: AppLocale = 'pt-BR'): { value: number; label: string }[] {
+  return Array.from({ length: 12 }, (_, index) => ({
+    value: index + 1,
+    label: formatMonth(index + 1, locale),
+  }))
+}
+
+export function getMonthOptions(includeAll: boolean = false, locale: AppLocale = 'pt-BR'): { value: string; label: string }[] {
   return [
-    ...(includeAll ? [{ value: ALL_MONTHS_VALUE.toString(), label: 'Todos os meses' }] : []),
-    ...MONTHS.map((month) => ({ value: month.value.toString(), label: month.label })),
+    ...(includeAll ? [{ value: ALL_MONTHS_VALUE.toString(), label: ALL_MONTHS_LABEL[locale] }] : []),
+    ...getMonths(locale).map((month) => ({ value: month.value.toString(), label: month.label })),
   ]
 }
 
@@ -134,12 +176,12 @@ export function getCurrentMonth(): number {
   return new Date().getMonth() + 1
 }
 
-export function getYearOptions(startYear: number = 2020, includeAll: boolean = false): { value: string; label: string }[] {
+export function getYearOptions(startYear: number = 2020, includeAll: boolean = false, locale: AppLocale = 'pt-BR'): { value: string; label: string }[] {
   const currentYear = getCurrentYear()
   const years: { value: string; label: string }[] = []
 
   if (includeAll) {
-    years.push({ value: ALL_YEARS_VALUE.toString(), label: 'Todos os anos' })
+    years.push({ value: ALL_YEARS_VALUE.toString(), label: ALL_YEARS_LABEL[locale] })
   }
 
   for (let year = currentYear; year >= startYear; year--) {

@@ -6,6 +6,14 @@ const MIME_EXTENSIONS = {
   'image/webp': ['webp'],
 } as const
 
+export type ImageValidationErrorCode = 'too_large' | 'invalid_image' | 'extension_mismatch' | 'mime_mismatch'
+
+export class ImageValidationError extends Error {
+  constructor(message: string, public readonly code: ImageValidationErrorCode) {
+    super(message)
+  }
+}
+
 export function detectImageMime(buffer: Buffer) {
   if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
     return 'image/jpeg'
@@ -22,26 +30,33 @@ export function detectImageMime(buffer: Buffer) {
   return null
 }
 
+/**
+ * Validates an uploaded image file. Throws `ImageValidationError` with a stable `code`
+ * instead of a localized message — this function is called both from client components
+ * (Profile.tsx, settings/profile) and from an API route, neither of which can reliably
+ * pass a locale in here, so callers should catch the error and translate based on
+ * `error.code` via `useTranslations`/`getTranslations`.
+ */
 export async function validateImageFile(file: File, maxBytes = MAX_IMAGE_BYTES) {
   if (file.size <= 0 || file.size > maxBytes) {
-    throw new Error('Imagem excede o tamanho máximo permitido.')
+    throw new ImageValidationError('Imagem excede o tamanho máximo permitido.', 'too_large')
   }
 
   const buffer = Buffer.from(await file.arrayBuffer())
   const detectedMime = detectImageMime(buffer)
   if (!detectedMime) {
-    throw new Error('Arquivo não é uma imagem válida.')
+    throw new ImageValidationError('Arquivo não é uma imagem válida.', 'invalid_image')
   }
 
   const extension = file.name.split('.').pop()?.toLowerCase()
   const allowedExtensions = MIME_EXTENSIONS[detectedMime]
 
   if (!extension || !(allowedExtensions as readonly string[]).includes(extension)) {
-    throw new Error('Extensão incompatível com o conteúdo real.')
+    throw new ImageValidationError('Extensão incompatível com o conteúdo real.', 'extension_mismatch')
   }
 
   if (file.type && file.type !== detectedMime) {
-    throw new Error('MIME type incompatível com o conteúdo real.')
+    throw new ImageValidationError('MIME type incompatível com o conteúdo real.', 'mime_mismatch')
   }
 
   return { mime: detectedMime, extension: extension === 'jpeg' ? 'jpg' : extension, buffer }

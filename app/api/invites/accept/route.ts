@@ -1,34 +1,39 @@
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { sendWelcomeEmail } from '@/lib/mailer'
 import { getAccessTokenFromAuthHeader } from '@/lib/billing/auth'
 import { sha256Hex } from '@/lib/security/tokens'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 
 function getAccessToken(request: Request) {
   return getAccessTokenFromAuthHeader(request)
 }
 
 export async function POST(request: Request) {
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
+
   const accessToken = getAccessToken(request)
   if (!accessToken) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 })
   }
 
   const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken)
   if (authError || !authData.user) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 })
   }
 
   const { token, name } = await request.json()
   if (!token || !name) {
-    return NextResponse.json({ error: 'Dados incompletos.' }, { status: 400 })
+    return NextResponse.json({ error: t('invites.incompleteData') }, { status: 400 })
   }
   // The invite must match the email of the authenticated account — never an
   // email supplied in the body, otherwise any account holding a leaked invite
   // link could join the family (and desync users.email from auth.users.email).
   const normalizedEmail = (authData.user.email ?? '').trim().toLowerCase()
   if (!normalizedEmail) {
-    return NextResponse.json({ error: 'Conta sem email verificado.' }, { status: 400 })
+    return NextResponse.json({ error: t('invites.accountWithoutVerifiedEmail') }, { status: 400 })
   }
   const tokenHash = sha256Hex(String(token))
 
@@ -39,19 +44,19 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   if (inviteError || !invite) {
-    return NextResponse.json({ error: 'Convite inválido.' }, { status: 404 })
+    return NextResponse.json({ error: t('invites.invalidInvite') }, { status: 404 })
   }
 
   if (invite.accepted) {
-    return NextResponse.json({ error: 'Convite já utilizado.' }, { status: 410 })
+    return NextResponse.json({ error: t('invites.alreadyUsed') }, { status: 410 })
   }
 
   if (invite.email !== normalizedEmail) {
-    return NextResponse.json({ error: 'Email não corresponde ao convite.' }, { status: 400 })
+    return NextResponse.json({ error: t('invites.emailMismatch') }, { status: 400 })
   }
 
   if (new Date(invite.expires_at).getTime() < Date.now()) {
-    return NextResponse.json({ error: 'Convite expirado.' }, { status: 410 })
+    return NextResponse.json({ error: t('invites.expiredInvite') }, { status: 410 })
   }
 
   // Atomically claim the family slot: only update if family_id is still null.
@@ -65,7 +70,7 @@ export async function POST(request: Request) {
     .select('id')
 
   if (profileError) {
-    return NextResponse.json({ error: 'Erro ao criar perfil.' }, { status: 500 })
+    return NextResponse.json({ error: t('invites.createProfileFailed') }, { status: 500 })
   }
 
   if (!claimed?.length) {
@@ -76,7 +81,7 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (existing?.family_id) {
-      return NextResponse.json({ error: 'Usuário já pertence a uma família.' }, { status: 409 })
+      return NextResponse.json({ error: t('invites.userAlreadyInFamily') }, { status: 409 })
     }
 
     // Row doesn't exist yet (edge case: SSO user accepting before profile is created)
@@ -92,7 +97,7 @@ export async function POST(request: Request) {
       })
 
     if (insertError) {
-      return NextResponse.json({ error: 'Erro ao criar perfil.' }, { status: 500 })
+      return NextResponse.json({ error: t('invites.createProfileFailed') }, { status: 500 })
     }
   }
 
@@ -102,10 +107,10 @@ export async function POST(request: Request) {
     .eq('id', invite.id)
 
   if (acceptError) {
-    return NextResponse.json({ error: 'Erro ao finalizar convite.' }, { status: 500 })
+    return NextResponse.json({ error: t('invites.finalizeFailed') }, { status: 500 })
   }
 
   const familyName = (invite.families as { name: string } | null)?.name ?? ''
-  void sendWelcomeEmail({ to: normalizedEmail, name, familyName })
+  void sendWelcomeEmail({ to: normalizedEmail, name, familyName, locale })
   return NextResponse.json({ familyId: invite.family_id })
 }

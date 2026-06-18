@@ -6,6 +6,30 @@ import { dispatchInsights } from '@/lib/insights/dispatcher'
 import { flushPostHogLogs, posthogLogs } from '@/lib/posthog-logs'
 import { acquireFamilyJobLock, getDailyJobPeriod } from '@/lib/jobs/locks'
 import { isAuthorizedCronRequest } from '@/lib/security/cron'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, type AppLocale } from '@/lib/i18n/getLocale'
+
+// Pick the most common locale among a family's members (first non-null wins
+// on ties), defaulting to the app default when nobody has one set. This is a
+// cron job iterating over many families with no single "acting user", so we
+// can't ask getUserLocale() — we approximate with majority vote instead.
+function pickFamilyLocale(locales: (string | null | undefined)[]): AppLocale {
+  const counts = new Map<AppLocale, number>()
+  for (const value of locales) {
+    if (value && (SUPPORTED_LOCALES as readonly string[]).includes(value)) {
+      const locale = value as AppLocale
+      counts.set(locale, (counts.get(locale) ?? 0) + 1)
+    }
+  }
+  let best: AppLocale | null = null
+  let bestCount = 0
+  for (const [locale, count] of counts) {
+    if (count > bestCount) {
+      best = locale
+      bestCount = count
+    }
+  }
+  return best ?? DEFAULT_LOCALE
+}
 
 function getCurrentPeriodLabel(): string {
   const now = new Date()
@@ -48,9 +72,9 @@ export async function GET(request: NextRequest) {
 
   // Batch prefetch all members with insights enabled across all families
   const allFamilyIds = families.map(f => f.id)
-  const { data: allMembers } = await supabaseAdmin
+  const { data: allMembers } = await (supabaseAdmin as any)
     .from('users')
-    .select('id, family_id, insights_enabled, insight_interval_days')
+    .select('id, family_id, insights_enabled, insight_interval_days, locale')
     .in('family_id', allFamilyIds)
     .eq('insights_enabled', true)
 
@@ -102,7 +126,8 @@ export async function GET(request: NextRequest) {
         continue
       }
 
-      const insights = await generateProactiveInsights(family.id, isMonthlyDispatch)
+      const familyLocale = pickFamilyLocale(members.map((m: { locale: string | null }) => m.locale))
+      const insights = await generateProactiveInsights(family.id, isMonthlyDispatch, familyLocale)
       if (!insights.length) continue
 
       await dispatchInsights(family.id, insights, periodLabel, 'proactive')

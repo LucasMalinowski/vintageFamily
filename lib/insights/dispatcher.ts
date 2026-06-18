@@ -5,6 +5,21 @@ import { sendInsightsEmail } from '@/lib/mailer'
 import { posthogLogs } from '@/lib/posthog-logs'
 import type { AppLocale } from '@/lib/i18n/getLocale'
 
+const WHATSAPP_HEADERS: Record<AppLocale, { proactive: string; onDemand: string }> = {
+  'pt-BR': {
+    proactive: '💡 *Insights do mês - Florim*\n\n',
+    onDemand: '💡 *Insight sob demanda - Florim*\n\n',
+  },
+  en: {
+    proactive: '💡 *Monthly insights - Florim*\n\n',
+    onDemand: '💡 *On-demand insight - Florim*\n\n',
+  },
+  es: {
+    proactive: '💡 *Insights del mes - Florim*\n\n',
+    onDemand: '💡 *Insight a pedido - Florim*\n\n',
+  },
+}
+
 export async function dispatchInsights(
   familyId: string,
   insights: string[],
@@ -40,9 +55,10 @@ export async function dispatchInsights(
 
     const channels: string[] = member.insight_channels ?? ['whatsapp', 'email']
     const sentChannels: string[] = []
+    const memberLocale = (member.locale as AppLocale | null) ?? null
 
     if (channels.includes('whatsapp') && member.phone_number) {
-      const header = type === 'proactive' ? '💡 *Insights do mês - Florim*\n\n' : type === 'on_demand' ? '💡 *Insight sob demanda - Florim*\n\n' : ''
+      const header = type === 'proactive' ? WHATSAPP_HEADERS[memberLocale ?? 'pt-BR'].proactive : type === 'on_demand' ? WHATSAPP_HEADERS[memberLocale ?? 'pt-BR'].onDemand : ''
       const templateName = process.env.WHATSAPP_INSIGHTS_TEMPLATE_NAME
       const headerImageId = process.env.WHATSAPP_INSIGHTS_IMAGE_ID
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://florim.app'
@@ -50,7 +66,6 @@ export async function dispatchInsights(
       let result: { messageId: string | null } | null = null
       let messageKind = 'none'
 
-      const memberLocale = (member.locale as AppLocale | null) ?? null
       const langCode = META_TEMPLATE_LANGUAGE[memberLocale ?? 'pt-BR'] ?? 'pt_BR'
       try {
         if (type === 'limit_alert') {
@@ -104,7 +119,7 @@ export async function dispatchInsights(
     // they add any expense in a category that's already over budget
     if (type !== 'limit_alert' && channels.includes('email') && member.email) {
       try {
-        await sendInsightsEmail({ to: member.email, name: member.name ?? '', insights, period })
+        await sendInsightsEmail({ to: member.email, name: member.name ?? '', insights, period, locale: memberLocale ?? 'pt-BR' })
         sentChannels.push('email')
         await posthogLogs.info('Insights email accepted by provider', {
           family_id: familyId,

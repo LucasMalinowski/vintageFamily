@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { getUserLocale } from '@/lib/i18n/getLocale'
+import { getTranslations } from 'next-intl/server'
 
 function getAccessToken(request: Request) {
   const header = request.headers.get('authorization')
@@ -9,14 +11,17 @@ function getAccessToken(request: Request) {
 }
 
 export async function GET(request: Request) {
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
+
   const accessToken = getAccessToken(request)
   if (!accessToken) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 })
   }
 
   const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken)
   if (authError || !authData.user) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 })
   }
 
   const { data: profile, error: profileError } = await supabaseAdmin
@@ -26,7 +31,7 @@ export async function GET(request: Request) {
     .maybeSingle()
 
   if (profileError || !profile) {
-    return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 400 })
+    return NextResponse.json({ error: t('account.profileNotFound') }, { status: 400 })
   }
 
   if (profile.role !== 'admin') {
@@ -41,7 +46,7 @@ export async function GET(request: Request) {
     .order('name')
 
   if (membersError) {
-    return NextResponse.json({ error: 'Erro ao carregar membros.' }, { status: 500 })
+    return NextResponse.json({ error: t('account.membersLoadFailed') }, { status: 500 })
   }
 
   return NextResponse.json({ role: 'admin', otherMembers: otherMembers ?? [] })

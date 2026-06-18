@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 import { stripe } from '@/lib/billing/stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
 
@@ -8,8 +10,10 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   try {
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
     const accessToken = getAccessTokenFromAuthHeader(request)
-    const auth = await requireUserByAccessToken(accessToken)
+    const auth = await requireUserByAccessToken(accessToken, locale)
 
     if (!auth.user) {
       return NextResponse.json({ error: auth.error }, { status: auth.status })
@@ -17,11 +21,11 @@ export async function GET(request: Request) {
 
     const profile = await getProfileByUserId(auth.user.id)
     if (!profile) {
-      return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 404 })
+      return NextResponse.json({ error: t('billing.profileNotFound') }, { status: 404 })
     }
 
     if (profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Apenas administradores da família podem gerenciar cobrança.' }, { status: 403 })
+      return NextResponse.json({ error: t('billing.adminOnly') }, { status: 403 })
     }
 
     const { data: stripeCustomer } = await supabaseService
@@ -53,6 +57,8 @@ export async function GET(request: Request) {
     })
   } catch (error: any) {
     console.error('billing-invoices failed', error)
-    return NextResponse.json({ error: billingErrorMessage(error, 'Erro inesperado ao carregar faturas.') }, { status: 500 })
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
+    return NextResponse.json({ error: billingErrorMessage(error, t('billing.loadInvoicesUnexpectedError')) }, { status: 500 })
   }
 }

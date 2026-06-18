@@ -2,6 +2,8 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database'
+import { getUserLocale } from '@/lib/i18n/getLocale'
+import { getTranslations } from 'next-intl/server'
 
 type SyncSessionBody = {
   access_token?: string
@@ -9,12 +11,15 @@ type SyncSessionBody = {
 }
 
 export async function POST(request: Request) {
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
+
   // Login-CSRF guard: a cross-site page could POST attacker tokens (as
   // text/plain to skip the CORS preflight) and plant a session in the
   // victim's browser. Only accept same-origin requests.
   const origin = request.headers.get('origin')
   if (origin && origin !== new URL(request.url).origin) {
-    return NextResponse.json({ error: 'Origem inválida.' }, { status: 403 })
+    return NextResponse.json({ error: t('auth.invalidOrigin') }, { status: 403 })
   }
 
   const response = NextResponse.json({ ok: true })
@@ -23,7 +28,7 @@ export async function POST(request: Request) {
     .catch(() => ({}))) as SyncSessionBody
 
   if (!accessToken || !refreshToken) {
-    return NextResponse.json({ error: 'Sessão ausente.' }, { status: 400 })
+    return NextResponse.json({ error: t('auth.sessionMissing') }, { status: 400 })
   }
 
   const supabase = createServerClient<Database>(
@@ -49,7 +54,7 @@ export async function POST(request: Request) {
   })
 
   if (error) {
-    return NextResponse.json({ error: 'Sessão inválida.' }, { status: 401 })
+    return NextResponse.json({ error: t('auth.invalidSession') }, { status: 401 })
   }
 
   return response

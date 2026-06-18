@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { getAccessTokenFromAuthHeader, getAccessTokenFromCookieStore, requireUserByAccessToken } from '@/lib/billing/auth'
-import { validateImageFile } from '@/lib/security/images'
+import { ImageValidationError, validateImageFile } from '@/lib/security/images'
+import { getUserLocale } from '@/lib/i18n/getLocale'
+import { getTranslations } from 'next-intl/server'
 
 type RecordType = 'expense' | 'income'
 
@@ -41,19 +43,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
 
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
+
   const form = await request.formData().catch(() => null)
   const file = form?.get('file')
   const recordType = form?.get('recordType')
   const recordId = form?.get('recordId')
 
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: 'Arquivo obrigatório.' }, { status: 400 })
+    return NextResponse.json({ error: t('attachments.fileRequired') }, { status: 400 })
   }
   if (recordType !== 'expense' && recordType !== 'income') {
-    return NextResponse.json({ error: 'Tipo de registro inválido.' }, { status: 400 })
+    return NextResponse.json({ error: t('attachments.invalidRecordType') }, { status: 400 })
   }
   if (typeof recordId !== 'string' || !recordId) {
-    return NextResponse.json({ error: 'Registro obrigatório.' }, { status: 400 })
+    return NextResponse.json({ error: t('attachments.recordRequired') }, { status: 400 })
   }
 
   const { data: profile, error: profileError } = await supabaseAdmin
@@ -63,7 +68,7 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   if (profileError || !profile) {
-    return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 400 })
+    return NextResponse.json({ error: t('account.profileNotFound') }, { status: 400 })
   }
 
   const table = TABLE_BY_RECORD_TYPE[recordType as RecordType]
@@ -75,17 +80,23 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   if (recordError || !record) {
-    return NextResponse.json({ error: 'Registro não encontrado.' }, { status: 404 })
+    return NextResponse.json({ error: t('attachments.recordNotFound') }, { status: 404 })
   }
 
   let image
   try {
     image = await validateImageFile(file)
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Arquivo inválido.' },
-      { status: 400 }
-    )
+    if (error instanceof ImageValidationError) {
+      const messageByCode: Record<typeof error.code, string> = {
+        too_large: t('attachments.imageTooLarge'),
+        invalid_image: t('attachments.imageInvalid'),
+        extension_mismatch: t('attachments.imageExtensionMismatch'),
+        mime_mismatch: t('attachments.imageMimeMismatch'),
+      }
+      return NextResponse.json({ error: messageByCode[error.code] }, { status: 400 })
+    }
+    return NextResponse.json({ error: t('attachments.invalidFile') }, { status: 400 })
   }
 
   const filePath = `${profile.family_id}/${recordId}/${crypto.randomUUID()}.${image.extension}`
@@ -94,7 +105,7 @@ export async function POST(request: Request) {
     .upload(filePath, image.buffer, { contentType: image.mime, upsert: false })
 
   if (uploadError) {
-    return NextResponse.json({ error: 'Erro ao enviar arquivo.' }, { status: 500 })
+    return NextResponse.json({ error: t('attachments.uploadFailed') }, { status: 500 })
   }
 
   const { cleanNotes } = parseLegacyAttachment(record.notes)
@@ -110,7 +121,7 @@ export async function POST(request: Request) {
 
   if (updateError) {
     await supabaseAdmin.storage.from('attachments').remove([filePath])
-    return NextResponse.json({ error: 'Erro ao vincular anexo.' }, { status: 500 })
+    return NextResponse.json({ error: t('attachments.linkFailed') }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true, attachmentPath: filePath })

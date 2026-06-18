@@ -3,6 +3,8 @@ import { formatBRL } from '@/lib/money'
 import { computeNextMonthForecast } from '@/lib/forecast/engine'
 import { detectSpendingAnomalies } from '@/lib/forecast/anomaly'
 import { generateForecastNarrative } from '@/lib/forecast/narrator'
+import { getTranslations } from 'next-intl/server'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 
 type CategoryTotal = {
   category_name: string
@@ -24,23 +26,30 @@ type SpendingData = {
   daysInMonth: number
 }
 
-const MONTH_NAMES_PT = [
-  'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro',
-]
-
-function monthLabel(yyyyMM: string): string {
-  const [, m] = yyyyMM.split('-').map(Number)
-  return MONTH_NAMES_PT[m - 1] ?? yyyyMM
+const INTL_LOCALE: Record<AppLocale, string> = {
+  'pt-BR': 'pt-BR',
+  en: 'en-US',
+  es: 'es-ES',
 }
 
-function nextMonthLabel(): string {
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+function monthLabel(yyyyMM: string, locale: AppLocale): string {
+  const [, m] = yyyyMM.split('-').map(Number)
+  if (!m) return yyyyMM
+  const date = new Date(2000, m - 1, 1)
+  return capitalize(new Intl.DateTimeFormat(INTL_LOCALE[locale], { month: 'long' }).format(date))
+}
+
+function nextMonthLabel(locale: AppLocale): string {
   const now = new Date()
   const next = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-  return MONTH_NAMES_PT[next.getMonth()]
+  return capitalize(new Intl.DateTimeFormat(INTL_LOCALE[locale], { month: 'long' }).format(next))
 }
 
-async function fetchSpendingData(familyId: string): Promise<SpendingData> {
+async function fetchSpendingData(familyId: string, locale: AppLocale = 'pt-BR'): Promise<SpendingData> {
   const now = new Date()
   const currentYear = now.getFullYear()
   const currentMonth = now.getMonth() + 1
@@ -123,8 +132,8 @@ async function fetchSpendingData(familyId: string): Promise<SpendingData> {
   return {
     currentMonth: currentData,
     previousMonth: previousData,
-    currentPeriodLabel: monthLabel(fmt(currentYear, currentMonth)),
-    previousPeriodLabel: monthLabel(fmt(prevYear, prevMonth)),
+    currentPeriodLabel: monthLabel(fmt(currentYear, currentMonth), locale),
+    previousPeriodLabel: monthLabel(fmt(prevYear, prevMonth), locale),
     currentTotal: currentData.reduce((s, r) => s + r.total_cents, 0),
     previousTotal: previousData.reduce((s, r) => s + r.total_cents, 0),
     currentMonthIncome,
@@ -134,7 +143,8 @@ async function fetchSpendingData(familyId: string): Promise<SpendingData> {
   }
 }
 
-const SYSTEM_PROMPT = `Você é um consultor financeiro pessoal especializado em famílias brasileiras. Sua função é revelar padrões, riscos e oportunidades nos dados — não resumir números que o usuário já pode ver.
+const SYSTEM_PROMPTS: Record<AppLocale, string> = {
+  'pt-BR': `Você é um consultor financeiro pessoal especializado em famílias brasileiras. Sua função é revelar padrões, riscos e oportunidades nos dados — não resumir números que o usuário já pode ver.
 
 OBRIGATÓRIO em cada insight:
 ✓ Quando há renda: expresse o gasto como % da renda ("representa X% da renda")
@@ -152,7 +162,46 @@ PROIBIDO:
 EXEMPLO RUIM: "A alimentação apresentou aumento significativo com R$809 gastos, o que pode indicar necessidade de revisão."
 EXEMPLO BOM: "Supermercado saltou de R$600 para R$809 (+35%) e, no ritmo do dia 9, projeta R$2.700 até o fim de junho — 22% da renda. Defina um teto semanal de R$200 por visita para conter."
 
-Responda somente em português do Brasil.`
+Responda somente em português do Brasil.`,
+  en: `You are a personal financial advisor for families. Your job is to surface patterns, risks and opportunities in the data — not to restate numbers the user can already see.
+
+REQUIRED in every insight:
+✓ When income is available: express spending as % of income ("represents X% of income")
+✓ When the month isn't over: use the provided projection ("at the current pace it will close around $X")
+✓ When there's a variation: cite the absolute number AND the percentage ("up $250 — 45% more than last month")
+✓ End with a concrete, specific action ("consider X" or "it's worth reviewing Y")
+✓ When a category is above 80% of its limit: flag it clearly
+
+FORBIDDEN:
+✗ Restating what's already in the data: "the family spent $809 on groceries"
+✗ Hedging language: "may indicate", "could be a sign", "maybe", "possibly"
+✗ Conclusions without action: "there's a need to review spending"
+✗ Inventing data or making assumptions beyond what's provided
+
+BAD EXAMPLE: "Groceries showed a significant increase with $809 spent, which may indicate a need for review."
+GOOD EXAMPLE: "Groceries jumped from $600 to $809 (+35%) and, at the current pace as of day 9, projects $2,700 by the end of the month — 22% of income. Set a weekly cap of $200 per trip to rein it in."
+
+Respond only in English.`,
+  es: `Eres un asesor financiero personal para familias. Tu función es revelar patrones, riesgos y oportunidades en los datos — no resumir números que el usuario ya puede ver.
+
+OBLIGATORIO en cada insight:
+✓ Cuando hay ingresos: expresa el gasto como % del ingreso ("representa X% del ingreso")
+✓ Cuando el mes no ha terminado: usa la proyección proporcionada ("al ritmo actual cerrará en $X")
+✓ Cuando hay variación: cita el número absoluto Y el porcentaje ("subió $250 — 45% más que el mes pasado")
+✓ Termina con una acción concreta y específica ("considera X" o "vale la pena revisar Y")
+✓ Cuando una categoría está por encima del 80% del límite: señálalo claramente
+
+PROHIBIDO:
+✗ Reafirmar lo que ya está en los datos: "la familia gastó $809 en supermercado"
+✗ Lenguaje de duda: "puede indicar", "podría ser una señal", "tal vez", "posiblemente"
+✗ Conclusiones sin acción: "hay una necesidad de revisar los gastos"
+✗ Inventar datos o hacer suposiciones más allá de los datos proporcionados
+
+EJEMPLO MALO: "La alimentación mostró un aumento significativo con $809 gastados, lo que puede indicar necesidad de revisión."
+EJEMPLO BUENO: "Supermercado saltó de $600 a $809 (+35%) y, al ritmo del día 9, proyecta $2.700 para fin de mes — 22% del ingreso. Define un tope semanal de $200 por visita para contenerlo."
+
+Responde solamente en español.`,
+}
 
 function buildInsightPrompt(data: SpendingData, question?: string): string {
   const { dayOfMonth, daysInMonth, currentTotal, previousTotal, currentMonthIncome, previousMonthIncome } = data
@@ -225,26 +274,28 @@ Gere exatamente 2 insights financeiros independentes e acionáveis para essa fam
 Formato de resposta: JSON array com exatamente 2 strings: ["insight 1", "insight 2"]`
 }
 
-async function buildForecastInsight(familyId: string): Promise<string | null> {
+async function buildForecastInsight(familyId: string, locale: AppLocale): Promise<string | null> {
   try {
     const [forecast, anomalies] = await Promise.all([
       computeNextMonthForecast(familyId),
-      detectSpendingAnomalies(familyId),
+      detectSpendingAnomalies(familyId, 12, locale),
     ])
     if (forecast.confidence === 'insufficient') return null
 
-    const narrative = await generateForecastNarrative(forecast, anomalies)
+    const narrative = await generateForecastNarrative(forecast, anomalies, locale)
     const totalStr = formatBRL(forecast.grandTotal)
+    const label = nextMonthLabel(locale)
+    const t = await getTranslations({ locale, namespace: 'insights' })
     return narrative
-      ? `📊 Previsão para ${nextMonthLabel()}: ${narrative}`
-      : `📊 Previsão para ${nextMonthLabel()}: você deve gastar aproximadamente ${totalStr}.`
+      ? `📊 ${t('forecastFor', { month: label })}: ${narrative}`
+      : `📊 ${t('forecastFor', { month: label })}: ${t('forecastApprox', { amount: totalStr })}`
   } catch {
     return null
   }
 }
 
-export async function generateProactiveInsights(familyId: string, includeForecast = false): Promise<string[]> {
-  const data = await fetchSpendingData(familyId)
+export async function generateProactiveInsights(familyId: string, includeForecast = false, locale: AppLocale = 'pt-BR'): Promise<string[]> {
+  const data = await fetchSpendingData(familyId, locale)
 
   if (data.currentMonth.length === 0) return []
 
@@ -264,7 +315,7 @@ export async function generateProactiveInsights(familyId: string, includeForecas
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: SYSTEM_PROMPTS[locale] },
           { role: 'user', content: prompt },
         ],
         temperature: 0.3,
@@ -292,18 +343,19 @@ export async function generateProactiveInsights(familyId: string, includeForecas
   }
 
   if (includeForecast && insights.length > 0) {
-    const forecastInsight = await buildForecastInsight(familyId)
+    const forecastInsight = await buildForecastInsight(familyId, locale)
     if (forecastInsight) insights.push(forecastInsight)
   }
 
   return insights
 }
 
-export async function generateOnDemandInsight(familyId: string, question: string): Promise<string> {
-  const data = await fetchSpendingData(familyId)
+export async function generateOnDemandInsight(familyId: string, question: string, locale: AppLocale = 'pt-BR'): Promise<string> {
+  const t = await getTranslations({ locale, namespace: 'insights' })
+  const data = await fetchSpendingData(familyId, locale)
   const prompt = buildInsightPrompt(data, question)
   const apiKey = process.env.GROQ_API_KEY
-  if (!apiKey) return 'Serviço de IA indisponível no momento.'
+  if (!apiKey) return t('aiUnavailable')
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 15_000)
@@ -317,7 +369,7 @@ export async function generateOnDemandInsight(familyId: string, question: string
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: SYSTEM_PROMPTS[locale] },
           { role: 'user', content: prompt },
         ],
         temperature: 0.3,
@@ -325,13 +377,13 @@ export async function generateOnDemandInsight(familyId: string, question: string
       }),
     })
   } catch {
-    return 'Não consegui gerar o insight no momento. Tente novamente em instantes.'
+    return t('generateFailedRetry')
   } finally {
     clearTimeout(timeout)
   }
 
-  if (!response.ok) return 'Não consegui gerar o insight no momento.'
+  if (!response.ok) return t('generateFailed')
 
   const json = await response.json()
-  return (json.choices?.[0]?.message?.content ?? '').trim() || 'Sem dados suficientes para gerar um insight.'
+  return (json.choices?.[0]?.message?.content ?? '').trim() || t('insufficientData')
 }

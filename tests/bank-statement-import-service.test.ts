@@ -289,7 +289,7 @@ describe('BankStatementImportService', () => {
 
     expect(preview.summary.totalFound).toBe(1)
     expect(preview.warnings).toContain(
-      '1 lançamento(s) OFX foram ignorados por parecerem movimentação de investimento ou reserva.'
+      '1 lançamento OFX foi ignorado por parecer movimentação de investimento ou reserva.'
     )
   })
 

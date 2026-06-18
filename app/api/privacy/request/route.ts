@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { sendAccountDeletionEmail } from '@/lib/mailer'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 
 function getAccessToken(request: Request) {
   const header = request.headers.get('authorization')
@@ -10,14 +12,17 @@ function getAccessToken(request: Request) {
 }
 
 export async function GET(request: Request) {
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
+
   const accessToken = getAccessToken(request)
   if (!accessToken) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 })
   }
 
   const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken)
   if (authError || !authData.user) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 })
   }
 
   const { data: profile } = await supabaseAdmin
@@ -33,19 +38,22 @@ export async function GET(request: Request) {
       createdAt: authData.user.created_at,
     },
     profile,
-    note: 'Dados financeiros (transações, metas, lembretes) são armazenados vinculados à sua família. Para exportar todos os dados, entre em contato: privacidade@florim.app',
+    note: t('privacy.dataExportNote'),
   })
 }
 
 export async function DELETE(request: Request) {
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
+
   const accessToken = getAccessToken(request)
   if (!accessToken) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 })
   }
 
   const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken)
   if (authError || !authData.user) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 })
   }
 
   const userId = authData.user.id
@@ -60,28 +68,28 @@ export async function DELETE(request: Request) {
 
 	  const { error: deletionError } = await supabaseAdmin.rpc('delete_user_profile_for_account_deletion', {
     p_user_id: userId,
-    p_new_admin_id: null,
+    p_new_admin_id: undefined,
   })
 
   if (deletionError) {
     if (deletionError.message.includes('new_admin_required')) {
       return NextResponse.json(
-        { error: 'Você é administrador de uma família com outros membros. Use o fluxo de exclusão de conta no aplicativo para transferir a administração antes de excluir sua conta.' },
+        { error: t('privacy.adminMustTransferBeforeDeletion') },
         { status: 409 }
       )
     }
 
-    return NextResponse.json({ error: 'Erro ao preparar exclusão da conta.' }, { status: 500 })
+    return NextResponse.json({ error: t('privacy.deletionPrepFailed') }, { status: 500 })
   }
 
 	  if (userEmail) {
-	    void sendAccountDeletionEmail({ to: userEmail, name: userName })
+	    void sendAccountDeletionEmail({ to: userEmail, name: userName, locale })
 	  }
 
   const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
   if (authDeleteError) {
-    return NextResponse.json({ error: 'Perfil removido, mas houve erro ao remover o usuário de autenticação.' }, { status: 500 })
+    return NextResponse.json({ error: t('privacy.profileRemovedAuthCleanupFailed') }, { status: 500 })
   }
 
-  return NextResponse.json({ ok: true, message: 'Todos os seus dados foram excluídos conforme a LGPD.' })
+  return NextResponse.json({ ok: true, message: t('privacy.allDataDeleted') })
 }

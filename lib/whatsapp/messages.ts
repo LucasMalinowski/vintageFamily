@@ -82,6 +82,7 @@ type WhatsAppMessages = {
     expenseInstallment: (perAmount: string, count: number) => string
     incomeReceived: string
     incomePending: string
+    createdViaWhatsApp: string
     goalNotFound: (name: string) => string
     invalidAmount: (desc: string) => string
     unknownType: (desc: string) => string
@@ -228,6 +229,7 @@ Você também pode combinar: "Gastei 30 na farmácia e 55 de gasolina"
       expenseInstallment: (perAmount, count) => `_(${perAmount} × ${count} - 1ª parcela paga)_`,
       incomeReceived: '_(recebido)_',
       incomePending: '_(a receber)_',
+      createdViaWhatsApp: 'Criado via WhatsApp',
       goalNotFound: (name) => `⭐ Objetivo "${name}" não encontrado no Florim`,
       invalidAmount: (desc) => `❌ Valor inválido: ${desc}`,
       unknownType: (desc) => `❌ Tipo desconhecido: ${desc}`,
@@ -374,6 +376,7 @@ You can also combine them: "Spent 30 at the pharmacy and 55 on gas"
       expenseInstallment: (perAmount, count) => `_(${perAmount} × ${count} - 1st installment paid)_`,
       incomeReceived: '_(received)_',
       incomePending: '_(to receive)_',
+      createdViaWhatsApp: 'Created via WhatsApp',
       goalNotFound: (name) => `⭐ Goal "${name}" not found in Florim`,
       invalidAmount: (desc) => `❌ Invalid amount: ${desc}`,
       unknownType: (desc) => `❌ Unknown type: ${desc}`,
@@ -520,6 +523,7 @@ También puedes combinar: "Gasté 30 en la farmacia y 55 en gasolina"
       expenseInstallment: (perAmount, count) => `_(${perAmount} × ${count} - 1ª cuota pagada)_`,
       incomeReceived: '_(recibido)_',
       incomePending: '_(por recibir)_',
+      createdViaWhatsApp: 'Creado via WhatsApp',
       goalNotFound: (name) => `⭐ Objetivo "${name}" no encontrado en Florim`,
       invalidAmount: (desc) => `❌ Valor inválido: ${desc}`,
       unknownType: (desc) => `❌ Tipo desconocido: ${desc}`,

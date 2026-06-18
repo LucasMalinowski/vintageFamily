@@ -2,14 +2,16 @@
 
 import Image from 'next/image'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Download, ExternalLink, FileUp, Landmark, Loader2, X } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
-import { BANK_TUTORIALS, BANK_TUTORIALS_BY_ID } from '@/lib/bank-statements/tutorials'
+import { getBankTutorials, getBankTutorialsById } from '@/lib/bank-statements/tutorials'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 import type {
   BankId,
+  BankTutorial,
   ImportPreviewItem,
   ImportPreviewResult,
   ReviewedImportItem,
@@ -18,7 +20,7 @@ import type {
 import { getAuthBearerToken } from '@/lib/billing/client'
 import { MAX_CSV_SIZE_BYTES, MAX_OFX_SIZE_BYTES } from '@/lib/bank-statements/constants'
 import type { CategoryRecord } from '@/lib/categories'
-import { buildCategoryLabelMap } from '@/lib/categories'
+import { buildCategoryLabelMap, resolveCategoryName } from '@/lib/categories'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
 
@@ -72,7 +74,9 @@ const detectFormatFromFile = (candidate: File | null): StatementFileFormat | nul
 }
 
 function BankBadge({ bankId }: { bankId: BankId }) {
-  const tutorial = BANK_TUTORIALS_BY_ID[bankId]
+  const locale = useLocale() as AppLocale
+  const t = useTranslations()
+  const tutorial = useMemo(() => getBankTutorialsById(locale)[bankId], [locale, bankId])
   const [imageError, setImageError] = useState(false)
 
   if (imageError) {
@@ -80,7 +84,7 @@ function BankBadge({ bankId }: { bankId: BankId }) {
       <div
         className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-white text-xs font-semibold uppercase shadow-soft"
         style={{ color: tutorial.accent }}
-        aria-label={`Ícone do banco ${tutorial.name}`}
+        aria-label={t('bankStatement.bankIconAria', { bank: tutorial.name })}
       >
         {tutorial.shortName.slice(0, 2)}
       </div>
@@ -91,7 +95,7 @@ function BankBadge({ bankId }: { bankId: BankId }) {
       <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-border bg-white shadow-soft">
         <Image
             src={tutorial.iconUrl}
-            alt={`Ícone oficial do app ${tutorial.name}`}
+            alt={t('bankStatement.bankIconAlt', { bank: tutorial.name })}
             fill
             unoptimized
             className="object-cover"
@@ -101,14 +105,14 @@ function BankBadge({ bankId }: { bankId: BankId }) {
   )
 }
 
-function getFormatBadge(tutorial: (typeof BANK_TUTORIALS)[number]) {
+function getFormatBadge(tutorial: BankTutorial, t: ReturnType<typeof useTranslations>) {
   if (tutorial.ofxAvailability === 'official') {
-    return { label: 'OFX confirmado', className: 'bg-emerald-100 text-emerald-800' }
+    return { label: t('bankStatement.ofxConfirmed'), className: 'bg-emerald-100 text-emerald-800' }
   }
   if (tutorial.ofxAvailability === 'secondary') {
-    return { label: 'OFX provável', className: 'bg-sky-100 text-sky-800' }
+    return { label: t('bankStatement.ofxLikely'), className: 'bg-sky-100 text-sky-800' }
   }
-  return { label: 'Apenas CSV', className: 'bg-slate-100 text-slate-700' }
+  return { label: t('bankStatement.csvOnly'), className: 'bg-slate-100 text-slate-700' }
 }
 
 const buildInitialReviewItems = (items: ImportPreviewItem[]): ReviewedImportItem[] =>
@@ -122,6 +126,7 @@ const buildInitialReviewItems = (items: ImportPreviewItem[]): ReviewedImportItem
 
 export default function BankStatementImportModal({ isOpen, onClose, onImported }: Props) {
   const t = useTranslations()
+  const locale = useLocale() as AppLocale
   const { familyId } = useAuth()
   const [selectedBank, setSelectedBank] = useState<BankId>('itau')
   const [file, setFile] = useState<File | null>(null)
@@ -134,14 +139,16 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
   const [categories, setCategories] = useState<CategoryRecord[]>([])
   const inputRef = useRef<HTMLInputElement | null>(null)
 
-  const tutorial = useMemo(() => BANK_TUTORIALS_BY_ID[selectedBank], [selectedBank])
+  const bankTutorials = useMemo(() => getBankTutorials(locale), [locale])
+  const bankTutorialsById = useMemo(() => getBankTutorialsById(locale), [locale])
+  const tutorial = useMemo(() => bankTutorialsById[selectedBank], [bankTutorialsById, selectedBank])
   const selectedFormat = detectFormatFromFile(file)
   const supportsOfx = tutorial.supportedImportFormats.includes('ofx')
-  const acceptedFormatsLabel = supportsOfx ? 'OFX (preferencial) ou CSV' : 'CSV'
+  const acceptedFormatsLabel = supportsOfx ? t('bankStatement.acceptedFormatsOfxAndCsv') : 'CSV'
   const fileInputAccept = supportsOfx
       ? '.ofx,application/x-ofx,application/ofx,.csv,text/csv'
       : '.csv,text/csv,application/csv'
-  const categoryLabelMap = useMemo(() => buildCategoryLabelMap(categories), [categories])
+  const categoryLabelMap = useMemo(() => buildCategoryLabelMap(categories, locale), [categories, locale])
   const reviewItemsByKey = useMemo(
       () => new Map(reviewItems.map((item) => [item.previewKey, item])),
       [reviewItems]
@@ -165,7 +172,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
     const loadCategories = async () => {
       const { data, error: categoryError } = await supabase
           .from('categories')
-          .select('id,name,kind,parent_id,is_system,icon')
+          .select('id,name,name_en,name_es,kind,parent_id,is_system,icon')
           .eq('family_id', familyId)
           .order('name', { ascending: true })
 
@@ -186,17 +193,17 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
   }, [selectedBank])
 
   const validateFile = (candidate: File | null) => {
-    if (!candidate) return 'Selecione um arquivo do extrato.'
+    if (!candidate) return t('bankStatement.errors.selectFile')
 
     const format = detectFormatFromFile(candidate)
-    if (!format) return 'Envie um arquivo CSV ou OFX válido.'
+    if (!format) return t('bankStatement.errors.invalidFileType')
     if (!tutorial.supportedImportFormats.includes(format)) {
       return supportsOfx
-          ? `Use OFX ou CSV para ${tutorial.name}.`
-          : `Para ${tutorial.name}, use CSV neste fluxo.`
+          ? t('bankStatement.errors.useOfxOrCsvFor', { bank: tutorial.name })
+          : t('bankStatement.errors.useCsvOnlyFor', { bank: tutorial.name })
     }
-    if (format === 'csv' && candidate.size > MAX_CSV_SIZE_BYTES) return `O CSV excede o limite de ${maxCsvSizeLabel}.`
-    if (format === 'ofx' && candidate.size > MAX_OFX_SIZE_BYTES) return `O OFX excede o limite de ${maxOfxSizeLabel}.`
+    if (format === 'csv' && candidate.size > MAX_CSV_SIZE_BYTES) return t('bankStatement.errors.csvExceedsLimit', { size: maxCsvSizeLabel })
+    if (format === 'ofx' && candidate.size > MAX_OFX_SIZE_BYTES) return t('bankStatement.errors.ofxExceedsLimit', { size: maxOfxSizeLabel })
     return null
   }
 
@@ -238,7 +245,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
 
     try {
       const token = await getAuthBearerToken()
-      if (!token) throw new Error('Sua sessão expirou. Faça login novamente.')
+      if (!token) throw new Error(t('common.sessionExpired'))
 
       const formData = new FormData()
       formData.append('action', 'preview')
@@ -252,13 +259,13 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
       })
 
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error || 'Não foi possível analisar o extrato.')
+      if (!response.ok) throw new Error(payload?.error || t('bankStatement.errors.parseFailed'))
 
       const previewPayload = payload as ImportPreviewResult
       setPreview(previewPayload)
       setReviewItems(buildInitialReviewItems(previewPayload.items))
     } catch (cause: any) {
-      setError(cause?.message || 'Falha ao analisar o extrato.')
+      setError(cause?.message || t('bankStatement.errors.parseFailed'))
     } finally {
       setLoading(false)
     }
@@ -272,7 +279,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
 
     try {
       const token = await getAuthBearerToken()
-      if (!token) throw new Error('Sua sessão expirou. Faça login novamente.')
+      if (!token) throw new Error(t('common.sessionExpired'))
 
       const formData = new FormData()
       formData.append('action', 'commit')
@@ -287,7 +294,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
       })
 
       const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error || 'Não foi possível concluir a importação.')
+      if (!response.ok) throw new Error(payload?.error || t('bankStatement.errors.commitFailed'))
 
       setResult(payload as ImportResponse)
       posthog.capture(EVENTS.BANK_IMPORT_COMPLETED, {
@@ -297,7 +304,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
       })
       onImported?.()
     } catch (cause: any) {
-      setError(cause?.message || 'Falha ao importar o extrato.')
+      setError(cause?.message || t('bankStatement.errors.commitFailed'))
     } finally {
       setLoading(false)
     }
@@ -327,14 +334,14 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
 
   if (result) {
     return (
-        <Modal isOpen={isOpen} onClose={resetAndClose} title="Importação concluída" size="xl">
+        <Modal isOpen={isOpen} onClose={resetAndClose} title={t('bankStatement.importComplete')} size="xl">
           <div className="flex h-[78vh] flex-col gap-4 overflow-hidden">
             <div className="rounded-2xl border border-border bg-paper p-4">
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
-                  <h4 className="text-lg font-serif text-coffee">Resumo da importação</h4>
+                  <h4 className="text-lg font-serif text-coffee">{t('bankStatement.importSummaryTitle')}</h4>
                   <p className="text-sm text-ink/60">
-                    Lote {result.batchId} • {result.format.toUpperCase()}
+                    {t('bankStatement.batchLabel', { batchId: result.batchId })} • {result.format.toUpperCase()}
                   </p>
                 </div>
                 <button
@@ -343,16 +350,16 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                     className="inline-flex items-center gap-2 rounded-md border border-petrol/25 px-3 py-2 text-sm font-semibold text-petrol hover:bg-petrol/5"
                 >
                   <Download className="h-4 w-4" />
-                  Baixar relatório
+                  {t('bankStatement.downloadReport')}
                 </button>
               </div>
 
               <div className="grid gap-3 md:grid-cols-5">
-                <div className="rounded-xl bg-bg p-3 text-sm"><strong>{result.summary.totalFound}</strong><br />transações encontradas</div>
-                <div className="rounded-xl bg-green-50 p-3 text-sm"><strong>{result.summary.incomesCreated}</strong><br />viraram receitas</div>
-                <div className="rounded-xl bg-red-50 p-3 text-sm"><strong>{result.summary.expensesCreated}</strong><br />viraram despesas</div>
-                <div className="rounded-xl bg-amber-50 p-3 text-sm"><strong>{result.summary.duplicatesIgnored}</strong><br />ignoradas</div>
-                <div className="rounded-xl bg-blue-50 p-3 text-sm"><strong>{result.summary.lowConfidenceCount}</strong><br />baixa confiança</div>
+                <div className="rounded-xl bg-bg p-3 text-sm"><strong>{result.summary.totalFound}</strong><br />{t('bankStatement.statTransactionsFound')}</div>
+                <div className="rounded-xl bg-green-50 p-3 text-sm"><strong>{result.summary.incomesCreated}</strong><br />{t('bankStatement.statBecameIncomes')}</div>
+                <div className="rounded-xl bg-red-50 p-3 text-sm"><strong>{result.summary.expensesCreated}</strong><br />{t('bankStatement.statBecameExpenses')}</div>
+                <div className="rounded-xl bg-amber-50 p-3 text-sm"><strong>{result.summary.duplicatesIgnored}</strong><br />{t('bankStatement.statIgnored')}</div>
+                <div className="rounded-xl bg-blue-50 p-3 text-sm"><strong>{result.summary.lowConfidenceCount}</strong><br />{t('bankStatement.statLowConfidence')}</div>
               </div>
 
               {result.warnings.length > 0 && (
@@ -370,9 +377,9 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                 <tr>
                   <th className="px-3 py-2">{t('bankStatement.columnDate')}</th>
                   <th className="px-3 py-2">{t('bankStatement.columnDescription')}</th>
-                  <th className="px-3 py-2">Tipo</th>
+                  <th className="px-3 py-2">{t('bankStatement.columnType')}</th>
                   <th className="px-3 py-2">{t('bankStatement.columnAmount')}</th>
-                  <th className="px-3 py-2">Confiança</th>
+                  <th className="px-3 py-2">{t('bankStatement.columnConfidence')}</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -380,7 +387,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                     <tr key={item.previewKey} className="border-t border-border">
                       <td className="px-3 py-2">{item.date}</td>
                       <td className="px-3 py-2">{item.description}</td>
-                      <td className="px-3 py-2">{item.type === 'income' ? 'Receita' : 'Despesa'}</td>
+                      <td className="px-3 py-2">{item.type === 'income' ? t('categoryModal.typeIncome') : t('categoryModal.typeExpense')}</td>
                       <td className="px-3 py-2">{formatCurrency(item.amount)}</td>
                       <td className="px-3 py-2">{Math.round(item.confidence * 100)}%</td>
                     </tr>
@@ -395,12 +402,12 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
 
   if (preview) {
     return (
-        <Modal isOpen={isOpen} onClose={resetAndClose} title="Revisar importação" size="xl">
+        <Modal isOpen={isOpen} onClose={resetAndClose} title={t('bankStatement.reviewImport')} size="xl">
           <div className="flex h-[78vh] flex-col gap-4 overflow-hidden">
             <div className="rounded-2xl border border-border bg-paper p-4">
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
-                  <h4 className="text-lg font-serif text-coffee">Resumo encontrado no arquivo</h4>
+                  <h4 className="text-lg font-serif text-coffee">{t('bankStatement.fileSummaryTitle')}</h4>
                   <p className="text-sm text-ink/60">
                     {tutorial.name} • {preview.format.toUpperCase()}
                   </p>
@@ -415,7 +422,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                       }}
                       className="rounded-md border border-border px-3 py-2 text-sm font-semibold text-ink/70 hover:bg-bg"
                   >
-                    Voltar
+                    {t('common.back')}
                   </button>
                   <button
                       type="button"
@@ -431,11 +438,11 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
 
               {reviewSummary && (
                   <div className="grid gap-3 md:grid-cols-5">
-                    <div className="rounded-xl bg-bg p-3 text-sm"><strong>{reviewSummary.totalFound}</strong><br />encontradas</div>
-                    <div className="rounded-xl bg-green-50 p-3 text-sm"><strong>{reviewSummary.incomesReviewed}</strong><br />receitas</div>
-                    <div className="rounded-xl bg-red-50 p-3 text-sm"><strong>{reviewSummary.expensesReviewed}</strong><br />despesas</div>
-                    <div className="rounded-xl bg-amber-50 p-3 text-sm"><strong>{reviewSummary.ignoredCount}</strong><br />ignoradas</div>
-                    <div className="rounded-xl bg-blue-50 p-3 text-sm"><strong>{reviewSummary.lowConfidenceCount}</strong><br />baixa confiança</div>
+                    <div className="rounded-xl bg-bg p-3 text-sm"><strong>{reviewSummary.totalFound}</strong><br />{t('bankStatement.reviewStatFound')}</div>
+                    <div className="rounded-xl bg-green-50 p-3 text-sm"><strong>{reviewSummary.incomesReviewed}</strong><br />{t('bankStatement.reviewStatIncomes')}</div>
+                    <div className="rounded-xl bg-red-50 p-3 text-sm"><strong>{reviewSummary.expensesReviewed}</strong><br />{t('bankStatement.reviewStatExpenses')}</div>
+                    <div className="rounded-xl bg-amber-50 p-3 text-sm"><strong>{reviewSummary.ignoredCount}</strong><br />{t('bankStatement.statIgnored')}</div>
+                    <div className="rounded-xl bg-blue-50 p-3 text-sm"><strong>{reviewSummary.lowConfidenceCount}</strong><br />{t('bankStatement.statLowConfidence')}</div>
                   </div>
               )}
 
@@ -458,13 +465,13 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
               <table className="min-w-[1100px] text-left text-sm">
                 <thead className="sticky top-0 bg-bg text-ink/65">
                 <tr>
-                  <th className="px-3 py-2">Ignorar</th>
+                  <th className="px-3 py-2">{t('bankStatement.columnIgnore')}</th>
                   <th className="px-3 py-2">{t('bankStatement.columnDate')}</th>
                   <th className="px-3 py-2">{t('bankStatement.columnDescription')}</th>
-                  <th className="px-3 py-2">Tipo</th>
+                  <th className="px-3 py-2">{t('bankStatement.columnType')}</th>
                   <th className="px-3 py-2">{t('bankStatement.columnCategory')}</th>
                   <th className="px-3 py-2">{t('bankStatement.columnAmount')}</th>
-                  <th className="px-3 py-2">Sinais</th>
+                  <th className="px-3 py-2">{t('bankStatement.columnSignals')}</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -481,7 +488,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                               checked={review?.ignore || false}
                               onChange={(event) => updateReviewItem(item.previewKey, { ignore: event.target.checked })}
                               className="h-4 w-4 rounded border-border text-petrol focus:ring-petrol"
-                              aria-label="Ignorar este lançamento"
+                              aria-label={t('bankStatement.ignoreAria')}
                           />
                         </td>
                         <td className="px-3 py-3 text-ink/80">{item.date}</td>
@@ -491,7 +498,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                               value={review?.description || item.description}
                               onChange={(event) => updateReviewItem(item.previewKey, { description: event.target.value })}
                               className="w-full min-w-[260px] rounded-md border border-border bg-bg px-3 py-2 text-sm"
-                              aria-label="Descrição do lançamento"
+                              aria-label={t('bankStatement.descriptionAria')}
                           />
                         </td>
                         <td className="px-3 py-3">
@@ -504,8 +511,8 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                                   })}
                               className="rounded-md border border-border bg-bg px-3 py-2 text-sm"
                           >
-                            <option value="income">Receita</option>
-                            <option value="expense">Despesa</option>
+                            <option value="income">{t('categoryModal.typeIncome')}</option>
+                            <option value="expense">{t('categoryModal.typeExpense')}</option>
                           </select>
                         </td>
                         <td className="px-3 py-3">
@@ -517,10 +524,10 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                                   })}
                               className="w-full min-w-[220px] rounded-md border border-border bg-bg px-3 py-2 text-sm"
                           >
-                            <option value="">Importado de extrato</option>
+                            <option value="">{t('bankStatement.importedFromStatement')}</option>
                             {categoryOptions.map((category) => (
                                 <option key={category.id} value={category.id}>
-                                  {categoryLabelMap.get(category.id) || category.name}
+                                  {categoryLabelMap.get(category.id) || resolveCategoryName(category, locale)}
                                 </option>
                             ))}
                           </select>
@@ -530,17 +537,17 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                           <div className="flex flex-wrap gap-2">
                             {item.isDuplicate && (
                                 <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
-                              {item.duplicateReason === 'database' ? 'Duplicada no banco' : 'Duplicada no arquivo'}
+                              {item.duplicateReason === 'database' ? t('bankStatement.duplicateInDatabase') : t('bankStatement.duplicateInFile')}
                             </span>
                             )}
                             {item.lowConfidence && (
                                 <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
-                              {Math.round(item.confidence * 100)}% confiança
+                              {t('bankStatement.confidencePercent', { pct: Math.round(item.confidence * 100) })}
                             </span>
                             )}
                             {!item.isDuplicate && !item.lowConfidence && (
                                 <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">
-                              Revisão simples
+                              {t('bankStatement.simpleReview')}
                             </span>
                             )}
                           </div>
@@ -563,10 +570,10 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
           <section className="hidden rounded-2xl border border-border bg-bg p-4 lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden">
             <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-petrol">
               <Landmark className="h-4 w-4" />
-              Escolha o banco
+              {t('bankStatement.chooseBank')}
             </div>
             <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto pr-1">
-              {BANK_TUTORIALS.map((item) => {
+              {bankTutorials.map((item) => {
                 const active = item.id === selectedBank
                 return (
                     <button
@@ -584,7 +591,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                             {item.name}
                           </div>
                           <div className="text-[11px] uppercase tracking-wide text-ink/50">
-                            {getFormatBadge(item).label}
+                            {getFormatBadge(item, t).label}
                           </div>
                         </div>
                       </div>
@@ -604,7 +611,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                     onChange={(e) => setSelectedBank(e.target.value as BankId)}
                     className="flex-1 rounded-xl border border-border bg-paper px-3 py-2.5 text-sm font-semibold text-sidebar"
                 >
-                  {BANK_TUTORIALS.map((item) => (
+                  {bankTutorials.map((item) => (
                       <option key={item.id} value={item.id}>{item.name}</option>
                   ))}
                 </select>
@@ -635,22 +642,22 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 rounded-full border border-petrol/20 px-3 py-1 text-xs font-semibold text-petrol hover:bg-petrol/5"
                     >
-                      Ver app do banco
+                      {t('bankStatement.viewBankApp')}
                       <ExternalLink className="h-3.5 w-3.5" />
                     </a>
                   </div>
                   <p className="mt-1 text-sm text-ink/65">{tutorial.intro}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getFormatBadge(tutorial).className}`}>
-                  {getFormatBadge(tutorial).label}
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getFormatBadge(tutorial, t).className}`}>
+                  {getFormatBadge(tutorial, t).label}
                 </span>
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
                       tutorial.status === 'validated'
                           ? 'bg-green-100 text-green-800'
                           : 'bg-amber-100 text-amber-800'
                   }`}>
-                  {tutorial.status === 'validated' ? 'Fonte oficial conferida' : 'Tutorial em validação'}
+                  {tutorial.status === 'validated' ? t('bankStatement.sourceVerified') : t('bankStatement.tutorialInValidation')}
                 </span>
                 </div>
               </div>
@@ -665,7 +672,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
               </div>
 
               <div className="mt-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink/45">Observações</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink/45">{t('bankStatement.observations')}</p>
                 <ul className="space-y-1 text-sm text-ink/70">
                   {tutorial.observations.map((note) => (
                       <li key={note}>• {note}</li>
@@ -674,8 +681,8 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                 {tutorial.ofxAvailability !== 'not_confirmed' && tutorial.ofxReferenceUrl && (
                     <p className="mt-3 text-sm text-ink/70">
                       {tutorial.ofxAvailability === 'official'
-                          ? 'Este banco possui OFX confirmado em fonte oficial. Prefira OFX para uma importação mais precisa.'
-                          : 'Há uma referência secundária confiável indicando OFX para este banco. Se você já tiver OFX, ele será aceito neste fluxo.'}
+                          ? t('bankStatement.ofxOfficialSourceNote')
+                          : t('bankStatement.ofxSecondarySourceNote')}
                     </p>
                 )}
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -738,10 +745,12 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
             >
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr),240px] lg:items-start">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-sidebar">Arquivo do extrato</p>
-                  <p className="mt-1 text-xs text-ink/45">Formatos aceitos: {acceptedFormatsLabel}.</p>
+                  <p className="text-sm font-semibold text-sidebar">{t('bankStatement.statementFile')}</p>
+                  <p className="mt-1 text-xs text-ink/45">{t('bankStatement.acceptedFormats', { formats: acceptedFormatsLabel })}</p>
                   <p className="mt-1 text-xs text-ink/45">
-                    Limites: CSV até {maxCsvSizeLabel}{supportsOfx ? ` • OFX até ${maxOfxSizeLabel}` : ''}.
+                    {supportsOfx
+                        ? t('bankStatement.fileLimitsWithOfx', { csvSize: maxCsvSizeLabel, ofxSize: maxOfxSizeLabel })
+                        : t('bankStatement.fileLimitsCsvOnly', { csvSize: maxCsvSizeLabel })}
                   </p>
                 </div>
 
@@ -773,7 +782,7 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                   type="file"
                   accept={fileInputAccept}
                   className="hidden"
-                  aria-label="Selecionar extrato bancário"
+                  aria-label={t('bankStatement.selectFileAria')}
                   onChange={(event) => handleFileSelection(event.target.files?.[0] || null)}
               />
 
@@ -787,14 +796,14 @@ export default function BankStatementImportModal({ isOpen, onClose, onImported }
                           type="button"
                           onClick={handleClearFile}
                           className="shrink-0 rounded-md p-1 text-ink/50 hover:bg-red-50 hover:text-red-600"
-                          title="Remover arquivo"
+                          title={t('bankStatement.removeFileTitle')}
                       >
                         <X className="h-4 w-4" />
                       </button>
                     </div>
                 ) : (
                     <>
-                      <span className="lg:hidden">Nenhum arquivo selecionado.</span>
+                      <span className="lg:hidden">{t('bankStatement.noFileSelected')}</span>
                       <span className="hidden lg:inline">
                         {t('bankStatement.dragDrop')}
                       </span>

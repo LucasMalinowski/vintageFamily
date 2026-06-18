@@ -1,4 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { resolveCategoryName } from '@/lib/categories'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 
 export type AnomalyFlag = {
   category_name: string
@@ -27,6 +29,7 @@ function monthRange(yyyyMM: string): { start: string; end: string } {
 export async function detectSpendingAnomalies(
   familyId: string,
   lookbackMonths = 12,
+  locale: AppLocale = 'pt-BR',
 ): Promise<AnomalyFlag[]> {
   const now = new Date()
   const currentYYYYMM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -92,9 +95,26 @@ export async function detectSpendingAnomalies(
   flags.sort((a, b) => b.zScore - a.zScore)
 
   const seen = new Set<string>()
-  return flags.filter(f => {
+  const deduped = flags.filter(f => {
     if (seen.has(f.category_name)) return false
     seen.add(f.category_name)
     return true
   })
+
+  // category_name is denormalized pt-BR text frozen at expense-creation time;
+  // resolve the locale-appropriate label via category_id where still available.
+  const categoryIds = [...new Set(deduped.map(f => f.category_id).filter((id): id is string => !!id))]
+  if (categoryIds.length === 0) return deduped
+
+  const { data: categories } = await supabaseAdmin
+    .from('categories')
+    .select('id, name, name_en, name_es')
+    .in('id', categoryIds)
+
+  const labelById = new Map((categories ?? []).map(c => [c.id, resolveCategoryName(c, locale)]))
+
+  return deduped.map(f => ({
+    ...f,
+    category_name: (f.category_id && labelById.get(f.category_id)) || f.category_name,
+  }))
 }

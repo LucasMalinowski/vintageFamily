@@ -41,7 +41,7 @@ function CheckoutForm({
       })
 
       if (result.error) {
-        setError(result.error.message || 'Pagamento não pôde ser confirmado.')
+        setError(result.error.message || t('billing.paymentNotConfirmed'))
       } else {
         onSuccess()
       }
@@ -59,7 +59,7 @@ function CheckoutForm({
     })
 
     if (result.error) {
-      setError(result.error.message || 'Pagamento não pôde ser confirmado.')
+      setError(result.error.message || t('billing.paymentNotConfirmed'))
     } else {
       onSuccess()
     }
@@ -148,7 +148,7 @@ export default function PlanCheckout({
   }
 
   if (!stripePromise) {
-    return <p className="text-sm text-red-700">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY nao configurada.</p>
+    return <p className="text-sm text-red-700">{t('billing.stripeNotConfigured')}</p>
   }
 
   if (error || !clientSecret) {

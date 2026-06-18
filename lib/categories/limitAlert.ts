@@ -3,6 +3,8 @@ import { sendExpoPushNotifications } from '@/lib/notifications/push'
 import { dispatchInsights } from '@/lib/insights/dispatcher'
 import { formatBRL } from '@/lib/money'
 import { getCurrentBillingPeriod } from '@/lib/billing-cycle'
+import { resolveCategoryName } from '@/lib/categories'
+import type { AppLocale } from '@/lib/i18n/getLocale'
 
 /**
  * Checks if the category's monthly limit threshold was just crossed and,
@@ -14,12 +16,75 @@ import { getCurrentBillingPeriod } from '@/lib/billing-cycle'
 
 type AlertLevel = 'warning' | 'over'
 
+const INTL_LOCALE: Record<AppLocale, string> = {
+  'pt-BR': 'pt-BR',
+  en: 'en-US',
+  es: 'es-ES',
+}
+
+type HeaderTemplates = {
+  over: (spent: string, limit: string, pct: number, excess: string) => string
+  warning: (spent: string, limit: string, pct: number) => string
+}
+
+const HEADER_TEMPLATES: Record<AppLocale, HeaderTemplates> = {
+  'pt-BR': {
+    over: (spent, limit, pct, excess) => `🚨 Gasto este mês: *${spent}* de *${limit}* (${pct}%) — *${excess} acima do limite.*`,
+    warning: (spent, limit, pct) => `Gasto este mês: *${spent}* de *${limit}* (${pct}%).`,
+  },
+  en: {
+    over: (spent, limit, pct, excess) => `🚨 Spent this month: *${spent}* of *${limit}* (${pct}%) — *${excess} over the limit.*`,
+    warning: (spent, limit, pct) => `Spent this month: *${spent}* of *${limit}* (${pct}%).`,
+  },
+  es: {
+    over: (spent, limit, pct, excess) => `🚨 Gastado este mes: *${spent}* de *${limit}* (${pct}%) — *${excess} por encima del límite.*`,
+    warning: (spent, limit, pct) => `Gastado este mes: *${spent}* de *${limit}* (${pct}%).`,
+  },
+}
+
+const SYSTEM_PROMPTS: Record<AppLocale, string> = {
+  'pt-BR': 'Você é um consultor financeiro. Responda em português informal e direto.',
+  en: 'You are a financial advisor. Respond in casual, direct English.',
+  es: 'Eres un asesor financiero. Responde en español informal y directo.',
+}
+
+const TIP_PROMPTS: Record<AppLocale, { over: (leafName: string, excess: string, spent: string, limit: string) => string; warning: (leafName: string, pct: number, spent: string, limit: string) => string }> = {
+  'pt-BR': {
+    over: (leafName, excess, spent, limit) => `A família ultrapassou o limite de ${leafName} em ${excess} (gasto ${spent}, limite ${limit}). Escreva UMA dica prática e curta (máx 15 palavras) sobre como controlar gastos com ${leafName} nos próximos dias. Apenas a dica, sem introdução.`,
+    warning: (leafName, pct, spent, limit) => `A família usou ${pct}% do limite de ${leafName} (${spent} de ${limit}). Escreva UMA dica prática e curta (máx 15 palavras) para não ultrapassar o limite de ${leafName}. Apenas a dica, sem introdução.`,
+  },
+  en: {
+    over: (leafName, excess, spent, limit) => `The family went over the ${leafName} limit by ${excess} (spent ${spent}, limit ${limit}). Write ONE short, practical tip (max 15 words) on how to control spending on ${leafName} in the coming days. Just the tip, no introduction.`,
+    warning: (leafName, pct, spent, limit) => `The family used ${pct}% of the ${leafName} limit (${spent} of ${limit}). Write ONE short, practical tip (max 15 words) to avoid going over the ${leafName} limit. Just the tip, no introduction.`,
+  },
+  es: {
+    over: (leafName, excess, spent, limit) => `La familia superó el límite de ${leafName} en ${excess} (gastado ${spent}, límite ${limit}). Escribe UN consejo práctico y corto (máx 15 palabras) sobre cómo controlar los gastos en ${leafName} en los próximos días. Solo el consejo, sin introducción.`,
+    warning: (leafName, pct, spent, limit) => `La familia usó el ${pct}% del límite de ${leafName} (${spent} de ${limit}). Escribe UN consejo práctico y corto (máx 15 palabras) para no superar el límite de ${leafName}. Solo el consejo, sin introducción.`,
+  },
+}
+
+const PUSH_TITLES: Record<AppLocale, { over: (categoryName: string) => string; warning: (categoryName: string) => string }> = {
+  'pt-BR': {
+    over: (categoryName) => `🚨 ${categoryName} ultrapassou o limite`,
+    warning: (categoryName) => `⚠️ Limite próximo: ${categoryName}`,
+  },
+  en: {
+    over: (categoryName) => `🚨 ${categoryName} went over the limit`,
+    warning: (categoryName) => `⚠️ Limit almost reached: ${categoryName}`,
+  },
+  es: {
+    over: (categoryName) => `🚨 ${categoryName} superó el límite`,
+    warning: (categoryName) => `⚠️ Límite cerca: ${categoryName}`,
+  },
+}
+
 async function generateInsight(
   categoryName: string,
   pct: number,
   spentCents: number,
   limitCents: number,
-  level: AlertLevel
+  level: AlertLevel,
+  locale: AppLocale = 'pt-BR'
 ): Promise<string> {
   const spent = formatBRL(spentCents)
   const limit = formatBRL(limitCents)
@@ -27,8 +92,8 @@ async function generateInsight(
 
   // Header line always contains the hard facts — no AI ambiguity
   const header = level === 'over'
-    ? `🚨 Gasto este mês: *${spent}* de *${limit}* (${pct}%) — *${excess} acima do limite.*`
-    : `Gasto este mês: *${spent}* de *${limit}* (${pct}%).`
+    ? HEADER_TEMPLATES[locale].over(spent, limit, pct, excess)
+    : HEADER_TEMPLATES[locale].warning(spent, limit, pct)
 
   // AI adds one short practical tip about this specific category — purely optional
   const apiKey = process.env.GROQ_API_KEY
@@ -42,8 +107,8 @@ async function generateInsight(
     const timeout = setTimeout(() => controller.abort(), 3_000)
 
     const prompt = level === 'over'
-      ? `A família ultrapassou o limite de ${leafName} em ${excess} (gasto ${spent}, limite ${limit}). Escreva UMA dica prática e curta (máx 15 palavras) sobre como controlar gastos com ${leafName} nos próximos dias. Apenas a dica, sem introdução.`
-      : `A família usou ${pct}% do limite de ${leafName} (${spent} de ${limit}). Escreva UMA dica prática e curta (máx 15 palavras) para não ultrapassar o limite de ${leafName}. Apenas a dica, sem introdução.`
+      ? TIP_PROMPTS[locale].over(leafName, excess, spent, limit)
+      : TIP_PROMPTS[locale].warning(leafName, pct, spent, limit)
 
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -53,7 +118,7 @@ async function generateInsight(
       body: JSON.stringify({
         model: 'llama-3.1-8b-instant',
         messages: [
-          { role: 'system', content: 'Você é um consultor financeiro. Responda em português informal e direto.' },
+          { role: 'system', content: SYSTEM_PROMPTS[locale] },
           { role: 'user', content: prompt },
         ],
         temperature: 0.3,
@@ -75,19 +140,19 @@ export type LimitAlertResult =
   | { ok: true; reason: 'category not found' | 'no limit set' | 'below threshold' | 'silenced'; pct?: number; level?: AlertLevel }
   | { ok: true; alerted: true; level: AlertLevel; pct: number }
 
-export async function checkAndAlertCategoryLimit(familyId: string, categoryId: string): Promise<LimitAlertResult> {
+export async function checkAndAlertCategoryLimit(familyId: string, categoryId: string, locale: AppLocale = 'pt-BR'): Promise<LimitAlertResult> {
   // Load the category and its siblings to resolve the right limit
   // (the limit may be on a parent — walk up if needed)
   const [{ data: cat }, { data: allSiblings }] = await Promise.all([
     supabaseAdmin
       .from('categories')
-      .select('name, parent_id, monthly_limit_cents')
+      .select('name, name_en, name_es, parent_id, monthly_limit_cents')
       .eq('id', categoryId)
       .eq('family_id', familyId)
       .maybeSingle(),
     supabaseAdmin
       .from('categories')
-      .select('id, name, parent_id, monthly_limit_cents')
+      .select('id, name, name_en, name_es, parent_id, monthly_limit_cents')
       .eq('family_id', familyId)
       .eq('kind', 'expense'),
   ])
@@ -101,14 +166,14 @@ export async function checkAndAlertCategoryLimit(familyId: string, categoryId: s
   // Use the category's own limit, or fall back to the parent's limit
   let limitHolderId = categoryId
   let limitCents: number | null = cat.monthly_limit_cents
-  let categoryName: string = cat.name
+  let categoryName: string = resolveCategoryName(cat, locale)
 
   if (!limitCents && cat.parent_id) {
     const parent = (allSiblings ?? []).find(c => c.id === cat.parent_id)
     if (parent?.monthly_limit_cents) {
       limitHolderId = parent.id
       limitCents = parent.monthly_limit_cents
-      categoryName = parent.name
+      categoryName = resolveCategoryName(parent, locale)
     }
   }
 
@@ -175,10 +240,8 @@ export async function checkAndAlertCategoryLimit(familyId: string, categoryId: s
   }
 
   console.log(`[limit-alert] ${categoryName} pct=${pct} level=${level} spent=${spentCents} limit=${limitCents}`)
-  const insight = await generateInsight(categoryName, pct, spentCents, limitCents, level)
-  const pushTitle = level === 'over'
-    ? `🚨 ${categoryName} ultrapassou o limite`
-    : `⚠️ Limite próximo: ${categoryName}`
+  const insight = await generateInsight(categoryName, pct, spentCents, limitCents, level, locale)
+  const pushTitle = PUSH_TITLES[locale][level](categoryName)
 
   // Push notifications
   let pushSent = 0
@@ -207,7 +270,7 @@ export async function checkAndAlertCategoryLimit(familyId: string, categoryId: s
   }
 
   // WhatsApp via dispatchInsights
-  const monthLabel = now.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
+  const monthLabel = now.toLocaleString(INTL_LOCALE[locale], { month: 'long', year: 'numeric' })
   try {
     await dispatchInsights(familyId, [insight], monthLabel, 'limit_alert')
     console.log('[limit-alert] dispatchInsights completed')

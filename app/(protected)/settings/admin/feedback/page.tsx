@@ -1,23 +1,24 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslations, useLocale } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import { getAuthBearerToken } from '@/lib/billing/client'
 import { supabase } from '@/lib/supabase'
 
-const LOCATIONS = [
-  'WhatsApp - Criar registro',
-  'WhatsApp - Consultar dados',
-  'WhatsApp - Editar/Apagar registro',
-  'App - Despesas',
-  'App - Receitas',
-  'App - Objetivos',
-  'App - Lembretes',
-  'App - Importar Extrato',
-  'App - Configurações',
-  'Outro',
-]
+const LOCATION_KEYS = [
+  'waRecord',
+  'waQuery',
+  'waEdit',
+  'appExpenses',
+  'appIncomes',
+  'appGoals',
+  'appReminders',
+  'appImport',
+  'appSettings',
+  'other',
+] as const
 
 type FeedbackRow = {
   id: string
@@ -30,24 +31,20 @@ type FeedbackRow = {
   created_at: string
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  bug: 'Bug 🐛',
-  feedback: 'Feedback 💬',
-  suggestion: 'Sugestão 💡',
-}
-
 const TYPE_COLORS: Record<string, string> = {
   bug: 'bg-terracotta/10 text-terracotta border-terracotta/20',
   feedback: 'bg-sage/10 text-sage border-sage/20',
   suggestion: 'bg-coffee/10 text-coffee border-coffee/20',
 }
 
-function dateBR(iso: string) {
+function dateFormatted(locale: string, iso: string) {
   const d = new Date(iso)
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 export default function AdminFeedbackPage() {
+  const t = useTranslations()
+  const locale = useLocale()
   const { user } = useAuth()
   const router = useRouter()
   const [checking, setChecking] = useState(true)
@@ -77,7 +74,7 @@ export default function AdminFeedbackPage() {
     setLoading(true)
     setLoadError(null)
     const token = await getAuthBearerToken()
-    if (!token) { setLoadError('Sessão inválida.'); setLoading(false); return }
+    if (!token) { setLoadError(t('common.sessionExpired')); setLoading(false); return }
 
     const params = new URLSearchParams({ page: String(page) })
     if (typeFilter) params.set('type', typeFilter)
@@ -85,12 +82,12 @@ export default function AdminFeedbackPage() {
 
     const res = await fetch(`/api/admin/feedback?${params}`, { headers: { Authorization: `Bearer ${token}` } })
     const data = await res.json().catch(() => null)
-    if (!res.ok) { setLoadError(data?.error || 'Erro ao carregar feedbacks.'); setLoading(false); return }
+    if (!res.ok) { setLoadError(data?.error || t('admin.feedback.errorLoad')); setLoading(false); return }
 
     setFeedbacks(data.feedbacks)
     setTotal(data.total)
     setLoading(false)
-  }, [page, typeFilter, locationFilter])
+  }, [page, typeFilter, locationFilter, t])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -100,7 +97,7 @@ export default function AdminFeedbackPage() {
   const handleFilter = () => { setPage(1); loadFeedbacks() }
 
   if (checking) {
-    return <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6"><p className="text-sm text-ink/60">Carregando…</p></div>
+    return <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6"><p className="text-sm text-ink/60">{t('common.loading')}</p></div>
   }
   if (!isSuperAdmin) return null
 
@@ -109,36 +106,39 @@ export default function AdminFeedbackPage() {
   return (
     <div className="space-y-6">
       <div className="bg-bg border border-border rounded-vintage shadow-vintage p-6">
-        <h1 className="text-2xl font-serif text-coffee mb-1">Feedbacks dos usuários</h1>
-        <p className="text-sm text-ink/60">{total} registro{total !== 1 ? 's' : ''} no total</p>
+        <h1 className="text-2xl font-serif text-coffee mb-1">{t('admin.feedback.title')}</h1>
+        <p className="text-sm text-ink/60">{t('admin.feedback.recordsCount', { count: total })}</p>
       </div>
 
       <div className="bg-bg border border-border rounded-vintage shadow-vintage p-4">
         <div className="flex flex-wrap gap-3 items-end">
           <div>
-            <label htmlFor="admin-feedback-type" className="block text-xs font-medium text-ink/60 mb-1">Tipo</label>
+            <label htmlFor="admin-feedback-type" className="block text-xs font-medium text-ink/60 mb-1">{t('admin.feedback.typeLabel')}</label>
             <select
               id="admin-feedback-type"
               value={typeFilter}
               onChange={e => setTypeFilter(e.target.value)}
               className="border border-border rounded bg-bg px-3 py-1.5 text-sm text-ink focus:outline-none focus:border-coffee"
             >
-              <option value="">Todos</option>
-              <option value="bug">Bug 🐛</option>
-              <option value="feedback">Feedback 💬</option>
-              <option value="suggestion">Sugestão 💡</option>
+              <option value="">{t('admin.feedback.all')}</option>
+              <option value="bug">{t('feedback.types.bug.label')}</option>
+              <option value="feedback">{t('feedback.types.feedback.label')}</option>
+              <option value="suggestion">{t('feedback.types.suggestion.label')}</option>
             </select>
           </div>
           <div>
-            <label htmlFor="admin-feedback-location" className="block text-xs font-medium text-ink/60 mb-1">Local</label>
+            <label htmlFor="admin-feedback-location" className="block text-xs font-medium text-ink/60 mb-1">{t('admin.feedback.locationLabel')}</label>
             <select
               id="admin-feedback-location"
               value={locationFilter}
               onChange={e => setLocationFilter(e.target.value)}
               className="border border-border rounded bg-bg px-3 py-1.5 text-sm text-ink focus:outline-none focus:border-coffee min-w-[200px]"
             >
-              <option value="">Todos</option>
-              {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+              <option value="">{t('admin.feedback.all')}</option>
+              {LOCATION_KEYS.map(key => {
+                const value = t(`feedback.locations.${key}`)
+                return <option key={key} value={value}>{value}</option>
+              })}
             </select>
           </div>
           <button
@@ -146,7 +146,7 @@ export default function AdminFeedbackPage() {
             onClick={handleFilter}
             className="bg-coffee text-paper text-sm font-medium px-4 py-1.5 rounded hover:bg-coffee/90 transition-colors"
           >
-            Filtrar
+            {t('admin.feedback.filter')}
           </button>
         </div>
       </div>
@@ -157,28 +157,28 @@ export default function AdminFeedbackPage() {
 
       <div className="bg-bg border border-border rounded-vintage shadow-vintage overflow-hidden">
         {loading ? (
-          <p className="text-sm text-ink/60 p-6">Carregando…</p>
+          <p className="text-sm text-ink/60 p-6">{t('common.loading')}</p>
         ) : feedbacks.length === 0 ? (
-          <p className="text-sm text-ink/60 p-6">Nenhum feedback encontrado.</p>
+          <p className="text-sm text-ink/60 p-6">{t('admin.feedback.noFeedbackFound')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead className="bg-paper border-b border-border">
                 <tr className="text-left text-ink/60">
-                  <th className="px-4 py-3 font-medium">Data</th>
-                  <th className="px-4 py-3 font-medium">Tipo</th>
-                  <th className="px-4 py-3 font-medium">Local</th>
-                  <th className="px-4 py-3 font-medium">Descrição</th>
-                  <th className="px-4 py-3 font-medium">Contato</th>
+                  <th className="px-4 py-3 font-medium">{t('admin.feedback.colDate')}</th>
+                  <th className="px-4 py-3 font-medium">{t('admin.feedback.typeLabel')}</th>
+                  <th className="px-4 py-3 font-medium">{t('admin.feedback.locationLabel')}</th>
+                  <th className="px-4 py-3 font-medium">{t('admin.feedback.colDescription')}</th>
+                  <th className="px-4 py-3 font-medium">{t('admin.feedback.colContact')}</th>
                 </tr>
               </thead>
               <tbody>
                 {feedbacks.map(fb => (
                   <tr key={fb.id} className="border-b border-border last:border-b-0 align-top hover:bg-paper/50">
-                    <td className="px-4 py-3 text-xs text-ink/50 whitespace-nowrap">{dateBR(fb.created_at)}</td>
+                    <td className="px-4 py-3 text-xs text-ink/50 whitespace-nowrap">{dateFormatted(locale, fb.created_at)}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border ${TYPE_COLORS[fb.type] ?? ''}`}>
-                        {TYPE_LABELS[fb.type] ?? fb.type}
+                        {fb.type in TYPE_COLORS ? t(`feedback.types.${fb.type}.label`) : fb.type}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-ink/70">{fb.location ?? <span className="text-ink/30">-</span>}</td>
@@ -186,13 +186,13 @@ export default function AdminFeedbackPage() {
                       {expanded === fb.id ? (
                         <div>
                           <p className="text-ink/80 whitespace-pre-wrap text-xs leading-relaxed">{fb.description}</p>
-                          <button type="button" onClick={() => setExpanded(null)} className="text-xs text-coffee underline mt-1">Recolher</button>
+                          <button type="button" onClick={() => setExpanded(null)} className="text-xs text-coffee underline mt-1">{t('admin.feedback.collapse')}</button>
                         </div>
                       ) : (
                         <div>
                           <p className="text-ink/80 line-clamp-2 text-xs">{fb.description}</p>
                           {fb.description.length > 80 && (
-                            <button type="button" onClick={() => setExpanded(fb.id)} className="text-xs text-coffee underline mt-0.5">Ver tudo</button>
+                            <button type="button" onClick={() => setExpanded(fb.id)} className="text-xs text-coffee underline mt-0.5">{t('admin.feedback.viewAll')}</button>
                           )}
                         </div>
                       )}
@@ -215,7 +215,7 @@ export default function AdminFeedbackPage() {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm">
-          <p className="text-ink/60">Página {page} de {totalPages}</p>
+          <p className="text-ink/60">{t('admin.feedback.pageOf', { page, totalPages })}</p>
           <div className="flex gap-2">
             <button
               type="button"
@@ -223,7 +223,7 @@ export default function AdminFeedbackPage() {
               onClick={() => setPage(p => p - 1)}
               className="px-3 py-1.5 border border-border rounded text-ink/70 hover:bg-paper disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              ← Anterior
+              {t('admin.feedback.previous')}
             </button>
             <button
               type="button"
@@ -231,7 +231,7 @@ export default function AdminFeedbackPage() {
               onClick={() => setPage(p => p + 1)}
               className="px-3 py-1.5 border border-border rounded text-ink/70 hover:bg-paper disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Próxima →
+              {t('admin.feedback.next')}
             </button>
           </div>
         </div>

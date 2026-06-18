@@ -21,15 +21,20 @@ import PublicFooter from '@/components/layout/PublicFooter'
 import Typewriter from '@/components/Typewriter'
 import { getUserLocale } from '@/lib/i18n/getLocale'
 
-export const metadata: Metadata = {
-  title: { absolute: 'Florim - Gestão financeira familiar' },
-  description: 'Cuide das finanças da família, juntos. Despesas, sonhos, combinados e insights com IA num só lugar. Plano gratuito, sem cartão.',
-  alternates: { canonical: '/' },
-  openGraph: {
-    title: 'Florim - Gestão financeira familiar',
-    description: 'Cuide das finanças da família, juntos. Comece grátis.',
-    url: 'https://florim.app',
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getUserLocale()
+  const msgs = (await import(`@/messages/${locale}.json`)).default as any
+  const s = msgs.seo.landing
+  return {
+    title: { absolute: s.title },
+    description: s.description,
+    alternates: { canonical: '/' },
+    openGraph: {
+      title: s.ogTitle,
+      description: s.ogDescription,
+      url: 'https://florim.app',
+    },
+  }
 }
 
 const FEATURE_ICONS = [

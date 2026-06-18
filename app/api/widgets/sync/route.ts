@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { getTranslations } from 'next-intl/server'
 import {
   getAccessTokenFromAuthHeader,
   getAccessTokenFromCookieStore,
@@ -7,6 +8,7 @@ import {
   getProfileByUserId,
 } from '@/lib/billing/auth'
 import { notifyWidgetSync } from '@/lib/notifications/widgetSync'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 
 /**
  * POST /api/widgets/sync
@@ -18,15 +20,17 @@ import { notifyWidgetSync } from '@/lib/notifications/widgetSync'
  */
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies()
+  const locale = await getUserLocale()
+  const t = await getTranslations({ locale, namespace: 'apiErrors' })
   const token = getAccessTokenFromAuthHeader(request) ?? getAccessTokenFromCookieStore(cookieStore)
-  const { error: authError, user } = await requireUserByAccessToken(token)
+  const { error: authError, user } = await requireUserByAccessToken(token, locale)
   if (authError || !user) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
+    return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 })
   }
 
   const profile = await getProfileByUserId(user.id)
   if (!profile?.family_id) {
-    return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 404 })
+    return NextResponse.json({ error: t('widgets.profileNotFound') }, { status: 404 })
   }
 
   await notifyWidgetSync(profile.family_id)

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
+import { getTranslations } from 'next-intl/server'
 import { billingErrorMessage } from '@/lib/billing/stripe-error'
 import { getAccessTokenFromAuthHeader, getProfileByUserId, requireUserByAccessToken } from '@/lib/billing/auth'
+import { getUserLocale } from '@/lib/i18n/getLocale'
 import { stripe } from '@/lib/billing/stripe'
 import { supabaseService } from '@/lib/billing/supabase-service'
 
@@ -11,8 +13,10 @@ function toIso(timestamp?: number | null) {
 
 export async function POST(request: Request) {
   try {
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
     const accessToken = getAccessTokenFromAuthHeader(request)
-    const auth = await requireUserByAccessToken(accessToken)
+    const auth = await requireUserByAccessToken(accessToken, locale)
 
     if (!auth.user) {
       return NextResponse.json({ error: auth.error }, { status: auth.status })
@@ -20,11 +24,11 @@ export async function POST(request: Request) {
 
     const profile = await getProfileByUserId(auth.user.id)
     if (!profile) {
-      return NextResponse.json({ error: 'Perfil não encontrado.' }, { status: 404 })
+      return NextResponse.json({ error: t('billing.profileNotFound') }, { status: 404 })
     }
 
     if (profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Apenas administradores da família podem gerenciar cobrança.' }, { status: 403 })
+      return NextResponse.json({ error: t('billing.adminOnly') }, { status: 403 })
     }
 
     const body = (await request.json().catch(() => null)) as { cancel_at_period_end?: boolean } | null
@@ -37,7 +41,7 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (!subscription?.stripe_subscription_id) {
-      return NextResponse.json({ error: 'Nenhuma assinatura encontrada para esta família.' }, { status: 404 })
+      return NextResponse.json({ error: t('billing.noSubscriptionForFamily') }, { status: 404 })
     }
 
     const updated = await stripe.subscriptions.update(subscription.stripe_subscription_id, {
@@ -63,6 +67,8 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     console.error('cancel-subscription failed', error)
-    return NextResponse.json({ error: billingErrorMessage(error, 'Erro inesperado ao atualizar cancelamento.') }, { status: 500 })
+    const locale = await getUserLocale()
+    const t = await getTranslations({ locale, namespace: 'apiErrors' })
+    return NextResponse.json({ error: billingErrorMessage(error, t('billing.cancelUnexpectedError')) }, { status: 500 })
   }
 }

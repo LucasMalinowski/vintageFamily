@@ -40,6 +40,7 @@ function ReminderRow({
   onEdit?: (reminder: Reminder) => void
   getCategoryColors: Record<string, string>
 }) {
+  const t = useTranslations()
   const isOverdue = !reminder.is_done && isDueDateOverdue(reminder.due_date, reminder.is_done)
   const isToday = !reminder.is_done && isDueDateToday(reminder.due_date)
   const catColor = REMINDER_CAT_COLORS[reminder.category] ?? '#2F3B33'
@@ -63,7 +64,7 @@ function ReminderRow({
         className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[5px] border-[1.5px] transition-vintage ${
           reminder.is_done ? 'border-olive bg-olive' : 'border-border bg-transparent hover:border-olive'
         }`}
-        aria-label={`Marcar ${reminder.title} como ${reminder.is_done ? 'pendente' : 'feito'}`}
+        aria-label={t(reminder.is_done ? 'reminders.markAsPendingAria' : 'reminders.markAsDoneAria', { title: reminder.title })}
       >
         {reminder.is_done ? <Check className="h-3 w-3 text-white" strokeWidth={3} /> : null}
       </button>
@@ -89,7 +90,7 @@ function ReminderRow({
         type="button"
         onClick={() => onEdit?.(reminder)}
         className="p-1 rounded text-ink/35 hover:text-petrol transition-vintage shrink-0"
-        aria-label="Editar"
+        aria-label={t('common.edit')}
       >
         <Pencil className="w-[14px] h-[14px]" />
       </button>
@@ -99,7 +100,7 @@ function ReminderRow({
           type="button"
           onClick={() => onDelete(reminder.id)}
           className="p-1 rounded text-ink/35 hover:text-terracotta transition-vintage shrink-0"
-          aria-label="Excluir"
+          aria-label={t('common.delete')}
         >
           <Trash2 className="w-[14px] h-[14px]" />
         </button>
@@ -303,9 +304,9 @@ export default function Reminders() {
               <div className="flex flex-wrap items-center gap-2">
                 {(
                   [
-                    { key: null,       label: 'Todos',               count: reminders.length },
+                    { key: null,       label: t('filterSheet.allOption'), count: reminders.length },
                     { key: 'pending',  label: t('reminders.upcoming'), count: pendingReminders.length },
-                    { key: 'done',     label: 'Concluídos',           count: completedReminders.length },
+                    { key: 'done',     label: t('reminders.completed'), count: completedReminders.length },
                     { key: 'overdue',  label: t('reminders.overdue'),  count: overdueReminders.length },
                   ] as { key: ReminderFilter; label: string; count: number }[]
                 ).map((pill) => {
@@ -339,7 +340,7 @@ export default function Reminders() {
                     disabled={completedReminders.length === 0}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-bg text-ink/60 text-[12.5px] font-medium hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed transition-vintage"
                   >
-                    Limpar concluídos
+                    {t('reminders.clearCompleted')}
                   </button>
                 </div>
               </div>
@@ -348,13 +349,13 @@ export default function Reminders() {
                 <div className="rounded-[12px] border border-border bg-offWhite px-6 py-10 shadow-soft text-center">
                   <p className="text-petrol mb-2">
                     {statusFilter === 'pending'
-                      ? 'Sem lembretes pendentes.'
+                      ? t('reminders.noPendingReminders')
                       : statusFilter === 'done'
-                        ? 'Sem lembretes concluídos.'
-                        : 'Sem lembretes para mostrar.'}
+                        ? t('reminders.noCompletedReminders')
+                        : t('reminders.noRemindersToShow')}
                   </p>
                   <p className="text-sm text-ink/50">
-                    Clique no filtro ativo novamente para limpar a seleção.
+                    {t('reminders.clickFilterToClear')}
                   </p>
                 </div>
               ) : statusFilter === null ? (
@@ -363,7 +364,7 @@ export default function Reminders() {
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         <span className="w-5 h-px bg-[#B05C3A]/40" />
-                        <span className="text-[10.5px] tracking-[0.18em] uppercase font-semibold text-[#B05C3A]/70">Pendentes · {pendingReminders.length}</span>
+                        <span className="text-[10.5px] tracking-[0.18em] uppercase font-semibold text-[#B05C3A]/70">{t('reminders.upcoming')} · {pendingReminders.length}</span>
                       </div>
                       <div className="space-y-2">
                         {pendingReminders.map((reminder) => (
@@ -376,7 +377,7 @@ export default function Reminders() {
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         <span className="w-5 h-px bg-olive/40" />
-                        <span className="text-[10.5px] tracking-[0.18em] uppercase font-semibold text-olive/70">Concluídos · {completedReminders.length}</span>
+                        <span className="text-[10.5px] tracking-[0.18em] uppercase font-semibold text-olive/70">{t('reminders.completed')} · {completedReminders.length}</span>
                       </div>
                       <div className="space-y-2">
                         {completedReminders.map((reminder) => (
@@ -415,7 +416,7 @@ export default function Reminders() {
           </button>
           <div className="h-[40px] flex items-center justify-center">
             <p className="text-center text-[13px] text-gold italic">
-              Lembrar com calma também é uma forma de cuidar da casa.
+              {t('reminders.motivationalSubtitle')}
             </p>
           </div>
         </div>
@@ -424,7 +425,7 @@ export default function Reminders() {
         <footer className="hidden md:block mt-auto w-full">
           <div className="h-[56px] bg-paper flex items-center justify-center px-6">
             <p className="text-center text-[13px] text-gold italic">
-              Lembrar com calma também é uma forma de cuidar da casa.
+              {t('reminders.motivationalSubtitle')}
             </p>
           </div>
         </footer>
@@ -447,7 +448,7 @@ export default function Reminders() {
               type="text"
               required
               value={formData.title}
-              aria-label="Título do lembrete"
+              aria-label={t('reminders.titleAria')}
               onChange={(event) => setFormData({ ...formData, title: event.target.value })}
               className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder={t('reminders.descriptionPlaceholder')}
@@ -461,7 +462,7 @@ export default function Reminders() {
               type="date"
               value={formData.due_date}
               onChange={(event) => setFormData({ ...formData, due_date: event.target.value })}
-              aria-label="Data de vencimento"
+              aria-label={t('reminders.dueDateAria')}
               className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
@@ -471,11 +472,11 @@ export default function Reminders() {
             value={formData.category}
             onChange={(value) => setFormData({ ...formData, category: value })}
             options={[
-              { value: 'Conta', label: 'Conta' },
-              { value: 'Casa', label: 'Casa' },
-              { value: 'Sonhos', label: 'Sonhos' },
-              { value: 'Família', label: 'Família' },
-              { value: 'Outros', label: 'Outros' },
+              { value: 'Conta', label: t('dashboard.reminderCategoryBill') },
+              { value: 'Casa', label: t('dashboard.reminderCategoryHome') },
+              { value: 'Sonhos', label: t('dashboard.reminderCategoryDreams') },
+              { value: 'Família', label: t('dashboard.reminderCategoryFamily') },
+              { value: 'Outros', label: t('dashboard.reminderCategoryOther') },
             ]}
           />
 
