@@ -14,6 +14,7 @@ import {
 } from '@/lib/whatsapp/WhatsAppMessageParser'
 import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
 import { flushPostHogLogs, posthogLogs } from '@/lib/posthog-logs'
+import { getWhatsAppMessages } from '@/lib/whatsapp/messages'
 
 type WhatsAppStatus = {
   id?: string
@@ -51,6 +52,25 @@ type WhatsAppMessage = {
 }
 
 const MAX_AUDIO_BYTES = Number(process.env.WHATSAPP_AUDIO_MAX_BYTES ?? 10_000_000)
+
+// Strips accents and lowercases so template button replies match regardless of
+// locale/casing — WhatsApp sends the button's literal label as typed text when
+// a user types it instead of tapping (e.g. "Sí, crear" / "Si, crear").
+function normalizeWhatsAppText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
+    .toLowerCase()
+}
+
+// Button labels from the pt-BR/en/es audio-confirmation WhatsApp templates.
+const CONFIRM_PHRASES = new Set(['sim, criar', 'sim criar', 'yes, create', 'yes create', 'si, crear', 'si crear'])
+const RETRY_PHRASES = new Set([
+  'tentar de novo', 'nao, vou tentar de novo',
+  'try again', 'no, try again',
+  'intentar otra vez', 'no, intentar otra vez',
+])
 
 function verifyMetaSignature(rawBody: string, signatureHeader: string | null): boolean {
   const secret = process.env.WHATSAPP_APP_SECRET
@@ -156,7 +176,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (message?.type !== 'text') {
-      await whatsAppService.sendTextMessage(from, 'Só consigo processar mensagens de texto. Descreva sua despesa, receita ou lembrete em texto. 😊')
+      const userRow = await findWhatsAppUser(from)
+      await whatsAppService.sendTextMessage(from, getWhatsAppMessages(userRow?.locale).unsupportedMessageType)
       await posthogLogs.info('WhatsApp webhook ignored unsupported message type', {
         endpoint: '/api/whatsapp/webhook',
         message_type: message?.type ?? 'unknown',
@@ -167,16 +188,16 @@ export async function POST(request: NextRequest) {
 
     const messageId: string = message.id
     const text: string = message.text?.body ?? ''
-    const normalizedText = text.trim().toLowerCase()
+    const normalizedText = normalizeWhatsAppText(text)
 
-    if (normalizedText === 'sim, criar' || normalizedText === 'sim criar') {
+    if (CONFIRM_PHRASES.has(normalizedText)) {
       await processWhatsAppButtonReply(from, 'audio_confirm_yes', message.id)
       await posthogLogs.info('WhatsApp typed confirmation processed', { endpoint: '/api/whatsapp/webhook' })
       await flushPostHogLogs()
       return NextResponse.json({ status: 'ok' }, { status: 200 })
     }
 
-    if (normalizedText === 'tentar de novo' || normalizedText === 'não, vou tentar de novo' || normalizedText === 'nao, vou tentar de novo') {
+    if (RETRY_PHRASES.has(normalizedText)) {
       await processWhatsAppButtonReply(from, 'audio_confirm_no', message.id)
       await posthogLogs.info('WhatsApp typed rejection processed', { endpoint: '/api/whatsapp/webhook' })
       await flushPostHogLogs()
@@ -187,12 +208,17 @@ export async function POST(request: NextRequest) {
     // Meta's platform also honors opt-outs at the account level, but we acknowledge
     // them here explicitly. A future migration should store whatsapp_opted_out=true
     // in the users table and check it before sending outbound messages.
-    const OPT_OUT_KEYWORDS = new Set(['stop', 'parar', 'cancelar', 'descadastrar', 'sair', 'sair da lista'])
+    const OPT_OUT_KEYWORDS = new Set([
+      // pt-BR
+      'parar', 'cancelar', 'descadastrar', 'sair', 'sair da lista',
+      // en
+      'stop', 'unsubscribe', 'cancel',
+      // es
+      'darse de baja', 'salir', 'baja',
+    ])
     if (OPT_OUT_KEYWORDS.has(normalizedText)) {
-      await whatsAppService.sendTextMessage(
-        from,
-        'Sua preferência foi registrada. Você não receberá mais mensagens automáticas do Florim. Para reativar, envie "oi" ou acesse o app. 👋'
-      )
+      const userRow = await findWhatsAppUser(from)
+      await whatsAppService.sendTextMessage(from, getWhatsAppMessages(userRow?.locale).optOutConfirmation)
       await posthogLogs.info('WhatsApp opt-out received', { endpoint: '/api/whatsapp/webhook' })
       await flushPostHogLogs()
       return NextResponse.json({ status: 'ok' }, { status: 200 })
@@ -215,7 +241,8 @@ export async function POST(request: NextRequest) {
 async function processAudioMessage(from: string, message: WhatsAppMessage): Promise<void> {
   const mediaId = message.audio?.id
   if (!mediaId) {
-    await whatsAppService.sendTextMessage(from, 'Não consegui acessar esse áudio. Tente enviar novamente. 🔄')
+    const lookupForMissingMedia = await findWhatsAppUser(from)
+    await whatsAppService.sendTextMessage(from, getWhatsAppMessages(lookupForMissingMedia?.locale).errors.audioFetchError)
     return
   }
 
@@ -224,7 +251,7 @@ async function processAudioMessage(from: string, message: WhatsAppMessage): Prom
 
   const userRow = await findWhatsAppUser(from)
   if (!userRow) {
-    await whatsAppService.sendTextMessage(from, 'Número não cadastrado no Florim. Acesse o app para vincular seu WhatsApp.')
+    await whatsAppService.sendTextMessage(from, getWhatsAppMessages(null).notRegistered)
     return
   }
 
@@ -239,10 +266,7 @@ async function processAudioMessage(from: string, message: WhatsAppMessage): Prom
     const usage = await checkAndIncrementAudioMessage(userRow.family_id)
     if (!usage.allowed) {
       await updateWhatsAppMessageLog(message.id, { transcription_status: 'skipped', transcription_error: 'audio_limit_reached' })
-      await whatsAppService.sendTextMessage(
-        from,
-        'Você usou todos os 10 áudios gratuitos deste mês. 🎯\n\nVocê ainda pode enviar mensagens de texto ou assinar o Florim Pro para usar áudio sem esse limite.'
-      )
+      await whatsAppService.sendTextMessage(from, getWhatsAppMessages(userRow.locale).errors.audioLimitReached)
       return
     }
   }
@@ -285,6 +309,6 @@ async function processAudioMessage(from: string, message: WhatsAppMessage): Prom
       family_id: userRow.family_id,
       user_id: userRow.id,
     }, error)
-    await whatsAppService.sendTextMessage(from, 'Não consegui ouvir seu áudio agora. Tente novamente ou envie por texto. 🔄')
+    await whatsAppService.sendTextMessage(from, getWhatsAppMessages(userRow.locale).errors.audioTranscriptionError)
   }
 }

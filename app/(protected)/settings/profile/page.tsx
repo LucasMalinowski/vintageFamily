@@ -12,33 +12,31 @@ import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
 import { ImageValidationError, validateImageFile } from '@/lib/security/images'
 import { NEXT_LOCALE_COOKIE, SUPPORTED_LOCALES, type AppLocale } from '@/lib/i18n/getLocale'
+import { CURRENCIES, SUPPORTED_CURRENCIES, countryCodeToFlag, type AppCurrency } from '@/lib/i18n/currencies'
 
 type PhoneState = 'none' | 'pending' | 'verified'
 
-const SUPPORTED_CURRENCIES = ['BRL', 'USD', 'EUR'] as const
-type AppCurrency = typeof SUPPORTED_CURRENCIES[number]
-
 const COUNTRY_CODES = [
-  { code: '55',  flag: '🇧🇷', name: 'Brasil',          slug: 'BR' },
-  { code: '1',   flag: '🇺🇸', name: 'EUA',             slug: 'US' },
-  { code: '351', flag: '🇵🇹', name: 'Portugal',        slug: 'PT' },
-  { code: '54',  flag: '🇦🇷', name: 'Argentina',       slug: 'AR' },
-  { code: '56',  flag: '🇨🇱', name: 'Chile',           slug: 'CL' },
-  { code: '57',  flag: '🇨🇴', name: 'Colômbia',        slug: 'CO' },
-  { code: '52',  flag: '🇲🇽', name: 'México',          slug: 'MX' },
-  { code: '598', flag: '🇺🇾', name: 'Uruguai',         slug: 'UY' },
-  { code: '595', flag: '🇵🇾', name: 'Paraguai',        slug: 'PY' },
-  { code: '51',  flag: '🇵🇪', name: 'Peru',            slug: 'PE' },
-  { code: '34',  flag: '🇪🇸', name: 'Espanha',         slug: 'ES' },
-  { code: '44',  flag: '🇬🇧', name: 'Reino Unido',     slug: 'GB' },
-  { code: '49',  flag: '🇩🇪', name: 'Alemanha',        slug: 'DE' },
-  { code: '33',  flag: '🇫🇷', name: 'França',          slug: 'FR' },
-  { code: '39',  flag: '🇮🇹', name: 'Itália',          slug: 'IT' },
-  { code: '81',  flag: '🇯🇵', name: 'Japão',           slug: 'JP' },
-  { code: '86',  flag: '🇨🇳', name: 'China',           slug: 'CN' },
-  { code: '91',  flag: '🇮🇳', name: 'Índia',           slug: 'IN' },
-  { code: '61',  flag: '🇦🇺', name: 'Austrália',       slug: 'AU' },
-  { code: '1',   flag: '🇨🇦', name: 'Canadá',          slug: 'CA' },
+  { code: '55',  flag: '🇧🇷', slug: 'BR' },
+  { code: '1',   flag: '🇺🇸', slug: 'US' },
+  { code: '351', flag: '🇵🇹', slug: 'PT' },
+  { code: '54',  flag: '🇦🇷', slug: 'AR' },
+  { code: '56',  flag: '🇨🇱', slug: 'CL' },
+  { code: '57',  flag: '🇨🇴', slug: 'CO' },
+  { code: '52',  flag: '🇲🇽', slug: 'MX' },
+  { code: '598', flag: '🇺🇾', slug: 'UY' },
+  { code: '595', flag: '🇵🇾', slug: 'PY' },
+  { code: '51',  flag: '🇵🇪', slug: 'PE' },
+  { code: '34',  flag: '🇪🇸', slug: 'ES' },
+  { code: '44',  flag: '🇬🇧', slug: 'GB' },
+  { code: '49',  flag: '🇩🇪', slug: 'DE' },
+  { code: '33',  flag: '🇫🇷', slug: 'FR' },
+  { code: '39',  flag: '🇮🇹', slug: 'IT' },
+  { code: '81',  flag: '🇯🇵', slug: 'JP' },
+  { code: '86',  flag: '🇨🇳', slug: 'CN' },
+  { code: '91',  flag: '🇮🇳', slug: 'IN' },
+  { code: '61',  flag: '🇦🇺', slug: 'AU' },
+  { code: '1',   flag: '🇨🇦', slug: 'CA' },
 ] as const
 
 type CountryOption = (typeof COUNTRY_CODES)[number]
@@ -69,8 +67,12 @@ function findCountryByPhone(phone: string) {
   return match ?? COUNTRY_CODES[0]
 }
 
-function countryLabel(country: CountryOption) {
-  return `${country.flag} ${country.name}`
+function countryLabel(country: CountryOption, t: ReturnType<typeof useTranslations>) {
+  return `${country.flag} ${t(`countries.${country.slug}`)}`
+}
+
+function findCurrencyByCode(code: string) {
+  return CURRENCIES.find((c) => c.code === code) ?? CURRENCIES[0]
 }
 
 type DeletionInfo = {
@@ -101,6 +103,8 @@ export default function ProfileSettingsPage() {
   const [currency, setCurrency] = useState<AppCurrency>('BRL')
   const [savingLocale, setSavingLocale] = useState(false)
   const [savingCurrency, setSavingCurrency] = useState(false)
+  const [currencySearch, setCurrencySearch] = useState('')
+  const [currencyMenuOpen, setCurrencyMenuOpen] = useState(false)
   const [profileName, setProfileName] = useState('')
   const [profileEmail, setProfileEmail] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
@@ -154,13 +158,26 @@ export default function ProfileSettingsPage() {
 
     return COUNTRY_CODES.filter((country) => {
       return (
-        country.name.toLowerCase().includes(query) ||
+        t(`countries.${country.slug}`).toLowerCase().includes(query) ||
         country.slug.toLowerCase().includes(query) ||
         country.code.includes(query) ||
         country.flag.includes(query)
       )
     })
-  }, [countrySearch])
+  }, [countrySearch, t])
+  const filteredCurrencies = useMemo(() => {
+    const query = currencySearch.trim().toLowerCase()
+    if (!query) return CURRENCIES
+
+    return CURRENCIES.filter((c) => {
+      return (
+        c.code.toLowerCase().includes(query) ||
+        c.countryName.toLowerCase().includes(query) ||
+        c.symbol?.toLowerCase().includes(query) ||
+        t(`language.currencies.${c.code}`).toLowerCase().includes(query)
+      )
+    })
+  }, [currencySearch, t])
 
   useEffect(() => {
     const loadData = async () => {
@@ -547,7 +564,7 @@ export default function ProfileSettingsPage() {
                       <div className="flex items-center gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="truncate font-medium text-ink">
-                            {countryLabel(selectedCountry)}
+                            {countryLabel(selectedCountry, t)}
                           </div>
                           <div className="truncate text-[11px] text-ink/50">
                             +{selectedCountry.code} {selectedCountry.slug}
@@ -601,7 +618,7 @@ export default function ProfileSettingsPage() {
                                     <div className="flex items-center gap-3">
                                       <div className="min-w-0 flex-1">
                                         <div className="truncate text-sm font-medium text-sidebar">
-                                          {country.flag} {country.name}
+                                          {country.flag} {t(`countries.${country.slug}`)}
                                         </div>
                                         <div className="truncate text-[11px] text-ink/45">
                                           +{country.code} · {country.slug}
@@ -643,7 +660,7 @@ export default function ProfileSettingsPage() {
             {phoneState === 'pending' && (
               <div className="space-y-3">
                 <p className="text-sm text-ink/70">
-                  {t('profile.whatsapp.codeFor')} <strong>{countryLabel(pendingCountry)} · {pendingPhone}</strong>
+                  {t('profile.whatsapp.codeFor')} <strong>{countryLabel(pendingCountry, t)} · {pendingPhone}</strong>
                 </p>
                 <div className="flex gap-2">
                   <input
@@ -684,7 +701,7 @@ export default function ProfileSettingsPage() {
             {phoneState === 'verified' && (
               <div className="flex items-center gap-3">
                 <span className="text-sm font-body text-olive">
-                  ✓ {countryLabel(verifiedCountry)} · {verifiedPhone}
+                  ✓ {countryLabel(verifiedCountry, t)} · {verifiedPhone}
                 </span>
                 <button
                   type="button"
@@ -785,18 +802,82 @@ export default function ProfileSettingsPage() {
                 ))}
               </select>
             </div>
-            <div>
+            <div className="relative">
               <label className="block text-sm font-body text-ink mb-1.5">{t('language.currencyLabel')}</label>
-              <select
-                value={currency}
-                onChange={(e) => handleChangeCurrency(e.target.value as AppCurrency)}
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrencyMenuOpen((current) => !current)
+                  setCurrencySearch('')
+                }}
                 disabled={savingCurrency || !familyId}
-                className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage text-sm disabled:opacity-50"
+                className="w-full px-4 py-3 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50 transition-vintage text-sm text-left disabled:opacity-50"
               >
-                {SUPPORTED_CURRENCIES.map((code) => (
-                  <option key={code} value={code}>{t(`language.currencies.${code}`)}</option>
-                ))}
-              </select>
+                <div className="flex items-center gap-3">
+                  <div className="min-w-0 flex-1 truncate font-medium text-ink">
+                    {countryCodeToFlag(findCurrencyByCode(currency).country)} {currency} - {t(`language.currencies.${currency}`)}
+                  </div>
+                  <ChevronDown className="w-4 h-4 shrink-0 text-ink/40" />
+                </div>
+              </button>
+
+              {currencyMenuOpen && (
+                <>
+                  <button
+                    type="button"
+                    aria-label={t('language.closeCurrencyListAria')}
+                    className="fixed inset-0 z-20 cursor-default"
+                    onClick={() => setCurrencyMenuOpen(false)}
+                  />
+                  <div className="absolute z-30 mt-2 w-full rounded-[16px] border border-border/70 bg-offWhite p-2 shadow-soft">
+                    <div className="mb-2 rounded-[12px] border border-border/70 bg-paper px-3 py-2">
+                      <label className="flex items-center gap-2">
+                        <Search className="h-4 w-4 shrink-0 text-ink/35" aria-hidden="true" />
+                        <input
+                          type="text"
+                          value={currencySearch}
+                          onChange={(event) => setCurrencySearch(event.target.value)}
+                          placeholder={t('language.currencySearchPlaceholder')}
+                          className="w-full bg-transparent text-sm text-ink placeholder:text-ink/35 focus:outline-none"
+                          autoFocus
+                        />
+                      </label>
+                    </div>
+                    <div className="max-h-72 overflow-auto space-y-1">
+                      {filteredCurrencies.length === 0 ? (
+                        <div className="px-3 py-4 text-sm text-ink/45">{t('language.currencyNoResults')}</div>
+                      ) : (
+                        filteredCurrencies.map((c) => {
+                          const isSelected = c.code === currency
+                          return (
+                            <button
+                              key={c.code}
+                              type="button"
+                              onClick={() => {
+                                handleChangeCurrency(c.code as AppCurrency)
+                                setCurrencyMenuOpen(false)
+                                setCurrencySearch('')
+                              }}
+                              className={`w-full rounded-[12px] px-3 py-2.5 text-left transition-vintage ${
+                                isSelected ? 'bg-coffee/8' : 'hover:bg-coffee/6'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="min-w-0 flex-1 truncate text-sm font-medium text-sidebar">
+                                  {countryCodeToFlag(c.country)} {c.code} - {t(`language.currencies.${c.code}`)}
+                                </div>
+                                {isSelected ? (
+                                  <Check className="h-4 w-4 shrink-0 text-coffee" aria-hidden="true" />
+                                ) : null}
+                              </div>
+                            </button>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

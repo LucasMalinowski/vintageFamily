@@ -133,7 +133,7 @@ export default function PricingPage() {
     ? {
         name: t(`plans.${selectedPlan}.name`),
         teaser: t(`plans.${selectedPlan}.teaser`),
-        price: t(`plans.${selectedPlan}.price` as any, undefined, { fallback: '' }),
+        price: t(`plans.${selectedPlan}.price` as any),
         period: t(`plans.${selectedPlan}.period`),
       }
     : null

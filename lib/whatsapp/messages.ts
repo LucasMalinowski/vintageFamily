@@ -10,6 +10,8 @@ export const WHATSAPP_MONTH_NAMES: Record<AppLocale, string[]> = {
 
 type WhatsAppMessages = {
   notRegistered: string
+  unsupportedMessageType: string
+  optOutConfirmation: string
   privacyNotice: (appUrl: string) => string
   usageHint: string
   feedbackLine: string
@@ -128,12 +130,17 @@ type WhatsAppMessages = {
     queryLimitReached: string
     recordingLimitReached: string
     audioTranscriptNote: (text: string) => string
+    audioFetchError: string
+    audioLimitReached: string
+    audioTranscriptionError: string
   }
 }
 
 const WHATSAPP_MESSAGES: Record<AppLocale, WhatsAppMessages> = {
   'pt-BR': {
     notRegistered: 'Número não cadastrado no Florim. Acesse o app para vincular seu WhatsApp.',
+    unsupportedMessageType: 'Só consigo processar mensagens de texto. Descreva sua despesa, receita ou lembrete em texto. 😊',
+    optOutConfirmation: 'Sua preferência foi registrada. Você não receberá mais mensagens automáticas do Florim. Para reativar, envie "oi" ou acesse o app. 👋',
     privacyNotice: (appUrl) =>
       `> 🔒 Em conformidade com a *LGPD*, seus dados são tratados com total segurança pelo *Florim*. Nenhuma informação é compartilhada com terceiros.\n` +
       `> 📄 Termos e Política de Privacidade: ${appUrl}/termos-e-servicos`,
@@ -276,11 +283,16 @@ Você também pode combinar: "Gastei 30 na farmácia e 55 de gasolina"
       queryLimitReached: 'Você usou todas as 7 consultas gratuitas deste mês. 🎯\n\nAssine o Florim Pro para consultas ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.',
       recordingLimitReached: 'Você usou todas as 25 mensagens gratuitas deste mês. 🎯\n\nAssine o Florim Pro para mensagens ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.',
       audioTranscriptNote: (text) => `Transcrevi seu áudio como: "${text}"\n\nSe eu entendi errado, tente enviar de novo.\n\n`,
+      audioFetchError: 'Não consegui acessar esse áudio. Tente enviar novamente. 🔄',
+      audioLimitReached: 'Você usou todos os 10 áudios gratuitos deste mês. 🎯\n\nVocê ainda pode enviar mensagens de texto ou assinar o Florim Pro para usar áudio sem esse limite.',
+      audioTranscriptionError: 'Não consegui ouvir seu áudio agora. Tente novamente ou envie por texto. 🔄',
     },
   },
 
   en: {
     notRegistered: 'This number is not registered with Florim. Open the app to link your WhatsApp.',
+    unsupportedMessageType: 'I can only process text messages. Describe your expense, income, or reminder as text. 😊',
+    optOutConfirmation: 'Your preference has been saved. You will no longer receive automatic messages from Florim. To reactivate, send "hi" or open the app. 👋',
     privacyNotice: (appUrl) =>
       `> 🔒 In compliance with data protection regulations, your data is handled securely by *Florim*. No information is shared with third parties.\n` +
       `> 📄 Terms and Privacy Policy: ${appUrl}/termos-e-servicos`,
@@ -423,11 +435,16 @@ You can also combine them: "Spent 30 at the pharmacy and 55 on gas"
       queryLimitReached: "You've used all 7 free queries this month. 🎯\n\nSubscribe to Florim Pro for unlimited queries: florim.app/pricing\n\nCancel anytime. Your data is kept forever.",
       recordingLimitReached: "You've used all 25 free messages this month. 🎯\n\nSubscribe to Florim Pro for unlimited messages: florim.app/pricing\n\nCancel anytime. Your data is kept forever.",
       audioTranscriptNote: (text) => `I transcribed your audio as: "${text}"\n\nIf I got it wrong, try sending it again.\n\n`,
+      audioFetchError: "I couldn't access that audio. Please try sending it again. 🔄",
+      audioLimitReached: "You've used all 10 free audio messages this month. 🎯\n\nYou can still send text messages, or subscribe to Florim Pro to use audio without this limit.",
+      audioTranscriptionError: "I couldn't listen to your audio right now. Try again or send it as text. 🔄",
     },
   },
 
   es: {
     notRegistered: 'Este número no está registrado en Florim. Abre la app para vincular tu WhatsApp.',
+    unsupportedMessageType: 'Solo puedo procesar mensajes de texto. Describe tu gasto, ingreso o recordatorio en texto. 😊',
+    optOutConfirmation: 'Tu preferencia fue registrada. Ya no recibirás mensajes automáticos de Florim. Para reactivar, envía "hola" o abre la app. 👋',
     privacyNotice: (appUrl) =>
       `> 🔒 De acuerdo con la normativa de protección de datos, tus datos son tratados con total seguridad por *Florim*. Ninguna información se comparte con terceros.\n` +
       `> 📄 Términos y Política de Privacidad: ${appUrl}/termos-e-servicos`,
@@ -570,6 +587,9 @@ También puedes combinar: "Gasté 30 en la farmacia y 55 en gasolina"
       queryLimitReached: 'Usaste todas las 7 consultas gratuitas de este mes. 🎯\n\nSuscríbete a Florim Pro para consultas ilimitadas: florim.app/pricing\n\nCancela cuando quieras. Tus datos se conservan siempre.',
       recordingLimitReached: 'Usaste todos los 25 mensajes gratuitos de este mes. 🎯\n\nSuscríbete a Florim Pro para mensajes ilimitados: florim.app/pricing\n\nCancela cuando quieras. Tus datos se conservan siempre.',
       audioTranscriptNote: (text) => `Transcribí tu audio como: "${text}"\n\nSi entendí mal, intenta enviarlo de nuevo.\n\n`,
+      audioFetchError: 'No pude acceder a ese audio. Intenta enviarlo de nuevo. 🔄',
+      audioLimitReached: 'Usaste los 10 audios gratuitos de este mes. 🎯\n\nTodavía puedes enviar mensajes de texto o suscribirte a Florim Pro para usar audio sin este límite.',
+      audioTranscriptionError: 'No pude escuchar tu audio ahora. Intenta de nuevo o envíalo como texto. 🔄',
     },
   },
 }
