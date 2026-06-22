@@ -99,10 +99,13 @@ function useTypewriter(phrases: string[]) {
   const [initialPhrase] = useState(() => phrases[Math.floor(Math.random() * phrases.length)])
   const phraseRef = useRef(initialPhrase)
   const phrasesRef = useRef(phrases)
-  phrasesRef.current = phrases
   const indexRef = useRef(0)
   const directionRef = useRef<'typing' | 'deleting'>('typing')
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    phrasesRef.current = phrases
+  }, [phrases])
 
   useEffect(() => {
     const blinkInterval = setInterval(() => setCursor((c) => !c), 530)
