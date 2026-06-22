@@ -1,15 +1,8 @@
 import { cookies } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { DEFAULT_LOCALE, NEXT_LOCALE_COOKIE, isAppLocale, type AppLocale } from '@/lib/i18n/locales'
 
-export const SUPPORTED_LOCALES = ['pt-BR', 'en', 'es'] as const
-export type AppLocale = typeof SUPPORTED_LOCALES[number]
-export const DEFAULT_LOCALE: AppLocale = 'pt-BR'
-
-export const NEXT_LOCALE_COOKIE = 'NEXT_LOCALE'
-
-function isAppLocale(value: string | undefined): value is AppLocale {
-  return !!value && (SUPPORTED_LOCALES as readonly string[]).includes(value)
-}
+export { SUPPORTED_LOCALES, DEFAULT_LOCALE, NEXT_LOCALE_COOKIE, type AppLocale } from '@/lib/i18n/locales'
 
 export async function getUserLocale(): Promise<AppLocale> {
   const cookieStore = cookies()

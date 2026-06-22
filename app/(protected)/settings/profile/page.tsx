@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
 import { ImageValidationError, validateImageFile } from '@/lib/security/images'
-import { NEXT_LOCALE_COOKIE, SUPPORTED_LOCALES, type AppLocale } from '@/lib/i18n/getLocale'
+import { NEXT_LOCALE_COOKIE, SUPPORTED_LOCALES, type AppLocale } from '@/lib/i18n/locales'
 import { CURRENCIES, SUPPORTED_CURRENCIES, countryCodeToFlag, type AppCurrency } from '@/lib/i18n/currencies'
 
 type PhoneState = 'none' | 'pending' | 'verified'
