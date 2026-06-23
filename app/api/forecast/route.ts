@@ -5,6 +5,7 @@ import { computeNextMonthForecast } from '@/lib/forecast/engine'
 import { detectSpendingAnomalies } from '@/lib/forecast/anomaly'
 import { generateForecastNarrative } from '@/lib/forecast/narrator'
 import { getUserLocale } from '@/lib/i18n/getLocale'
+import { getFamilyCurrency } from '@/lib/i18n/getFamilyCurrency'
 
 export async function GET(request: NextRequest) {
   const locale = await getUserLocale()
@@ -23,7 +24,8 @@ export async function GET(request: NextRequest) {
     detectSpendingAnomalies(profile.family_id, 12, locale),
   ])
 
-  const narrative = await generateForecastNarrative(forecast, anomalies, locale)
+  const currency = await getFamilyCurrency(profile.family_id)
+  const narrative = await generateForecastNarrative(forecast, anomalies, locale, currency)
 
   return NextResponse.json({ forecast, anomalies, narrative })
 }

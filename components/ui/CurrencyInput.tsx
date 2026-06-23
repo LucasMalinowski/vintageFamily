@@ -1,12 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useLocale } from 'next-intl'
+import { formatMoney } from '@/lib/money'
 
-function centsToDisplay(cents: number): string {
-  const reais = Math.floor(cents / 100)
-  const centavos = cents % 100
-  const reaisFormatted = reais.toLocaleString('pt-BR')
-  return `R$ ${reaisFormatted},${centavos.toString().padStart(2, '0')}`
+function centsToDisplay(cents: number, currency: string, locale: string): string {
+  return formatMoney(cents, currency, locale)
 }
 
 function valueToCents(value: string): number {
@@ -19,6 +18,7 @@ function valueToCents(value: string): number {
 interface CurrencyInputProps {
   value: string
   onChange: (value: string) => void
+  currency?: string
   placeholder?: string
   className?: string
   required?: boolean
@@ -30,13 +30,15 @@ interface CurrencyInputProps {
 export default function CurrencyInput({
   value,
   onChange,
-  placeholder = 'R$ 0,00',
+  currency = 'BRL',
+  placeholder,
   className = '',
   required,
   disabled,
   'aria-label': ariaLabel,
   id,
 }: CurrencyInputProps) {
+  const locale = useLocale()
   const [cents, setCents] = useState(() => valueToCents(value))
   const skipSync = useRef(false)
 
@@ -50,7 +52,8 @@ export default function CurrencyInput({
     setCents(valueToCents(value))
   }, [value])
 
-  const displayValue = cents > 0 ? centsToDisplay(cents) : ''
+  const displayValue = cents > 0 ? centsToDisplay(cents, currency, locale) : ''
+  const resolvedPlaceholder = placeholder ?? formatMoney(0, currency, locale)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const digits = e.target.value.replace(/\D/g, '')
@@ -66,7 +69,7 @@ export default function CurrencyInput({
       inputMode="numeric"
       value={displayValue}
       onChange={handleChange}
-      placeholder={placeholder}
+      placeholder={resolvedPlaceholder}
       className={className}
       required={required}
       disabled={disabled}

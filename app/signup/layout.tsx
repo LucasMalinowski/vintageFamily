@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { NextIntlClientProvider } from 'next-intl'
+import IntlProvider from '@/components/IntlProvider'
 import { getUserLocale } from '@/lib/i18n/getLocale'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -16,8 +16,8 @@ export default async function SignupLayout({ children }: { children: React.React
   const locale = await getUserLocale()
   const messages = (await import(`@/messages/${locale}.json`)).default
   return (
-    <NextIntlClientProvider locale={locale} messages={messages} getMessageFallback={({ key }) => key}>
+    <IntlProvider locale={locale} messages={messages} now={new Date()} timeZone="America/Sao_Paulo">
       {children}
-    </NextIntlClientProvider>
+    </IntlProvider>
   )
 }

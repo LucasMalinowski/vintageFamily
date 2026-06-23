@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       annual_events: {
@@ -1553,6 +1578,10 @@ export type Database = {
         Returns: undefined
       }
       rename_my_family: { Args: { p_name: string }; Returns: undefined }
+      update_family_currency: {
+        Args: { p_currency: string }
+        Returns: undefined
+      }
       update_family_member_role: {
         Args: { p_member_id: string; p_role: string }
         Returns: undefined
@@ -1714,6 +1743,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

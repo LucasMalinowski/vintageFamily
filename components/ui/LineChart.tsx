@@ -1,5 +1,7 @@
 'use client'
 
+import { useLocale } from 'next-intl'
+
 export interface LineSeries {
   label: string
   data: number[]
@@ -14,6 +16,7 @@ interface LineChartProps {
 }
 
 export default function LineChart({ series, labels, height = 140, currency = true }: LineChartProps) {
+  const locale = useLocale()
   const w = 520
   const h = height
   const pad = { t: 16, r: 16, b: 28, l: 68 }
@@ -32,7 +35,7 @@ export default function LineChart({ series, labels, height = 140, currency = tru
   const py = (v: number) => pad.t + ch - ((v - minV) / range) * ch
 
   const fmtTick = (v: number) =>
-    v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+    v.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
   return (
     <svg width="100%" viewBox={`0 0 ${w} ${h}`} style={{ overflow: 'visible' }}>

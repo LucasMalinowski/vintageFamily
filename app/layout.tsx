@@ -2,6 +2,7 @@ import './globals.css'
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import Providers from '@/components/Providers'
+import IntlProvider from '@/components/IntlProvider'
 import CookieBanner from '@/components/CookieBanner'
 import MobileAppBanner from '@/components/MobileAppBanner'
 import { getUserLocale } from '@/lib/i18n/getLocale'
@@ -92,16 +93,19 @@ export default async function RootLayout({
   children: React.ReactNode
 }) {
   const locale = await getUserLocale()
+  const messages = (await import(`@/messages/${locale}.json`)).default
   return (
 	    <html lang={locale}>
 	      <body className="bg-paper text-ink font-body">
-	        <script type="application/ld+json">{JSON.stringify(organizationJsonLd)}</script>
+	        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
 	        <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
-        <Providers>
-          {children}
-        </Providers>
-        <MobileAppBanner />
-        <CookieBanner />
+        <IntlProvider locale={locale} messages={messages} now={new Date()} timeZone="America/Sao_Paulo">
+          <Providers>
+            {children}
+          </Providers>
+          <MobileAppBanner />
+          <CookieBanner />
+        </IntlProvider>
       </body>
     </html>
   )

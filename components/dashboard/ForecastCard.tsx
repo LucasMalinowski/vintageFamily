@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronUp, TrendingUp } from 'lucide-react'
 import { useTranslations, useLocale } from 'next-intl'
 import { supabase } from '@/lib/supabase'
-import { formatBRL } from '@/lib/money'
+import { formatMoney } from '@/lib/money'
+import { useAuth } from '@/components/AuthProvider'
 
 type Confidence = 'high' | 'medium' | 'low' | 'insufficient'
 
@@ -38,6 +39,7 @@ const CONFIDENCE_BADGE_CLASSNAME: Record<Confidence, string> = {
 export default function ForecastCard() {
   const t = useTranslations()
   const locale = useLocale()
+  const { currency } = useAuth()
   const [forecast, setForecast] = useState<ForecastResult | null>(null)
   const [anomalies, setAnomalies] = useState<AnomalyFlag[]>([])
   const [narrative, setNarrative] = useState('')
@@ -151,7 +153,7 @@ export default function ForecastCard() {
 
         {/* Grand total */}
         <p className="font-numbers font-bold text-[34px] text-ink leading-none tracking-[-1px] tabular-nums mb-1">
-          {formatBRL(forecast.grandTotal)}
+          {formatMoney(forecast.grandTotal, currency, locale)}
         </p>
 
         {/* Low-confidence warning */}
@@ -186,7 +188,7 @@ export default function ForecastCard() {
               <div key={item.label} className="flex justify-between items-center">
                 <span className="text-[12px] text-ink/60">{item.label}</span>
                 <span className="text-[12px] font-semibold font-numbers tabular-nums text-ink">
-                  {formatBRL(item.value)}
+                  {formatMoney(item.value, currency, locale)}
                 </span>
               </div>
             ))}
@@ -203,7 +205,7 @@ export default function ForecastCard() {
                 {t('forecastCard.anomalyMessage', {
                   category: anomaly.category_name,
                   month: monthName(anomaly.month),
-                  amount: formatBRL(anomaly.amount_cents),
+                  amount: formatMoney(anomaly.amount_cents, currency, locale),
                 })}
               </p>
               <div className="flex gap-2">

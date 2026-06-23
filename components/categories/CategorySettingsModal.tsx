@@ -10,7 +10,8 @@ import { CategoryKind, normalizeCategoryName, resolveCategoryName } from '@/lib/
 import type { AppLocale } from '@/lib/i18n/getLocale'
 import CategoryIcon from '@/components/ui/CategoryIcon'
 import IconPicker from '@/components/ui/IconPicker'
-import { formatBRL } from '@/lib/money'
+import { formatMoney } from '@/lib/money'
+import { getCurrencyMeta } from '@/lib/i18n/currencies'
 import {
   getUserBillingPeriodKey,
   limitBarColor,
@@ -39,6 +40,7 @@ interface CategorySettingsModalProps {
   onChanged?: () => void
   scope?: Scope
   kind?: CategoryKind
+  currency?: string
 }
 
 type ComposerMode = 'main' | 'child' | null
@@ -76,6 +78,7 @@ export default function CategorySettingsModal({
   onChanged,
   scope = 'categories',
   kind,
+  currency = 'BRL',
 }: CategorySettingsModalProps) {
   const t = useTranslations()
   const locale = useLocale() as AppLocale
@@ -464,7 +467,7 @@ export default function CategorySettingsModal({
           <td className="px-3 py-2.5 w-44">
             {isEditingLimit ? (
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-ink/50 shrink-0">R$</span>
+                <span className="text-xs text-ink/50 shrink-0">{getCurrencyMeta(currency)?.symbol ?? currency}</span>
                 <input
                   type="number"
                   value={draftLimit}
@@ -475,7 +478,7 @@ export default function CategorySettingsModal({
                   min="0"
                   step="0.01"
                   className="w-24 px-2 py-1 border border-coffee/50 rounded text-sm bg-paper focus:outline-none focus:ring-1 focus:ring-coffee/40"
-                  placeholder="0,00"
+                  placeholder="0.00"
                 />
                 <button type="button" onClick={() => saveLimit(item.id)} disabled={savingLimit} className="text-xs px-2 py-1 rounded bg-coffee text-paper disabled:opacity-60">
                   {t('categoryModal.saveLimitButton')}
@@ -490,7 +493,7 @@ export default function CategorySettingsModal({
                 onClick={() => startEditLimit(item)}
                 className="flex items-center gap-1.5 text-sm text-ink/80 hover:text-coffee transition-colors text-left group"
               >
-                {formatBRL(limit)}
+                {formatMoney(limit, currency, locale)}
                 <Pencil className="w-3 h-3 opacity-35 group-hover:opacity-70 transition-opacity" />
               </button>
             ) : (() => {
@@ -525,9 +528,9 @@ export default function CategorySettingsModal({
             {limit ? (
               <div className="min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm text-ink/70">{formatBRL(spent)}</span>
+                  <span className="text-sm text-ink/70">{formatMoney(spent, currency, locale)}</span>
                   <span className={`text-xs font-medium ${status === 'over' ? 'text-terracotta' : status === 'warning' ? 'text-gold' : 'text-olive'}`}>
-                    {status === 'over' ? `+${formatBRL(Math.max(0, spent - limit))}` : `${pct}%`}
+                    {status === 'over' ? `+${formatMoney(Math.max(0, spent - limit), currency, locale)}` : `${pct}%`}
                   </span>
                 </div>
                 <LimitBar pct={pct} />

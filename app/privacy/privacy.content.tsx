@@ -38,7 +38,10 @@ export const PRIVACY_CONTENT: Record<AppLocale, PrivacyContent> = {
         content: (
           <>
             <p>
-              O Florim é uma ferramenta de organização financeira familiar. Os dados financeiros são <strong>inseridos manualmente pelos próprios usuários</strong>.
+              O Florim é uma ferramenta de organização financeira familiar. Os dados financeiros são <strong>inseridos manualmente pelos próprios usuários</strong>, seja diretamente no aplicativo, seja por mensagens de texto ou áudio enviadas pelo WhatsApp.
+            </p>
+            <p>
+              Quando você usa o WhatsApp para registrar despesas, receitas ou fazer perguntas sobre suas finanças, suas mensagens são processadas por <strong>inteligência artificial</strong> (transcrição de áudio e extração de dados estruturados) para gerar os lançamentos e respostas automaticamente. O Florim também usa inteligência artificial para gerar insights financeiros e previsões com base nos seus dados.
             </p>
             <p className="bg-white border border-border rounded-lg px-4 py-3 text-sm">
               ⚠️ O Florim <strong>não acessa contas bancárias</strong>, <strong>não realiza transações financeiras</strong> e <strong>não tem acesso a dinheiro real</strong>. Todos os registros são de responsabilidade exclusiva do usuário.
@@ -52,7 +55,8 @@ export const PRIVACY_CONTENT: Record<AppLocale, PrivacyContent> = {
           <>
             <ul className="list-disc list-inside space-y-1">
               <li><strong>Dados de cadastro:</strong> nome, e-mail e telefone</li>
-              <li><strong>Dados financeiros:</strong> despesas, receitas, metas e lembretes inseridos manualmente</li>
+              <li><strong>Dados financeiros:</strong> despesas, receitas, metas e lembretes inseridos manualmente ou via WhatsApp</li>
+              <li><strong>Dados de WhatsApp:</strong> número de telefone verificado e conteúdo das mensagens de texto/áudio enviadas ao assistente, usados para registrar lançamentos e responder consultas</li>
               <li><strong>Dados técnicos:</strong> endereço IP, logs de acesso e dados de sessão</li>
               <li><strong>Cookies:</strong> essenciais e analíticos (com consentimento)</li>
             </ul>
@@ -79,6 +83,8 @@ export const PRIVACY_CONTENT: Record<AppLocale, PrivacyContent> = {
               <li><strong>Supabase:</strong> banco de dados e autenticação (servidores nos EUA, cláusulas contratuais padrão aplicadas)</li>
               <li><strong>Resend:</strong> envio de e-mails transacionais</li>
               <li><strong>Stripe:</strong> processamento de pagamentos (não recebe dados financeiros do Florim)</li>
+              <li><strong>Meta Platforms, Inc. (WhatsApp Business Platform):</strong> envio e recebimento das mensagens trocadas com o assistente do Florim</li>
+              <li><strong>Groq Inc.:</strong> processamento por inteligência artificial das mensagens de texto/áudio e dos dados financeiros para gerar lançamentos automáticos, respostas e insights (servidores nos EUA)</li>
               <li><strong>PostHog, Inc.:</strong> análises de uso e comportamento (servidores nos EUA, cláusulas contratuais padrão aplicadas). Ativados apenas com seu consentimento.</li>
             </ul>
             <p>Não vendemos nem alugamos seus dados a terceiros.</p>
@@ -206,7 +212,10 @@ export const PRIVACY_CONTENT: Record<AppLocale, PrivacyContent> = {
         content: (
           <>
             <p>
-              Florim is a family financial organization tool. Financial data is <strong>entered manually by the users themselves</strong>.
+              Florim is a family financial organization tool. Financial data is <strong>entered manually by the users themselves</strong>, either directly in the app or through text or audio messages sent over WhatsApp.
+            </p>
+            <p>
+              When you use WhatsApp to log expenses, income, or ask questions about your finances, your messages are processed using <strong>artificial intelligence</strong> (audio transcription and structured data extraction) to automatically create entries and generate replies. Florim also uses artificial intelligence to generate financial insights and forecasts based on your data.
             </p>
             <p className="bg-white border border-border rounded-lg px-4 py-3 text-sm">
               ⚠️ Florim <strong>does not access bank accounts</strong>, <strong>does not perform financial transactions</strong>, and <strong>has no access to real money</strong>. All entries are the sole responsibility of the user.
@@ -220,7 +229,8 @@ export const PRIVACY_CONTENT: Record<AppLocale, PrivacyContent> = {
           <>
             <ul className="list-disc list-inside space-y-1">
               <li><strong>Registration data:</strong> name, email, and phone number</li>
-              <li><strong>Financial data:</strong> expenses, income, goals, and reminders entered manually</li>
+              <li><strong>Financial data:</strong> expenses, income, goals, and reminders entered manually or via WhatsApp</li>
+              <li><strong>WhatsApp data:</strong> verified phone number and the content of text/audio messages sent to the assistant, used to record entries and answer questions</li>
               <li><strong>Technical data:</strong> IP address, access logs, and session data</li>
               <li><strong>Cookies:</strong> essential and analytics cookies (with consent)</li>
             </ul>
@@ -247,6 +257,8 @@ export const PRIVACY_CONTENT: Record<AppLocale, PrivacyContent> = {
               <li><strong>Supabase:</strong> database and authentication (servers in the US, standard contractual clauses applied)</li>
               <li><strong>Resend:</strong> transactional email delivery</li>
               <li><strong>Stripe:</strong> payment processing (does not receive financial data from Florim)</li>
+              <li><strong>Meta Platforms, Inc. (WhatsApp Business Platform):</strong> sending and receiving the messages exchanged with Florim&apos;s assistant</li>
+              <li><strong>Groq Inc.:</strong> AI processing of text/audio messages and financial data to generate automatic entries, replies, and insights (servers in the US)</li>
               <li><strong>PostHog, Inc.:</strong> usage and behavior analytics (servers in the US, standard contractual clauses applied). Enabled only with your consent.</li>
             </ul>
             <p>We do not sell or rent your data to third parties.</p>
@@ -374,7 +386,10 @@ export const PRIVACY_CONTENT: Record<AppLocale, PrivacyContent> = {
         content: (
           <>
             <p>
-              Florim es una herramienta de organización financiera familiar. Los datos financieros son <strong>ingresados manualmente por los propios usuarios</strong>.
+              Florim es una herramienta de organización financiera familiar. Los datos financieros son <strong>ingresados manualmente por los propios usuarios</strong>, ya sea directamente en la app o mediante mensajes de texto o audio enviados por WhatsApp.
+            </p>
+            <p>
+              Cuando usas WhatsApp para registrar gastos, ingresos o hacer preguntas sobre tus finanzas, tus mensajes son procesados mediante <strong>inteligencia artificial</strong> (transcripción de audio y extracción de datos estructurados) para generar los registros y respuestas automáticamente. Florim también usa inteligencia artificial para generar perspectivas financieras y previsiones basadas en tus datos.
             </p>
             <p className="bg-white border border-border rounded-lg px-4 py-3 text-sm">
               ⚠️ Florim <strong>no accede a cuentas bancarias</strong>, <strong>no realiza transacciones financieras</strong> y <strong>no tiene acceso a dinero real</strong>. Todos los registros son de responsabilidad exclusiva del usuario.
@@ -388,7 +403,8 @@ export const PRIVACY_CONTENT: Record<AppLocale, PrivacyContent> = {
           <>
             <ul className="list-disc list-inside space-y-1">
               <li><strong>Datos de registro:</strong> nombre, correo electrónico y teléfono</li>
-              <li><strong>Datos financieros:</strong> gastos, ingresos, metas y recordatorios ingresados manualmente</li>
+              <li><strong>Datos financieros:</strong> gastos, ingresos, metas y recordatorios ingresados manualmente o por WhatsApp</li>
+              <li><strong>Datos de WhatsApp:</strong> número de teléfono verificado y contenido de los mensajes de texto/audio enviados al asistente, usados para registrar movimientos y responder consultas</li>
               <li><strong>Datos técnicos:</strong> dirección IP, registros de acceso y datos de sesión</li>
               <li><strong>Cookies:</strong> esenciales y analíticas (con consentimiento)</li>
             </ul>
@@ -415,6 +431,8 @@ export const PRIVACY_CONTENT: Record<AppLocale, PrivacyContent> = {
               <li><strong>Supabase:</strong> base de datos y autenticación (servidores en EE. UU., con cláusulas contractuales estándar aplicadas)</li>
               <li><strong>Resend:</strong> envío de correos transaccionales</li>
               <li><strong>Stripe:</strong> procesamiento de pagos (no recibe datos financieros de Florim)</li>
+              <li><strong>Meta Platforms, Inc. (WhatsApp Business Platform):</strong> envío y recepción de los mensajes intercambiados con el asistente de Florim</li>
+              <li><strong>Groq Inc.:</strong> procesamiento mediante inteligencia artificial de los mensajes de texto/audio y de los datos financieros para generar registros automáticos, respuestas y perspectivas (servidores en EE. UU.)</li>
               <li><strong>PostHog, Inc.:</strong> análisis de uso y comportamiento (servidores en EE. UU., con cláusulas contractuales estándar aplicadas). Activados solo con tu consentimiento.</li>
             </ul>
             <p>No vendemos ni alquilamos tus datos a terceros.</p>

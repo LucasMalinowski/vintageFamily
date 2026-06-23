@@ -120,6 +120,11 @@ type WhatsAppMessages = {
     alreadyProcessed: string
     pendingActionError: string
     audioConfirmFallback: (summaryText: string) => string
+    removeItemSummary: (idx: number | string) => string
+    editItemSummary: (idx: number | string, amount: string) => string
+    expenseSummary: (amount: string, desc: string, category: string) => string
+    savingsSummary: (amount: string, name: string) => string
+    reminderSummary: (desc: string, date: string) => string
   }
 
   errors: {
@@ -273,6 +278,11 @@ Você também pode combinar: "Gastei 30 na farmácia e 55 de gasolina"
       pendingActionError: 'Não consegui preparar a confirmação do áudio. Tente novamente. 🔄',
       audioConfirmFallback: (summaryText) =>
         `Confirmando o que você disse:\n\n${summaryText}\n\nResponda "Sim, criar" para confirmar ou envie outro áudio/texto para corrigir.`,
+      removeItemSummary: (idx) => `Remover o item ${idx} da última lista`,
+      editItemSummary: (idx, amount) => `Editar o item ${idx} para ${amount}`,
+      expenseSummary: (amount, desc, category) => `${amount} com ${desc}${category}`,
+      savingsSummary: (amount, name) => `${amount} para ${name} (Objetivo)`,
+      reminderSummary: (desc, date) => `Lembrete: ${desc} (${date})`,
     },
 
     errors: {
@@ -425,6 +435,11 @@ You can also combine them: "Spent 30 at the pharmacy and 55 on gas"
       pendingActionError: "I couldn't prepare the audio confirmation. Please try again. 🔄",
       audioConfirmFallback: (summaryText) =>
         `Confirming what you said:\n\n${summaryText}\n\nReply "Yes, create" to confirm or send another audio/text to correct.`,
+      removeItemSummary: (idx) => `Remove item ${idx} from the last list`,
+      editItemSummary: (idx, amount) => `Edit item ${idx} to ${amount}`,
+      expenseSummary: (amount, desc, category) => `${amount} for ${desc}${category}`,
+      savingsSummary: (amount, name) => `${amount} for ${name} (Goal)`,
+      reminderSummary: (desc, date) => `Reminder: ${desc} (${date})`,
     },
 
     errors: {
@@ -577,6 +592,11 @@ También puedes combinar: "Gasté 30 en la farmacia y 55 en gasolina"
       pendingActionError: 'No pude preparar la confirmación de audio. Inténtalo de nuevo. 🔄',
       audioConfirmFallback: (summaryText) =>
         `Confirmando lo que dijiste:\n\n${summaryText}\n\nResponde "Sí, crear" para confirmar o envía otro audio/texto para corregir.`,
+      removeItemSummary: (idx) => `Eliminar el ítem ${idx} de la última lista`,
+      editItemSummary: (idx, amount) => `Editar el ítem ${idx} a ${amount}`,
+      expenseSummary: (amount, desc, category) => `${amount} con ${desc}${category}`,
+      savingsSummary: (amount, name) => `${amount} para ${name} (Objetivo)`,
+      reminderSummary: (desc, date) => `Recordatorio: ${desc} (${date})`,
     },
 
     errors: {

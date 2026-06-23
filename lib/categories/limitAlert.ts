@@ -1,7 +1,8 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { sendExpoPushNotifications } from '@/lib/notifications/push'
 import { dispatchInsights } from '@/lib/insights/dispatcher'
-import { formatBRL } from '@/lib/money'
+import { formatMoney } from '@/lib/money'
+import { getFamilyCurrency } from '@/lib/i18n/getFamilyCurrency'
 import { getCurrentBillingPeriod } from '@/lib/billing-cycle'
 import { resolveCategoryName } from '@/lib/categories'
 import type { AppLocale } from '@/lib/i18n/getLocale'
@@ -84,11 +85,12 @@ async function generateInsight(
   spentCents: number,
   limitCents: number,
   level: AlertLevel,
-  locale: AppLocale = 'pt-BR'
+  locale: AppLocale = 'pt-BR',
+  currency: string = 'BRL'
 ): Promise<string> {
-  const spent = formatBRL(spentCents)
-  const limit = formatBRL(limitCents)
-  const excess = formatBRL(Math.max(0, spentCents - limitCents))
+  const spent = formatMoney(spentCents, currency, locale)
+  const limit = formatMoney(limitCents, currency, locale)
+  const excess = formatMoney(Math.max(0, spentCents - limitCents), currency, locale)
 
   // Header line always contains the hard facts — no AI ambiguity
   const header = level === 'over'
@@ -240,7 +242,8 @@ export async function checkAndAlertCategoryLimit(familyId: string, categoryId: s
   }
 
   console.log(`[limit-alert] ${categoryName} pct=${pct} level=${level} spent=${spentCents} limit=${limitCents}`)
-  const insight = await generateInsight(categoryName, pct, spentCents, limitCents, level, locale)
+  const currency = await getFamilyCurrency(familyId)
+  const insight = await generateInsight(categoryName, pct, spentCents, limitCents, level, locale, currency)
   const pushTitle = PUSH_TITLES[locale][level](categoryName)
 
   // Push notifications

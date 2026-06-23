@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import { formatBRL } from '@/lib/money'
+import { formatMoney } from '@/lib/money'
+import { getFamilyCurrency } from '@/lib/i18n/getFamilyCurrency'
 import { computeNextMonthForecast } from '@/lib/forecast/engine'
 import { detectSpendingAnomalies } from '@/lib/forecast/anomaly'
 import { generateForecastNarrative } from '@/lib/forecast/narrator'
@@ -203,9 +204,10 @@ EJEMPLO BUENO: "Supermercado saltó de $600 a $809 (+35%) y, al ritmo del día 9
 Responde solamente en español.`,
 }
 
-function buildInsightPrompt(data: SpendingData, question?: string): string {
+function buildInsightPrompt(data: SpendingData, locale: AppLocale, currency: string, question?: string): string {
   const { dayOfMonth, daysInMonth, currentTotal, previousTotal, currentMonthIncome, previousMonthIncome } = data
   const monthComplete = dayOfMonth >= daysInMonth
+  const money = (cents: number) => formatMoney(cents, currency, locale)
 
   const projectedTotal = !monthComplete && dayOfMonth > 0
     ? Math.round((currentTotal / dayOfMonth) * daysInMonth)
@@ -216,43 +218,43 @@ function buildInsightPrompt(data: SpendingData, question?: string): string {
     : ''
 
   const incomeContext = currentMonthIncome > 0
-    ? `Renda recebida: ${formatBRL(currentMonthIncome)} | Comprometimento atual: ${Math.round((currentTotal / currentMonthIncome) * 100)}% da renda${projectedTotal ? ` | Projeção fim do mês: ${Math.round((projectedTotal / currentMonthIncome) * 100)}% da renda` : ''}`
+    ? `Renda recebida: ${money(currentMonthIncome)} | Comprometimento atual: ${Math.round((currentTotal / currentMonthIncome) * 100)}% da renda${projectedTotal ? ` | Projeção fim do mês: ${Math.round((projectedTotal / currentMonthIncome) * 100)}% da renda` : ''}`
     : 'Renda do mês: não registrada'
 
   const prevIncomeContext = previousMonthIncome > 0
-    ? `Renda ${data.previousPeriodLabel}: ${formatBRL(previousMonthIncome)}`
+    ? `Renda ${data.previousPeriodLabel}: ${money(previousMonthIncome)}`
     : ''
 
   const periodHeader = monthComplete
     ? `${data.currentPeriodLabel} (mês completo, ${daysInMonth} dias)`
-    : `${data.currentPeriodLabel} — dia ${dayOfMonth} de ${daysInMonth} | Projeção fim do mês: ${projectedTotal ? formatBRL(projectedTotal) : 'indisponível'}`
+    : `${data.currentPeriodLabel} — dia ${dayOfMonth} de ${daysInMonth} | Projeção fim do mês: ${projectedTotal ? money(projectedTotal) : 'indisponível'}`
 
   const categoryLines = data.currentMonth.map(c => {
     const prev = data.previousMonth.find(p => p.category_name === c.category_name)
     const delta = prev ? ((c.total_cents - prev.total_cents) / prev.total_cents) * 100 : null
     const deltaStr = delta !== null
-      ? ` | ${delta > 0 ? '+' : ''}${Math.round(delta)}% vs ${data.previousPeriodLabel} (era ${formatBRL(prev!.total_cents)})`
+      ? ` | ${delta > 0 ? '+' : ''}${Math.round(delta)}% vs ${data.previousPeriodLabel} (era ${money(prev!.total_cents)})`
       : ` | sem dado em ${data.previousPeriodLabel}`
     const pctIncome = currentMonthIncome > 0
       ? ` | ${Math.round((c.total_cents / currentMonthIncome) * 100)}% da renda`
       : ''
     const limitStr = c.limit_cents
-      ? ` | LIMITE: ${formatBRL(c.limit_cents)} (${Math.round((c.total_cents / c.limit_cents) * 100)}% usado)`
+      ? ` | LIMITE: ${money(c.limit_cents)} (${Math.round((c.total_cents / c.limit_cents) * 100)}% usado)`
       : ''
-    return `  - ${c.category_name}: ${formatBRL(c.total_cents)} em ${c.count} lançamento${c.count !== 1 ? 's' : ''}${deltaStr}${pctIncome}${limitStr}`
+    return `  - ${c.category_name}: ${money(c.total_cents)} em ${c.count} lançamento${c.count !== 1 ? 's' : ''}${deltaStr}${pctIncome}${limitStr}`
   }).join('\n')
 
   const previousLines = data.previousMonth.slice(0, 8).map(c =>
-    `  - ${c.category_name}: ${formatBRL(c.total_cents)} (${c.count} lançamentos)`
+    `  - ${c.category_name}: ${money(c.total_cents)} (${c.count} lançamentos)`
   ).join('\n')
 
   const base = `PERÍODO: ${periodHeader}
 ${incomeContext}
 ${prevIncomeContext ? prevIncomeContext + '\n' : ''}
-GASTOS ${data.currentPeriodLabel.toUpperCase()} — Total: ${formatBRL(currentTotal)}${totalVsPrev}
+GASTOS ${data.currentPeriodLabel.toUpperCase()} — Total: ${money(currentTotal)}${totalVsPrev}
 ${categoryLines}
 
-GASTOS ${data.previousPeriodLabel.toUpperCase()} — Total: ${formatBRL(previousTotal)}
+GASTOS ${data.previousPeriodLabel.toUpperCase()} — Total: ${money(previousTotal)}
 ${previousLines}`
 
   if (question) {
@@ -274,7 +276,7 @@ Gere exatamente 2 insights financeiros independentes e acionáveis para essa fam
 Formato de resposta: JSON array com exatamente 2 strings: ["insight 1", "insight 2"]`
 }
 
-async function buildForecastInsight(familyId: string, locale: AppLocale): Promise<string | null> {
+async function buildForecastInsight(familyId: string, locale: AppLocale, currency: string): Promise<string | null> {
   try {
     const [forecast, anomalies] = await Promise.all([
       computeNextMonthForecast(familyId),
@@ -282,8 +284,8 @@ async function buildForecastInsight(familyId: string, locale: AppLocale): Promis
     ])
     if (forecast.confidence === 'insufficient') return null
 
-    const narrative = await generateForecastNarrative(forecast, anomalies, locale)
-    const totalStr = formatBRL(forecast.grandTotal)
+    const narrative = await generateForecastNarrative(forecast, anomalies, locale, currency)
+    const totalStr = formatMoney(forecast.grandTotal, currency, locale)
     const label = nextMonthLabel(locale)
     const t = await getTranslations({ locale, namespace: 'insights' })
     return narrative
@@ -299,7 +301,8 @@ export async function generateProactiveInsights(familyId: string, includeForecas
 
   if (data.currentMonth.length === 0) return []
 
-  const prompt = buildInsightPrompt(data)
+  const currency = await getFamilyCurrency(familyId)
+  const prompt = buildInsightPrompt(data, locale, currency)
   const apiKey = process.env.GROQ_API_KEY
   if (!apiKey) return []
 
@@ -343,7 +346,7 @@ export async function generateProactiveInsights(familyId: string, includeForecas
   }
 
   if (includeForecast && insights.length > 0) {
-    const forecastInsight = await buildForecastInsight(familyId, locale)
+    const forecastInsight = await buildForecastInsight(familyId, locale, currency)
     if (forecastInsight) insights.push(forecastInsight)
   }
 
@@ -353,7 +356,8 @@ export async function generateProactiveInsights(familyId: string, includeForecas
 export async function generateOnDemandInsight(familyId: string, question: string, locale: AppLocale = 'pt-BR'): Promise<string> {
   const t = await getTranslations({ locale, namespace: 'insights' })
   const data = await fetchSpendingData(familyId, locale)
-  const prompt = buildInsightPrompt(data, question)
+  const currency = await getFamilyCurrency(familyId)
+  const prompt = buildInsightPrompt(data, locale, currency, question)
   const apiKey = process.env.GROQ_API_KEY
   if (!apiKey) return t('aiUnavailable')
 

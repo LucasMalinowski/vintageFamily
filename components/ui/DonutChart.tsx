@@ -1,6 +1,7 @@
 'use client'
 
-import { formatBRL } from '@/lib/money'
+import { useLocale } from 'next-intl'
+import { formatMoney } from '@/lib/money'
 
 export interface DonutSlice {
   label: string
@@ -12,11 +13,13 @@ export interface DonutSlice {
 interface DonutChartProps {
   slices: DonutSlice[]
   center: string
-  currency?: boolean
+  isCurrency?: boolean
+  currencyCode?: string
   showLegend?: boolean
 }
 
-export default function DonutChart({ slices, center, currency = true, showLegend = true }: DonutChartProps) {
+export default function DonutChart({ slices, center, isCurrency = true, currencyCode = 'BRL', showLegend = true }: DonutChartProps) {
+  const locale = useLocale()
   const r = 52
   const cx = 70
   const cy = 70
@@ -87,7 +90,7 @@ export default function DonutChart({ slices, center, currency = true, showLegend
               />
               <span className="flex-1 text-[11px] font-medium text-ink truncate min-w-0">{s.label}</span>
               <span className="text-[10px] text-ink/50 shrink-0 tabular-nums ml-2">
-                {currency ? formatBRL(s.value) : s.value.toLocaleString('pt-BR')} ({s.pct}%)
+                {isCurrency ? formatMoney(s.value, currencyCode, locale) : s.value.toLocaleString(locale)} ({s.pct}%)
               </span>
             </div>
           ))}

@@ -3,8 +3,8 @@
 import { Fragment, useState } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { X, Calendar, MousePointer2 } from 'lucide-react'
-import { useTranslations } from 'next-intl'
-import { formatBRL } from '@/lib/money'
+import { useTranslations, useLocale } from 'next-intl'
+import { formatMoney } from '@/lib/money'
 import { formatDate } from '@/lib/dates'
 import type { DonutSlice } from '@/components/ui/DonutChart'
 
@@ -28,6 +28,7 @@ interface DonutCategoryModalProps {
   expenses?: DonutExpense[]
   getCategoryLabel?: (id: string | null, name: string) => string
   getCatRailColor?: (label: string) => string
+  currency?: string
 }
 
 const getGap = (count: number) => count > 1 ? 0.7 : 0
@@ -114,11 +115,13 @@ export default function DonutCategoryModal({
   expenses = [],
   getCategoryLabel = (_id, name) => name,
   getCatRailColor = () => '#3E5F4B',
+  currency = 'BRL',
 }: DonutCategoryModalProps) {
   const t = useTranslations()
+  const locale = useLocale()
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
-  const centerText = formatBRL(total).replace('R$ ', '')
+  const centerText = formatMoney(total, currency, locale).replace(/^\D+/, '').trim()
 
   const selectedSlice = slices.find((s) => s.label === selectedCategory)
   const visibleLabels = new Set(slices.filter((s) => s.label !== 'Outros').map((s) => s.label))
@@ -185,7 +188,7 @@ export default function DonutCategoryModal({
                         >
                           <div className="w-3 h-3 rounded-[3px] shrink-0" style={{ background: s.color }} />
                           <span className="flex-1 text-[13px] text-ink font-medium truncate">{s.label}</span>
-                          <span className="text-[11.5px] text-ink/50 tabular-nums shrink-0">{formatBRL(s.value).replace('R$ ', '')}</span>
+                          <span className="text-[11.5px] text-ink/50 tabular-nums shrink-0">{formatMoney(s.value, currency, locale).replace(/^\D+/, '').trim()}</span>
                           <span className="text-[12px] font-bold w-8 text-right tabular-nums shrink-0" style={{ color: s.color }}>{s.pct}%</span>
                         </button>
                       ))}
@@ -205,7 +208,7 @@ export default function DonutCategoryModal({
                         >
                           <p className="text-[12.5px] text-ink/55 mb-1">{selectedSlice.label}</p>
                           <p className="font-numbers font-bold text-[26px] tabular-nums leading-tight" style={{ color: selectedSlice.color }}>
-                            {formatBRL(selectedSlice.value)}
+                            {formatMoney(selectedSlice.value, currency, locale)}
                           </p>
                           <p className="text-[12px] text-ink/50 mt-0.5">
                             {t('donutModal.percent', { value: selectedSlice.pct })} · {t('donutModal.items', { count: filteredExpenses.length })}
@@ -238,7 +241,7 @@ export default function DonutCategoryModal({
                                   </div>
                                 </div>
                                 <div className="ml-auto text-right shrink-0">
-                                  <p className="font-numbers font-bold text-[14px] tabular-nums text-coffee">{formatBRL(e.amount_cents)}</p>
+                                  <p className="font-numbers font-bold text-[14px] tabular-nums text-coffee">{formatMoney(e.amount_cents, currency, locale)}</p>
                                   <span
                                     className="text-[10.5px] font-bold uppercase tracking-wide"
                                     style={{ color: isPaid ? '#3E8E5C' : '#A58E5F' }}

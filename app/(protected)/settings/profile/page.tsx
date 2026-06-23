@@ -96,7 +96,7 @@ function getAuthDisplayName(user: NonNullable<ReturnType<typeof useAuth>['user']
 }
 
 export default function ProfileSettingsPage() {
-  const { user, familyId, signOut } = useAuth()
+  const { user, familyId, setCurrency: setGlobalCurrency, signOut } = useAuth()
   const router = useRouter()
   const t = useTranslations()
   const [locale, setLocale] = useState<AppLocale>('pt-BR')
@@ -255,9 +255,17 @@ export default function ProfileSettingsPage() {
 
   const handleChangeCurrency = async (next: AppCurrency) => {
     if (!familyId || next === currency) return
+    const previous = currency
     setSavingCurrency(true)
     setCurrency(next)
-    await (supabase.from('families') as any).update({ currency: next }).eq('id', familyId)
+    const { error } = await supabase.rpc('update_family_currency', { p_currency: next })
+    if (error) {
+      console.error('[profile] failed to update family currency', error)
+      setCurrency(previous)
+      setSavingCurrency(false)
+      return
+    }
+    setGlobalCurrency(next)
     setSavingCurrency(false)
   }
 

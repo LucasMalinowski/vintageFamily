@@ -21,7 +21,7 @@ import { toast } from '@/components/ui/Toast'
 import EmptyState from '@/components/ui/EmptyState'
 import CategoryPathStack from '@/components/ui/CategoryPathStack'
 import CategoryIcon from '@/components/ui/CategoryIcon'
-import { formatBRL } from '@/lib/money'
+import { formatMoney } from '@/lib/money'
 import {
   formatDate,
   formatMonthYear,
@@ -86,7 +86,7 @@ function isDateInBillingPeriod(date: string, month: number, year: number, cycleD
 export default function Incomes() {
   const t = useTranslations()
   const locale = useLocale() as AppLocale
-  const { familyId, user } = useAuth()
+  const { familyId, user, currency } = useAuth()
   const { tier } = usePlan()
   const isFreeTier = tier === 'free'
   const [incomes, setIncomes] = useState<Income[]>([])
@@ -528,7 +528,7 @@ export default function Incomes() {
       searchTerm,
       income.description,
       getCategoryLabel(income.category_id, income.category_name),
-      formatBRL(income.amount_cents)
+      formatMoney(income.amount_cents, currency, locale)
     )
   )
   const groupedIncomes = filteredIncomes
@@ -653,7 +653,7 @@ export default function Incomes() {
       getCategoryLabel(income.category_id, income.category_name),
       getIncomeStatusLabel(income.status),
       income.notes || '',
-      formatBRL(income.amount_cents),
+      formatMoney(income.amount_cents, currency, locale),
     ]),
   )
 
@@ -684,9 +684,9 @@ export default function Incomes() {
       headers: [t('incomes.csvHeaderDate'), t('incomes.csvHeaderDescriptionPdf'), t('incomes.csvHeaderCategory'), t('incomes.csvHeaderStatus'), t('incomes.csvHeaderNotesPdf'), t('incomes.csvHeaderAmount')],
       rows: exportRows,
       cards: [
-        { label: t('incomes.pdfTotal'), value: formatBRL(total) },
-        { label: t('incomes.pdfReceived'), value: formatBRL(receivedCents) },
-        { label: t('incomes.pdfReceivable'), value: formatBRL(total - receivedCents) },
+        { label: t('incomes.pdfTotal'), value: formatMoney(total, currency, locale) },
+        { label: t('incomes.pdfReceived'), value: formatMoney(receivedCents, currency, locale) },
+        { label: t('incomes.pdfReceivable'), value: formatMoney(total - receivedCents, currency, locale) },
       ],
       generatedDate: formatDate(new Date()),
       accentColor: '#3E8E5C',
@@ -1114,7 +1114,7 @@ export default function Incomes() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <AnalyticsKpiCard
                       label={t('incomes.kpiTotal')}
-                      value={formatBRL(total)}
+                      value={formatMoney(total, currency, locale)}
                       sub={totalDeltaPctInc != null ? `${totalDeltaPctInc >= 0 ? '↑' : '↓'} ${Math.abs(totalDeltaPctInc)}% vs ${prevMonthLabelInc}` : undefined}
                       subPositive={totalDeltaPctInc != null && totalDeltaPctInc > 0}
                       subNegative={totalDeltaPctInc != null && totalDeltaPctInc < 0}
@@ -1130,14 +1130,14 @@ export default function Incomes() {
                     />
                     <AnalyticsKpiCard
                       label={t('incomes.trend')}
-                      value={formatBRL(dailyAverageInc)}
+                      value={formatMoney(dailyAverageInc, currency, locale)}
                       sub={selectedMonth !== ALL_MONTHS_VALUE ? `em ${monthLabelInc}` : undefined}
                       iconTheme="purple"
                       icon={Calendar}
                     />
                     <AnalyticsKpiCard
                       label={t('incomes.kpiPending')}
-                      value={formatBRL(pending)}
+                      value={formatMoney(pending, currency, locale)}
                       sub={pending > 0 ? t('incomes.pendingCountSuffix', { count: filteredIncomes.filter(i => i.status === 'pending').length }) : t('incomes.allReceived')}
                       iconTheme="orange"
                       icon={Clock}
@@ -1163,6 +1163,7 @@ export default function Incomes() {
                         total={total}
                         title={t('incomes.byCategory')}
                         modalTitle={t('incomes.byCategory')}
+                        currency={currency}
                         items={filteredIncomes.map(i => ({
                           id: i.id,
                           description: i.description,
@@ -1280,7 +1281,7 @@ export default function Incomes() {
                                 <div>
                                   <p className="text-[10px] uppercase tracking-wide text-ink/40 font-medium">Valor</p>
                                   <p className={`font-numbers text-xl font-semibold ${isReceived ? 'text-olive' : 'text-sidebar'}`}>
-                                    {formatBRL(income.amount_cents)}
+                                    {formatMoney(income.amount_cents, currency, locale)}
                                   </p>
                                 </div>
 
@@ -1342,7 +1343,7 @@ export default function Incomes() {
 
                                 <div className="flex items-center justify-between sm:justify-end gap-4">
                                   <span className={`font-numbers text-lg font-semibold ${isReceived ? 'text-sidebar/60' : 'text-sidebar'}`}>
-                                    {formatBRL(income.amount_cents)}
+                                    {formatMoney(income.amount_cents, currency, locale)}
                                   </span>
                                   <div onClick={e => e.stopPropagation()}>
                                     <ActionMenu
@@ -1455,6 +1456,7 @@ export default function Incomes() {
               required
               value={formData.amount}
               onChange={(v) => setFormData({ ...formData, amount: v })}
+              currency={currency}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
@@ -1622,7 +1624,7 @@ export default function Incomes() {
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-ink/50">{t('incomes.amount')}</p>
-                  <p className="font-numbers">{formatBRL(detailIncome.amount_cents)}</p>
+                  <p className="font-numbers">{formatMoney(detailIncome.amount_cents, currency, locale)}</p>
                 </div>
               </div>
               <div>
@@ -1664,6 +1666,7 @@ export default function Incomes() {
         isOpen={isCategorySettingsOpen}
         onClose={() => setIsCategorySettingsOpen(false)}
         familyId={familyId}
+        currency={currency}
         kind="income"
         onChanged={() => {
           loadCategories()

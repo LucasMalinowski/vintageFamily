@@ -1,3 +1,6 @@
+const createNextIntlPlugin = require('next-intl/plugin')
+const withNextIntl = createNextIntlPlugin()
+
 const isDev = process.env.NODE_ENV !== 'production'
 
 const scriptSrc = [
@@ -82,4 +85,4 @@ const nextConfig = {
   },
 }
 
-module.exports = nextConfig
+module.exports = withNextIntl(nextConfig)

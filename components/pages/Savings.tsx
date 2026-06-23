@@ -17,7 +17,8 @@ import CategorySettingsModal from '@/components/categories/CategorySettingsModal
 import { useAuth } from '@/components/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { triggerWidgetSync } from '@/lib/notifications/triggerWidgetSync'
-import { formatBRL } from '@/lib/money'
+import { formatMoney } from '@/lib/money'
+import { getCurrencyMeta } from '@/lib/i18n/currencies'
 import {
   formatDate,
   getCurrentMonth,
@@ -114,7 +115,7 @@ const emptyTxForm = () => ({
 export default function Savings() {
   const t = useTranslations()
   const locale = useLocale() as AppLocale
-  const { familyId, user } = useAuth()
+  const { familyId, user, currency } = useAuth()
   const [savings, setSavings] = useState<Saving[]>([])
   const [contributions, setContributions] = useState<Contribution[]>([])
   const [allTimeContributions, setAllTimeContributions] = useState<Contribution[]>([])
@@ -447,10 +448,10 @@ export default function Savings() {
     return [
       getSavingLabel(saving.id),
       saving.is_system ? t('savings.typeSystem') : t('savings.typeManual'),
-      saving.target_cents ? formatBRL(saving.target_cents) : '',
+      saving.target_cents ? formatMoney(saving.target_cents, currency, locale) : '',
       totals?.count ? String(totals.count) : '0',
       totals?.lastDate ? formatDate(totals.lastDate) : '',
-      formatBRL(total),
+      formatMoney(total, currency, locale),
     ]
   })
 
@@ -479,8 +480,8 @@ export default function Savings() {
       headers: [t('savings.csvHeaderName'), t('savings.csvHeaderType'), t('savings.csvHeaderTarget'), t('savings.csvHeaderMovements'), t('savings.lastUpdated'), t('savings.csvHeaderTotal')],
       rows: exportRows,
       cards: [
-        { label: t('savings.pdfTotalSaved'), value: formatBRL(totalSaved) },
-        ...(totalTarget > 0 ? [{ label: t('savings.pdfTotalTarget'), value: formatBRL(totalTarget) }] : []),
+        { label: t('savings.pdfTotalSaved'), value: formatMoney(totalSaved, currency, locale) },
+        ...(totalTarget > 0 ? [{ label: t('savings.pdfTotalTarget'), value: formatMoney(totalTarget, currency, locale) }] : []),
         { label: t('savings.pdfGoalsCount'), value: String(visibleSavings.length) },
       ],
       generatedDate: formatDate(new Date()),
@@ -775,7 +776,7 @@ export default function Savings() {
                   <div className="grid grid-cols-2 gap-3">
                     <AnalyticsKpiCard
                       label={t('savings.kpiBalance')}
-                      value={formatBRL(totalBalance)}
+                      value={formatMoney(totalBalance, currency, locale)}
                       iconTheme="teal"
                       icon={PiggyBank}
                     />
@@ -783,7 +784,7 @@ export default function Savings() {
                       <AnalyticsKpiCard
                         label={t('savings.kpiGlobalTarget')}
                         value={`${Math.min(globalProgressPct, 100)}%`}
-                        sub={t('savings.ofTarget', { amount: formatBRL(globalTarget) })}
+                        sub={t('savings.ofTarget', { amount: formatMoney(globalTarget, currency, locale) })}
                         iconTheme="orange"
                         icon={Target}
                       />
@@ -802,14 +803,14 @@ export default function Savings() {
                   <div className="grid grid-cols-2 gap-3">
                     <AnalyticsKpiCard
                       label={t('savings.kpiDeposits')}
-                      value={formatBRL(periodDeposits)}
+                      value={formatMoney(periodDeposits, currency, locale)}
                       iconTheme="green"
                       icon={TrendingUp}
                       small
                     />
                     <AnalyticsKpiCard
                       label={t('savings.kpiWithdrawals')}
-                      value={formatBRL(periodWithdrawals)}
+                      value={formatMoney(periodWithdrawals, currency, locale)}
                       iconTheme="red"
                       icon={TrendingDown}
                       small
@@ -826,19 +827,19 @@ export default function Savings() {
                         {periodDeposits > 0 && (
                           <div className="flex-1 min-w-[100px] rounded-lg p-3 border" style={{ background: 'rgba(111,191,138,.08)', borderColor: 'rgba(111,191,138,.25)' }}>
                             <p className="text-[9.5px] font-bold uppercase tracking-wide text-[#3E9E6A]/80 mb-1">{t('savings.deposits')}</p>
-                            <p className="text-[15px] font-bold text-[#3E9E6A] tabular-nums">+{formatBRL(periodDeposits)}</p>
+                            <p className="text-[15px] font-bold text-[#3E9E6A] tabular-nums">+{formatMoney(periodDeposits, currency, locale)}</p>
                           </div>
                         )}
                         {periodWithdrawals > 0 && (
                           <div className="flex-1 min-w-[100px] rounded-lg p-3 border" style={{ background: 'rgba(192,96,96,.08)', borderColor: 'rgba(192,96,96,.25)' }}>
                             <p className="text-[9.5px] font-bold uppercase tracking-wide text-[#C06060]/80 mb-1">{t('savings.withdrawals')}</p>
-                            <p className="text-[15px] font-bold text-[#C06060] tabular-nums">−{formatBRL(periodWithdrawals)}</p>
+                            <p className="text-[15px] font-bold text-[#C06060] tabular-nums">−{formatMoney(periodWithdrawals, currency, locale)}</p>
                           </div>
                         )}
                         <div className="flex-1 min-w-[100px] rounded-lg p-3 border border-border bg-bg">
                           <p className="text-[9.5px] font-bold uppercase tracking-wide text-ink/50 mb-1">{t('savings.netLabel')}</p>
                           <p className="text-[15px] font-bold tabular-nums" style={{ color: periodDeposits - periodWithdrawals >= 0 ? '#3E9E6A' : '#C06060' }}>
-                            {periodDeposits - periodWithdrawals >= 0 ? '+' : ''}{formatBRL(periodDeposits - periodWithdrawals)}
+                            {periodDeposits - periodWithdrawals >= 0 ? '+' : ''}{formatMoney(periodDeposits - periodWithdrawals, currency, locale)}
                           </p>
                         </div>
                       </div>
@@ -876,15 +877,15 @@ export default function Savings() {
                             <div className="flex-1 min-w-0">
                               <p className="font-serif text-[17px] text-coffee font-medium leading-tight">{savingNode.name}</p>
                               <p className="text-[11.5px] text-ink/50 mt-1">
-                                {savingNode.target_cents ? `${t('savings.targetAmount')} ${formatBRL(savingNode.target_cents)}` : t('savings.noTarget')}
-                                {lastDep > 0 ? ` · ${t('savings.lastDepositAbbrev', { amount: formatBRL(lastDep) })}` : ''}
+                                {savingNode.target_cents ? `${t('savings.targetAmount')} ${formatMoney(savingNode.target_cents, currency, locale)}` : t('savings.noTarget')}
+                                {lastDep > 0 ? ` · ${t('savings.lastDepositAbbrev', { amount: formatMoney(lastDep, currency, locale) })}` : ''}
                               </p>
                             </div>
                             {pct !== null && (
                               <span className="text-[10.5px] font-bold px-2.5 py-1 rounded-full shrink-0" style={{ background: `${c}20`, color: c }}>{pct}%</span>
                             )}
                           </div>
-                          <p className="font-numbers font-light text-[28px] text-coffee tabular-nums mt-3.5" style={{ letterSpacing: '-0.5px' }}>{formatBRL(balance)}</p>
+                          <p className="font-numbers font-light text-[28px] text-coffee tabular-nums mt-3.5" style={{ letterSpacing: '-0.5px' }}>{formatMoney(balance, currency, locale)}</p>
                           {pct !== null && (
                             <div className="mt-2 h-[6px] rounded-full overflow-hidden" style={{ background: `${c}20` }}>
                               <div className="h-full rounded-full" style={{ width: `${pct}%`, background: c }} />
@@ -916,7 +917,7 @@ export default function Savings() {
                                   <div key={ch.id} className="flex items-center gap-2 py-1">
                                     <span className="w-1 h-1 rounded-full shrink-0" style={{ background: c }} />
                                     <span className="flex-1 text-[12px] text-ink/70">{ch.name}</span>
-                                    <span className="text-[12px] font-semibold text-coffee tabular-nums">{formatBRL(chBalance)}</span>
+                                    <span className="text-[12px] font-semibold text-coffee tabular-nums">{formatMoney(chBalance, currency, locale)}</span>
                                   </div>
                                 )
                               })}
@@ -944,7 +945,7 @@ export default function Savings() {
                             <CategoryIcon name={saving.icon} className="w-4 h-4 text-ink/50" />
                             <div className="min-w-0">
                               <p className="text-sm font-semibold text-ink truncate">{saving.name}</p>
-                              <p className="text-xs text-ink/50 tabular-nums">{formatBRL(balance)}</p>
+                              <p className="text-xs text-ink/50 tabular-nums">{formatMoney(balance, currency, locale)}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
@@ -952,7 +953,7 @@ export default function Savings() {
                               {saving.target_cents ? (
                                 <>
                                   <p className="text-xs font-medium text-ink/70 tabular-nums">{pct}%</p>
-                                  <p className="text-[10px] text-ink/40 tabular-nums">{t('savings.ofTarget', { amount: formatBRL(saving.target_cents) })}</p>
+                                  <p className="text-[10px] text-ink/40 tabular-nums">{t('savings.ofTarget', { amount: formatMoney(saving.target_cents, currency, locale) })}</p>
                                 </>
                               ) : (
                                 <p className="text-xs text-ink/30">{t('savings.noTarget')}</p>
@@ -1035,6 +1036,7 @@ export default function Savings() {
               required
               value={depositForm.amount}
               onChange={(v) => setDepositForm({ ...depositForm, amount: v })}
+              currency={currency}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
@@ -1095,6 +1097,7 @@ export default function Savings() {
               required
               value={withdrawalForm.amount}
               onChange={(v) => setWithdrawalForm({ ...withdrawalForm, amount: v })}
+              currency={currency}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
@@ -1166,7 +1169,7 @@ export default function Savings() {
                   </div>
                 </div>
                 <span className={`font-numbers font-semibold text-sm ${c.type === 'withdrawal' ? 'text-terracotta' : 'text-olive'}`}>
-                  {c.type === 'withdrawal' ? '−' : '+'}{formatBRL(c.amount_cents)}
+                  {c.type === 'withdrawal' ? '−' : '+'}{formatMoney(c.amount_cents, currency, locale)}
                 </span>
               </div>
             ))}
@@ -1198,11 +1201,12 @@ export default function Savings() {
             />
           </div>
           <div>
-            <label htmlFor="saving-target" className="block font-serif font-body text-ink mb-2">{t('savings.targetAmount')} (R$)</label>
+            <label htmlFor="saving-target" className="block font-serif font-body text-ink mb-2">{t('savings.targetAmount')} ({getCurrencyMeta(currency)?.symbol ?? currency})</label>
             <CurrencyInput
               id="saving-target"
               value={editForm.target}
               onChange={(v) => setEditForm({ ...editForm, target: v })}
+              currency={currency}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
               placeholder={t('savings.noTargetPlaceholder')}
             />
@@ -1222,6 +1226,7 @@ export default function Savings() {
         isOpen={isSavingSettingsOpen}
         onClose={() => setIsSavingSettingsOpen(false)}
         familyId={familyId}
+        currency={currency}
         scope="savings"
         onChanged={() => {
           loadSavings()

@@ -15,7 +15,7 @@ import RightDrawer from '@/components/ui/RightDrawer'
 import EmptyState from '@/components/ui/EmptyState'
 import CategoryPathStack from '@/components/ui/CategoryPathStack'
 import CategoryIcon from '@/components/ui/CategoryIcon'
-import { formatBRL } from '@/lib/money'
+import { formatMoney } from '@/lib/money'
 import {
   formatDate,
   formatMonthYear,
@@ -68,12 +68,14 @@ interface DonutExpensePanelProps {
   expenses: { id: string; description: string; amount_cents: number; date: string; status: string; payment_method: string | null; category_name: string; category_id: string | null }[]
   getCategoryLabel: (id: string | null, name: string) => string
   getCatRailColor: (label: string) => string
+  currency: string
 }
 
-function DonutExpensePanel({ slices, total, expenses, getCategoryLabel, getCatRailColor }: DonutExpensePanelProps) {
+function DonutExpensePanel({ slices, total, expenses, getCategoryLabel, getCatRailColor, currency }: DonutExpensePanelProps) {
   const t = useTranslations()
+  const locale = useLocale() as AppLocale
   const [modalOpen, setModalOpen] = useState(false)
-  const centerText = formatBRL(total).replace('R$ ', '').replace('R$ ', '')
+  const centerText = formatMoney(total, currency, locale).replace(/^\D+/, '').trim()
 
   return (
     <>
@@ -111,6 +113,7 @@ function DonutExpensePanel({ slices, total, expenses, getCategoryLabel, getCatRa
         expenses={expenses}
         getCategoryLabel={getCategoryLabel}
         getCatRailColor={getCatRailColor}
+        currency={currency}
       />
     </>
   )
@@ -189,7 +192,7 @@ function isDateInBillingPeriod(date: string, month: number, year: number, cycleD
 export default function Expenses() {
   const t = useTranslations()
   const locale = useLocale() as AppLocale
-  const { familyId, user } = useAuth()
+  const { familyId, user, currency } = useAuth()
   const { tier } = usePlan()
   const isFreeTier = tier === 'free'
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -785,7 +788,7 @@ export default function Expenses() {
       searchTerm,
       expense.description,
       getCategoryLabel(expense.category_id, expense.category_name),
-      formatBRL(expense.amount_cents)
+      formatMoney(expense.amount_cents, currency, locale)
     )
   )
   const total = filteredExpenses.reduce((sum, exp) => sum + exp.amount_cents, 0)
@@ -956,7 +959,7 @@ export default function Expenses() {
     expense.status === 'paid' ? t('expenses.statusPaid') : t('expenses.statusOpen'),
     formatPaymentLabel(t, expense.payment_method, expense.installments),
     expense.installments && expense.installments > 1 ? `${expense.installments}x` : '',
-    formatBRL(expense.amount_cents),
+    formatMoney(expense.amount_cents, currency, locale),
     expense.paid_at ? formatDate(expense.paid_at) : '',
     expense.notes || '',
   ])
@@ -1008,7 +1011,17 @@ export default function Expenses() {
     return buildBrandedPdfBlob({
       title: t('expenses.pdfTitle'),
       filterSummary: buildFilterSummary(),
-      headers: ['Data', 'Descricao', 'Categoria', 'Status', 'Metodo', 'Parcelas', 'Pago em', 'Observacao', 'Valor'],
+      headers: [
+        t('expenses.csvHeaderDate'),
+        t('expenses.csvHeaderDescription'),
+        t('expenses.csvHeaderCategory'),
+        t('expenses.csvHeaderStatus'),
+        t('expenses.csvHeaderMethod'),
+        t('expenses.csvHeaderInstallments'),
+        t('expenses.csvHeaderPaidAt'),
+        t('expenses.csvHeaderNotes'),
+        t('expenses.csvHeaderAmount'),
+      ],
       rows: expensesOverride.map((expense) => [
         formatDate(expense.date),
         expense.description,
@@ -1018,12 +1031,12 @@ export default function Expenses() {
         expense.installments && expense.installments > 1 ? `${expense.installments}x` : '',
         expense.paid_at ? formatDate(expense.paid_at) : '',
         expense.notes || '',
-        formatBRL(expense.amount_cents),
+        formatMoney(expense.amount_cents, currency, locale),
       ]),
       cards: [
-        { label: t('incomes.pdfTotal'), value: formatBRL(totalCents) },
-        { label: t('expenses.statusPaid').toUpperCase(), value: formatBRL(paidCents) },
-        { label: t('expenses.statusOpen').toUpperCase(), value: formatBRL(totalCents - paidCents) },
+        { label: t('incomes.pdfTotal'), value: formatMoney(totalCents, currency, locale) },
+        { label: t('expenses.statusPaid').toUpperCase(), value: formatMoney(paidCents, currency, locale) },
+        { label: t('expenses.statusOpen').toUpperCase(), value: formatMoney(totalCents - paidCents, currency, locale) },
       ],
       generatedDate: formatDate(new Date()),
       includeSignatures: includeSignatureOverride,
@@ -1363,7 +1376,7 @@ export default function Expenses() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                 <AnalyticsKpiCard
                   label={t('expenses.kpiTotal')}
-                  value={formatBRL(total)}
+                  value={formatMoney(total, currency, locale)}
                   sub={totalDeltaPct != null ? `${totalDeltaPct >= 0 ? '↑' : '↓'} ${Math.abs(totalDeltaPct)}% vs ${prevMonthLabel}` : undefined}
                   subNegative={totalDeltaPct != null && totalDeltaPct > 0}
                   iconTheme="red"
@@ -1371,7 +1384,7 @@ export default function Expenses() {
                 />
                 <AnalyticsKpiCard
                   label={t('expenses.kpiPaid')}
-                  value={formatBRL(paid)}
+                  value={formatMoney(paid, currency, locale)}
                   sub={total > 0 ? `${Math.round((paid / total) * 100)}% do total` : undefined}
                   subPositive
                   iconTheme="green"
@@ -1379,7 +1392,7 @@ export default function Expenses() {
                 />
                 <AnalyticsKpiCard
                   label={t('expenses.kpiOpen')}
-                  value={formatBRL(open)}
+                  value={formatMoney(open, currency, locale)}
                   sub={total > 0 ? `${Math.round((open / total) * 100)}% do total` : undefined}
                   iconTheme="orange"
                   icon={Clock}
@@ -1412,6 +1425,7 @@ export default function Expenses() {
                     expenses={filteredExpenses}
                     getCategoryLabel={getCategoryLabel}
                     getCatRailColor={getCatRailColor}
+                    currency={currency}
                   />
                 )}
 
@@ -1544,7 +1558,7 @@ export default function Expenses() {
                                 <div>
                                   <p className="text-[10px] uppercase tracking-wide text-ink/40 font-medium">Valor</p>
                                   <p className={`font-numbers text-xl font-semibold ${isPaid ? 'text-olive' : 'text-sidebar'}`}>
-                                    {formatBRL(expense.amount_cents)}
+                                    {formatMoney(expense.amount_cents, currency, locale)}
                                   </p>
                                 </div>
 
@@ -1638,7 +1652,7 @@ export default function Expenses() {
                                 {/* Amount + status */}
                                 <div className="text-right shrink-0 w-[100px]">
                                   <p className={`font-numbers font-bold text-[15px] tabular-nums ${isOverdue ? 'text-[#B05C3A]' : isPaid ? 'text-[#3E5F4B]/60' : 'text-[#3E5F4B]'}`}>
-                                    {formatBRL(expense.amount_cents)}
+                                    {formatMoney(expense.amount_cents, currency, locale)}
                                   </p>
                                   <span className="inline-block text-[10.5px] font-bold uppercase tracking-[0.04em] px-2.5 py-[3px] rounded-full mt-1" style={{ background: statusBg, color: statusFg }}>
                                     {statusLabel}
@@ -1692,11 +1706,11 @@ export default function Expenses() {
         <div className="flex flex-row gap-3">
           <div className="flex-1 rounded-[16px] px-4 py-4 bg-petrol text-white text-center shadow-soft">
             <div className="text-xs uppercase tracking-wide text-white/80 mb-1">{t('expenses.kpiOpen')}</div>
-            <div className="font-numbers text-xl font-medium">{formatBRL(open)}</div>
+            <div className="font-numbers text-xl font-medium">{formatMoney(open, currency, locale)}</div>
           </div>
           <div className="flex-1 rounded-[16px] px-4 py-4 bg-olive text-white text-center shadow-soft">
             <div className="text-xs uppercase tracking-wide text-white/80 mb-1">{t('expenses.kpiPaid')}</div>
-            <div className="font-numbers text-xl font-medium">{formatBRL(paid)}</div>
+            <div className="font-numbers text-xl font-medium">{formatMoney(paid, currency, locale)}</div>
           </div>
         </div>
         <div className="h-[44px] flex items-center justify-center">
@@ -1777,6 +1791,7 @@ export default function Expenses() {
               required
               value={formData.amount}
               onChange={(v) => setFormData({ ...formData, amount: v })}
+              currency={currency}
               className="w-full px-4 py-3 bg-bg/80 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-paper-2/50"
             />
           </div>
@@ -1820,12 +1835,12 @@ export default function Expenses() {
               <div className={`rounded-lg px-3 py-2.5 border text-sm ${isOver ? 'bg-terracotta/8 border-terracotta/30 text-terracotta' : 'bg-gold/8 border-gold/30 text-gold'}`}>
                 <p className="font-medium">
                   {isOver
-                    ? `⚠️ Esta despesa passa o limite de ${limitCategoryName} em ${formatBRL(excess)}.`
-                    : `⚠️ Esta despesa deixa ${limitCategoryName} a ${projectedPct}% do limite.`
+                    ? t('expenses.overLimitWarning', { category: limitCategoryName, amount: formatMoney(excess, currency, locale) })
+                    : t('expenses.nearLimitWarning', { category: limitCategoryName, percent: projectedPct })
                   }
                 </p>
                 <p className="text-ink/60 text-xs mt-0.5">
-                  {t('expenses.monthlyLimitNote', { limit: formatBRL(limitCents), spent: formatBRL(spentCents) })}
+                  {t('expenses.monthlyLimitNote', { limit: formatMoney(limitCents, currency, locale), spent: formatMoney(spentCents, currency, locale) })}
                 </p>
                 <div className="w-full h-1.5 rounded-full bg-border/50 overflow-hidden mt-2">
                   <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(projectedPct, 100)}%`, backgroundColor: barColor }} />
@@ -1880,14 +1895,14 @@ export default function Expenses() {
                 {uniform ? (
                   <p className="text-ink/70">
                     {formData.installments}x de{' '}
-                    <span className="font-numbers font-semibold text-petrol">{formatBRL(firstCents)}</span>
+                    <span className="font-numbers font-semibold text-petrol">{formatMoney(firstCents, currency, locale)}</span>
                   </p>
                 ) : (
                   <p className="text-ink/70">
                     {formData.installments - 1}x de{' '}
-                    <span className="font-numbers font-semibold text-petrol">{formatBRL(lastCents)}</span>
+                    <span className="font-numbers font-semibold text-petrol">{formatMoney(lastCents, currency, locale)}</span>
                     {' '}+ 1x de{' '}
-                    <span className="font-numbers font-semibold text-petrol">{formatBRL(firstCents)}</span>
+                    <span className="font-numbers font-semibold text-petrol">{formatMoney(firstCents, currency, locale)}</span>
                     <span className="text-xs text-ink/40 ml-1">{t('expenses.roundingNote')}</span>
                   </p>
                 )}
@@ -2069,6 +2084,7 @@ export default function Expenses() {
         isOpen={isCategorySettingsOpen}
         onClose={() => setIsCategorySettingsOpen(false)}
         familyId={familyId}
+        currency={currency}
         kind="expense"
         onChanged={() => {
           loadCategories()

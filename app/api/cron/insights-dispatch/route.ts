@@ -31,15 +31,21 @@ function pickFamilyLocale(locales: (string | null | undefined)[]): AppLocale {
   return best ?? DEFAULT_LOCALE
 }
 
-function getCurrentPeriodLabel(): string {
-  const now = new Date()
-  const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
-  return `${months[now.getMonth()]} ${now.getFullYear()}`
+
+const INTL_LOCALE: Record<AppLocale, string> = {
+  'pt-BR': 'pt-BR',
+  en: 'en-US',
+  es: 'es-ES',
 }
 
-function getCurrentPeriod(): string {
+// Locale-aware "Month Year" label for the WhatsApp/email text the family
+// actually sees. Kept separate from the monthly-dispatch check below, which
+// compares calendar months via created_at instead of this string — so the
+// label can vary by the family's locale without breaking that comparison.
+function getPeriodLabel(locale: AppLocale): string {
   const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const label = now.toLocaleString(INTL_LOCALE[locale], { month: 'long', year: 'numeric' })
+  return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
 export async function GET(request: NextRequest) {
@@ -65,8 +71,6 @@ export async function GET(request: NextRequest) {
 
   if (!families?.length) return NextResponse.json({ ok: true, dispatched: 0 })
 
-  const period = getCurrentPeriod()
-  const periodLabel = getCurrentPeriodLabel()
   const lockPeriod = getDailyJobPeriod(today)
   let dispatched = 0
 
@@ -107,7 +111,7 @@ export async function GET(request: NextRequest) {
         const intervalDays = members[0].insight_interval_days ?? 30
         const { data: lastInsight } = await supabaseAdmin
           .from('insights')
-          .select('created_at, period')
+          .select('created_at')
           .eq('family_id', family.id)
           .eq('type', 'proactive')
           .order('created_at', { ascending: false })
@@ -119,7 +123,10 @@ export async function GET(request: NextRequest) {
           if (daysSinceLast < intervalDays) continue
         }
 
-        isMonthlyDispatch = !lastInsight || lastInsight.period !== periodLabel
+        const lastCreatedAt = lastInsight?.created_at ? new Date(lastInsight.created_at) : null
+        isMonthlyDispatch = !lastCreatedAt
+          || lastCreatedAt.getMonth() !== today.getMonth()
+          || lastCreatedAt.getFullYear() !== today.getFullYear()
       }
 
       if (!force && !(await acquireFamilyJobLock(family.id, 'insights-dispatch', lockPeriod))) {
@@ -130,7 +137,7 @@ export async function GET(request: NextRequest) {
       const insights = await generateProactiveInsights(family.id, isMonthlyDispatch, familyLocale)
       if (!insights.length) continue
 
-      await dispatchInsights(family.id, insights, periodLabel, 'proactive')
+      await dispatchInsights(family.id, insights, getPeriodLabel(familyLocale), 'proactive')
       dispatched++
     } catch (err) {
       console.error('[insights-dispatch] error for family', family.id, err)

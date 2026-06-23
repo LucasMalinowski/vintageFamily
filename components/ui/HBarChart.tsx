@@ -1,6 +1,7 @@
 'use client'
 
-import { formatBRL } from '@/lib/money'
+import { useLocale } from 'next-intl'
+import { formatMoney } from '@/lib/money'
 
 export interface HBarItem {
   label: string
@@ -11,10 +12,12 @@ export interface HBarItem {
 
 interface HBarChartProps {
   items: HBarItem[]
-  currency?: boolean
+  isCurrency?: boolean
+  currencyCode?: string
 }
 
-export default function HBarChart({ items, currency = true }: HBarChartProps) {
+export default function HBarChart({ items, isCurrency = true, currencyCode = 'BRL' }: HBarChartProps) {
+  const locale = useLocale()
   const max = Math.max(...items.map((i) => i.value), 1)
 
   return (
@@ -24,7 +27,7 @@ export default function HBarChart({ items, currency = true }: HBarChartProps) {
           <div className="flex justify-between text-[11px] text-ink/70">
             <span>{item.label}</span>
             <span className="font-semibold tabular-nums">
-              {currency ? formatBRL(item.value) : item.value.toLocaleString('pt-BR')} ({item.pct}%)
+              {isCurrency ? formatMoney(item.value, currencyCode, locale) : item.value.toLocaleString(locale)} ({item.pct}%)
             </span>
           </div>
           <div className="h-[7px] bg-border rounded-full overflow-hidden">

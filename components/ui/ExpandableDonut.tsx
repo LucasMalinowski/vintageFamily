@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations, useLocale } from 'next-intl'
 import { Maximize2 } from 'lucide-react'
-import { formatBRL } from '@/lib/money'
+import { formatMoney } from '@/lib/money'
 import DonutChart from '@/components/ui/DonutChart'
 import DonutCategoryModal from '@/components/ui/DonutCategoryModal'
 import type { DonutSlice } from '@/components/ui/DonutChart'
@@ -29,22 +30,27 @@ interface ExpandableDonutProps {
   getCatRailColor?: (label: string) => string
   /** Extra content rendered below the mini legend */
   footer?: React.ReactNode
+  currency?: string
 }
 
 export default function ExpandableDonut({
   slices,
   total,
-  title = 'Por categoria',
+  title,
   modalTitle,
   accentColor,
   items = [],
   getCategoryLabel,
   getCatRailColor,
   footer,
+  currency = 'BRL',
 }: ExpandableDonutProps) {
+  const t = useTranslations()
+  const locale = useLocale()
   const [modalOpen, setModalOpen] = useState(false)
 
-  const centerText = formatBRL(total).replace('R$ ', '')
+  const resolvedTitle = title ?? t('comparatives.byCategory')
+  const centerText = formatMoney(total, currency, locale).replace(/^\D+/, '').trim()
 
   return (
     <>
@@ -53,7 +59,7 @@ export default function ExpandableDonut({
         onClick={() => setModalOpen(true)}
       >
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-serif text-[16px] text-coffee">{title}</h3>
+          <h3 className="font-serif text-[16px] text-coffee">{resolvedTitle}</h3>
           <Maximize2 className="w-3.5 h-3.5 text-ink/35" />
         </div>
 
@@ -69,7 +75,7 @@ export default function ExpandableDonut({
             </div>
           ))}
           {slices.length > 4 && (
-            <p className="text-[11px] text-ink/40 pt-0.5">+ {slices.length - 4} outras categorias</p>
+            <p className="text-[11px] text-ink/40 pt-0.5">{t('expenses.moreCategories', { count: slices.length - 4 })}</p>
           )}
         </div>
 
@@ -81,10 +87,11 @@ export default function ExpandableDonut({
         onClose={() => setModalOpen(false)}
         slices={slices}
         total={total}
-        title={modalTitle ?? title}
+        title={modalTitle ?? resolvedTitle}
         expenses={items}
         getCategoryLabel={getCategoryLabel}
         getCatRailColor={getCatRailColor}
+        currency={currency}
       />
     </>
   )

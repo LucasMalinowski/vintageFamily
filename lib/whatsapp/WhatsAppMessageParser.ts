@@ -4,7 +4,8 @@ import { buildCategoryLabelMap, findCategoryIdByStoredName, CategoryRecord } fro
 import { nvidiaAIService, AIExtractedRecord, IntentClassification } from '@/lib/ai/NvidiaAIService'
 import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
 import { whatsAppQueryHandler } from '@/lib/whatsapp/WhatsAppQueryHandler'
-import { formatBRL } from '@/lib/money'
+import { formatMoney } from '@/lib/money'
+import { getFamilyCurrency } from '@/lib/i18n/getFamilyCurrency'
 import { hasBillingAccess } from '@/lib/billing/access'
 import { checkAndIncrementWhatsAppRecording, checkAndIncrementAIQuery, getUsageCounters } from '@/lib/billing/free-tier'
 import { FREE_TIER_LIMITS } from '@/lib/billing/constants'
@@ -44,7 +45,7 @@ type PendingActionPayload =
   | { records: AIExtractedRecord[] }
   | { intent: IntentClassification }
 
-async function buildForecastReply(familyId: string, locale: AppLocale | null): Promise<string> {
+async function buildForecastReply(familyId: string, locale: AppLocale | null, currency: string): Promise<string> {
   const messages = getWhatsAppMessages(locale)
   const [forecast, anomalies] = await Promise.all([
     computeNextMonthForecast(familyId),
@@ -55,11 +56,11 @@ async function buildForecastReply(familyId: string, locale: AppLocale | null): P
     return messages.forecastInsufficientData
   }
 
-  const narrative = await generateForecastNarrative(forecast, anomalies, locale ?? 'pt-BR')
+  const narrative = await generateForecastNarrative(forecast, anomalies, locale ?? 'pt-BR', currency)
   const f = messages.forecast
 
   const lines = [f.header(getWhatsAppMonthName(locale, forecast.targetMonth)), '']
-  lines.push(f.spendingEstimate(formatBRL(forecast.grandTotal)))
+  lines.push(f.spendingEstimate(formatMoney(forecast.grandTotal, currency, locale ?? 'pt-BR')))
 
   if (narrative) {
     lines.push('', `_${narrative}_`)
@@ -74,7 +75,7 @@ async function buildForecastReply(familyId: string, locale: AppLocale | null): P
 
   if (breakdown.length > 0) {
     lines.push('', f.breakdownHeader)
-    breakdown.forEach(item => lines.push(`- ${item.label}: ${formatBRL(item.value)}`))
+    breakdown.forEach(item => lines.push(`- ${item.label}: ${formatMoney(item.value, currency, locale ?? 'pt-BR')}`))
   }
 
   const confidenceNote = messages.forecastConfidence[forecast.confidence as 'high' | 'medium' | 'low']
@@ -83,7 +84,7 @@ async function buildForecastReply(familyId: string, locale: AppLocale | null): P
   const unconfirmed = anomalies.filter(a => !a.alreadyConfirmed)
   if (unconfirmed.length > 0) {
     const a = unconfirmed[0]
-    lines.push('', f.anomalyNote(a.category_name, getWhatsAppMonthName(locale, a.month), formatBRL(a.amount_cents)))
+    lines.push('', f.anomalyNote(a.category_name, getWhatsAppMonthName(locale, a.month), formatMoney(a.amount_cents, currency, locale ?? 'pt-BR')))
   }
 
   return lines.join('\n')
@@ -189,27 +190,33 @@ export async function findWhatsAppUser(fromPhone: string): Promise<WhatsAppUserR
   return data ?? null
 }
 
-function formatRecordSummary(record: AIExtractedRecord): string {
+function formatRecordSummary(record: AIExtractedRecord, currency: string, locale: AppLocale | null): string {
+  const b = getWhatsAppMessages(locale).button
+
   if (record.type === 'reminder') {
-    return `Lembrete: ${record.description} (${record.date})`
+    return b.reminderSummary(record.description, record.date)
   }
 
+  const amount = formatMoney(Math.round((record.amount ?? 0) * 100), currency, locale ?? 'pt-BR')
+
   if (record.type === 'savings_contribution') {
-    return `${formatBRL(Math.round((record.amount ?? 0) * 100))} para ${record.saving_name ?? record.description} (Objetivo)`
+    return b.savingsSummary(amount, record.saving_name ?? record.description)
   }
 
   const category = record.category_name ? ` (${record.category_name})` : ''
-  return `${formatBRL(Math.round((record.amount ?? 0) * 100))} com ${record.description}${category}`
+  return b.expenseSummary(amount, record.description, category)
 }
 
-function buildPendingSummary(actionType: 'record' | 'edit' | 'delete', payload: PendingActionPayload): string {
+function buildPendingSummary(actionType: 'record' | 'edit' | 'delete', payload: PendingActionPayload, currency: string, locale: AppLocale | null): string {
   if ('records' in payload) {
-    return payload.records.map(formatRecordSummary).join(' • ')
+    return payload.records.map((r) => formatRecordSummary(r, currency, locale)).join(' • ')
   }
 
   const intent = payload.intent
-  if (actionType === 'delete') return `Remover o item ${intent.item_index ?? '?'} da última lista`
-  return `Editar o item ${intent.item_index ?? '?'} para ${formatBRL(Math.round((intent.edit_amount ?? 0) * 100))}`
+  const b = getWhatsAppMessages(locale).button
+  if (actionType === 'delete') return b.removeItemSummary(intent.item_index ?? '?')
+  const amount = formatMoney(Math.round((intent.edit_amount ?? 0) * 100), currency, locale ?? 'pt-BR')
+  return b.editItemSummary(intent.item_index ?? '?', amount)
 }
 
 async function sendAudioConfirmationTemplate(fromPhone: string, summaryText: string, locale: AppLocale | null): Promise<void> {
@@ -258,6 +265,7 @@ export async function processWhatsAppMessage(
 
   const messages = getWhatsAppMessages(userRow.locale)
   const { family_id: familyId } = userRow
+  const currency = await getFamilyCurrency(familyId)
   if (messageId) {
     await updateWhatsAppMessageLog(messageId, {
       family_id: familyId,
@@ -299,11 +307,12 @@ export async function processWhatsAppMessage(
         actionType: intent.type,
         payload: { intent },
         locale: userRow.locale,
+        currency,
       })
       return
     }
 
-    const reply = await handleMutation(fromPhone, familyId, intent, userRow.locale)
+    const reply = await handleMutation(fromPhone, familyId, intent, userRow.locale, currency)
     await whatsAppService.sendTextMessage(fromPhone, reply)
     return
   }
@@ -318,7 +327,7 @@ export async function processWhatsAppMessage(
       }
     }
     try {
-      const reply = await buildForecastReply(familyId, userRow.locale)
+      const reply = await buildForecastReply(familyId, userRow.locale, currency)
       await whatsAppService.sendTextMessage(fromPhone, reply + messages.feedbackLine)
     } catch {
       await whatsAppService.sendTextMessage(fromPhone, messages.forecastError)
@@ -336,7 +345,7 @@ export async function processWhatsAppMessage(
       }
     }
     try {
-      const reply = await whatsAppQueryHandler.handle(text, intent, familyId, todayISO, fromPhone, billingCycleDay, userRow.locale)
+      const reply = await whatsAppQueryHandler.handle(text, intent, familyId, todayISO, fromPhone, billingCycleDay, userRow.locale, currency)
       const transcriptNote = options.messageType === 'audio'
         ? messages.errors.audioTranscriptNote(text)
         : ''
@@ -374,7 +383,7 @@ export async function processWhatsAppMessage(
       time_range: 'current_month', focus: null, status_filter: null,
     }
     try {
-      const reply = await whatsAppQueryHandler.handle(text, fallbackIntent, familyId, todayISO, fromPhone, billingCycleDay, userRow.locale)
+      const reply = await whatsAppQueryHandler.handle(text, fallbackIntent, familyId, todayISO, fromPhone, billingCycleDay, userRow.locale, currency)
       const transcriptNote = options.messageType === 'audio'
         ? messages.errors.audioTranscriptNote(text)
         : ''
@@ -400,6 +409,7 @@ export async function processWhatsAppMessage(
       actionType: 'record',
       payload: { records },
       locale: userRow.locale,
+      currency,
     })
     return
   }
@@ -417,7 +427,7 @@ export async function processWhatsAppMessage(
   const results: SaveResult[] = []
 
   for (const record of records) {
-    const result = await saveRecord(record, familyId, categoryList, labelMap, todayISO, userRow.locale)
+    const result = await saveRecord(record, familyId, categoryList, labelMap, todayISO, userRow.locale, currency)
     results.push(result)
   }
 
@@ -445,6 +455,7 @@ async function saveRecordsAndReply(
   locale: AppLocale | null,
   prefetchedCategories?: CategoryRecord[]
 ): Promise<void> {
+  const currency = await getFamilyCurrency(familyId)
   let categoryList: CategoryRecord[]
   if (prefetchedCategories) {
     categoryList = prefetchedCategories
@@ -459,7 +470,7 @@ async function saveRecordsAndReply(
   const results: SaveResult[] = []
 
   for (const record of records) {
-    const result = await saveRecord(record, familyId, categoryList, labelMap, todayISO, locale)
+    const result = await saveRecord(record, familyId, categoryList, labelMap, todayISO, locale, currency)
     results.push(result)
   }
 
@@ -488,6 +499,7 @@ async function createPendingWhatsAppAction({
   actionType,
   payload,
   locale,
+  currency,
 }: {
   familyId: string
   userId: string
@@ -497,8 +509,9 @@ async function createPendingWhatsAppAction({
   actionType: 'record' | 'edit' | 'delete'
   payload: PendingActionPayload
   locale: AppLocale | null
+  currency: string
 }): Promise<void> {
-  const summaryText = buildPendingSummary(actionType, payload)
+  const summaryText = buildPendingSummary(actionType, payload, currency, locale)
   const { error } = await supabaseAdmin
     .from('pending_whatsapp_actions')
     .insert({
@@ -629,7 +642,8 @@ export async function processWhatsAppButtonReply(
     await saveRecordsAndReply(fromPhone, pending.family_id, records, new Date().toISOString().slice(0, 10), userRow.locale, (cats ?? []) as CategoryRecord[])
   } else {
     const intent = (pending.payload as any).intent as IntentClassification
-    const reply = await handleMutation(fromPhone, pending.family_id, intent, userRow.locale)
+    const currency = await getFamilyCurrency(pending.family_id)
+    const reply = await handleMutation(fromPhone, pending.family_id, intent, userRow.locale, currency)
     await whatsAppService.sendTextMessage(fromPhone, reply)
   }
 }
@@ -643,7 +657,8 @@ async function saveRecord(
   categoryList: CategoryRecord[],
   labelMap: Map<string, string>,
   todayISO: string,
-  locale: AppLocale | null = null
+  locale: AppLocale | null = null,
+  currency: string = 'BRL'
 ): Promise<SaveResult> {
   const s = getWhatsAppMessages(locale).save
 
@@ -724,7 +739,7 @@ async function saveRecord(
 
       const { error } = await supabaseAdmin.from('expenses').insert(rows)
       const catStr = resolvedLabel ? ` (${resolvedLabel})` : ''
-      const line = `💸 ${formatBRL(amount_cents)} - ${record.description}${catStr} ${s.expenseInstallment(formatBRL(perInstallment), installmentCount)}`
+      const line = `💸 ${formatMoney(amount_cents, currency, locale ?? 'pt-BR')} - ${record.description}${catStr} ${s.expenseInstallment(formatMoney(perInstallment, currency, locale ?? 'pt-BR'), installmentCount)}`
       if (error) {
         console.error('[WA] installment insert error:', error.message)
         return { ok: false, line }
@@ -761,7 +776,7 @@ async function saveRecord(
 
     const statusLabel = status === 'paid' ? s.expensePaid : s.expensePending
     const catStr = resolvedLabel ? ` (${resolvedLabel})` : ''
-    const line = `💸 ${formatBRL(amount_cents)} - ${record.description}${catStr} ${statusLabel}`
+    const line = `💸 ${formatMoney(amount_cents, currency, locale ?? 'pt-BR')} - ${record.description}${catStr} ${statusLabel}`
     if (error || !data?.id) {
       console.error('[WA] expense insert error:', error?.message)
       return { ok: false, line }
@@ -797,7 +812,7 @@ async function saveRecord(
       .single()
 
     const catStr = resolvedLabel ? ` (${resolvedLabel})` : ''
-    const line = `💰 ${formatBRL(amount_cents)} - ${record.description}${catStr} ${status === 'received' ? s.incomeReceived : s.incomePending}`
+    const line = `💰 ${formatMoney(amount_cents, currency, locale ?? 'pt-BR')} - ${record.description}${catStr} ${status === 'received' ? s.incomeReceived : s.incomePending}`
     if (error || !data?.id) {
       console.error('[WA] income insert error:', error?.message)
       return { ok: false, line }
@@ -847,7 +862,7 @@ async function saveRecord(
     .select('id')
     .single()
 
-  const line = `⭐ ${formatBRL(amount_cents)} - ${saving.name} (Objetivo)`
+  const line = `⭐ ${formatMoney(amount_cents, currency, locale ?? 'pt-BR')} - ${saving.name} (Objetivo)`
   if (error || !data?.id) {
     console.error('[WA] savings insert error:', error?.message)
     return { ok: false, line }
@@ -893,7 +908,8 @@ async function handleMutation(
   fromPhone: string,
   familyId: string,
   intent: IntentClassification,
-  locale: AppLocale | null = null
+  locale: AppLocale | null = null,
+  currency: string = 'BRL'
 ): Promise<string> {
   const m = getWhatsAppMessages(locale).mutation
   const { data: ctx } = await supabaseAdmin
@@ -933,7 +949,7 @@ async function handleMutation(
       return m.deleteError
     }
 
-    const amountStr = targetItem.amount_cents > 0 ? ` - ${formatBRL(targetItem.amount_cents)}` : ''
+    const amountStr = targetItem.amount_cents > 0 ? ` - ${formatMoney(targetItem.amount_cents, currency, locale ?? 'pt-BR')}` : ''
     return m.deleteSuccess(targetItem.description, amountStr)
   }
 
@@ -964,7 +980,7 @@ async function handleMutation(
       return m.editAmountError
     }
 
-    return m.editAmountSuccess(targetItem.description, formatBRL(newAmountCents))
+    return m.editAmountSuccess(targetItem.description, formatMoney(newAmountCents, currency, locale ?? 'pt-BR'))
   }
 
   if (intent.edit_category != null) {

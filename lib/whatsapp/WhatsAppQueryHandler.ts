@@ -3,7 +3,7 @@ import {
 } from 'date-fns'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { nvidiaAIService } from '@/lib/ai/NvidiaAIService'
-import { formatBRL } from '@/lib/money'
+import { formatMoney } from '@/lib/money'
 import type { IntentClassification, ClassifyItem, ClassifyResult } from '@/lib/ai/NvidiaAIService'
 import { getBillingCycleRange, getCurrentBillingPeriod } from '@/lib/billing-cycle'
 import { getWhatsAppMessages, getWhatsAppMonthName } from '@/lib/whatsapp/messages'
@@ -73,7 +73,8 @@ export class WhatsAppQueryHandler {
     todayISO: string,
     fromPhone?: string,
     billingCycleDay: number = 7,
-    locale: AppLocale | null = null
+    locale: AppLocale | null = null,
+    currency: string = 'BRL'
   ): Promise<string> {
     const m = getWhatsAppMessages(locale)
 
@@ -103,7 +104,7 @@ export class WhatsAppQueryHandler {
       }))
 
       const result = await nvidiaAIService.classifyQueryData(question, items, intent.focus)
-      const msg = WhatsAppQueryHandler.buildRowMessage(result, rowData, period, intent.data_needed, m)
+      const msg = WhatsAppQueryHandler.buildRowMessage(result, rowData, period, intent.data_needed, m, currency, locale)
       if (msg) parts.push(msg)
 
       if (fromPhone && (result.query_type === 'sum' || result.query_type === 'list')) {
@@ -127,7 +128,7 @@ export class WhatsAppQueryHandler {
     }
 
     if (payload.savings?.length) {
-      parts.push(WhatsAppQueryHandler.buildSavingsMessage(payload.savings, period, m))
+      parts.push(WhatsAppQueryHandler.buildSavingsMessage(payload.savings, period, m, currency, locale))
     }
 
     if (payload.reminders?.length) {
@@ -146,7 +147,9 @@ export class WhatsAppQueryHandler {
     allRows: InternalRow[],
     period: string,
     dataTables: string[],
-    m: ReturnType<typeof getWhatsAppMessages>
+    m: ReturnType<typeof getWhatsAppMessages>,
+    currency: string,
+    locale: AppLocale | null
   ): string | null {
     const idxSet = new Set(result.selected)
     const selected = allRows.filter(r => idxSet.has(r.idx))
@@ -162,13 +165,13 @@ export class WhatsAppQueryHandler {
 
     let msg: string
     if (result.query_type === 'sum') {
-      msg = WhatsAppQueryHandler.buildSumMessage(selected, focusLabel, period, routePath, isIncome, m)
+      msg = WhatsAppQueryHandler.buildSumMessage(selected, focusLabel, period, routePath, isIncome, m, currency, locale)
     } else if (result.query_type === 'max') {
-      msg = WhatsAppQueryHandler.buildMaxMessage(selected, period, m)
+      msg = WhatsAppQueryHandler.buildMaxMessage(selected, period, m, currency, locale)
     } else if (result.query_type === 'count') {
       msg = WhatsAppQueryHandler.buildCountMessage(selected, focusLabel, period, m)
     } else {
-      msg = WhatsAppQueryHandler.buildListMessage(selected, focusLabel, period, routePath, m)
+      msg = WhatsAppQueryHandler.buildListMessage(selected, focusLabel, period, routePath, m, currency, locale)
     }
 
     if (result.context_selected?.length && result.context_label) {
@@ -176,7 +179,7 @@ export class WhatsAppQueryHandler {
       const ctxRows = allRows.filter(r => ctxSet.has(r.idx))
       if (ctxRows.length) {
         const ctxTotal = ctxRows.reduce((s, r) => s + r.amount_cents, 0)
-        msg += `\n\n${m.query.relatedContext(result.context_label, formatBRL(ctxTotal))}`
+        msg += `\n\n${m.query.relatedContext(result.context_label, formatMoney(ctxTotal, currency, locale ?? 'pt-BR'))}`
       }
     }
 
@@ -189,14 +192,16 @@ export class WhatsAppQueryHandler {
     period: string,
     routePath: string,
     isIncome: boolean,
-    m: ReturnType<typeof getWhatsAppMessages>
+    m: ReturnType<typeof getWhatsAppMessages>,
+    currency: string,
+    locale: AppLocale | null
   ): string {
     const total = rows.reduce((s, r) => s + r.amount_cents, 0)
-    const lines = [m.query.sumSentence(formatBRL(total), label, period, isIncome)]
+    const lines = [m.query.sumSentence(formatMoney(total, currency, locale ?? 'pt-BR'), label, period, isIncome)]
 
     const display = rows.slice(0, 10)
     display.forEach((r, i) => {
-      lines.push(`${i + 1}. ${dateBR(r.date)}: ${r.description} (${r.category}) - *${formatBRL(r.amount_cents)}*`)
+      lines.push(`${i + 1}. ${dateBR(r.date)}: ${r.description} (${r.category}) - *${formatMoney(r.amount_cents, currency, locale ?? 'pt-BR')}*`)
     })
 
     lines.push(`\n${m.query.editHint}`)
@@ -212,7 +217,9 @@ export class WhatsAppQueryHandler {
   private static buildMaxMessage(
     rows: InternalRow[],
     period: string,
-    m: ReturnType<typeof getWhatsAppMessages>
+    m: ReturnType<typeof getWhatsAppMessages>,
+    currency: string,
+    locale: AppLocale | null
   ): string {
     const groups = new Map<string, InternalRow[]>()
     for (const r of rows) {
@@ -231,15 +238,15 @@ export class WhatsAppQueryHandler {
 
     if (topRows.length === 1) {
       const r = topRows[0]
-      return m.query.maxSingle(period, r.description, dateBR(r.date), formatBRL(r.amount_cents))
+      return m.query.maxSingle(period, r.description, dateBR(r.date), formatMoney(r.amount_cents, currency, locale ?? 'pt-BR'))
     }
 
     const lines = [
-      m.query.maxCategoryHeader(period, topCategory, formatBRL(topTotal)),
+      m.query.maxCategoryHeader(period, topCategory, formatMoney(topTotal, currency, locale ?? 'pt-BR')),
       m.query.maxCategoryItems(topRows.length),
     ]
     topRows.forEach(r => {
-      lines.push(`- ${dateBR(r.date)}: *${formatBRL(r.amount_cents)}*`)
+      lines.push(`- ${dateBR(r.date)}: *${formatMoney(r.amount_cents, currency, locale ?? 'pt-BR')}*`)
     })
 
     const sorted = Array.from(groups.entries())
@@ -247,7 +254,7 @@ export class WhatsAppQueryHandler {
       .sort((a, b) => b.total - a.total)
 
     if (sorted.length > 1) {
-      lines.push(m.query.maxRunnerUp(sorted[1].cat, formatBRL(sorted[1].total)))
+      lines.push(m.query.maxRunnerUp(sorted[1].cat, formatMoney(sorted[1].total, currency, locale ?? 'pt-BR')))
     }
 
     return lines.join('\n')
@@ -279,12 +286,14 @@ export class WhatsAppQueryHandler {
     label: string,
     period: string,
     routePath: string,
-    m: ReturnType<typeof getWhatsAppMessages>
+    m: ReturnType<typeof getWhatsAppMessages>,
+    currency: string,
+    locale: AppLocale | null
   ): string {
     const lines = [m.query.listHeader(label, period)]
 
     rows.slice(0, 10).forEach((r, i) => {
-      lines.push(`${i + 1}. ${dateBR(r.date)}: ${r.description} (${r.category}) - *${formatBRL(r.amount_cents)}*`)
+      lines.push(`${i + 1}. ${dateBR(r.date)}: ${r.description} (${r.category}) - *${formatMoney(r.amount_cents, currency, locale ?? 'pt-BR')}*`)
     })
 
     lines.push(`\n${m.query.editHint}`)
@@ -300,14 +309,16 @@ export class WhatsAppQueryHandler {
   private static buildSavingsMessage(
     savings: InternalSaving[],
     period: string,
-    m: ReturnType<typeof getWhatsAppMessages>
+    m: ReturnType<typeof getWhatsAppMessages>,
+    currency: string,
+    locale: AppLocale | null
   ): string {
     const lines = [m.query.savingsHeader]
 
     savings.forEach(d => {
-      const target = d.target_cents != null ? m.query.savingsTarget(formatBRL(d.target_cents)) : ''
+      const target = d.target_cents != null ? m.query.savingsTarget(formatMoney(d.target_cents, currency, locale ?? 'pt-BR')) : ''
       const contributed = d.contributed_cents > 0
-        ? m.query.savingsContributed(period, formatBRL(d.contributed_cents))
+        ? m.query.savingsContributed(period, formatMoney(d.contributed_cents, currency, locale ?? 'pt-BR'))
         : m.query.savingsNoContributions(period)
       lines.push(`- ${d.name}${target}${contributed}`)
     })

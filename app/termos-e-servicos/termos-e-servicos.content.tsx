@@ -51,6 +51,7 @@ export const TERMOS_E_SERVICOS_CONTENT: Record<AppLocale, TermosEServicosContent
         title: '1. Apresentação do serviço',
         paragraphs: [
           'O Florim é uma plataforma digital de organização financeira familiar. Por meio do aplicativo, o usuário pode criar e gerenciar sua família digital, registrar receitas e despesas, organizar categorias, acompanhar sonhos e metas, manter lembretes, convidar integrantes e, quando disponível, contratar plano pago e importar extratos bancários.',
+          'O registro de receitas e despesas também pode ser feito por mensagens de texto ou áudio enviadas por aplicativo de mensageria instantânea, processadas por inteligência artificial para extrair os lançamentos e responder consultas. O Florim também utiliza inteligência artificial para gerar insights e previsões financeiras com base nos dados registrados — esse conteúdo é gerado automaticamente, pode conter imprecisões e não substitui aconselhamento profissional.',
           'Este documento disciplina o uso do site, do aplicativo e das funcionalidades disponibilizadas pelo Florim. Ao acessar ou utilizar a plataforma, o usuário declara que leu, compreendeu e concorda com estes Termos de Uso e com o Aviso de Privacidade abaixo.',
         ],
       },
@@ -95,7 +96,7 @@ export const TERMOS_E_SERVICOS_CONTENT: Record<AppLocale, TermosEServicosContent
         title: '7. Limitação de responsabilidade',
         paragraphs: [
           'O Florim é uma ferramenta de apoio à organização financeira e não constitui consultoria jurídica, contábil, tributária, bancária ou de investimentos. As informações apresentadas na plataforma dependem dos dados inseridos ou enviados pelo próprio usuário e não substituem validações independentes quando necessárias.',
-          'O Florim não se responsabiliza por danos decorrentes de informações incorretas, desatualizadas ou incompletas fornecidas pelo usuário, por falhas em dispositivos, redes, conexão à internet, sistemas de terceiros, eventos de força maior ou por uso inadequado da conta e compartilhamento indevido de credenciais.',
+          'O Florim não se responsabiliza por danos decorrentes de informações incorretas, desatualizadas ou incompletas fornecidas pelo usuário, por imprecisões em lançamentos, respostas ou insights gerados por inteligência artificial, por falhas em dispositivos, redes, conexão à internet, sistemas de terceiros, eventos de força maior ou por uso inadequado da conta e compartilhamento indevido de credenciais.',
         ],
       },
       {
@@ -135,6 +136,7 @@ export const TERMOS_E_SERVICOS_CONTENT: Record<AppLocale, TermosEServicosContent
         paragraphs: [
           'De acordo com as funcionalidades atualmente implementadas no produto e com os campos previstos para evolução do cadastro, o Florim pode tratar dados cadastrais e de conta, como nome, e-mail e telefone; dados de vínculo familiar, como identificação da família, papel do usuário na família e dados necessários ao envio e aceite de convites; dados de autenticação e sessão; dados de uso estritamente técnicos; e dados inseridos pelo próprio usuário para organização financeira.',
           'Também podem ser tratados dados financeiros e organizacionais inseridos ou importados pelo usuário, como receitas, despesas, descrições, categorias, metas, lembretes, anexos e dados contidos em arquivos de importação de extrato bancário.',
+          'Quando o usuário utiliza o canal de mensageria instantânea (WhatsApp) disponibilizado pelo Florim, também são tratados o número de telefone verificado e o conteúdo das mensagens de texto e áudio enviadas ao assistente, utilizados para registrar lançamentos e responder consultas.',
           'Quando houver contratação de plano pago, o Florim poderá tratar dados de assinatura, identificadores de cliente e assinatura em processador de pagamento, status de cobrança, faturas e metadados de transação. Os dados completos do cartão tendem a ser processados diretamente pelo provedor de pagamento, e não armazenados diretamente pelo Florim, conforme o fluxo técnico integrado atualmente.',
         ],
       },
@@ -157,6 +159,7 @@ export const TERMOS_E_SERVICOS_CONTENT: Record<AppLocale, TermosEServicosContent
         paragraphs: [
           'Os dados pessoais poderão ser compartilhados, quando necessário, com provedores de infraestrutura, autenticação, hospedagem, banco de dados, envio de e-mails, armazenamento, suporte técnico e processamento de pagamentos, além de autoridades públicas e judiciais, quando houver obrigação legal, regulatória ou ordem válida.',
           'No contexto atual do produto, o uso de autenticação e banco de dados por serviços especializados, bem como de provedor de pagamentos para assinatura, integra a prestação do serviço e pode demandar compartilhamento operacional de dados estritamente necessários à execução dessas atividades.',
+          'Quando o usuário utiliza o canal de mensageria instantânea (WhatsApp), as mensagens trocadas são compartilhadas com o provedor da plataforma de mensageria (Meta Platforms, Inc.) e processadas por provedor de inteligência artificial (Groq Inc.) para gerar lançamentos automáticos, respostas e insights financeiros.',
         ],
       },
       {
@@ -227,6 +230,7 @@ export const TERMOS_E_SERVICOS_CONTENT: Record<AppLocale, TermosEServicosContent
         title: '1. Overview of the service',
         paragraphs: [
           'Florim is a digital platform for family financial organization. Through the app, the user can create and manage their digital family, record income and expenses, organize categories, track dreams and goals, keep reminders, invite members, and, when available, subscribe to a paid plan and import bank statements.',
+          'Income and expenses can also be recorded through text or audio messages sent over an instant messaging app, processed using artificial intelligence to extract entries and answer questions. Florim also uses artificial intelligence to generate insights and financial forecasts based on the recorded data — this content is generated automatically, may contain inaccuracies, and does not replace professional advice.',
           'This document governs the use of the website, the app, and the features made available by Florim. By accessing or using the platform, the user declares that they have read, understood, and agree to these Terms of Use and to the Privacy Notice below.',
         ],
       },
@@ -271,7 +275,7 @@ export const TERMOS_E_SERVICOS_CONTENT: Record<AppLocale, TermosEServicosContent
         title: '7. Limitation of liability',
         paragraphs: [
           'Florim is a tool to support financial organization and does not constitute legal, accounting, tax, banking, or investment advice. The information presented on the platform depends on the data entered or uploaded by the user and does not replace independent verification when necessary.',
-          'Florim is not liable for damages arising from incorrect, outdated, or incomplete information provided by the user, from failures in devices, networks, internet connections, third-party systems, force majeure events, or from improper use of the account and improper sharing of credentials.',
+          'Florim is not liable for damages arising from incorrect, outdated, or incomplete information provided by the user, from inaccuracies in entries, replies, or insights generated by artificial intelligence, from failures in devices, networks, internet connections, third-party systems, force majeure events, or from improper use of the account and improper sharing of credentials.',
         ],
       },
       {
@@ -311,6 +315,7 @@ export const TERMOS_E_SERVICOS_CONTENT: Record<AppLocale, TermosEServicosContent
         paragraphs: [
           'In line with the features currently implemented in the product and with the fields planned for the evolution of registration, Florim may process registration and account data, such as name, email, and phone number; family-relationship data, such as family identification, the user’s role within the family, and data required to send and accept invitations; authentication and session data; strictly technical usage data; and data entered by the user for financial organization.',
           'Florim may also process financial and organizational data entered or imported by the user, such as income, expenses, descriptions, categories, goals, reminders, attachments, and data contained in bank statement import files.',
+          'When the user uses the instant messaging channel (WhatsApp) made available by Florim, the verified phone number and the content of the text and audio messages sent to the assistant are also processed, used to record entries and answer questions.',
           'When a paid plan is purchased, Florim may process subscription data, customer and subscription identifiers held by the payment processor, billing status, invoices, and transaction metadata. Full card data tends to be processed directly by the payment provider, and not stored directly by Florim, in line with the technical flow currently integrated.',
         ],
       },
@@ -333,6 +338,7 @@ export const TERMOS_E_SERVICOS_CONTENT: Record<AppLocale, TermosEServicosContent
         paragraphs: [
           'Personal data may be shared, when necessary, with infrastructure, authentication, hosting, database, email delivery, storage, technical support, and payment processing providers, as well as with public and judicial authorities, when there is a legal or regulatory obligation or a valid order.',
           'In the product’s current context, the use of authentication and database services by specialized providers, as well as a payment provider for subscriptions, is part of the provision of the service and may require operational sharing of data strictly necessary to carry out those activities.',
+          'When the user uses the instant messaging channel (WhatsApp), the messages exchanged are shared with the messaging platform provider (Meta Platforms, Inc.) and processed by an artificial intelligence provider (Groq Inc.) to generate automatic entries, replies, and financial insights.',
         ],
       },
       {
@@ -403,6 +409,7 @@ export const TERMOS_E_SERVICOS_CONTENT: Record<AppLocale, TermosEServicosContent
         title: '1. Presentación del servicio',
         paragraphs: [
           'Florim es una plataforma digital de organización financiera familiar. A través de la aplicación, el usuario puede crear y gestionar su familia digital, registrar ingresos y gastos, organizar categorías, dar seguimiento a sueños y metas, mantener recordatorios, invitar integrantes y, cuando esté disponible, contratar un plan de pago e importar extractos bancarios.',
+          'El registro de ingresos y gastos también puede realizarse mediante mensajes de texto o audio enviados por una aplicación de mensajería instantánea, procesados mediante inteligencia artificial para extraer los registros y responder consultas. Florim también utiliza inteligencia artificial para generar perspectivas y previsiones financieras basadas en los datos registrados — este contenido se genera automáticamente, puede contener imprecisiones y no sustituye el asesoramiento profesional.',
           'Este documento regula el uso del sitio web, de la aplicación y de las funcionalidades puestas a disposición por Florim. Al acceder o utilizar la plataforma, el usuario declara que ha leído, comprendido y aceptado estos Términos de Uso y el Aviso de Privacidad que figura a continuación.',
         ],
       },
@@ -447,7 +454,7 @@ export const TERMOS_E_SERVICOS_CONTENT: Record<AppLocale, TermosEServicosContent
         title: '7. Limitación de responsabilidad',
         paragraphs: [
           'Florim es una herramienta de apoyo a la organización financiera y no constituye asesoría jurídica, contable, tributaria, bancaria ni de inversiones. La información presentada en la plataforma depende de los datos ingresados o enviados por el propio usuario y no sustituye las validaciones independientes cuando sean necesarias.',
-          'Florim no se responsabiliza por daños derivados de información incorrecta, desactualizada o incompleta proporcionada por el usuario, por fallas en dispositivos, redes, conexión a internet, sistemas de terceros, eventos de fuerza mayor o por el uso inadecuado de la cuenta y la compartición indebida de credenciales.',
+          'Florim no se responsabiliza por daños derivados de información incorrecta, desactualizada o incompleta proporcionada por el usuario, por imprecisiones en registros, respuestas o perspectivas generadas por inteligencia artificial, por fallas en dispositivos, redes, conexión a internet, sistemas de terceros, eventos de fuerza mayor o por el uso inadecuado de la cuenta y la compartición indebida de credenciales.',
         ],
       },
       {
@@ -487,6 +494,7 @@ export const TERMOS_E_SERVICOS_CONTENT: Record<AppLocale, TermosEServicosContent
         paragraphs: [
           'De acuerdo con las funcionalidades actualmente implementadas en el producto y con los campos previstos para la evolución del registro, Florim puede tratar datos de registro y de cuenta, como nombre, correo electrónico y teléfono; datos de vínculo familiar, como la identificación de la familia, el rol del usuario dentro de la familia y los datos necesarios para el envío y la aceptación de invitaciones; datos de autenticación y de sesión; datos de uso estrictamente técnicos; y datos ingresados por el propio usuario para la organización financiera.',
           'También pueden tratarse datos financieros y organizativos ingresados o importados por el usuario, como ingresos, gastos, descripciones, categorías, metas, recordatorios, adjuntos y datos contenidos en archivos de importación de extractos bancarios.',
+          'Cuando el usuario utiliza el canal de mensajería instantánea (WhatsApp) puesto a disposición por Florim, también se tratan el número de teléfono verificado y el contenido de los mensajes de texto y audio enviados al asistente, utilizados para registrar movimientos y responder consultas.',
           'Cuando se contrate un plan de pago, Florim podrá tratar datos de suscripción, identificadores de cliente y de suscripción en el procesador de pagos, estado de facturación, comprobantes y metadatos de transacción. Los datos completos de la tarjeta tienden a ser procesados directamente por el proveedor de pagos, y no almacenados directamente por Florim, conforme al flujo técnico actualmente integrado.',
         ],
       },
@@ -509,6 +517,7 @@ export const TERMOS_E_SERVICOS_CONTENT: Record<AppLocale, TermosEServicosContent
         paragraphs: [
           'Los datos personales podrán compartirse, cuando sea necesario, con proveedores de infraestructura, autenticación, hospedaje, base de datos, envío de correos electrónicos, almacenamiento, soporte técnico y procesamiento de pagos, además de autoridades públicas y judiciales, cuando exista una obligación legal, regulatoria u orden válida.',
           'En el contexto actual del producto, el uso de servicios especializados de autenticación y base de datos, así como de un proveedor de pagos para la suscripción, forma parte de la prestación del servicio y puede requerir la compartición operativa de datos estrictamente necesarios para la ejecución de esas actividades.',
+          'Cuando el usuario utiliza el canal de mensajería instantánea (WhatsApp), los mensajes intercambiados se comparten con el proveedor de la plataforma de mensajería (Meta Platforms, Inc.) y se procesan mediante un proveedor de inteligencia artificial (Groq Inc.) para generar registros automáticos, respuestas y perspectivas financieras.',
         ],
       },
       {

@@ -1,6 +1,6 @@
 import { type ForecastResult } from './engine'
 import { type AnomalyFlag } from './anomaly'
-import { formatBRL } from '@/lib/money'
+import { formatMoney } from '@/lib/money'
 import type { AppLocale } from '@/lib/i18n/getLocale'
 
 const INTL_LOCALE: Record<AppLocale, string> = {
@@ -33,6 +33,7 @@ export async function generateForecastNarrative(
   forecast: ForecastResult,
   anomalies: AnomalyFlag[],
   locale: AppLocale = 'pt-BR',
+  currency: string = 'BRL',
 ): Promise<string> {
   const apiKey = process.env.GROQ_API_KEY
   if (!apiKey) return ''
@@ -42,15 +43,15 @@ export async function generateForecastNarrative(
   const anomalyContext = anomalies
     .filter(a => !a.alreadyConfirmed)
     .slice(0, 2)
-    .map(a => `${a.category_name} teve pico histórico de ${formatBRL(a.amount_cents)} no mês ${monthName(a.month, locale)} (z-score ${a.zScore.toFixed(1)})`)
+    .map(a => `${a.category_name} teve pico histórico de ${formatMoney(a.amount_cents, currency, locale)} no mês ${monthName(a.month, locale)} (z-score ${a.zScore.toFixed(1)})`)
     .join('; ')
 
   const prompt = `Dados para previsão de ${targetName}:
-- Total estimado: ${formatBRL(forecast.grandTotal)}
-- Gastos fixos (recorrentes confirmados): ${formatBRL(forecast.fixedTotal)}
-- Parcelas em andamento: ${formatBRL(forecast.installmentsTotal)}
-- Gastos variáveis projetados: ${formatBRL(forecast.variableEstimate)}
-- Eventos anuais confirmados: ${formatBRL(forecast.annualEventsTotal)}
+- Total estimado: ${formatMoney(forecast.grandTotal, currency, locale)}
+- Gastos fixos (recorrentes confirmados): ${formatMoney(forecast.fixedTotal, currency, locale)}
+- Parcelas em andamento: ${formatMoney(forecast.installmentsTotal, currency, locale)}
+- Gastos variáveis projetados: ${formatMoney(forecast.variableEstimate, currency, locale)}
+- Eventos anuais confirmados: ${formatMoney(forecast.annualEventsTotal, currency, locale)}
 - Confiança da previsão: ${forecast.confidence}
 ${anomalyContext ? `- Anomalias históricas: ${anomalyContext}` : ''}
 

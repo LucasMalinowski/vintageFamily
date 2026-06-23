@@ -8,12 +8,15 @@ import { useRouter } from 'next/navigation'
 import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
 import { useTranslations } from 'next-intl'
+import { DEFAULT_CURRENCY, type AppCurrency, SUPPORTED_CURRENCIES } from '@/lib/i18n/currencies'
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'error'
 
 interface AuthContextType {
   user: User | null
   familyId: string | null
+  currency: AppCurrency
+  setCurrency: (currency: AppCurrency) => void
   loading: boolean
   authStatus: AuthStatus
   isSuperAdmin: boolean
@@ -50,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const t = useTranslations()
   const [user, setUser] = useState<User | null>(null)
   const [familyId, setFamilyId] = useState<string | null>(null)
+  const [currency, setCurrency] = useState<AppCurrency>(DEFAULT_CURRENCY)
   const [authStatus, setAuthStatus] = useState<AuthStatus>('loading')
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [familyPickerVisible, setFamilyPickerVisible] = useState(false)
@@ -66,6 +70,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Keep refs in sync so event listeners read current values without stale closures
   useEffect(() => { userRef.current = user }, [user])
   useEffect(() => { familyIdRef.current = familyId }, [familyId])
+
+  // Family currency drives how every money amount is formatted app-wide
+  // (Settings > Profile lets the family change it) — load it whenever the
+  // active family changes, and fall back to the default if it's missing/unset.
+  useEffect(() => {
+    if (!familyId) {
+      setCurrency(DEFAULT_CURRENCY)
+      return
+    }
+    let cancelled = false
+    supabase
+      .from('families')
+      .select('currency')
+      .eq('id', familyId)
+      .maybeSingle()
+      .then(({ data }: { data: { currency?: string | null } | null }) => {
+        if (cancelled) return
+        const value = data?.currency
+        if (value && (SUPPORTED_CURRENCIES as readonly string[]).includes(value)) {
+          setCurrency(value as AppCurrency)
+        } else {
+          setCurrency(DEFAULT_CURRENCY)
+        }
+      })
+    return () => { cancelled = true }
+  }, [familyId])
 
   // loading is true only during the initial session resolution
   const loading = authStatus === 'loading'
@@ -397,7 +427,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, familyId, loading, authStatus, isSuperAdmin, familyPickerVisible, switchFamily, hideFamilyPicker, signIn, signUp, signInWithGoogle, signInWithApple, acceptInvite, signOut }}>
+    <AuthContext.Provider value={{ user, familyId, currency, setCurrency, loading, authStatus, isSuperAdmin, familyPickerVisible, switchFamily, hideFamilyPicker, signIn, signUp, signInWithGoogle, signInWithApple, acceptInvite, signOut }}>
       {children}
     </AuthContext.Provider>
   )

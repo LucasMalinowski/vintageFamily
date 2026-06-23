@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { whatsAppService } from '@/lib/whatsapp/WhatsAppService'
-import { formatBRL } from '@/lib/money'
+import { formatMoney } from '@/lib/money'
+import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES, type AppCurrency } from '@/lib/i18n/currencies'
 import { notifyWidgetSync } from '@/lib/notifications/widgetSync'
 
 function toISO(date: Date): string {
@@ -74,6 +75,21 @@ export async function launchDueRecurringItems(familyId?: string): Promise<number
     for (const m of members ?? []) {
       if (!familyPhoneMap.has(m.family_id) && m.phone_number)
         familyPhoneMap.set(m.family_id, m.phone_number)
+    }
+  }
+
+  const familyCurrencyMap = new Map<string, AppCurrency>()
+  {
+    const { data: families } = await supabaseAdmin
+      .from('families')
+      .select('id,currency')
+      .in('id', uniqueFamilyIds)
+    for (const f of families ?? []) {
+      const value = (f as { currency?: string | null }).currency
+      familyCurrencyMap.set(
+        f.id,
+        value && (SUPPORTED_CURRENCIES as readonly string[]).includes(value) ? (value as AppCurrency) : DEFAULT_CURRENCY
+      )
     }
   }
 
@@ -157,8 +173,9 @@ export async function launchDueRecurringItems(familyId?: string): Promise<number
 
     const phone = familyPhoneMap.get(pattern.family_id)
     if (phone) {
+      const currency = familyCurrencyMap.get(pattern.family_id) ?? DEFAULT_CURRENCY
       const amountStr = pattern.estimated_amount_cents
-        ? ` de ${formatBRL(pattern.estimated_amount_cents)}`
+        ? ` de ${formatMoney(pattern.estimated_amount_cents, currency, 'pt-BR')}`
         : ''
       const kindLabel = pattern.kind === 'income' ? 'receita recorrente' : 'despesa recorrente'
       const msg = `📅 Detectei sua ${kindLabel} *${pattern.description_pattern}*${amountStr}.\n\nEla foi registrada como pendente. Confirmar que aconteceu? Acesse o app para confirmar ou cancelar.`

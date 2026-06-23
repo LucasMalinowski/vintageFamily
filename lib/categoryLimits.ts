@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
-import { formatBRL } from '@/lib/money'
+import { formatMoney } from '@/lib/money'
 import { getCurrentBillingPeriod } from '@/lib/billing-cycle'
+import type { useTranslations } from 'next-intl'
 
 export interface CategoryLimitRow {
   categoryId: string
@@ -27,9 +28,14 @@ export function limitBarColor(status: 'ok' | 'warning' | 'over'): string {
   return '#6FBF8A'
 }
 
-export function formatLimitBadge(row: CategoryLimitRow): string {
+export function formatLimitBadge(
+  row: CategoryLimitRow,
+  t: ReturnType<typeof useTranslations>,
+  currency = 'BRL',
+  locale = 'pt-BR'
+): string {
   if (row.status === 'over') {
-    return `${formatBRL(row.excessCents)} acima`
+    return t('categoryModal.overAmount', { amount: formatMoney(row.excessCents, currency, locale) })
   }
   return `${row.pct}%`
 }

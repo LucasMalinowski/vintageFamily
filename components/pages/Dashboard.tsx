@@ -16,7 +16,7 @@ import { resolveCategoryName } from '@/lib/categories'
 import type { AppLocale } from '@/lib/i18n/getLocale'
 import { LOCAL_STORAGE_KEYS } from '@/lib/storage'
 import { loadCategoryLimitsForMonth, type CategoryLimitRow, limitBarColor, formatLimitBadge } from '@/lib/categoryLimits'
-import { formatBRL } from '@/lib/money'
+import { formatMoney } from '@/lib/money'
 import ForecastCard from '@/components/dashboard/ForecastCard'
 
 const PHRASES: Record<AppLocale, string[]> = {
@@ -181,6 +181,7 @@ function DesktopHeroCard({
   expenseOpen,
   expenseOverdue,
   incomeTotal,
+  currency,
   t,
 }: {
   familyName: string
@@ -188,6 +189,7 @@ function DesktopHeroCard({
   expenseOpen: number
   expenseOverdue: number
   incomeTotal: number
+  currency: string
   t: ReturnType<typeof useTranslations>
 }) {
   const totalExpenses = expensePaid + expenseOpen + expenseOverdue
@@ -225,7 +227,7 @@ function DesktopHeroCard({
             {t('dashboard.familyFinanceBook')}
           </p>
           <p className="font-numbers font-bold text-[42px] text-white leading-none tracking-[-1px] tabular-nums">
-            {formatBRL(Math.max(balance, 0))}
+            {formatMoney(Math.max(balance, 0), currency, locale)}
           </p>
           <p className="text-[12.5px] text-white/60 mt-1">{t('dashboard.estimatedMonthBalance')}</p>
         </div>
@@ -252,7 +254,7 @@ function DesktopHeroCard({
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ background: seg.color }} />
                 <span className="text-[12px] text-white/70 font-medium">
                   {seg.label} ·{' '}
-                  <b className="text-white font-numbers tabular-nums">{formatBRL(seg.val)}</b>
+                  <b className="text-white font-numbers tabular-nums">{formatMoney(seg.val, currency, locale)}</b>
                   <span className="ml-1 text-white/40">{seg.pct}%</span>
                 </span>
               </div>
@@ -299,7 +301,7 @@ export default function Dashboard() {
     setCalmaMode(next === 'calma')
   }
 
-  const { familyId, user } = useAuth()
+  const { familyId, user, currency } = useAuth()
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [pendingPayables, setPendingPayables] = useState<Payable[]>([])
   const [loading, setLoading] = useState(true)
@@ -654,6 +656,7 @@ export default function Dashboard() {
                 expenseOpen={monthStats.expenseOpen}
                 expenseOverdue={monthStats.expenseOverdue}
                 incomeTotal={monthStats.incomeTotal}
+                currency={currency}
                 t={t}
               />
             </div>
@@ -744,15 +747,15 @@ export default function Dashboard() {
                             <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ background: `${c}20`, color: c }}>{pct}%</span>
                           )}
                         </div>
-                        <p className="font-numbers font-bold text-[20px] text-coffee tabular-nums">{formatBRL(s.balance)}</p>
-                        {s.target && <p className="text-[11px] text-ink/50 mt-0.5">{t('dashboard.ofTarget', { amount: formatBRL(s.target) })}</p>}
+                        <p className="font-numbers font-bold text-[20px] text-coffee tabular-nums">{formatMoney(s.balance, currency, locale)}</p>
+                        {s.target && <p className="text-[11px] text-ink/50 mt-0.5">{t('dashboard.ofTarget', { amount: formatMoney(s.target, currency, locale) })}</p>}
                         {pct !== null && (
                           <div className="mt-2.5 h-[5px] rounded-full overflow-hidden" style={{ background: `${c}20` }}>
                             <div className="h-full rounded-full" style={{ width: `${pct}%`, background: c }} />
                           </div>
                         )}
                         {s.delta > 0 && (
-                          <p className="text-[11px] font-semibold mt-2" style={{ color: c }}>{t('dashboard.weeklyDelta', { amount: formatBRL(s.delta) })}</p>
+                          <p className="text-[11px] font-semibold mt-2" style={{ color: c }}>{t('dashboard.weeklyDelta', { amount: formatMoney(s.delta, currency, locale) })}</p>
                         )}
                       </div>
                     </Link>
@@ -983,7 +986,7 @@ export default function Dashboard() {
                   <div className="space-y-3 mt-3">
                     {limitRows.slice(0, 3).map((row) => {
                       const barColor = limitBarColor(row.status)
-                      const badge = formatLimitBadge(row)
+                      const badge = formatLimitBadge(row, t, currency, locale)
                       return (
                         <div key={row.categoryId}>
                           <div className="flex items-center gap-2">
@@ -993,7 +996,7 @@ export default function Dashboard() {
                               {row.parentName && <span className="text-ink/40 font-normal"> · {row.parentName}</span>}
                             </span>
                             <div className="flex-1" />
-                            <span className="text-xs tabular-nums text-ink/50 shrink-0">{t('dashboard.spentOfLimit', { spent: formatBRL(row.spentCents), limit: formatBRL(row.limitCents) })}</span>
+                            <span className="text-xs tabular-nums text-ink/50 shrink-0">{t('dashboard.spentOfLimit', { spent: formatMoney(row.spentCents, currency, locale), limit: formatMoney(row.limitCents, currency, locale) })}</span>
                             <span className="text-xs font-semibold shrink-0 min-w-[3.5rem] text-right" style={{ color: barColor }}>
                               {badge}
                             </span>

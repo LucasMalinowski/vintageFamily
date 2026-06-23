@@ -38,7 +38,7 @@ import {
   ALL_YEARS_VALUE,
 } from '@/lib/dates'
 import { matchesSearch } from '@/lib/filterSearch'
-import { formatBRL } from '@/lib/money'
+import { formatMoney } from '@/lib/money'
 import { buildBrandedPdfBlob, downloadBlob, downloadCsv, openHtmlAsPdf } from '@/lib/report-export'
 import { resolveCategoryName } from '@/lib/categories'
 import type { AppLocale } from '@/lib/i18n/getLocale'
@@ -120,7 +120,7 @@ const buildColorizedSlices = (rows: Array<{ label: string; value: number }>): Ca
 export default function Comparatives() {
   const t = useTranslations()
   const locale = useLocale() as AppLocale
-  const { familyId } = useAuth()
+  const { familyId, currency } = useAuth()
   const { tier } = usePlan()
   const isFreeTier = tier === 'free'
   const [loading, setLoading] = useState(true)
@@ -245,7 +245,7 @@ export default function Comparatives() {
         value: row.amount_cents,
       }
       if (!isDateWithinFilters(detail.date, selectedMonth, selectedYear)) continue
-      if (!matchesSearch(searchTerm, detail.name, detail.category, formatBRL(detail.value))) continue
+      if (!matchesSearch(searchTerm, detail.name, detail.category, formatMoney(detail.value, currency, locale))) continue
       incomeDetails.push(detail)
     }
     incomeDetails.sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
@@ -260,7 +260,7 @@ export default function Comparatives() {
         value: row.amount_cents,
       }
       if (!isDateWithinFilters(detail.date, selectedMonth, selectedYear)) continue
-      if (!matchesSearch(searchTerm, detail.name, detail.category, formatBRL(detail.value))) continue
+      if (!matchesSearch(searchTerm, detail.name, detail.category, formatMoney(detail.value, currency, locale))) continue
       paidDetails.push(detail)
     }
     paidDetails.sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
@@ -277,7 +277,7 @@ export default function Comparatives() {
         value: row.amount_cents,
       }
       if (!isDateWithinFilters(detail.date, selectedMonth, selectedYear)) continue
-      if (!matchesSearch(searchTerm, detail.name, detail.category, formatBRL(detail.value))) continue
+      if (!matchesSearch(searchTerm, detail.name, detail.category, formatMoney(detail.value, currency, locale))) continue
       savedDetails.push(detail)
     }
     savedDetails.sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
@@ -298,9 +298,9 @@ export default function Comparatives() {
     }
 
     const balanceDetails: BarDetailRow[] = [
-      ...incomeDetails.map((row) => ({ ...row, source: 'Recebido' })),
+      ...incomeDetails.map((row) => ({ ...row, source: t('comparatives.kpiReceived') })),
       ...paidDetails.map((row) => ({ ...row, value: -row.value, source: t('comparatives.kpiPaid') })),
-      ...savedDetails.map((row) => ({ ...row, value: -row.value, source: 'Poupado' })),
+      ...savedDetails.map((row) => ({ ...row, value: -row.value, source: t('comparatives.kpiSaved') })),
     ].sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
 
     setCategorySlices({
@@ -438,10 +438,10 @@ export default function Comparatives() {
   const trendSeries = useMemo((): LineSeries[] => {
     if (!trendData.length) return []
     return [
-      { label: 'Recebido', data: trendData.map((d) => d.income / 100), color: '#6FBF8A' },
+      { label: t('comparatives.kpiReceived'), data: trendData.map((d) => d.income / 100), color: '#6FBF8A' },
       { label: t('comparatives.kpiPaid'), data: trendData.map((d) => d.paid / 100), color: '#2F6F7E' },
-      { label: 'Poupado', data: trendData.map((d) => d.saved / 100), color: '#3689B5' },
-      { label: 'Saldo', data: trendData.map((d) => (d.income - d.paid - d.saved) / 100), color: '#C2A45D' },
+      { label: t('comparatives.kpiSaved'), data: trendData.map((d) => d.saved / 100), color: '#3689B5' },
+      { label: t('comparatives.balance'), data: trendData.map((d) => (d.income - d.paid - d.saved) / 100), color: '#C2A45D' },
     ]
   }, [trendData, t])
 
@@ -498,52 +498,64 @@ export default function Comparatives() {
       row.date ? formatDate(row.date) : '',
       row.name,
       row.category,
-      'Pago',
+      t('comparatives.kpiPaid'),
       row.value,
     ]),
     ...barDetails.income.map((row) => [
       row.date ? formatDate(row.date) : '',
       row.name,
       row.category,
-      'Recebido',
+      t('comparatives.kpiReceived'),
       row.value,
     ]),
     ...barDetails.saved.map((row) => [
       row.date ? formatDate(row.date) : '',
       row.name,
       row.category,
-      'Poupado',
+      t('comparatives.kpiSaved'),
       row.value,
     ]),
   ]
     .sort((a, b) => String(b[0]).localeCompare(String(a[0])))
-    .map((r) => [r[0], r[1], r[2], r[3], formatBRL(Number(r[4]))])
+    .map((r) => [r[0], r[1], r[2], r[3], formatMoney(Number(r[4]), currency, locale)])
 
   const exportSubtitle = [
-    `Período: ${selectedMonth === ALL_MONTHS_VALUE ? getMonthLabel(ALL_MONTHS_VALUE, locale).toLowerCase() : getMonthLabel(selectedMonth, locale)} / ${selectedYear === ALL_YEARS_VALUE ? getYearLabel(ALL_YEARS_VALUE, locale).toLowerCase() : getYearLabel(selectedYear, locale)}`,
-    searchTerm ? `Busca: ${searchTerm}` : null,
+    `${t('comparatives.period')}: ${selectedMonth === ALL_MONTHS_VALUE ? getMonthLabel(ALL_MONTHS_VALUE, locale).toLowerCase() : getMonthLabel(selectedMonth, locale)} / ${selectedYear === ALL_YEARS_VALUE ? getYearLabel(ALL_YEARS_VALUE, locale).toLowerCase() : getYearLabel(selectedYear, locale)}`,
+    searchTerm ? `${t('common.search')}: ${searchTerm}` : null,
   ]
     .filter(Boolean)
     .join(' • ')
 
   const exportTable = {
     filename: `comparativos-${format(new Date(), 'yyyy-MM-dd')}`,
-    title: 'Comparativos',
+    title: t('comparatives.title'),
     subtitle: exportSubtitle,
-    headers: ['Data', 'Descricao', 'Categoria', 'Tipo', 'Valor'],
+    headers: [
+      t('comparatives.csvHeaderDate'),
+      t('comparatives.csvHeaderDescription'),
+      t('comparatives.csvHeaderCategory'),
+      t('comparatives.csvHeaderType'),
+      t('comparatives.csvHeaderAmount'),
+    ],
     rows: exportRows,
   }
 
   const buildComparativesPdfBlob = () => buildBrandedPdfBlob({
-    title: 'Comparativos',
-    filterSummary: exportSubtitle || 'Sem filtros ativos',
-    headers: ['Data', 'Descricao', 'Categoria', 'Tipo', 'Valor'],
+    title: t('comparatives.title'),
+    filterSummary: exportSubtitle || t('common.noActiveFilters'),
+    headers: [
+      t('comparatives.csvHeaderDate'),
+      t('comparatives.csvHeaderDescription'),
+      t('comparatives.csvHeaderCategory'),
+      t('comparatives.csvHeaderType'),
+      t('comparatives.csvHeaderAmount'),
+    ],
     rows: exportRows,
     cards: [
-      { label: 'RECEBIDO', value: formatBRL(monthlyTotals.income) },
-      { label: 'PAGO', value: formatBRL(monthlyTotals.paid) },
-      { label: 'POUPADO', value: formatBRL(monthlyTotals.saved) },
-      { label: 'SALDO', value: formatBRL(monthlyTotals.balance) },
+      { label: t('comparatives.kpiReceived').toUpperCase(), value: formatMoney(monthlyTotals.income, currency, locale) },
+      { label: t('comparatives.kpiPaid').toUpperCase(), value: formatMoney(monthlyTotals.paid, currency, locale) },
+      { label: t('comparatives.kpiSaved').toUpperCase(), value: formatMoney(monthlyTotals.saved, currency, locale) },
+      { label: t('comparatives.balance').toUpperCase(), value: formatMoney(monthlyTotals.balance, currency, locale) },
     ],
     generatedDate: formatDate(new Date()),
     accentColor: '#C2A45D',
@@ -633,7 +645,7 @@ export default function Comparatives() {
             <SlidersHorizontal className="w-4 h-4 text-petrol" />
             <span className="leading-tight text-left">
               {selectedMonth === ALL_MONTHS_VALUE
-                ? (selectedYear === ALL_YEARS_VALUE ? 'Todos' : getMonthLabel(ALL_MONTHS_VALUE, locale))
+                ? (selectedYear === ALL_YEARS_VALUE ? t('comparatives.allFilter') : getMonthLabel(ALL_MONTHS_VALUE, locale))
                 : `${getMonthLabel(selectedMonth, locale).slice(0, 3)}${selectedYear === ALL_YEARS_VALUE ? ` • ${getYearLabel(ALL_YEARS_VALUE, locale)}` : ` ${selectedYear}`}`}
             </span>
           </button>
@@ -711,7 +723,7 @@ export default function Comparatives() {
               onChange={(m, y) => { setSelectedMonth(m); setSelectedYear(y) }}
             />
             {activeFiltersCount > 0 && (
-              <button type="button" onClick={clearFilters} className="text-xs text-[#B05C3A] hover:underline">Limpar filtros</button>
+              <button type="button" onClick={clearFilters} className="text-xs text-[#B05C3A] hover:underline">{t('common.clearFilters')}</button>
             )}
           </div>
         )}
@@ -744,7 +756,7 @@ export default function Comparatives() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <AnalyticsKpiCard
                   label={t('comparatives.kpiReceived')}
-                  value={formatBRL(monthlyTotals.income)}
+                  value={formatMoney(monthlyTotals.income, currency, locale)}
                   sub={incDelta ? `${incDelta.positive ? '↑' : '↓'} ${Math.abs(incDelta.pct)}% vs ${prevMonthLabelComp}` : undefined}
                   subPositive={incDelta?.positive}
                   subNegative={incDelta ? !incDelta.positive : false}
@@ -753,7 +765,7 @@ export default function Comparatives() {
                 />
                 <AnalyticsKpiCard
                   label={t('comparatives.kpiPaid')}
-                  value={formatBRL(monthlyTotals.paid)}
+                  value={formatMoney(monthlyTotals.paid, currency, locale)}
                   sub={paidDeltaComp ? `${paidDeltaComp.positive ? '↑' : '↓'} ${Math.abs(paidDeltaComp.pct)}% vs ${prevMonthLabelComp}` : undefined}
                   subPositive={paidDeltaComp?.positive}
                   subNegative={paidDeltaComp ? !paidDeltaComp.positive : false}
@@ -762,7 +774,7 @@ export default function Comparatives() {
                 />
                 <AnalyticsKpiCard
                   label={t('comparatives.kpiSaved')}
-                  value={formatBRL(monthlyTotals.saved)}
+                  value={formatMoney(monthlyTotals.saved, currency, locale)}
                   sub={savedDelta ? `${savedDelta.positive ? '↑' : '↓'} ${Math.abs(savedDelta.pct)}% vs ${prevMonthLabelComp}` : undefined}
                   subPositive={savedDelta?.positive}
                   subNegative={savedDelta ? !savedDelta.positive : false}
@@ -771,7 +783,7 @@ export default function Comparatives() {
                 />
                 <AnalyticsKpiCard
                   label={t('comparatives.balance')}
-                  value={formatBRL(monthlyTotals.balance)}
+                  value={formatMoney(monthlyTotals.balance, currency, locale)}
                   iconTheme={balanceIsNeg ? 'red' : 'orange'}
                   icon={Wallet}
                 />
@@ -780,7 +792,7 @@ export default function Comparatives() {
               {/* Main chart: Fluxo | Barras toggle */}
               <VintageCard className="relative">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-base font-serif font-semibold text-coffee">Fluxo do dinheiro</h3>
+                  <h3 className="text-base font-serif font-semibold text-coffee">{t('comparatives.cashFlow')}</h3>
                   <div className="flex gap-1 bg-bg border border-border rounded-lg p-0.5">
                     {(['bars', 'line'] as const).map((mode) => (
                       <button
@@ -791,7 +803,7 @@ export default function Comparatives() {
                           chartMode === mode ? 'bg-petrol text-white' : 'text-ink/50 hover:text-ink'
                         }`}
                       >
-                        {mode === 'bars' ? 'Barras' : 'Linha'}
+                        {mode === 'bars' ? t('comparatives.barsView') : t('comparatives.lineView')}
                       </button>
                     ))}
                   </div>
@@ -810,7 +822,7 @@ export default function Comparatives() {
 
                     <div className="h-[300px] grid grid-cols-4 gap-3 items-end">
                       {monthlyItems.map((item) => {
-                        const isNegativeSaldo = item.label === 'Saldo' && item.value < 0
+                        const isNegativeSaldo = item.key === 'balance' && item.value < 0
                         const positiveValue = Math.max(0, item.value)
                         const height = Math.round((positiveValue / maxBar) * 100)
                         const barHeight = isNegativeSaldo ? '0%' : positiveValue > 0 ? `${Math.max(12, height)}%` : '8%'
@@ -825,7 +837,7 @@ export default function Comparatives() {
                               <div className="w-full rounded-md" style={{ height: barHeight, backgroundColor: item.color }} />
                             </div>
                             <div className="mt-2 text-center text-sm font-semibold text-ink/80">{item.label}</div>
-                            <div className="mt-1 text-center text-xs font-light font-numbers text-ink/45">{formatBRL(item.value)}</div>
+                            <div className="mt-1 text-center text-xs font-light font-numbers text-ink/45">{formatMoney(item.value, currency, locale)}</div>
                           </div>
                         )
                       })}
@@ -834,7 +846,7 @@ export default function Comparatives() {
                     {hoveredBar && (
                       <div className="absolute right-4 top-4 w-[340px] max-w-[calc(100%-2rem)] rounded-lg border border-border bg-paper p-3 shadow-soft z-20">
                         <div className="text-sm font-semibold text-coffee mb-2">
-                          Detalhes de {monthlyItems.find((item) => item.key === hoveredBar)?.label}
+                          {t('comparatives.detailsFor', { label: monthlyItems.find((item) => item.key === hoveredBar)?.label ?? '' })}
                         </div>
                         {barDetails[hoveredBar].length === 0 ? (
                           <div className="text-xs text-ink/50 italic">{t('comparatives.emptyState')}</div>
@@ -847,7 +859,7 @@ export default function Comparatives() {
                                 <span> • </span><span>{row.category}</span>
                                 {row.source && (<><span> • </span><span>{row.source}</span></>)}
                                 <span> • </span>
-                                <span className="font-numbers">{formatBRL(row.value)}</span>
+                                <span className="font-numbers">{formatMoney(row.value, currency, locale)}</span>
                               </div>
                             ))}
                           </div>
@@ -864,14 +876,14 @@ export default function Comparatives() {
                 <div className="bg-white rounded-xl border border-border shadow-soft p-4">
                   <h3 className="text-sm font-semibold text-ink font-serif mb-3">{t('comparatives.monthSummary')}</h3>
                   {[
-                    { label: 'Total recebido', value: monthlyTotals.income, color: '#6FBF8A' },
-                    { label: 'Total pago', value: monthlyTotals.paid, color: '#2F6F7E' },
-                    { label: 'Total poupado', value: monthlyTotals.saved, color: '#3689B5' },
-                    { label: 'Saldo', value: monthlyTotals.balance, color: monthlyTotals.balance < 0 ? '#C06060' : '#C2A45D' },
+                    { label: t('comparatives.totalReceived'), value: monthlyTotals.income, color: '#6FBF8A' },
+                    { label: t('comparatives.totalPaid'), value: monthlyTotals.paid, color: '#2F6F7E' },
+                    { label: t('comparatives.totalSaved'), value: monthlyTotals.saved, color: '#3689B5' },
+                    { label: t('comparatives.balance'), value: monthlyTotals.balance, color: monthlyTotals.balance < 0 ? '#C06060' : '#C2A45D' },
                   ].map((r) => (
                     <div key={r.label} className="flex justify-between py-[7px] border-b border-border/40 last:border-0">
                       <span className="text-[12px] text-ink/70">{r.label}</span>
-                      <span className="text-[12px] font-semibold tabular-nums" style={{ color: r.color }}>{formatBRL(r.value)}</span>
+                      <span className="text-[12px] font-semibold tabular-nums" style={{ color: r.color }}>{formatMoney(r.value, currency, locale)}</span>
                     </div>
                   ))}
                 </div>
@@ -883,6 +895,7 @@ export default function Comparatives() {
                     total={monthlyTotals.paid}
                     title={t('comparatives.expensesByCategory')}
                     modalTitle={t('comparatives.expensesByCategory')}
+                    currency={currency}
                     items={barDetails.paid.map((row, i) => ({
                       id: String(i),
                       description: row.name,
@@ -896,7 +909,7 @@ export default function Comparatives() {
                     getCategoryLabel={(_id, name) => name}
                   />
                 ) : (
-                  <div className="bg-white rounded-xl border border-border shadow-soft p-4 text-sm text-ink/40 italic">Sem dados</div>
+                  <div className="bg-white rounded-xl border border-border shadow-soft p-4 text-sm text-ink/40 italic">{t('comparatives.noData')}</div>
                 )}
               </div>
 
@@ -925,7 +938,7 @@ export default function Comparatives() {
                 <VintageCard>
                   <div className="flex items-start justify-between mb-1">
                     <div>
-                      <h3 className="text-base font-serif font-semibold text-coffee">Gasto vs. limite</h3>
+                      <h3 className="text-base font-serif font-semibold text-coffee">{t('comparatives.spendingVsLimit')}</h3>
                       <p className="text-xs text-ink/50 mt-0.5">{t('comparatives.familyMonthPosition')}</p>
                     </div>
                     <button
@@ -933,13 +946,13 @@ export default function Comparatives() {
                       onClick={() => setShowCategoryModal(true)}
                       className="text-xs text-petrol hover:underline shrink-0 mt-1"
                     >
-                      Editar limites →
+                      {t('comparatives.editLimits')}
                     </button>
                   </div>
                   <div className="space-y-3 mt-4">
                     {limitRows.map((row) => {
                       const barColor = limitBarColor(row.status)
-                      const badge = formatLimitBadge(row)
+                      const badge = formatLimitBadge(row, t, currency, locale)
                       const handleBell = async () => {
                         if (!familyId || !billingPeriodKey) return
                         setTogglingBellId(row.categoryId)
@@ -956,7 +969,7 @@ export default function Comparatives() {
                               {row.parentName && <span className="text-ink/40 font-normal"> · {row.parentName}</span>}
                             </span>
                             <div className="flex-1" />
-                            <span className="text-sm tabular-nums text-ink/60 shrink-0">{formatBRL(row.spentCents)} de {formatBRL(row.limitCents)}</span>
+                            <span className="text-sm tabular-nums text-ink/60 shrink-0">{t('dashboard.spentOfLimit', { spent: formatMoney(row.spentCents, currency, locale), limit: formatMoney(row.limitCents, currency, locale) })}</span>
                             <span
                               className="text-xs font-semibold shrink-0 min-w-[3.5rem] text-right"
                               style={{ color: barColor }}
@@ -1012,6 +1025,7 @@ export default function Comparatives() {
         isOpen={showCategoryModal}
         onClose={() => setShowCategoryModal(false)}
         familyId={familyId}
+        currency={currency}
         kind="expense"
         onChanged={() => {
           const effectiveYear = selectedYear === ALL_YEARS_VALUE ? getCurrentYear() : selectedYear
