@@ -32,16 +32,19 @@ body {
   position: relative;
 }
 
-.app-main {
+.app-main,
+.app-banner {
   margin-left: 0;
 }
 
 @media (min-width: 768px) {
-  .app-main {
+  .app-main,
+  .app-banner {
     margin-left: 18rem;
   }
 
-  html[data-sidebar-collapsed='true'] .app-main {
+  html[data-sidebar-collapsed='true'] .app-main,
+  html[data-sidebar-collapsed='true'] .app-banner {
     margin-left: 5rem;
   }
 }

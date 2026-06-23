@@ -24,7 +24,7 @@ export default function TrialCountdownBanner() {
   const isLastDay = trialDaysLeft === 0
 
   return (
-    <div className="w-full bg-gold/15 border-b border-gold/30 px-4 py-2.5 flex items-center justify-between gap-4">
+    <div className="app-banner bg-gold/15 border-b border-gold/30 px-4 py-2.5 flex items-center justify-between gap-4">
       <p className="text-sm text-coffee font-medium">
         {isLastDay
           ? t('billing.trialExpired')
