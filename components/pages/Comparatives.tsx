@@ -297,10 +297,11 @@ export default function Comparatives() {
       savedByCategory.set(row.category, (savedByCategory.get(row.category) || 0) + row.value)
     }
 
+    // Saving for a goal isn't a loss, so it's excluded here too — keeps this breakdown
+    // summing to the same balance value shown above (income - paid).
     const balanceDetails: BarDetailRow[] = [
       ...incomeDetails.map((row) => ({ ...row, source: t('comparatives.kpiReceived') })),
       ...paidDetails.map((row) => ({ ...row, value: -row.value, source: t('comparatives.kpiPaid') })),
-      ...savedDetails.map((row) => ({ ...row, value: -row.value, source: t('comparatives.kpiSaved') })),
     ].sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
 
     setCategorySlices({
@@ -351,7 +352,8 @@ export default function Comparatives() {
       income: incomeTotal,
       paid: paidTotal,
       saved: savedTotal,
-      balance: incomeTotal - paidTotal - savedTotal,
+      // Saving for a goal isn't a loss — don't let it read as a deduction from the balance.
+      balance: incomeTotal - paidTotal,
     })
   }
 
@@ -441,7 +443,7 @@ export default function Comparatives() {
       { label: t('comparatives.kpiReceived'), data: trendData.map((d) => d.income / 100), color: '#6FBF8A' },
       { label: t('comparatives.kpiPaid'), data: trendData.map((d) => d.paid / 100), color: '#2F6F7E' },
       { label: t('comparatives.kpiSaved'), data: trendData.map((d) => d.saved / 100), color: '#3689B5' },
-      { label: t('comparatives.balance'), data: trendData.map((d) => (d.income - d.paid - d.saved) / 100), color: '#C2A45D' },
+      { label: t('comparatives.balance'), data: trendData.map((d) => (d.income - d.paid) / 100), color: '#C2A45D' },
     ]
   }, [trendData, t])
 

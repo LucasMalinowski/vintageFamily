@@ -1523,7 +1523,7 @@ export default function Expenses() {
                                     {isPaid && <Check className="h-3 w-3 text-white" />}
                                   </button>
                                   {catIcon && <CategoryIcon name={catIcon} className="w-4 h-4 shrink-0 text-ink/40" />}
-                                  <h4 className={`flex-1 min-w-0 text-base font-medium font-serif truncate ${isPaid ? 'line-through text-sidebar/50 decoration-sidebar/30' : 'text-sidebar'}`}>
+                                  <h4 className={`flex-1 min-w-0 text-base font-medium font-serif truncate ${isPaid ? 'text-sidebar/50' : 'text-sidebar'}`}>
                                     {expense.description}
                                   </h4>
                                   <ActionMenu
@@ -1617,7 +1617,7 @@ export default function Expenses() {
                                     <div className="w-7 h-7 rounded-[8px] flex items-center justify-center shrink-0" style={{ background: `${railColor}18`, color: railColor }}>
                                       <Receipt className="w-[13px] h-[13px]" />
                                     </div>
-                                    <p className={`font-serif text-[15px] truncate ${isPaid ? 'line-through text-ink/50' : 'text-coffee'}`}>
+                                    <p className={`font-serif text-[15px] truncate ${isPaid ? 'text-ink/50' : 'text-coffee'}`}>
                                       {expense.description}
                                     </p>
                                   </div>

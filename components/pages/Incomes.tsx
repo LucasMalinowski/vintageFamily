@@ -1248,7 +1248,7 @@ export default function Incomes() {
                                     {isReceived && <Check className="h-3 w-3 text-white" />}
                                   </button>
                                   {catIcon && <CategoryIcon name={catIcon} className="w-4 h-4 shrink-0 text-ink/40" />}
-                                  <h4 className={`flex-1 min-w-0 text-base font-medium font-serif truncate ${isReceived ? 'line-through text-sidebar/50 decoration-sidebar/30' : 'text-sidebar'}`}>
+                                  <h4 className={`flex-1 min-w-0 text-base font-medium font-serif truncate ${isReceived ? 'text-sidebar/50' : 'text-sidebar'}`}>
                                     {income.description}
                                   </h4>
                                   <ActionMenu

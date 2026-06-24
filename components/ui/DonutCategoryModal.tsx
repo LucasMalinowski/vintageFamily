@@ -226,7 +226,7 @@ export default function DonutCategoryModal({
                               <div className="w-1 shrink-0" style={{ background: railColor }} />
                               <div className="flex-1 flex items-center gap-3 px-3 py-2.5 min-w-0">
                                 <div className="flex-1 min-w-0">
-                                  <p className={`text-[13.5px] font-serif truncate ${isPaid ? 'line-through text-ink/50' : 'text-coffee'}`}>
+                                  <p className={`text-[13.5px] font-serif truncate ${isPaid ? 'text-ink/50' : 'text-coffee'}`}>
                                     {e.description}
                                   </p>
                                   <div className="flex items-center gap-2 mt-0.5">

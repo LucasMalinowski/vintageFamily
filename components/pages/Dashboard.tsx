@@ -226,8 +226,11 @@ function DesktopHeroCard({
           <p className="font-serif font-light text-[28px] text-white/90 leading-tight mb-4">
             {t('dashboard.familyFinanceBook')}
           </p>
-          <p className="font-numbers font-bold text-[42px] text-white leading-none tracking-[-1px] tabular-nums">
-            {formatMoney(Math.max(balance, 0), currency, locale)}
+          <p
+            className="font-numbers font-bold text-[42px] leading-none tracking-[-1px] tabular-nums"
+            style={{ color: balance < 0 ? '#B05C3A' : '#ffffff' }}
+          >
+            {formatMoney(balance, currency, locale)}
           </p>
           <p className="text-[12.5px] text-white/60 mt-1">{t('dashboard.estimatedMonthBalance')}</p>
         </div>
