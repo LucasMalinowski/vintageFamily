@@ -3,8 +3,10 @@ export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { groqTranscriptionService } from '@/lib/ai/GroqTranscriptionService'
+import { groqVisionService } from '@/lib/ai/GroqVisionService'
+import { extractTextFromPdf, PDF_EXTRACT_MAX_PAGES } from '@/lib/whatsapp/PdfExtractorService'
 import { hasBillingAccess } from '@/lib/billing/access'
-import { checkAndIncrementAudioMessage } from '@/lib/billing/free-tier'
+import { checkAndIncrementAudioMessage, checkAndIncrementExportImport } from '@/lib/billing/free-tier'
 import {
   findWhatsAppUser,
   logInboundWhatsAppMessage,
@@ -44,6 +46,8 @@ type WhatsAppMessage = {
   type: string
   text?: { body?: string }
   audio?: { id?: string; mime_type?: string }
+  image?: { id?: string; mime_type?: string; caption?: string }
+  document?: { id?: string; mime_type?: string; filename?: string; caption?: string }
   button?: { payload?: string; text?: string }
   interactive?: {
     type?: string
@@ -52,6 +56,7 @@ type WhatsAppMessage = {
 }
 
 const MAX_AUDIO_BYTES = Number(process.env.WHATSAPP_AUDIO_MAX_BYTES ?? 10_000_000)
+const MAX_MEDIA_BYTES = 25_000_000
 
 // Strips accents and lowercases so template button replies match regardless of
 // locale/casing — WhatsApp sends the button's literal label as typed text when
@@ -175,6 +180,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'ok' }, { status: 200 })
     }
 
+    if (message.type === 'image') {
+      await processMediaMessage(from, message, 'image')
+      await posthogLogs.info('WhatsApp image message processed', { endpoint: '/api/whatsapp/webhook' })
+      await flushPostHogLogs()
+      return NextResponse.json({ status: 'ok' }, { status: 200 })
+    }
+
+    if (message.type === 'document') {
+      await processMediaMessage(from, message, 'document')
+      await posthogLogs.info('WhatsApp document message processed', { endpoint: '/api/whatsapp/webhook' })
+      await flushPostHogLogs()
+      return NextResponse.json({ status: 'ok' }, { status: 200 })
+    }
+
     if (message?.type !== 'text') {
       const userRow = await findWhatsAppUser(from)
       await whatsAppService.sendTextMessage(from, getWhatsAppMessages(userRow?.locale).unsupportedMessageType)
@@ -236,6 +255,121 @@ export async function POST(request: NextRequest) {
 
   await flushPostHogLogs()
   return NextResponse.json({ status: 'ok' }, { status: 200 })
+}
+
+async function processMediaMessage(
+  from: string,
+  message: WhatsAppMessage,
+  mediaType: 'image' | 'document'
+): Promise<void> {
+  const mediaInfo = mediaType === 'image' ? message.image : message.document
+  const mediaId = mediaInfo?.id
+  if (!mediaId) {
+    const lookupForMissingMedia = await findWhatsAppUser(from)
+    await whatsAppService.sendTextMessage(from, getWhatsAppMessages(lookupForMissingMedia?.locale).errors.mediaFetchError)
+    return
+  }
+
+  const declaredMime = mediaInfo?.mime_type ?? ''
+  if (mediaType === 'document' && declaredMime && !declaredMime.includes('pdf')) {
+    const lookupForUnsupportedFormat = await findWhatsAppUser(from)
+    await whatsAppService.sendTextMessage(
+      from,
+      getWhatsAppMessages(lookupForUnsupportedFormat?.locale).errors.unsupportedDocumentFormat
+    )
+    return
+  }
+
+  const inserted = await logInboundWhatsAppMessage(message.id, mediaType, mediaId)
+  if (!inserted) return
+
+  const userRow = await findWhatsAppUser(from)
+  if (!userRow) {
+    await whatsAppService.sendTextMessage(from, getWhatsAppMessages(null).notRegistered)
+    return
+  }
+  const mediaMessages = getWhatsAppMessages(userRow.locale)
+
+  await updateWhatsAppMessageLog(message.id, {
+    family_id: userRow.family_id,
+    user_id: userRow.id,
+    transcription_status: 'pending',
+  })
+
+  if (mediaType === 'document') {
+    const access = await hasBillingAccess({ familyId: userRow.family_id })
+    if (access.isFreeTier) {
+      const usage = await checkAndIncrementExportImport(userRow.family_id)
+      if (!usage.allowed) {
+        await updateWhatsAppMessageLog(message.id, { transcription_status: 'skipped', transcription_error: 'import_limit_reached' })
+        await whatsAppService.sendTextMessage(from, mediaMessages.errors.importLimitReached)
+        return
+      }
+    }
+  }
+
+  try {
+    const media = await whatsAppService.getMediaUrl(mediaId)
+    const downloaded = await whatsAppService.downloadMedia(media.url)
+    if (downloaded.buffer.byteLength > MAX_MEDIA_BYTES) {
+      throw new Error(`File too large: ${downloaded.buffer.byteLength} bytes`)
+    }
+
+    const detectedMime = media.mimeType ?? downloaded.mimeType
+
+    let extractedText: string
+    let extractionModel: string
+
+    if (mediaType === 'document' && detectedMime.includes('pdf')) {
+      const pdf = await extractTextFromPdf(downloaded.buffer)
+      extractedText = pdf.text
+      extractionModel = 'pdf-parse'
+      if (!extractedText) {
+        await updateWhatsAppMessageLog(message.id, {
+          transcription_status: 'failed',
+          transcription_error: 'pdf_no_text',
+        })
+        await whatsAppService.sendTextMessage(from, mediaMessages.errors.pdfNoTextDetected)
+        return
+      }
+      if (pdf.totalPages > PDF_EXTRACT_MAX_PAGES) {
+        await whatsAppService.sendTextMessage(from, mediaMessages.errors.pdfMultiPageWarning(PDF_EXTRACT_MAX_PAGES))
+      }
+    } else {
+      extractedText = await groqVisionService.extractTextFromImage(downloaded.buffer, detectedMime)
+      extractionModel = 'llama-4-scout-vision'
+    }
+
+    await updateWhatsAppMessageLog(message.id, {
+      transcript: extractedText,
+      transcription_model: extractionModel,
+      transcription_status: 'completed',
+      transcription_error: null,
+    })
+
+    await processWhatsAppMessage(from, extractedText, message.id, {
+      skipMessageLog: true,
+      messageType: mediaType,
+      sourceMessageId: message.id,
+      requireConfirmation: true,
+      transcript: extractedText,
+    })
+  } catch (error) {
+    console.error(`[webhook] ${mediaType} processing failed`, error)
+    await updateWhatsAppMessageLog(message.id, {
+      transcription_status: 'failed',
+      transcription_error: error instanceof Error ? error.message : 'unknown_error',
+    })
+    await posthogLogs.error(`WhatsApp ${mediaType} processing failed`, {
+      endpoint: '/api/whatsapp/webhook',
+      family_id: userRow.family_id,
+      user_id: userRow.id,
+    }, error)
+    await whatsAppService.sendTextMessage(
+      from,
+      mediaType === 'image' ? mediaMessages.errors.imageReadError : mediaMessages.errors.pdfReadError
+    )
+  }
 }
 
 async function processAudioMessage(from: string, message: WhatsAppMessage): Promise<void> {

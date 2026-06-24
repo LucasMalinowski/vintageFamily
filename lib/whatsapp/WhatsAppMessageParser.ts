@@ -35,7 +35,7 @@ type WhatsAppUserRow = {
 
 type ProcessOptions = {
   skipMessageLog?: boolean
-  messageType?: 'text' | 'audio'
+  messageType?: 'text' | 'audio' | 'image' | 'document'
   sourceMessageId?: string
   requireConfirmation?: boolean
   transcript?: string
@@ -148,11 +148,12 @@ function getFallbackCategory(
 }
 
 const MAX_MESSAGE_LENGTH = 1000
+const MAX_MEDIA_TEXT_LENGTH = 3000 // OCR/PDF extraction can legitimately be longer than user-typed text
 const PENDING_ACTION_TTL_MS = 30 * 60 * 1000
 
 export async function logInboundWhatsAppMessage(
   messageId: string,
-  messageType: 'text' | 'audio' | 'button',
+  messageType: 'text' | 'audio' | 'button' | 'image' | 'document',
   mediaId?: string | null
 ): Promise<boolean> {
   const { error } = await supabaseAdmin
@@ -252,9 +253,9 @@ export async function processWhatsAppMessage(
     if (!inserted) return // duplicate key -> already processed
   }
 
-  const text = messageText.length > MAX_MESSAGE_LENGTH
-    ? messageText.slice(0, MAX_MESSAGE_LENGTH)
-    : messageText
+  const isMedia = options.messageType === 'image' || options.messageType === 'document'
+  const cap = isMedia ? MAX_MEDIA_TEXT_LENGTH : MAX_MESSAGE_LENGTH
+  const text = messageText.length > cap ? messageText.slice(0, cap) : messageText
 
   const userRow = await findWhatsAppUser(fromPhone)
 
@@ -267,11 +268,12 @@ export async function processWhatsAppMessage(
   const { family_id: familyId } = userRow
   const currency = await getFamilyCurrency(familyId)
   if (messageId) {
+    const isRichMedia = options.messageType === 'audio' || options.messageType === 'image' || options.messageType === 'document'
     await updateWhatsAppMessageLog(messageId, {
       family_id: familyId,
       user_id: userRow.id,
       transcript: options.transcript ?? null,
-      transcription_status: options.messageType === 'audio' ? 'completed' : null,
+      transcription_status: isRichMedia ? 'completed' : null,
     })
   }
 
@@ -348,7 +350,9 @@ export async function processWhatsAppMessage(
       const reply = await whatsAppQueryHandler.handle(text, intent, familyId, todayISO, fromPhone, billingCycleDay, userRow.locale, currency)
       const transcriptNote = options.messageType === 'audio'
         ? messages.errors.audioTranscriptNote(text)
-        : ''
+        : (options.messageType === 'image' || options.messageType === 'document')
+          ? messages.errors.mediaTranscriptNote(options.messageType, text)
+          : ''
       await whatsAppService.sendTextMessage(fromPhone, transcriptNote + reply + messages.feedbackLine)
     } catch {
       await whatsAppService.sendTextMessage(fromPhone, messages.errors.queryFetchError)
@@ -386,7 +390,9 @@ export async function processWhatsAppMessage(
       const reply = await whatsAppQueryHandler.handle(text, fallbackIntent, familyId, todayISO, fromPhone, billingCycleDay, userRow.locale, currency)
       const transcriptNote = options.messageType === 'audio'
         ? messages.errors.audioTranscriptNote(text)
-        : ''
+        : (options.messageType === 'image' || options.messageType === 'document')
+          ? messages.errors.mediaTranscriptNote(options.messageType, text)
+          : ''
       await whatsAppService.sendTextMessage(fromPhone, transcriptNote + reply + messages.feedbackLine)
     } catch {
       await whatsAppService.sendTextMessage(fromPhone, messages.usageHint)
