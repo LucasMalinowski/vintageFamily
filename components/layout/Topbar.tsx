@@ -190,7 +190,7 @@ export default function Topbar({
     >
       <div className={`${filters ? 'flex flex-col gap-2' : ''}`}>
         <div className="md:min-h-[90px] flex items-center">
-          <div className="flex flex-row items-center justify-between w-full gap-3">
+          <div className="flex flex-row items-start md:items-center justify-between w-full gap-3">
             <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
               {showBackButton ? (
                 <button

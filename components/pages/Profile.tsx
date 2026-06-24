@@ -233,7 +233,7 @@ export default function Profile() {
                   value={profileEmail}
                   disabled
                   readOnly
-                  className="w-full px-4 py-3 bg-paper border border-border rounded-lg text-ink/50 cursor-not-allowed"
+                  className="w-full px-4 py-3 bg-border/25 border border-border rounded-lg text-ink/70 cursor-not-allowed"
                 />
               </div>
               <div>
@@ -245,7 +245,7 @@ export default function Profile() {
                   value={familyName}
                   disabled
                   readOnly
-                  className="w-full px-4 py-3 bg-paper border border-border rounded-lg text-ink/50 cursor-not-allowed"
+                  className="w-full px-4 py-3 bg-border/25 border border-border rounded-lg text-ink/70 cursor-not-allowed"
                 />
               </div>
             </div>

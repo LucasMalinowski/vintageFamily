@@ -583,26 +583,28 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => handleModeChange('calma')}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] transition-colors ${
+                aria-label={t('dashboard.calmModeLabel')}
+                className={`flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1.5 text-[12.5px] transition-colors ${
                   calmaMode
                     ? 'bg-coffee text-paper font-semibold'
                     : 'text-ink/50 font-medium hover:text-ink/70'
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                {t('dashboard.calmModeLabel')}
+                <span className="hidden sm:inline">{t('dashboard.calmModeLabel')}</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleModeChange('informativo')}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] transition-colors ${
+                aria-label={t('dashboard.informativeModeLabel')}
+                className={`flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1.5 text-[12.5px] transition-colors ${
                   !calmaMode
                     ? 'bg-coffee text-paper font-semibold'
                     : 'text-ink/50 font-medium hover:text-ink/70'
                 }`}
               >
                 <BarChart3 className="w-3.5 h-3.5" />
-                {t('dashboard.informativeModeLabel')}
+                <span className="hidden sm:inline">{t('dashboard.informativeModeLabel')}</span>
               </button>
             </div>
 

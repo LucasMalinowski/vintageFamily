@@ -831,15 +831,15 @@ export default function Comparatives() {
                         return (
                           <div
                             key={item.label}
-                            className="h-full flex flex-col"
+                            className="h-full min-w-0 flex flex-col"
                             onMouseEnter={() => setHoveredBar(item.key)}
                             onMouseLeave={() => setHoveredBar(null)}
                           >
                             <div className="h-full flex items-end">
                               <div className="w-full rounded-md" style={{ height: barHeight, backgroundColor: item.color }} />
                             </div>
-                            <div className="mt-2 text-center text-sm font-semibold text-ink/80">{item.label}</div>
-                            <div className="mt-1 text-center text-xs font-light font-numbers text-ink/45">{formatMoney(item.value, currency, locale)}</div>
+                            <div className="mt-2 text-center text-xs sm:text-sm font-semibold text-ink/80 truncate px-0.5">{item.label}</div>
+                            <div className="mt-1 text-center text-[10px] sm:text-xs font-light font-numbers text-ink/45 truncate px-0.5">{formatMoney(item.value, currency, locale)}</div>
                           </div>
                         )
                       })}

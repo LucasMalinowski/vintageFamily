@@ -61,11 +61,11 @@ export default function CookieBanner() {
   if (!visible) return null
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 p-4">
-      <div className="max-w-2xl mx-auto bg-white border border-border rounded-lg shadow-vintage px-5 py-4">
+    <div className="fixed bottom-0 left-0 right-0 z-50 p-2.5 sm:p-4" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0.625rem)' }}>
+      <div className="max-w-2xl mx-auto bg-white border border-border rounded-lg shadow-vintage px-4 py-2.5 sm:px-5 sm:py-4">
         {!showManage ? (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <p className="text-sm text-ink/75 font-body flex-1 leading-relaxed">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+            <p className="text-[13px] sm:text-sm text-ink/75 font-body flex-1 leading-tight sm:leading-relaxed">
               {t('cookie.message')}{' '}
               <Link href="/cookies" className="text-coffee underline underline-offset-2 hover:text-coffee/80 transition-vintage">
                 {t('cookie.policy')}
@@ -75,21 +75,21 @@ export default function CookieBanner() {
               <button
                 type="button"
                 onClick={reject}
-                className="px-4 py-2 text-sm font-body text-ink/70 border border-border rounded-full hover:bg-paper transition-vintage"
+                className="px-3 py-1.5 sm:px-4 sm:py-2 text-[13px] sm:text-sm font-body text-ink/70 border border-border rounded-full hover:bg-paper transition-vintage"
               >
                 {t('cookie.decline')}
               </button>
               <button
                 type="button"
                 onClick={() => setShowManage(true)}
-                className="px-4 py-2 text-sm font-body text-ink/70 border border-border rounded-full hover:bg-paper transition-vintage"
+                className="px-3 py-1.5 sm:px-4 sm:py-2 text-[13px] sm:text-sm font-body text-ink/70 border border-border rounded-full hover:bg-paper transition-vintage"
               >
                 {t('cookie.manage')}
               </button>
               <button
                 type="button"
                 onClick={accept}
-                className="px-4 py-2 text-sm font-body bg-coffee text-paper rounded-full hover:bg-coffee/90 transition-vintage"
+                className="px-3 py-1.5 sm:px-4 sm:py-2 text-[13px] sm:text-sm font-body bg-coffee text-paper rounded-full hover:bg-coffee/90 transition-vintage"
               >
                 {t('cookie.accept')}
               </button>

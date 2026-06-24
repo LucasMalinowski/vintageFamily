@@ -60,7 +60,7 @@ export function FamilyPickerOverlay() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/95 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-bg/95 backdrop-blur-sm">
       <div className="w-full max-w-lg mx-4 bg-bg border border-border rounded-vintage shadow-vintage overflow-hidden">
         <div className="px-6 py-5 border-b border-border bg-paper">
           <h2 className="text-xl font-serif text-coffee">{t('familyPicker.title')}</h2>

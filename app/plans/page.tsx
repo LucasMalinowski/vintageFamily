@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import PlansContent from './PlansContent'
+import PublicFooter from '@/components/layout/PublicFooter'
 import { getUserLocale } from '@/lib/i18n/getLocale'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -19,5 +20,5 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function PlansPage() {
-  return <PlansContent />
+  return <PlansContent footer={<PublicFooter color="sidebar" />} />
 }

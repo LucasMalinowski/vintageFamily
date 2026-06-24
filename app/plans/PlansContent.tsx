@@ -1,11 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { Check, X, ChevronDown } from 'lucide-react'
 import PublicNavbar from '@/components/layout/PublicNavbar'
-import PublicFooter from '@/components/layout/PublicFooter'
 import { PLANS_CONTENT, type ComparisonRow } from './PlansContent.content'
 import type { AppLocale } from '@/lib/i18n/getLocale'
 
@@ -178,7 +177,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-export default function PlansContent() {
+export default function PlansContent({ footer }: { footer: ReactNode }) {
   const [billing, setBilling] = useState<'monthly' | 'annual'>('annual')
   const t = useTranslations()
   const locale = useLocale() as AppLocale
@@ -396,7 +395,7 @@ export default function PlansContent() {
         </div>
       </section>
 
-      <PublicFooter color="sidebar" />
+      {footer}
     </div>
   )
 }

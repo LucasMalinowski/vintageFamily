@@ -746,7 +746,7 @@ export default function ProfileSettingsPage() {
                   value={profileEmail}
                   disabled
                   readOnly
-                  className="w-full px-4 py-3 bg-paper border border-border rounded-lg text-ink/60"
+                  className="w-full px-4 py-3 bg-border/25 border border-border rounded-lg text-ink/70 cursor-not-allowed"
                 />
               </div>
               <div className="flex gap-3 pt-1">

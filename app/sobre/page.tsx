@@ -10,8 +10,8 @@ export default function InternalAboutPage() {
   const t = useTranslations('sobre')
 
   const fullWidthTop = [
-    { id: 'florim-origin', html: t('p1') },
-    { id: 'florim-symbol', html: t('p2') },
+    { id: 'florim-origin', html: t.raw('p1') },
+    { id: 'florim-symbol', html: t.raw('p2') },
   ]
 
   const floatedParagraphs = [t('p3'), t('p4'), t('p5')]
@@ -44,6 +44,8 @@ export default function InternalAboutPage() {
                   src="/founders_photo.jpg"
                   alt={t('photoAlt')}
                   fill
+                  sizes="(min-width: 1024px) 260px, 180px"
+                  priority
                   className="object-cover"
                 />
               </div>
@@ -54,7 +56,7 @@ export default function InternalAboutPage() {
             </div>
 
             <div>
-              <p className="mb-4" dangerouslySetInnerHTML={{ __html: t('p6') }} />
+              <p className="mb-4" dangerouslySetInnerHTML={{ __html: t.raw('p6') }} />
             </div>
 
           </article>
