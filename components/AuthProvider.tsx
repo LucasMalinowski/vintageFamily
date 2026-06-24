@@ -100,24 +100,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // loading is true only during the initial session resolution
   const loading = authStatus === 'loading'
 
-  const loadFamilyId = useCallback(async (userId: string) => {
+  const loadFamilyId = useCallback(async (userId: string): Promise<string | null> => {
     // Prevent concurrent loads for the same user
-    if (familyLoadInProgressRef.current === userId) return
+    if (familyLoadInProgressRef.current === userId) return familyIdRef.current
     familyLoadInProgressRef.current = userId
 
     for (let attempt = 0; attempt < 3; attempt++) {
-      if (!mountedRef.current) return
+      if (!mountedRef.current) return null
       try {
         const [{ data, error }, { data: isAdmin }] = await Promise.all([
           supabase.from('users').select('family_id').eq('id', userId).maybeSingle(),
           supabase.rpc('is_super_admin'),
         ])
 
-        if (!mountedRef.current) return
+        if (!mountedRef.current) return null
 
         if (!error) {
+          const resolvedFamilyId = data?.family_id ?? null
           if (familyLoadInProgressRef.current === userId) {
-            setFamilyId(data?.family_id ?? null)
+            setFamilyId(resolvedFamilyId)
             const admin = Boolean(isAdmin)
             setIsSuperAdmin(admin)
             if (admin && !familyPickerDismissedRef.current) {
@@ -125,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
             familyLoadInProgressRef.current = null
           }
-          return
+          return resolvedFamilyId
         }
       } catch {
         // network error - retry
@@ -138,6 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.warn('[AuthProvider] familyId lookup failed after retries; keeping user session')
     }
     if (mountedRef.current) familyLoadInProgressRef.current = null
+    return null
   }, [])
 
   const applyAuthenticatedSession = useCallback(async (session: Session) => {
@@ -245,6 +247,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await syncServerSession(session, t('auth.syncError'))
       setUser(session.user)
       setAuthStatus('authenticated')
+      // onAuthStateChange skips this sign-in (authInProgressRef is true), so this is the
+      // only place that will ever populate familyId for this session unless the tab loses
+      // and regains focus — without it, every family-scoped page hangs on "loading" forever.
+      loadFamilyId(session.user.id)
       router.replace('/inicio')
     } finally {
       authInProgressRef.current = false
@@ -321,14 +327,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(data.session.user)
       setAuthStatus('authenticated')
 
-      // Detect new user (no family yet) → SSO onboarding
-      const { data: userData } = await supabase
-        .from('users')
-        .select('family_id')
-        .eq('id', data.session.user.id)
-        .maybeSingle()
+      // onAuthStateChange skips this sign-in (authInProgressRef is true), so this is the
+      // only place that will populate familyId/isSuperAdmin for this session. Awaited
+      // (unlike the fire-and-forget call in signIn) because the redirect below — new user
+      // with no family yet → SSO onboarding — depends on its result.
+      const resolvedFamilyId = await loadFamilyId(data.session.user.id)
 
-      router.replace(userData?.family_id ? '/inicio' : '/signup/sso-complete')
+      router.replace(resolvedFamilyId ? '/inicio' : '/signup/sso-complete')
     } finally {
       authInProgressRef.current = false
     }
