@@ -135,16 +135,24 @@ type WhatsAppMessages = {
     queryLimitReached: string
     recordingLimitReached: string
     audioTranscriptNote: (text: string) => string
+    mediaTranscriptNote: (mediaType: 'image' | 'document', text: string) => string
     audioFetchError: string
     audioLimitReached: string
     audioTranscriptionError: string
+    mediaFetchError: string
+    unsupportedDocumentFormat: string
+    pdfNoTextDetected: string
+    imageReadError: string
+    pdfReadError: string
+    pdfMultiPageWarning: (parsedPages: number) => string
+    importLimitReached: string
   }
 }
 
 const WHATSAPP_MESSAGES: Record<AppLocale, WhatsAppMessages> = {
   'pt-BR': {
     notRegistered: 'Número não cadastrado no Florim. Acesse o app para vincular seu WhatsApp.',
-    unsupportedMessageType: 'Só consigo processar mensagens de texto. Descreva sua despesa, receita ou lembrete em texto. 😊',
+    unsupportedMessageType: 'Só consigo processar mensagens de texto, áudio, imagens e PDFs. Descreva sua despesa, receita ou lembrete em texto. 😊',
     optOutConfirmation: 'Sua preferência foi registrada. Você não receberá mais mensagens automáticas do Florim. Para reativar, envie "oi" ou acesse o app. 👋',
     privacyNotice: (appUrl) =>
       `> 🔒 Em conformidade com a *LGPD*, seus dados são tratados com total segurança pelo *Florim*. Nenhuma informação é compartilhada com terceiros.\n` +
@@ -275,7 +283,7 @@ Você também pode combinar: "Gastei 30 na farmácia e 55 de gasolina"
       confirmationExpired: 'Essa confirmação expirou. Envie o áudio ou mensagem novamente para eu processar com segurança.',
       rejected: 'Tudo bem, estarei aguardando seu novo áudio ou mensagem de texto.',
       alreadyProcessed: 'Essa confirmação já foi processada. Envie um novo áudio ou mensagem se precisar registrar outra coisa.',
-      pendingActionError: 'Não consegui preparar a confirmação do áudio. Tente novamente. 🔄',
+      pendingActionError: 'Não consegui preparar a confirmação. Tente novamente. 🔄',
       audioConfirmFallback: (summaryText) =>
         `Confirmando o que você disse:\n\n${summaryText}\n\nResponda "Sim, criar" para confirmar ou envie outro áudio/texto para corrigir.`,
       removeItemSummary: (idx) => `Remover o item ${idx} da última lista`,
@@ -293,15 +301,28 @@ Você também pode combinar: "Gastei 30 na farmácia e 55 de gasolina"
       queryLimitReached: 'Você usou todas as 7 consultas gratuitas deste mês. 🎯\n\nAssine o Florim Pro para consultas ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.',
       recordingLimitReached: 'Você usou todas as 25 mensagens gratuitas deste mês. 🎯\n\nAssine o Florim Pro para mensagens ilimitadas: florim.app/pricing\n\nCancele quando quiser. Seus dados ficam para sempre.',
       audioTranscriptNote: (text) => `Transcrevi seu áudio como: "${text}"\n\nSe eu entendi errado, tente enviar de novo.\n\n`,
+      mediaTranscriptNote: (mediaType, text) => {
+        const truncated = text.length > 120 ? `${text.slice(0, 120)}...` : text
+        const prefix = mediaType === 'image' ? 'Extraí da imagem' : 'Extraí do documento'
+        return `${prefix}: "${truncated}"\n\nSe eu entendi errado, envie novamente.\n\n`
+      },
       audioFetchError: 'Não consegui acessar esse áudio. Tente enviar novamente. 🔄',
       audioLimitReached: 'Você usou todos os 10 áudios gratuitos deste mês. 🎯\n\nVocê ainda pode enviar mensagens de texto ou assinar o Florim Pro para usar áudio sem esse limite.',
       audioTranscriptionError: 'Não consegui ouvir seu áudio agora. Tente novamente ou envie por texto. 🔄',
+      mediaFetchError: 'Não consegui acessar esse arquivo. Tente enviar novamente. 🔄',
+      unsupportedDocumentFormat: 'Por enquanto só processo PDFs e imagens. Envie o comprovante como foto ou PDF. 📄',
+      pdfNoTextDetected: 'Este PDF não tem texto selecionável (parece um scan). Tire uma foto do comprovante e me envie como imagem. 📸',
+      imageReadError: 'Não consegui ler a imagem. Verifique se está nítida e tente novamente. 🔄',
+      pdfReadError: 'Não consegui ler o PDF. Tente enviar como imagem ou descreva em texto. 🔄',
+      pdfMultiPageWarning: (parsedPages) =>
+        `⚠️ Esse PDF tem mais de ${parsedPages} páginas. Pelo WhatsApp eu só consigo ler as primeiras ${parsedPages}. Para importar o arquivo completo, use o app Florim. 📲`,
+      importLimitReached: 'Você usou todos os 3 PDFs gratuitos deste mês. 🎯\n\nVocê ainda pode enviar fotos do comprovante ou mensagens de texto, ou assinar o Florim Pro para enviar PDFs sem esse limite.',
     },
   },
 
   en: {
     notRegistered: 'This number is not registered with Florim. Open the app to link your WhatsApp.',
-    unsupportedMessageType: 'I can only process text messages. Describe your expense, income, or reminder as text. 😊',
+    unsupportedMessageType: 'I can only process text, audio, image and PDF messages. Describe your expense, income, or reminder as text. 😊',
     optOutConfirmation: 'Your preference has been saved. You will no longer receive automatic messages from Florim. To reactivate, send "hi" or open the app. 👋',
     privacyNotice: (appUrl) =>
       `> 🔒 In compliance with data protection regulations, your data is handled securely by *Florim*. No information is shared with third parties.\n` +
@@ -432,7 +453,7 @@ You can also combine them: "Spent 30 at the pharmacy and 55 on gas"
       confirmationExpired: 'This confirmation has expired. Send the audio or message again for me to process safely.',
       rejected: "No problem, I'll be waiting for your new audio or text message.",
       alreadyProcessed: 'This confirmation was already processed. Send a new audio or message if you need to record something else.',
-      pendingActionError: "I couldn't prepare the audio confirmation. Please try again. 🔄",
+      pendingActionError: "I couldn't prepare the confirmation. Please try again. 🔄",
       audioConfirmFallback: (summaryText) =>
         `Confirming what you said:\n\n${summaryText}\n\nReply "Yes, create" to confirm or send another audio/text to correct.`,
       removeItemSummary: (idx) => `Remove item ${idx} from the last list`,
@@ -450,15 +471,28 @@ You can also combine them: "Spent 30 at the pharmacy and 55 on gas"
       queryLimitReached: "You've used all 7 free queries this month. 🎯\n\nSubscribe to Florim Pro for unlimited queries: florim.app/pricing\n\nCancel anytime. Your data is kept forever.",
       recordingLimitReached: "You've used all 25 free messages this month. 🎯\n\nSubscribe to Florim Pro for unlimited messages: florim.app/pricing\n\nCancel anytime. Your data is kept forever.",
       audioTranscriptNote: (text) => `I transcribed your audio as: "${text}"\n\nIf I got it wrong, try sending it again.\n\n`,
+      mediaTranscriptNote: (mediaType, text) => {
+        const truncated = text.length > 120 ? `${text.slice(0, 120)}...` : text
+        const prefix = mediaType === 'image' ? 'I extracted from the image' : 'I extracted from the document'
+        return `${prefix}: "${truncated}"\n\nIf I got it wrong, please send it again.\n\n`
+      },
       audioFetchError: "I couldn't access that audio. Please try sending it again. 🔄",
       audioLimitReached: "You've used all 10 free audio messages this month. 🎯\n\nYou can still send text messages, or subscribe to Florim Pro to use audio without this limit.",
       audioTranscriptionError: "I couldn't listen to your audio right now. Try again or send it as text. 🔄",
+      mediaFetchError: "I couldn't access that file. Please try sending it again. 🔄",
+      unsupportedDocumentFormat: 'For now I can only process PDFs and images. Send the receipt as a photo or PDF. 📄',
+      pdfNoTextDetected: "This PDF doesn't have selectable text (it looks like a scan). Take a photo of the receipt and send it as an image instead. 📸",
+      imageReadError: "I couldn't read the image. Make sure it's clear and try again. 🔄",
+      pdfReadError: "I couldn't read the PDF. Try sending it as an image or describe it as text. 🔄",
+      pdfMultiPageWarning: (parsedPages) =>
+        `⚠️ This PDF has more than ${parsedPages} pages. Over WhatsApp I can only read the first ${parsedPages}. To import the full file, use the Florim app. 📲`,
+      importLimitReached: "You've used all 3 free PDF imports this month. 🎯\n\nYou can still send photos of your receipts or text messages, or subscribe to Florim Pro to send PDFs without this limit.",
     },
   },
 
   es: {
     notRegistered: 'Este número no está registrado en Florim. Abre la app para vincular tu WhatsApp.',
-    unsupportedMessageType: 'Solo puedo procesar mensajes de texto. Describe tu gasto, ingreso o recordatorio en texto. 😊',
+    unsupportedMessageType: 'Solo puedo procesar mensajes de texto, audio, imágenes y PDFs. Describe tu gasto, ingreso o recordatorio en texto. 😊',
     optOutConfirmation: 'Tu preferencia fue registrada. Ya no recibirás mensajes automáticos de Florim. Para reactivar, envía "hola" o abre la app. 👋',
     privacyNotice: (appUrl) =>
       `> 🔒 De acuerdo con la normativa de protección de datos, tus datos son tratados con total seguridad por *Florim*. Ninguna información se comparte con terceros.\n` +
@@ -589,7 +623,7 @@ También puedes combinar: "Gasté 30 en la farmacia y 55 en gasolina"
       confirmationExpired: 'Esta confirmación expiró. Envía el audio o mensaje nuevamente para que pueda procesarlo con seguridad.',
       rejected: 'Está bien, estaré esperando tu nuevo audio o mensaje de texto.',
       alreadyProcessed: 'Esta confirmación ya fue procesada. Envía un nuevo audio o mensaje si necesitas registrar algo más.',
-      pendingActionError: 'No pude preparar la confirmación de audio. Inténtalo de nuevo. 🔄',
+      pendingActionError: 'No pude preparar la confirmación. Inténtalo de nuevo. 🔄',
       audioConfirmFallback: (summaryText) =>
         `Confirmando lo que dijiste:\n\n${summaryText}\n\nResponde "Sí, crear" para confirmar o envía otro audio/texto para corregir.`,
       removeItemSummary: (idx) => `Eliminar el ítem ${idx} de la última lista`,
@@ -607,9 +641,22 @@ También puedes combinar: "Gasté 30 en la farmacia y 55 en gasolina"
       queryLimitReached: 'Usaste todas las 7 consultas gratuitas de este mes. 🎯\n\nSuscríbete a Florim Pro para consultas ilimitadas: florim.app/pricing\n\nCancela cuando quieras. Tus datos se conservan siempre.',
       recordingLimitReached: 'Usaste todos los 25 mensajes gratuitos de este mes. 🎯\n\nSuscríbete a Florim Pro para mensajes ilimitados: florim.app/pricing\n\nCancela cuando quieras. Tus datos se conservan siempre.',
       audioTranscriptNote: (text) => `Transcribí tu audio como: "${text}"\n\nSi entendí mal, intenta enviarlo de nuevo.\n\n`,
+      mediaTranscriptNote: (mediaType, text) => {
+        const truncated = text.length > 120 ? `${text.slice(0, 120)}...` : text
+        const prefix = mediaType === 'image' ? 'Extraje de la imagen' : 'Extraje del documento'
+        return `${prefix}: "${truncated}"\n\nSi entendí mal, envíalo de nuevo.\n\n`
+      },
       audioFetchError: 'No pude acceder a ese audio. Intenta enviarlo de nuevo. 🔄',
       audioLimitReached: 'Usaste los 10 audios gratuitos de este mes. 🎯\n\nTodavía puedes enviar mensajes de texto o suscribirte a Florim Pro para usar audio sin este límite.',
       audioTranscriptionError: 'No pude escuchar tu audio ahora. Intenta de nuevo o envíalo como texto. 🔄',
+      mediaFetchError: 'No pude acceder a ese archivo. Intenta enviarlo de nuevo. 🔄',
+      unsupportedDocumentFormat: 'Por ahora solo proceso PDFs e imágenes. Envía el comprobante como foto o PDF. 📄',
+      pdfNoTextDetected: 'Este PDF no tiene texto seleccionable (parece un escaneo). Toma una foto del comprobante y envíala como imagen. 📸',
+      imageReadError: 'No pude leer la imagen. Verifica que esté nítida e intenta de nuevo. 🔄',
+      pdfReadError: 'No pude leer el PDF. Intenta enviarlo como imagen o descríbelo como texto. 🔄',
+      pdfMultiPageWarning: (parsedPages) =>
+        `⚠️ Este PDF tiene más de ${parsedPages} páginas. Por WhatsApp solo puedo leer las primeras ${parsedPages}. Para importar el archivo completo, usa la app Florim. 📲`,
+      importLimitReached: 'Usaste los 3 PDFs gratuitos de este mes. 🎯\n\nTodavía puedes enviar fotos del comprobante o mensajes de texto, o suscribirte a Florim Pro para enviar PDFs sin este límite.',
     },
   },
 }
