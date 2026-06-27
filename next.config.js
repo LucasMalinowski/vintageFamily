@@ -45,7 +45,7 @@ const contentSecurityPolicy = [
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    serverComponentsExternalPackages: ['pdf-parse', 'pdfjs-dist', '@napi-rs/canvas'],
+    serverComponentsExternalPackages: ['pdf-parse', 'pdfjs-dist'],
   },
   images: {
     remotePatterns: [
