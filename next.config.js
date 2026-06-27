@@ -44,7 +44,9 @@ const contentSecurityPolicy = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  serverExternalPackages: ['jspdf', 'jspdf-autotable', 'html2canvas', 'canvg'],
+  experimental: {
+    serverComponentsExternalPackages: ['pdf-parse', 'pdfjs-dist', '@napi-rs/canvas'],
+  },
   images: {
     remotePatterns: [
       {
