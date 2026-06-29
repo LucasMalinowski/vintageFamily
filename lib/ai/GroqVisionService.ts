@@ -30,7 +30,7 @@ export class GroqVisionService {
                 { type: 'image_url', image_url: { url: dataUrl } },
                 {
                   type: 'text',
-                  text: 'Extraia todas as informações financeiras deste comprovante ou documento. Inclua: estabelecimento/descrição, data, valores (itens e total), forma de pagamento. Responda em português com o texto completo extraído.',
+                  text: 'Extraia as informações principais deste comprovante de pagamento. Retorne APENAS: nome do estabelecimento/loja, data da compra, VALOR TOTAL PAGO (não liste os itens individuais), forma de pagamento. Responda em português em texto simples e conciso.',
                 },
               ],
             },

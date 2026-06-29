@@ -60,7 +60,7 @@ import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
 import { useTranslations, useLocale } from 'next-intl'
 
-type PaymentMethod = 'PIX' | 'Credito' | 'Debito' | 'ValeAlimentacao' | 'Dinheiro' | 'Cheque' | 'Transferência'
+type PaymentMethod = 'PIX' | 'Credito' | 'Debito' | 'ValeAlimentacao' | 'ValeRefeicao' | 'Dinheiro' | 'Cheque' | 'Transferência'
 
 interface DonutExpensePanelProps {
   slices: DonutSlice[]
@@ -141,7 +141,7 @@ const DONUT_PALETTE = ['#B05C3A', '#3F6E7A', '#6FBF8A', '#C2A45D', '#3E5F4B', '#
 const normalizePaymentMethod = (method: string | null): PaymentMethod | null => {
   if (
     method === 'PIX' || method === 'Credito' || method === 'Debito' || method === 'ValeAlimentacao' ||
-    method === 'Dinheiro' || method === 'Cheque' || method === 'Transferência'
+    method === 'ValeRefeicao' || method === 'Dinheiro' || method === 'Cheque' || method === 'Transferência'
   ) {
     return method
   }
@@ -176,6 +176,7 @@ const formatPaymentLabel = (t: ReturnType<typeof useTranslations>, method: Payme
   if (method === 'Debito') return t('filterSheet.methodDebit')
   if (method === 'PIX') return 'PIX'
   if (method === 'ValeAlimentacao') return t('filterSheet.methodMealVoucher')
+  if (method === 'ValeRefeicao') return t('filterSheet.methodDiningVoucher')
   if (method === 'Dinheiro') return t('filterSheet.methodCash')
   if (method === 'Cheque') return t('filterSheet.methodCheck')
   if (method === 'Transferência') return t('filterSheet.methodTransfer')
@@ -233,6 +234,7 @@ export default function Expenses() {
   const [showPaywallModal, setShowPaywallModal] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [todayIso, setTodayIso] = useState('')
 
@@ -516,6 +518,7 @@ export default function Expenses() {
       return
     }
     setFormError(null)
+    setIsSaving(true)
 
     const fireLimitAlertCheck = (categoryId: string) => {
       if (!familyId) return
@@ -550,121 +553,132 @@ export default function Expenses() {
       expenseData.installment_index = null
     }
 
-    if (editingExpense) {
-      if (paymentMethod === 'Credito' && installments > 1) {
-        const amounts = splitAmountCents(amountCents, installments)
-        const dates = buildInstallmentDates(formData.date, installments)
-        const groupId = crypto.randomUUID()
+    try {
+      if (editingExpense) {
+        if (paymentMethod === 'Credito' && installments > 1) {
+          const amounts = splitAmountCents(amountCents, installments)
+          const dates = buildInstallmentDates(formData.date, installments)
+          const groupId = crypto.randomUUID()
 
-        if (editingExpense.installment_group_id) {
-          await supabase
-            .from('expenses')
-            .delete()
-            .eq('installment_group_id', editingExpense.installment_group_id)
+          if (editingExpense.installment_group_id) {
+            await supabase
+              .from('expenses')
+              .delete()
+              .eq('installment_group_id', editingExpense.installment_group_id)
+          } else {
+            await supabase.from('expenses').delete().eq('id', editingExpense.id)
+          }
+
+          const rows = amounts.map((amount, index) => ({
+            ...expenseData,
+            amount_cents: amount,
+            date: dates[index],
+            installment_group_id: groupId,
+            installment_index: index + 1,
+            created_by: user?.id ?? null,
+          }))
+          const { error: insertError } = await supabase.from('expenses').insert(rows)
+          if (insertError) throw insertError
         } else {
-          await supabase.from('expenses').delete().eq('id', editingExpense.id)
-        }
-
-        const rows = amounts.map((amount, index) => ({
-          ...expenseData,
-          amount_cents: amount,
-          date: dates[index],
-          installment_group_id: groupId,
-          installment_index: index + 1,
-          created_by: user?.id ?? null,
-        }))
-        await supabase.from('expenses').insert(rows)
-      } else {
-        if (paymentMethod === 'Credito' && !expenseData.installment_group_id) {
-          expenseData.installment_group_id = crypto.randomUUID()
-          expenseData.installment_index = 1
-        }
-        if (editingExpense.installment_group_id) {
-          await supabase
+          if (paymentMethod === 'Credito' && !expenseData.installment_group_id) {
+            expenseData.installment_group_id = crypto.randomUUID()
+            expenseData.installment_index = 1
+          }
+          if (editingExpense.installment_group_id) {
+            await supabase
+              .from('expenses')
+              .delete()
+              .eq('installment_group_id', editingExpense.installment_group_id)
+              .neq('id', editingExpense.id)
+          }
+          const { error: updateError } = await supabase
             .from('expenses')
-            .delete()
-            .eq('installment_group_id', editingExpense.installment_group_id)
-            .neq('id', editingExpense.id)
-        }
-        await supabase
-          .from('expenses')
-          .update({ ...expenseData, updated_at: new Date().toISOString() })
-          .eq('id', editingExpense.id)
-        // Optimistic: update only this record in state
-        const updated = { ...editingExpense, ...expenseData } as Expense
-        setExpenses((prev) => prev.map((e) => e.id === editingExpense.id ? updated : e))
-        setRawYearExpenses((prev) => prev.map((e) => e.id === editingExpense.id ? updated : e))
-        closeModal()
-        fireLimitAlertCheck(category.id)
-        triggerWidgetSync()
-        return
-      }
-    } else {
-      if (paymentMethod === 'Credito' && installments > 1) {
-        const amounts = splitAmountCents(amountCents, installments)
-        const dates = buildInstallmentDates(formData.date, installments)
-        const groupId = crypto.randomUUID()
-        const rows = amounts.map((amount, index) => ({
-          ...expenseData,
-          amount_cents: amount,
-          date: dates[index],
-          installment_group_id: groupId,
-          installment_index: index + 1,
-          created_by: user?.id ?? null,
-        }))
-        await supabase.from('expenses').insert(rows)
-      } else {
-        if (paymentMethod === 'Credito') {
-          expenseData.installment_group_id = crypto.randomUUID()
-          expenseData.installment_index = 1
-        }
-        const { data: newRow } = await supabase.from('expenses').insert({ ...expenseData, created_by: user?.id ?? null }).select().maybeSingle()
-        if (newRow) {
-          setExpenses((prev) => [newRow as Expense, ...prev])
-          setRawYearExpenses((prev) => [newRow as Expense, ...prev])
-          if (expenses.length === 0) posthog.capture(EVENTS.FIRST_EXPENSE_CREATED)
+            .update({ ...expenseData, updated_at: new Date().toISOString() })
+            .eq('id', editingExpense.id)
+          if (updateError) throw updateError
+          // Optimistic: update only this record in state
+          const updated = { ...editingExpense, ...expenseData } as Expense
+          setExpenses((prev) => prev.map((e) => e.id === editingExpense.id ? updated : e))
+          setRawYearExpenses((prev) => prev.map((e) => e.id === editingExpense.id ? updated : e))
           closeModal()
           fireLimitAlertCheck(category.id)
           triggerWidgetSync()
           return
         }
+      } else {
+        if (paymentMethod === 'Credito' && installments > 1) {
+          const amounts = splitAmountCents(amountCents, installments)
+          const dates = buildInstallmentDates(formData.date, installments)
+          const groupId = crypto.randomUUID()
+          const rows = amounts.map((amount, index) => ({
+            ...expenseData,
+            amount_cents: amount,
+            date: dates[index],
+            installment_group_id: groupId,
+            installment_index: index + 1,
+            created_by: user?.id ?? null,
+          }))
+          const { error: insertError } = await supabase.from('expenses').insert(rows)
+          if (insertError) throw insertError
+        } else {
+          if (paymentMethod === 'Credito') {
+            expenseData.installment_group_id = crypto.randomUUID()
+            expenseData.installment_index = 1
+          }
+          const { data: newRow, error: insertError } = await supabase.from('expenses').insert({ ...expenseData, created_by: user?.id ?? null }).select().maybeSingle()
+          if (insertError) throw insertError
+          if (newRow) {
+            setExpenses((prev) => [newRow as Expense, ...prev])
+            setRawYearExpenses((prev) => [newRow as Expense, ...prev])
+            if (expenses.length === 0) posthog.capture(EVENTS.FIRST_EXPENSE_CREATED)
+            closeModal()
+            fireLimitAlertCheck(category.id)
+            triggerWidgetSync()
+            return
+          }
+        }
       }
+
+      if (!editingExpense && expenses.length === 0) posthog.capture(EVENTS.FIRST_EXPENSE_CREATED)
+
+      if (formData.isRecurring && !editingExpense) {
+        const dateObj = new Date(formData.date)
+        const freq = formData.recurrenceFrequency
+        const freqDays: Record<string, number> = { weekly:7,biweekly:14,monthly:30,bimonthly:60,quarterly:91,semiannual:182,annual:365 }
+        const nextDate = new Date(dateObj)
+        nextDate.setDate(nextDate.getDate() + (freqDays[freq] ?? 30))
+        const toISO = (d: Date) => d.toISOString().slice(0, 10)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any).from('recurring_patterns').upsert(
+          {
+            family_id: familyId!,
+            description_pattern: formData.description.toLowerCase().trim(),
+            kind: 'expense',
+            category_id: category.id,
+            estimated_amount_cents: formData.isFixedAmount ? amountCents : 0,
+            amount_is_fixed: formData.isFixedAmount,
+            frequency: freq,
+            source: 'user',
+            day_of_month: Math.min(dateObj.getDate(), 28),
+            last_occurrence_date: formData.date,
+            next_expected_date: toISO(nextDate),
+            is_active: true,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'family_id,description_pattern,kind' }
+        )
+      }
+
+      closeModal()
+      loadExpenses()
+      fireLimitAlertCheck(category.id)
+      triggerWidgetSync()
+    } catch (err) {
+      console.error('[expenses] save error:', err)
+      toast(t('expenses.errorSave'), { type: 'error' })
+    } finally {
+      setIsSaving(false)
     }
-
-    if (!editingExpense && expenses.length === 0) posthog.capture(EVENTS.FIRST_EXPENSE_CREATED)
-
-    if (formData.isRecurring && !editingExpense) {
-      const dateObj = new Date(formData.date)
-      const freq = formData.recurrenceFrequency
-      const freqDays: Record<string, number> = { weekly:7,biweekly:14,monthly:30,bimonthly:60,quarterly:91,semiannual:182,annual:365 }
-      const nextDate = new Date(dateObj)
-      nextDate.setDate(nextDate.getDate() + (freqDays[freq] ?? 30))
-      const toISO = (d: Date) => d.toISOString().slice(0, 10)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from('recurring_patterns').upsert(
-        {
-          family_id: familyId!,
-          description_pattern: formData.description.toLowerCase().trim(),
-          kind: 'expense',
-          category_id: category.id,
-          estimated_amount_cents: formData.isFixedAmount ? amountCents : 0,
-          amount_is_fixed: formData.isFixedAmount,
-          frequency: freq,
-          source: 'user',
-          day_of_month: Math.min(dateObj.getDate(), 28),
-          last_occurrence_date: formData.date,
-          next_expected_date: toISO(nextDate),
-          is_active: true,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'family_id,description_pattern,kind' }
-      )
-    }
-
-    closeModal()
-    loadExpenses()
-    fireLimitAlertCheck(category.id)
-    triggerWidgetSync()
   }
 
   const handleDelete = (id: string) => {
@@ -1852,7 +1866,7 @@ export default function Expenses() {
           <div>
             <span className="block font-body text-ink mb-2">{t('expenses.method')}</span>
             <div className="flex flex-wrap gap-2">
-              {(['PIX', 'Credito', 'Debito', 'ValeAlimentacao', 'Dinheiro', 'Cheque', 'Transferência'] as PaymentMethod[]).map((method) => (
+              {(['PIX', 'Credito', 'Debito', 'ValeAlimentacao', 'ValeRefeicao', 'Dinheiro', 'Cheque', 'Transferência'] as PaymentMethod[]).map((method) => (
                 <button
                   key={method}
                   type="button"
@@ -1863,7 +1877,7 @@ export default function Expenses() {
                       : 'border-border bg-bg text-ink hover:bg-paper'
                   }`}
                 >
-                  {method === 'Credito' ? t('filterSheet.methodCredit') : method === 'Debito' ? t('filterSheet.methodDebit') : method === 'ValeAlimentacao' ? t('filterSheet.methodMealVoucher') : method}
+                  {method === 'Credito' ? t('filterSheet.methodCredit') : method === 'Debito' ? t('filterSheet.methodDebit') : method === 'ValeAlimentacao' ? t('filterSheet.methodMealVoucher') : method === 'ValeRefeicao' ? t('filterSheet.methodDiningVoucher') : method}
                 </button>
               ))}
             </div>
@@ -1991,9 +2005,10 @@ export default function Expenses() {
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-3 bg-sidebar text-paper rounded-lg hover:bg-sidebar/90 transition-vintage"
+              disabled={isSaving}
+              className="flex-1 px-4 py-3 bg-sidebar text-paper rounded-lg hover:bg-sidebar/90 transition-vintage disabled:opacity-60"
             >
-              {t('common.save')}
+              {isSaving ? t('common.saving') : t('common.save')}
             </button>
           </div>
         </form>

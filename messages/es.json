@@ -408,6 +408,7 @@
     "methodCredit": "Crédito",
     "methodDebit": "Débito",
     "methodMealVoucher": "Vale Comida",
+    "methodDiningVoucher": "Vale Restaurante",
     "methodCash": "Efectivo",
     "methodCheck": "Cheque",
     "methodTransfer": "Transferencia"
@@ -475,6 +476,7 @@
     "exportPdf": "Exportar PDF",
     "viewAttachment": "Ver adjunto",
     "uploadAttachment": "Adjuntar comprobante",
+    "errorSave": "No se pudo guardar el gasto. Inténtalo de nuevo.",
     "attachmentOpenError": "No se pudo abrir el archivo adjunto.",
     "noAttachmentFile": "Sin archivo adjunto",
     "noCategory": "Sin categoría",

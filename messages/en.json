@@ -408,6 +408,7 @@
     "methodCredit": "Credit",
     "methodDebit": "Debit",
     "methodMealVoucher": "Meal Voucher",
+    "methodDiningVoucher": "Dining Voucher",
     "methodCash": "Cash",
     "methodCheck": "Check",
     "methodTransfer": "Transfer"
@@ -475,6 +476,7 @@
     "exportPdf": "Export PDF",
     "viewAttachment": "View attachment",
     "uploadAttachment": "Attach receipt",
+    "errorSave": "Could not save the expense. Please try again.",
     "attachmentOpenError": "Unable to open the attachment.",
     "noAttachmentFile": "No file attached",
     "noCategory": "No category",
