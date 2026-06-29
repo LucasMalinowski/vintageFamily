@@ -30,7 +30,7 @@ export class GroqVisionService {
                 { type: 'image_url', image_url: { url: dataUrl } },
                 {
                   type: 'text',
-                  text: 'Extraia as informações principais deste comprovante de pagamento. Retorne APENAS: nome do estabelecimento/loja, data da compra, VALOR TOTAL PAGO (não liste os itens individuais), forma de pagamento. Responda em português em texto simples e conciso.',
+                  text: 'Analise este comprovante de pagamento (cupom fiscal, NFC-e, recibo ou nota). Extraia em texto simples e conciso:\n1. Nome do estabelecimento — se não estiver claramente visível, infira o TIPO de comércio pelos itens ou contexto (ex: "Supermercado", "Farmácia", "Restaurante", "Posto de Combustível", "Padaria", "Loja de Roupas"). Nunca escreva "não identificado".\n2. Data da compra\n3. VALOR TOTAL PAGO (apenas o total final — não liste itens individuais)\n4. Forma de pagamento\n\nResponda apenas com essas 4 informações.',
                 },
               ],
             },
