@@ -1364,6 +1364,7 @@ export type Database = {
           phone_verification_code: string | null
           phone_verification_expires_at: string | null
           role: string
+          screen_layouts: Json
           super_admin: boolean
         }
         Insert: {
@@ -1389,6 +1390,7 @@ export type Database = {
           phone_verification_code?: string | null
           phone_verification_expires_at?: string | null
           role?: string
+          screen_layouts?: Json
           super_admin?: boolean
         }
         Update: {
@@ -1414,6 +1416,7 @@ export type Database = {
           phone_verification_code?: string | null
           phone_verification_expires_at?: string | null
           role?: string
+          screen_layouts?: Json
           super_admin?: boolean
         }
         Relationships: [
