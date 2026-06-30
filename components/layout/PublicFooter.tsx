@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server'
 import Image from 'next/image'
 import Link from 'next/link'
 import CookiePreferencesLink from './CookiePreferencesLink'
+import AppStoreBadges from './AppStoreBadges'
 
 type PublicFooterColor = 'sidebar' | 'paper'
 
@@ -84,6 +85,7 @@ export default async function PublicFooter({ color = 'sidebar' }: PublicFooterPr
           <Image src="/logo.png" alt="Florim" width={40} height={40} className="w-10 h-10 object-contain" />
           <span className={`font-serif text-lg font-light tracking-widest ${theme.brand}`}>FLORIM</span>
         </div>
+        <AppStoreBadges />
         <div className="flex flex-wrap justify-center gap-5">
           <Link href="/about" className={`text-[13px] transition-vintage ${theme.link}`}>{t('publicNav.about')}</Link>
           <Link href="/plans" className={`text-[13px] transition-vintage ${theme.link}`}>{t('publicFooter.plans')}</Link>
@@ -109,6 +111,9 @@ export default async function PublicFooter({ color = 'sidebar' }: PublicFooterPr
             <p className={`text-sm leading-relaxed max-w-xs ${theme.muted}`}>
               {t('publicFooter.tagline')}
             </p>
+            <div className="mt-5">
+              <AppStoreBadges />
+            </div>
           </div>
 
           {/* Link columns */}
