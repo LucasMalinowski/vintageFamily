@@ -146,6 +146,7 @@ export async function launchDueRecurringItems(familyId?: string): Promise<number
       date: pattern.next_expected_date ?? today,
       status: 'pending_confirmation',
       notes: null,
+      recurring_pattern_id: pattern.id,
     }
 
     if (pattern.category_id) {

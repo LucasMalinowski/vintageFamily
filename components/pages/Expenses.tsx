@@ -165,6 +165,7 @@ interface Expense {
   installment_index: number | null
   created_by: string | null
   created_at: string
+  recurring_pattern_id: string | null
 }
 
 const formatPaymentLabel = (t: ReturnType<typeof useTranslations>, method: PaymentMethod | null, installments: number | null) => {
@@ -234,6 +235,8 @@ export default function Expenses() {
   const [showPaywallModal, setShowPaywallModal] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [rejectConfirmId, setRejectConfirmId] = useState<string | null>(null)
+  const [rejecting, setRejecting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [todayIso, setTodayIso] = useState('')
@@ -497,6 +500,7 @@ export default function Expenses() {
         installment_index: row.installment_index,
         created_by: row.created_by ?? null,
         created_at: row.created_at,
+        recurring_pattern_id: row.recurring_pattern_id ?? null,
       }))
       setRawYearExpenses(normalized)
       setExpenses(normalized.filter((expense) => isDateInBillingPeriod(expense.date, selectedMonth, selectedYear, billingCycleDay)))
@@ -696,6 +700,31 @@ export default function Expenses() {
     setRawYearExpenses((prev) => prev.filter((e) => e.id !== deleteConfirmId))
     setDeleting(false)
     setDeleteConfirmId(null)
+    triggerWidgetSync()
+  }
+
+  const handleRejectRecurring = (id: string) => {
+    if (updatingIds.includes(id)) return
+    setRejectConfirmId(id)
+  }
+
+  const confirmReject = async () => {
+    if (!rejectConfirmId) return
+    const expense = expenses.find((e) => e.id === rejectConfirmId) ?? rawYearExpenses.find((e) => e.id === rejectConfirmId)
+    setRejecting(true)
+    setUpdatingIds((prev) => [...prev, rejectConfirmId])
+    if (expense?.recurring_pattern_id) {
+      await supabase
+        .from('recurring_patterns')
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq('id', expense.recurring_pattern_id)
+    }
+    await supabase.from('expenses').delete().eq('id', rejectConfirmId)
+    setUpdatingIds((prev) => prev.filter((item) => item !== rejectConfirmId))
+    setExpenses((prev) => prev.filter((e) => e.id !== rejectConfirmId))
+    setRawYearExpenses((prev) => prev.filter((e) => e.id !== rejectConfirmId))
+    setRejecting(false)
+    setRejectConfirmId(null)
     triggerWidgetSync()
   }
 
@@ -1547,6 +1576,8 @@ export default function Expenses() {
                                     onAttach={(file) => handleAttachExpense(expense, file)}
                                     onToggleStatus={() => handleTogglePaid(expense)}
                                     toggleStatusLabel={isPaid ? t('expenses.markAsOpen') : t('expenses.markAsPaid')}
+                                    onReject={isPending ? () => handleRejectRecurring(expense.id) : undefined}
+                                    rejectLabel={isPending ? t('expenses.rejectRecurringButton') : undefined}
                                     disabled={isUpdating}
                                   />
                                 </div>
@@ -1684,6 +1715,8 @@ export default function Expenses() {
                                     onAttach={(file) => handleAttachExpense(expense, file)}
                                     onToggleStatus={() => handleTogglePaid(expense)}
                                     toggleStatusLabel={isPaid ? t('expenses.markAsOpen') : t('expenses.markAsPaid')}
+                                    onReject={isPending ? () => handleRejectRecurring(expense.id) : undefined}
+                                    rejectLabel={isPending ? t('expenses.rejectRecurringButton') : undefined}
                                     disabled={isUpdating}
                                   />
                                 </div>
@@ -2022,6 +2055,17 @@ export default function Expenses() {
         message={t('expenses.deleteConfirmMessage')}
         confirmLabel={t('expenses.deleteButton')}
         loading={deleting}
+      />
+
+      <ConfirmModal
+        isOpen={!!rejectConfirmId}
+        onClose={() => setRejectConfirmId(null)}
+        onConfirm={confirmReject}
+        title={t('expenses.confirmRejectRecurring')}
+        message={t('expenses.rejectRecurringConfirmMessage')}
+        confirmLabel={t('expenses.rejectRecurringButton')}
+        confirmAccent="#2F6F7E"
+        loading={rejecting}
       />
 
       <Modal

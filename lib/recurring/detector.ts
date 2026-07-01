@@ -49,6 +49,7 @@ export async function detectAndUpsertRecurringPatterns(familyId: string): Promis
 	      .eq('family_id', familyId)
 	      .gte('date', sinceDate)
 	      .not('status', 'eq', 'pending_confirmation')
+	      .is('installment_group_id', null)
 	      .order('date', { ascending: true }),
 	    supabaseAdmin
 	      .from('incomes')
@@ -93,29 +94,48 @@ export async function detectAndUpsertRecurringPatterns(familyId: string): Promis
     const nextDate = addDays(lastDate, FREQUENCY_DAYS[frequency])
     const avgCents = Math.round(rows.reduce((s, r) => s + r.amount_cents, 0) / rows.length)
     const mostCommonCategoryId = lastRow.category_id
+    const descriptionPattern = normalizeDescription(lastRow.description)
 
-    await supabaseAdmin
+    const { data: existing } = await supabaseAdmin
       .from('recurring_patterns')
-      .upsert(
-        {
+      .select('id, is_active')
+      .eq('family_id', familyId)
+      .eq('description_pattern', descriptionPattern)
+      .eq('kind', kind)
+      .maybeSingle()
+
+    // A pattern the user dismissed (is_active=false) must stay dismissed:
+    // skip it entirely rather than resurrecting it just because the same
+    // transactions are still within the 2-month detection window.
+    if (existing && !existing.is_active) continue
+
+    const patternFields = {
+      category_id: mostCommonCategoryId,
+      estimated_amount_cents: avgCents,
+      frequency,
+      day_of_month: lastDate.getDate() <= 28 ? lastDate.getDate() : 28,
+      last_occurrence_date: toISO(lastDate),
+      next_expected_date: toISO(nextDate),
+      updated_at: new Date().toISOString(),
+    }
+
+    if (existing) {
+      await supabaseAdmin
+        .from('recurring_patterns')
+        .update(patternFields)
+        .eq('id', existing.id)
+    } else {
+      await supabaseAdmin
+        .from('recurring_patterns')
+        .insert({
           family_id: familyId,
-          description_pattern: normalizeDescription(lastRow.description),
+          description_pattern: descriptionPattern,
           kind,
-          category_id: mostCommonCategoryId,
-          estimated_amount_cents: avgCents,
-          frequency,
           source: 'auto',
-          day_of_month: lastDate.getDate() <= 28 ? lastDate.getDate() : 28,
-          last_occurrence_date: toISO(lastDate),
-          next_expected_date: toISO(nextDate),
           is_active: true,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: 'family_id,description_pattern,kind',
-          ignoreDuplicates: false,
-        }
-      )
+          ...patternFields,
+        })
+    }
 
     upserted++
   }

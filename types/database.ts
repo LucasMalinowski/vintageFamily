@@ -366,6 +366,7 @@ export type Database = {
           raw_description: string | null
           raw_line: string | null
           raw_payload: Json | null
+          recurring_pattern_id: string | null
           source: string | null
           source_bank: string | null
           source_type: string | null
@@ -396,6 +397,7 @@ export type Database = {
           raw_description?: string | null
           raw_line?: string | null
           raw_payload?: Json | null
+          recurring_pattern_id?: string | null
           source?: string | null
           source_bank?: string | null
           source_type?: string | null
@@ -426,6 +428,7 @@ export type Database = {
           raw_description?: string | null
           raw_line?: string | null
           raw_payload?: Json | null
+          recurring_pattern_id?: string | null
           source?: string | null
           source_bank?: string | null
           source_type?: string | null
@@ -459,6 +462,13 @@ export type Database = {
             columns: ["import_batch_id"]
             isOneToOne: false
             referencedRelation: "bank_statement_import_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_recurring_pattern_id_fkey"
+            columns: ["recurring_pattern_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_patterns"
             referencedColumns: ["id"]
           },
         ]
@@ -610,6 +620,7 @@ export type Database = {
           raw_description: string | null
           raw_line: string | null
           raw_payload: Json | null
+          recurring_pattern_id: string | null
           source: string | null
           source_bank: string | null
           source_type: string | null
@@ -635,6 +646,7 @@ export type Database = {
           raw_description?: string | null
           raw_line?: string | null
           raw_payload?: Json | null
+          recurring_pattern_id?: string | null
           source?: string | null
           source_bank?: string | null
           source_type?: string | null
@@ -660,6 +672,7 @@ export type Database = {
           raw_description?: string | null
           raw_line?: string | null
           raw_payload?: Json | null
+          recurring_pattern_id?: string | null
           source?: string | null
           source_bank?: string | null
           source_type?: string | null
@@ -679,6 +692,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incomes_recurring_pattern_id_fkey"
+            columns: ["recurring_pattern_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_patterns"
             referencedColumns: ["id"]
           },
           {

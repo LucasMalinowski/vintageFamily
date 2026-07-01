@@ -60,7 +60,7 @@ import { posthog } from '@/lib/posthog'
 import { EVENTS } from '@/components/PostHogProvider'
 import { useTranslations, useLocale } from 'next-intl'
 
-type IncomeStatus = 'received' | 'pending'
+type IncomeStatus = 'received' | 'pending' | 'pending_confirmation'
 
 interface Income {
   id: string
@@ -74,6 +74,7 @@ interface Income {
   attachment_path: string | null
   created_by: string | null
   created_at: string
+  recurring_pattern_id: string | null
 }
 
 function isDateInBillingPeriod(date: string, month: number, year: number, cycleDay: number): boolean {
@@ -120,6 +121,8 @@ export default function Incomes() {
   const [showPaywallModal, setShowPaywallModal] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [rejectConfirmId, setRejectConfirmId] = useState<string | null>(null)
+  const [rejecting, setRejecting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false)
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
@@ -217,7 +220,7 @@ export default function Incomes() {
     if (data) {
       const normalized = data.map((row) => ({
         ...row,
-        status: (row.status === 'pending' ? 'pending' : 'received') as IncomeStatus,
+        status: (row.status === 'pending' ? 'pending' : row.status === 'pending_confirmation' ? 'pending_confirmation' : 'received') as IncomeStatus,
         created_by: row.created_by ?? null,
       }))
       setRawYearIncomes(normalized)
@@ -335,7 +338,10 @@ export default function Incomes() {
     return fallbackName
   }
 
-  const getIncomeStatusLabel = (status: IncomeStatus) => (status === 'received' ? t('incomes.statusReceived') : t('incomes.statusPending'))
+  const getIncomeStatusLabel = (status: IncomeStatus) =>
+    status === 'received' ? t('incomes.statusReceived')
+      : status === 'pending_confirmation' ? t('incomes.statusPendingConfirmationShort')
+      : t('incomes.statusPending')
 
   const handleToggleReceived = async (income: Income) => {
     if (updatingIds.includes(income.id)) return
@@ -449,6 +455,31 @@ export default function Incomes() {
     setRawYearIncomes((prev) => prev.filter((i) => i.id !== deleteConfirmId))
     setDeleting(false)
     setDeleteConfirmId(null)
+    triggerWidgetSync()
+  }
+
+  const handleRejectRecurring = (id: string) => {
+    if (updatingIds.includes(id)) return
+    setRejectConfirmId(id)
+  }
+
+  const confirmReject = async () => {
+    if (!rejectConfirmId) return
+    const income = incomes.find((i) => i.id === rejectConfirmId) ?? rawYearIncomes.find((i) => i.id === rejectConfirmId)
+    setRejecting(true)
+    setUpdatingIds((prev) => [...prev, rejectConfirmId])
+    if (income?.recurring_pattern_id) {
+      await supabase
+        .from('recurring_patterns')
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq('id', income.recurring_pattern_id)
+    }
+    await supabase.from('incomes').delete().eq('id', rejectConfirmId)
+    setUpdatingIds((prev) => prev.filter((item) => item !== rejectConfirmId))
+    setIncomes((prev) => prev.filter((i) => i.id !== rejectConfirmId))
+    setRawYearIncomes((prev) => prev.filter((i) => i.id !== rejectConfirmId))
+    setRejecting(false)
+    setRejectConfirmId(null)
     triggerWidgetSync()
   }
 
@@ -1200,6 +1231,35 @@ export default function Incomes() {
               />
             ) : (
               <div className="space-y-5">
+                {filteredIncomes.some(i => i.status === 'pending_confirmation') && (() => {
+                  const count = filteredIncomes.filter(i => i.status === 'pending_confirmation').length
+                  return (
+                    <div className="flex items-center gap-3 p-3.5 rounded-xl border" style={{ background: 'rgba(47,111,126,0.06)', borderColor: 'rgba(47,111,126,0.2)' }}>
+                      <div
+                        className="w-8 h-8 rounded-[8px] flex items-center justify-center shrink-0"
+                        style={{ background: 'rgba(47,111,126,0.12)', color: '#2F6F7E' }}
+                      >
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13.5px] font-semibold" style={{ color: '#2F6F7E' }}>
+                          {count === 1 ? t('incomes.recurringToConfirmOne') : t('incomes.recurringToConfirmMany', { count })}
+                        </p>
+                        <p className="text-xs text-ink/55 mt-0.5">
+                          {t('incomes.recurringToConfirmDesc')}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStatus('pending_confirmation')}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-vintage"
+                        style={{ borderColor: 'rgba(47,111,126,0.3)', color: '#2F6F7E', background: '#fff' }}
+                      >
+                        {t('incomes.reviewButton')} →
+                      </button>
+                    </div>
+                  )
+                })()}
                 {groupedIncomes.map((group) => (
                   <div key={group.label} className="space-y-3">
                     {groupedIncomes.length > 1 && (
@@ -1225,14 +1285,15 @@ export default function Incomes() {
                         const catParts = catLabel ? catLabel.split(' / ') : []
                         const catIcon = income.category_id ? categoryIconMap.get(income.category_id) : null
                         const isReceived = income.status === 'received'
+                        const isPending = income.status === 'pending_confirmation'
                         return (
                           <div
                             key={income.id}
                             className={`transition-vintage ${isUpdating ? 'opacity-60' : ''}`}
                           >
                             {/* ── MOBILE card ── */}
-                            <div className="md:hidden rounded-xl overflow-hidden border border-border bg-offWhite shadow-sm flex">
-                              <div className={`w-[3px] shrink-0 ${isReceived ? 'bg-olive' : 'bg-amber-400'}`} />
+                            <div className={`md:hidden rounded-xl overflow-hidden border shadow-sm flex ${isPending ? 'border-petrol/40 bg-petrol/5' : 'border-border bg-offWhite'}`}>
+                              <div className={`w-[3px] shrink-0 ${isReceived ? 'bg-olive' : isPending ? 'bg-petrol' : 'bg-amber-400'}`} />
                               <div className="flex-1 p-3 min-w-0 space-y-2">
                                 {/* Row 1: checkbox + icon + title + menu */}
                                 <div className="flex items-center gap-2">
@@ -1258,6 +1319,8 @@ export default function Incomes() {
                                     onAttach={(file) => handleAttachIncome(income, file)}
                                     onToggleStatus={() => handleToggleReceived(income)}
                                     toggleStatusLabel={isReceived ? t('incomes.markAsPending') : t('incomes.markAsReceived')}
+                                    onReject={isPending ? () => handleRejectRecurring(income.id) : undefined}
+                                    rejectLabel={isPending ? t('incomes.rejectRecurringButton') : undefined}
                                     disabled={isUpdating}
                                   />
                                 </div>
@@ -1266,6 +1329,8 @@ export default function Incomes() {
                                 <div className="flex items-center justify-between">
                                   {isReceived ? (
                                     <span className="rounded-full bg-olive/15 px-2.5 py-0.5 text-[11px] font-semibold text-olive">{t('incomes.statusReceived')}</span>
+                                  ) : isPending ? (
+                                    <span className="rounded-full bg-petrol/10 border border-petrol/30 px-2.5 py-0.5 text-[11px] font-semibold text-petrol">{t('incomes.statusPendingConfirmation')}</span>
                                   ) : (
                                     <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600">{t('incomes.statusPending')}</span>
                                   )}
@@ -1333,6 +1398,11 @@ export default function Incomes() {
                                         {t('incomes.statusReceived')}
                                       </span>
                                     )}
+                                    {isPending && (
+                                      <span className="rounded-full bg-petrol/10 border border-petrol/30 px-2.5 py-0.5 text-[11px] font-semibold text-petrol">
+                                        {t('incomes.statusPendingConfirmation')}
+                                      </span>
+                                    )}
                                   </div>
                                   <CategoryPathStack
                                     label={catLabel}
@@ -1353,6 +1423,8 @@ export default function Incomes() {
                                       onAttach={(file) => handleAttachIncome(income, file)}
                                       onToggleStatus={() => handleToggleReceived(income)}
                                       toggleStatusLabel={isReceived ? t('incomes.markAsPending') : t('incomes.markAsReceived')}
+                                      onReject={isPending ? () => handleRejectRecurring(income.id) : undefined}
+                                      rejectLabel={isPending ? t('incomes.rejectRecurringButton') : undefined}
                                       disabled={isUpdating}
                                     />
                                   </div>
@@ -1589,6 +1661,17 @@ export default function Incomes() {
         confirmLabel={t('incomes.deleteButton')}
         confirmAccent="#3E8E5C"
         loading={deleting}
+      />
+
+      <ConfirmModal
+        isOpen={!!rejectConfirmId}
+        onClose={() => setRejectConfirmId(null)}
+        onConfirm={confirmReject}
+        title={t('incomes.confirmRejectRecurring')}
+        message={t('incomes.rejectRecurringConfirmMessage')}
+        confirmLabel={t('incomes.rejectRecurringButton')}
+        confirmAccent="#2F6F7E"
+        loading={rejecting}
       />
 
       <Modal

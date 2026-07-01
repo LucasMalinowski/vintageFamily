@@ -31,6 +31,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     { label: t('settings.layout.nav.family'), href: '/settings/family' },
     { label: t('settings.layout.nav.billing'), href: '/settings/billing' },
     { label: t('settings.layout.nav.insights'), href: '/settings/insights' },
+    { label: t('settings.layout.nav.recurring'), href: '/settings/recurring' },
   ]
 
   const visibleItems = isSuperAdmin

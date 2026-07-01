@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { MoreVertical, Eye, Pencil, Trash2, Paperclip, TrendingUp, TrendingDown, Check } from 'lucide-react'
+import { MoreVertical, Eye, Pencil, Trash2, Paperclip, TrendingUp, TrendingDown, Check, BellOff } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 interface ActionMenuProps {
@@ -13,10 +13,12 @@ interface ActionMenuProps {
   onWithdrawal?: () => void
   onToggleStatus?: () => void
   toggleStatusLabel?: string
+  onReject?: () => void
+  rejectLabel?: string
   disabled?: boolean
 }
 
-export default function ActionMenu({ onEdit, onDelete, onView, onAttach, onDeposit, onWithdrawal, onToggleStatus, toggleStatusLabel, disabled }: ActionMenuProps) {
+export default function ActionMenu({ onEdit, onDelete, onView, onAttach, onDeposit, onWithdrawal, onToggleStatus, toggleStatusLabel, onReject, rejectLabel, disabled }: ActionMenuProps) {
   const t = useTranslations()
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -78,6 +80,15 @@ export default function ActionMenu({ onEdit, onDelete, onView, onAttach, onDepos
               className="w-full flex items-center gap-2 px-4 py-2 text-sm text-ink/70 hover:bg-paper transition-vintage whitespace-nowrap"
             >
               <Check className="w-4 h-4 text-olive" /> {toggleStatusLabel}
+            </button>
+          )}
+          {onReject && rejectLabel && (
+            <button
+              type="button"
+              onClick={() => { onReject(); setOpen(false) }}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-ink/70 hover:bg-paper transition-vintage whitespace-nowrap"
+            >
+              <BellOff className="w-4 h-4 text-petrol" /> {rejectLabel}
             </button>
           )}
           <button

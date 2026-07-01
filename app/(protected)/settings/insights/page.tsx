@@ -94,7 +94,7 @@ export default function InsightsSettingsPage() {
             }`}
           >
             <span
-              className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
+              className={`absolute left-0 top-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
                 insightsEnabled ? 'translate-x-6' : 'translate-x-1'
               }`}
             />
