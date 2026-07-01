@@ -131,18 +131,16 @@ Filtro "carro", itens: [{idx:0,description:"Gasolina",category:"Transporte / Com
 Filtro "nenhum", pergunta "qual meu maior gasto?", itens: [{idx:0,...},{idx:1,...},{idx:2,...}]
 → {"query_type":"max","selected":[0,1,2],"focus_label":null,"context_selected":[],"context_label":null}`
 
-// Per-family static - only categories vary between families; date is injected into the user message
-// so Groq caches this prefix for all messages from the same family until categories change
+// Shared instructional text is static across ALL families - kept first so Groq's org-wide prefix
+// cache can serve it for every family's calls. Only the per-family category list varies, so it's
+// appended at the very end (same pattern as suggestCategory's prompt) to keep the cached prefix as long as possible.
 const EXTRACTION_SYSTEM_PROMPT = (categoriesText: string) => `You are a financial assistant. Extract records from user messages (messages may be in Portuguese, English, or Spanish — match the language of the user's message).
-
-Categorias disponíveis (use o nome EXATO):
-${categoriesText}
 
 Regras gerais:
 - Responda APENAS com JSON: {"records": [...]}
 - Para mensagens sem conteúdo financeiro ou lembrete, responda: {"records": []}
 - date: YYYY-MM-DD. Use as datas de contexto fornecidas na mensagem. Para datas futuras ("semana que vem", "na sexta", "amanhã"), calcule a partir de hoje.
-- category_name: use APENAS nomes da lista acima — nunca invente categorias novas. Use a subcategoria mais específica disponível (ex: prefira "Transporte / Combustível" a "Transporte" para gasolina). Se nada se encaixar, use "Outros" (despesa) ou "Outras Receitas" (receita).
+- category_name: use APENAS nomes da lista de categorias fornecida no final deste prompt — nunca invente categorias novas. Use a subcategoria mais específica disponível (ex: prefira "Transporte / Combustível" a "Transporte" para gasolina). Se nada se encaixar, use "Outros" (despesa) ou "Outras Receitas" (receita).
 
 Tipos de registro:
 
@@ -198,7 +196,25 @@ Exemplos (datas ilustrativas - use as datas reais do contexto fornecido):
 → {"records":[{"type":"expense","description":"Mercado","amount":45.73,"date":"2025-06-10","category_name":"Mercado","payment_method":"ValeAlimentacao","status":"paid","installments":1}]}
 
 "oi tudo bem?"
-→ {"records":[]}`
+→ {"records":[]}
+
+"spent 50 dollars on groceries with credit card"
+→ {"records":[{"type":"expense","description":"Groceries","amount":50,"date":"2025-06-10","category_name":"Mercado","payment_method":"Credito","status":"paid","installments":1}]}
+
+"received 1500 from salary"
+→ {"records":[{"type":"income","description":"Salary","amount":1500,"date":"2025-06-10","category_name":"Renda Familiar","payment_method":null}]}
+
+"remind me to pay rent next Friday"
+→ {"records":[{"type":"reminder","description":"Pay rent","amount":0,"date":"2025-06-13","category_name":null,"payment_method":null}]}
+
+"gasté 50 reales en el supermercado con debito"
+→ {"records":[{"type":"expense","description":"Supermercado","amount":50,"date":"2025-06-10","category_name":"Mercado","payment_method":"Debito","status":"paid","installments":1}]}
+
+"recibí 1500 de salario"
+→ {"records":[{"type":"income","description":"Salario","amount":1500,"date":"2025-06-10","category_name":"Renda Familiar","payment_method":null}]}
+
+Categorias disponíveis (use o nome EXATO):
+${categoriesText}`
 
 const DAY_NAMES: Record<string, string[]> = {
   'pt-BR': ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'],
@@ -261,7 +277,9 @@ export class NvidiaAIService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
+          model: 'openai/gpt-oss-20b',
+          reasoning_effort: 'low',
+          include_reasoning: false,
           messages: [
             { role: 'system', content: ROUTER_SYSTEM_PROMPT },
             { role: 'user', content: `${buildDateContext(todayISO, locale)}\n\n${message}` },
@@ -322,7 +340,9 @@ export class NvidiaAIService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
+          model: 'openai/gpt-oss-20b',
+          reasoning_effort: 'low',
+          include_reasoning: false,
           messages: [
             { role: 'system', content: CLASSIFIER_SYSTEM_PROMPT },
             { role: 'user', content: `Filtro: ${focus ?? 'nenhum'}\n\nPergunta: ${question}\n\nItens:\n${itemsText}` },
@@ -386,7 +406,9 @@ export class NvidiaAIService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
+          model: 'openai/gpt-oss-20b',
+          reasoning_effort: 'low',
+          include_reasoning: false,
           messages: [
             { role: 'system', content: EXTRACTION_SYSTEM_PROMPT(categoriesText) },
             { role: 'user', content: `${buildDateContext(todayISO, locale)}\n\n${message}` },
@@ -443,7 +465,9 @@ export class NvidiaAIService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
+          model: 'openai/gpt-oss-20b',
+          reasoning_effort: 'low',
+          include_reasoning: false,
           messages: [
             {
               role: 'system',
